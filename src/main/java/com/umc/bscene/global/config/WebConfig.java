@@ -13,6 +13,6 @@ public class WebConfig implements WebMvcConfigurer {
 //                .allowedOrigins("ENVIRONMENT_VARIABLES")  프론트 배포 주소를 환경변수로 주입
                 .allowedOriginPatterns("*")
                 .allowedMethods("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS")
-                .allowCredentials(true)
+                .allowCredentials(true);
     }
 }
