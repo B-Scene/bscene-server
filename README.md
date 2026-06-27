@@ -26,11 +26,13 @@
 | `ci`       | `ci/￼#ISSUE_NUM￼`       | 🔄 CI 관련 수정      |
 | `cd`       | `cd/￼#ISSUE_NUM￼`       | 🔄 CD 관련 수정      |
 | `revert`   | `revert/￼#ISSUE_NUM￼`   | ⚠️ 특정 커밋으로 되돌리기  |
+
 이후, 이 브랜치에서 작업하는 내용을 누구나 알 수 있도록 명시합니다.
 완성 예시 : `feat/#1-login-api`
 
 ## ⚠️ Issue Convention
 이슈 제목은 **타입**과 간단한 **설명**을 적습니다.
+
 ex. `[Feat] 상품 CRUD 구현`
 
 ## 📄 Commit Convention
@@ -48,4 +50,4 @@ ex. `[Feat] 상품 CRUD 구현`
 | branch    | role                                   |
 |-----------|----------------------------------------|
 | `main`    | - 최종 배포용 브랜치<br>- dev 브랜치에서 안정화 버전만 병합 |
-| `develop` | - 개발용 브랜치<br>- 자유롭게 병합                 |
+| `develop` | - 개발용 브랜치<br>- 시니어에게 리뷰 진행 후 병합 |
