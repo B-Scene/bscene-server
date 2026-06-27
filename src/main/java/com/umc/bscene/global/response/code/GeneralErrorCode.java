@@ -1,6 +1,5 @@
 package com.umc.bscene.global.response.code;
 
-import com.umc.bscene.global.constant.StaticValue;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 
