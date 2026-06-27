@@ -1,6 +1,7 @@
 package com.umc.bscene.global.exception;
 
 import com.umc.bscene.global.response.ErrorResponse;
+import com.umc.bscene.global.response.code.BaseResponseCode;
 import com.umc.bscene.global.response.code.GeneralErrorCode;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
@@ -144,6 +145,15 @@ public class GlobalExceptionHandler {
     ) {
         log.error("BaseException : {}", e.getBaseResponseCode().getMessage(), e);
         ErrorResponse<?> errorResponse = ErrorResponse.from(e.getBaseResponseCode());
+        return ResponseEntity.status(errorResponse.getStatus()).body(errorResponse);
+    }
+
+    @ExceptionHandler(Exception.class)
+    public ResponseEntity<ErrorResponse<?>> handleException(
+            Exception e
+    ) {
+        log.error("Exception : {}", e.getMessage(), e);
+        ErrorResponse<Object> errorResponse = ErrorResponse.from(GeneralErrorCode.SERVER_ERROR);
         return ResponseEntity.status(errorResponse.getStatus()).body(errorResponse);
     }
 }
