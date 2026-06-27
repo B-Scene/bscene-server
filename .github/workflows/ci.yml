@@ -23,10 +23,6 @@ jobs:
     name: build with test
     runs-on: ubuntu-22.04
 
-    defaults:
-      run:
-        working-directory: ./app
-
     steps:
       - name: check out
         uses: actions/checkout@v4
@@ -56,7 +52,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: app-jar
-          path: app/build/libs/*.jar
+          path: build/libs/*.jar
 
   docker-push:
     name: docker build & push
