@@ -35,3 +35,24 @@ out/
 
 ### VS Code ###
 .vscode/
+
+# MacOS
+.DS_Store
+
+# Environment Variables
+.env
+.env.*
+!.env.example
+
+# Oh My Codex(Claude)
+.omx/
+.omc/
+
+# Claude
+.claude/
+
+# Codex Hooks & Local Settings
+.codex/hooks.json
+.codex/prompts.
+.codex/skills
+.codex/config.toml

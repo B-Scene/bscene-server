@@ -32,6 +32,9 @@ dependencies {
 	testCompileOnly 'org.projectlombok:lombok'
 	testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 	testAnnotationProcessor 'org.projectlombok:lombok'
+
+	// Test Only
+	testRuntimeOnly 'com.h2database:h2'
 }
 
 tasks.named('test') {
