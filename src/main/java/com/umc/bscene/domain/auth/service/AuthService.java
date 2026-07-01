@@ -1,14 +1,21 @@
 package com.umc.bscene.domain.auth.service;
 
+import com.umc.bscene.domain.auth.dto.request.LoginRequest;
 import com.umc.bscene.domain.auth.dto.request.SignupRequest;
 import com.umc.bscene.domain.auth.dto.response.LoginIdCheckResponse;
+import com.umc.bscene.domain.auth.dto.response.LoginUserResponse;
 import com.umc.bscene.domain.auth.dto.response.SignupResponse;
+import com.umc.bscene.domain.auth.dto.response.TokenResponse;
 import com.umc.bscene.domain.auth.entity.LocalCredential;
+import com.umc.bscene.domain.auth.entity.RefreshToken;
 import com.umc.bscene.domain.auth.exception.AuthException;
 import com.umc.bscene.domain.auth.repository.LocalCredentialRepository;
+import com.umc.bscene.domain.auth.repository.RefreshTokenRepository;
 import com.umc.bscene.domain.auth.response.code.AuthErrorCode;
 import com.umc.bscene.domain.user.entity.User;
 import com.umc.bscene.domain.user.repository.UserRepository;
+import com.umc.bscene.global.security.entity.AuthMember;
+import com.umc.bscene.global.security.util.JwtUtil;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -24,6 +31,9 @@ public class AuthService {
     private final UserRepository userRepository;
     private final LocalCredentialRepository localCredentialRepository;
     private final PasswordEncoder passwordEncoder;
+
+    private final RefreshTokenRepository refreshTokenRepository;
+    private final JwtUtil jwtUtil;
 
     @Transactional
     public SignupResponse signup(SignupRequest request) {
@@ -68,5 +78,44 @@ public class AuthService {
         if (localCredentialRepository.existsByLoginId(loginId)) {
             throw new AuthException(AuthErrorCode.DUPLICATE_LOGIN_ID);
         }
+    }
+
+    @Transactional
+    public TokenResponse login(LoginRequest request) {
+        LocalCredential localCredential = localCredentialRepository.findByLoginId(request.loginId())
+                .orElseThrow(() -> new AuthException(AuthErrorCode.LOGIN_FAILED));
+
+        if (!passwordEncoder.matches(request.password(), localCredential.getPasswordHash())) {
+            throw new AuthException(AuthErrorCode.LOGIN_FAILED);
+        }
+
+        User user = localCredential.getUser();
+        AuthMember authMember = new AuthMember(user);
+
+        String accessToken = jwtUtil.createAccessToken(authMember);
+        String refreshToken = jwtUtil.createRefreshToken(authMember);
+
+        RefreshToken savedRefreshToken = RefreshToken.builder()
+                .user(user)
+                .tokenHash(passwordEncoder.encode(refreshToken))
+                .expiresAt(LocalDateTime.now().plusDays(14))
+                .build();
+
+        refreshTokenRepository.save(savedRefreshToken);
+
+        LoginUserResponse loginUserResponse = new LoginUserResponse(
+                user.getId(),
+                user.getName(),
+                user.getCurrentMode(),
+                user.getOnboardingCompleted()
+        );
+
+        return new TokenResponse(
+                "Bearer",
+                accessToken,
+                refreshToken,
+                3600000L,
+                loginUserResponse
+        );
     }
 }

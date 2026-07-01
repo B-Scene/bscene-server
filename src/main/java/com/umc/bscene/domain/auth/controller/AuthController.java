@@ -1,8 +1,10 @@
 package com.umc.bscene.domain.auth.controller;
 
+import com.umc.bscene.domain.auth.dto.request.LoginRequest;
 import com.umc.bscene.domain.auth.dto.request.SignupRequest;
 import com.umc.bscene.domain.auth.dto.response.LoginIdCheckResponse;
 import com.umc.bscene.domain.auth.dto.response.SignupResponse;
+import com.umc.bscene.domain.auth.dto.response.TokenResponse;
 import com.umc.bscene.domain.auth.response.code.AuthSuccessCode;
 import com.umc.bscene.domain.auth.service.AuthService;
 import com.umc.bscene.global.response.SuccessResponse;
@@ -40,6 +42,20 @@ public class AuthController {
         SuccessResponse<LoginIdCheckResponse> successResponse = SuccessResponse.of(
                 response,
                 AuthSuccessCode.LOGIN_ID_AVAILABLE
+        );
+
+        return ResponseEntity.status(successResponse.getStatus()).body(successResponse);
+    }
+
+    // 로그인 API
+    @PostMapping("/login")
+    public ResponseEntity<SuccessResponse<TokenResponse>> login(
+            @RequestBody LoginRequest request
+    ) {
+        TokenResponse response = authService.login(request);
+        SuccessResponse<TokenResponse> successResponse = SuccessResponse.of(
+                response,
+                AuthSuccessCode.LOGIN_SUCCESS
         );
 
         return ResponseEntity.status(successResponse.getStatus()).body(successResponse);
