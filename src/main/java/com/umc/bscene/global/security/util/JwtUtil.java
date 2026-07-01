@@ -111,4 +111,14 @@ public class JwtUtil {
                 .build()
                 .parseSignedClaims(token);
     }
+
+    // AccessToken 만료 시간 반환
+    public Long getAccessTokenExpiration() {
+        return accessExpiration.toMillis();
+    }
+
+    // RefreshToken 만료 시간 반환
+    public Long getRefreshTokenExpiration() {
+        return refreshExpiration.toMillis();
+    }
 }

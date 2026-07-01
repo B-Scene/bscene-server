@@ -12,7 +12,7 @@ import static com.umc.bscene.global.constant.StaticValue.OK;
 public enum AuthSuccessCode implements BaseResponseCode {
 
     SIGNUP_SUCCESS(CREATED, "AUTH201_1", "회원가입에 성공했습니다."),
-    LOGIN_ID_AVAILABLE(OK, "AUTH200_1", "사용 가능한 아이디입니다."),
+    LOGIN_ID_CHECK_SUCCESS(OK, "AUTH200_1", "로그인 아이디 중복 확인에 성공했습니다."),
     LOGIN_SUCCESS(OK, "AUTH200_2", "로그인에 성공했습니다.");
 
     private final int status;

@@ -21,7 +21,12 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.time.LocalDateTime;
+import java.time.temporal.ChronoUnit;
+import java.util.Base64;
 
 @Service
 @RequiredArgsConstructor
@@ -97,8 +102,8 @@ public class AuthService {
 
         RefreshToken savedRefreshToken = RefreshToken.builder()
                 .user(user)
-                .tokenHash(passwordEncoder.encode(refreshToken))
-                .expiresAt(LocalDateTime.now().plusDays(14))
+                .tokenHash(hashToken(refreshToken))
+                .expiresAt(LocalDateTime.now().plus(jwtUtil.getRefreshTokenExpiration(), ChronoUnit.MILLIS))
                 .build();
 
         refreshTokenRepository.save(savedRefreshToken);
@@ -114,8 +119,18 @@ public class AuthService {
                 "Bearer",
                 accessToken,
                 refreshToken,
-                3600000L,
+                jwtUtil.getAccessTokenExpiration(),
                 loginUserResponse
         );
+    }
+
+    private String hashToken(String token) {
+        try {
+            MessageDigest messageDigest = MessageDigest.getInstance("SHA-256");
+            byte[] hashedToken = messageDigest.digest(token.getBytes(StandardCharsets.UTF_8));
+            return Base64.getEncoder().encodeToString(hashedToken);
+        } catch (NoSuchAlgorithmException e) {
+            throw new IllegalStateException("토큰 해시에 실패했습니다.", e);
+        }
     }
 }

@@ -41,7 +41,7 @@ public class AuthController {
         LoginIdCheckResponse response = authService.checkLoginId(loginId);
         SuccessResponse<LoginIdCheckResponse> successResponse = SuccessResponse.of(
                 response,
-                AuthSuccessCode.LOGIN_ID_AVAILABLE
+                AuthSuccessCode.LOGIN_ID_CHECK_SUCCESS
         );
 
         return ResponseEntity.status(successResponse.getStatus()).body(successResponse);
