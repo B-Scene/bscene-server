@@ -17,6 +17,7 @@ import com.umc.bscene.domain.user.repository.UserRepository;
 import com.umc.bscene.global.security.entity.AuthMember;
 import com.umc.bscene.global.security.util.JwtUtil;
 import lombok.RequiredArgsConstructor;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -60,7 +61,11 @@ public class AuthService {
                 .passwordChangedAt(LocalDateTime.now())
                 .build();
 
-        localCredentialRepository.save(localCredential);
+        try {
+            localCredentialRepository.save(localCredential);
+        } catch (DataIntegrityViolationException e) {
+            throw new AuthException(AuthErrorCode.DUPLICATE_LOGIN_ID);
+        }
 
         return new SignupResponse(
                 savedUser.getId(),
