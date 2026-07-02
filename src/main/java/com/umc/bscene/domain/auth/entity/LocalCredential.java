@@ -23,7 +23,7 @@ public class LocalCredential extends BaseEntity {
     @JoinColumn(name = "user_id", nullable = false, unique = true)
     private User user;
 
-    @Column(name = "login_id", nullable = false, unique = true, length = 20)
+    @Column(name = "login_id", nullable = false, unique = true, length = 100)
     private String loginId;
 
     @Column(name = "password_hash", nullable = false, length = 255)
