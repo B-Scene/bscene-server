@@ -8,6 +8,7 @@ import com.umc.bscene.domain.auth.dto.response.TokenResponse;
 import com.umc.bscene.domain.auth.response.code.AuthSuccessCode;
 import com.umc.bscene.domain.auth.service.AuthService;
 import com.umc.bscene.global.response.SuccessResponse;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -22,7 +23,7 @@ public class AuthController {
     // 로컬 회원가입 API
     @PostMapping("/signup")
     public ResponseEntity<SuccessResponse<SignupResponse>> signup(
-            @RequestBody SignupRequest request
+            @Valid @RequestBody SignupRequest request
     ) {
         SignupResponse response = authService.signup(request);
         SuccessResponse<SignupResponse> successResponse = SuccessResponse.of(
@@ -50,7 +51,7 @@ public class AuthController {
     // 로그인 API
     @PostMapping("/login")
     public ResponseEntity<SuccessResponse<TokenResponse>> login(
-            @RequestBody LoginRequest request
+            @Valid @RequestBody LoginRequest request
     ) {
         TokenResponse response = authService.login(request);
         SuccessResponse<TokenResponse> successResponse = SuccessResponse.of(
