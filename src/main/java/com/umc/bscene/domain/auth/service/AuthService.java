@@ -7,10 +7,8 @@ import com.umc.bscene.domain.auth.dto.response.LoginUserResponse;
 import com.umc.bscene.domain.auth.dto.response.SignupResponse;
 import com.umc.bscene.domain.auth.dto.response.TokenResponse;
 import com.umc.bscene.domain.auth.entity.LocalCredential;
-import com.umc.bscene.domain.auth.entity.RefreshToken;
 import com.umc.bscene.domain.auth.exception.AuthException;
 import com.umc.bscene.domain.auth.repository.LocalCredentialRepository;
-import com.umc.bscene.domain.auth.repository.RefreshTokenRepository;
 import com.umc.bscene.domain.auth.response.code.AuthErrorCode;
 import com.umc.bscene.domain.user.entity.User;
 import com.umc.bscene.domain.user.repository.UserRepository;
@@ -18,6 +16,7 @@ import com.umc.bscene.global.security.entity.AuthMember;
 import com.umc.bscene.global.security.util.JwtUtil;
 import lombok.RequiredArgsConstructor;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -25,8 +24,8 @@ import org.springframework.transaction.annotation.Transactional;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.time.Duration;
 import java.time.LocalDateTime;
-import java.time.temporal.ChronoUnit;
 import java.util.Base64;
 
 @Service
@@ -38,7 +37,7 @@ public class AuthService {
     private final LocalCredentialRepository localCredentialRepository;
     private final PasswordEncoder passwordEncoder;
 
-    private final RefreshTokenRepository refreshTokenRepository;
+    private final StringRedisTemplate stringRedisTemplate;
     private final JwtUtil jwtUtil;
 
     @Transactional
@@ -105,13 +104,13 @@ public class AuthService {
         String accessToken = jwtUtil.createAccessToken(authMember);
         String refreshToken = jwtUtil.createRefreshToken(authMember);
 
-        RefreshToken savedRefreshToken = RefreshToken.builder()
-                .user(user)
-                .tokenHash(hashToken(refreshToken))
-                .expiresAt(LocalDateTime.now().plus(jwtUtil.getRefreshTokenExpiration(), ChronoUnit.MILLIS))
-                .build();
+        String refreshTokenHash = hashToken(refreshToken);
 
-        refreshTokenRepository.save(savedRefreshToken);
+        stringRedisTemplate.opsForValue().set(
+                "refreshToken:" + refreshTokenHash,
+                String.valueOf(user.getId()),
+                Duration.ofMillis(jwtUtil.getRefreshTokenExpiration())
+        );
 
         LoginUserResponse loginUserResponse = new LoginUserResponse(
                 user.getId(),
