@@ -2,6 +2,8 @@ package com.umc.bscene.global.config;
 
 import com.umc.bscene.global.security.enums.PermitAllUri;
 import com.umc.bscene.global.security.filter.JwtAuthFilter;
+import com.umc.bscene.global.security.handler.OAuthSuccessHandler;
+import com.umc.bscene.global.security.service.CustomOAuthService;
 import com.umc.bscene.global.security.service.CustomUserDetailsService;
 import com.umc.bscene.global.security.util.JwtUtil;
 import lombok.RequiredArgsConstructor;
@@ -25,6 +27,8 @@ public class SecurityConfig {
 
     private final JwtUtil jwtUtil;
     private final CustomUserDetailsService customUserDetailsService;
+    private final CustomOAuthService customOAuthService;
+    private final OAuthSuccessHandler oAuthSuccessHandler;
 
     private final String[] allowUris = Arrays.stream(PermitAllUri.values())
             .map(PermitAllUri::getUri)
@@ -47,6 +51,16 @@ public class SecurityConfig {
 
                 // HTTP Basic 인증 비활성화
                 .httpBasic(AbstractHttpConfigurer::disable)
+
+                // 소셜 로그인(OAuth2) 설정
+                .oauth2Login(oauth -> oauth
+                        // 커스텀 콜백 경로 (application.yaml의 redirect-uri와 일치)
+                        .redirectionEndpoint(redirect -> redirect.baseUri("/oauth/callback/*"))
+                        // 소셜 유저 정보 로드
+                        .userInfoEndpoint(userInfo -> userInfo.userService(customOAuthService))
+                        // 로그인 성공 시 JWT 발급 핸들러
+                        .successHandler(oAuthSuccessHandler)
+                )
 
                 // 세션 미사용
                 .sessionManagement(session -> session

@@ -1,5 +1,6 @@
 package com.umc.bscene.global.security.dto.response;
 
+import com.umc.bscene.domain.oauth.enums.SocialProvider;
 import lombok.RequiredArgsConstructor;
 
 @RequiredArgsConstructor

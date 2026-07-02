@@ -1,5 +1,7 @@
 package com.umc.bscene.global.security.service;
 
+import com.umc.bscene.domain.oauth.enums.SocialProvider;
+import com.umc.bscene.domain.oauth.repository.OauthAccountRepository;
 import com.umc.bscene.global.exception.BaseException;
 import com.umc.bscene.global.response.code.GeneralErrorCode;
 import com.umc.bscene.global.security.dto.response.GoogleResponse;
@@ -19,7 +21,7 @@ import java.util.Map;
 @RequiredArgsConstructor
 public class CustomOAuthService extends DefaultOAuth2UserService {
 
-    private final UserRepository userRepository;
+    private final OauthAccountRepository oauthAccountRepository;
 
     @Override
     public OAuth2User loadUser(
@@ -50,7 +52,6 @@ public class CustomOAuthService extends DefaultOAuth2UserService {
                 dto = new KakaoResponse(providerUid, email, name);
             }
             case GOOGLE -> {
-                // 구글은 평평한 구조 (OpenID Connect) — providerUid는 "sub"
                 providerUid = oAuthMember.getAttribute("sub").toString();
                 String email = oAuthMember.getAttribute("email").toString();
                 String name = oAuthMember.getAttribute("name").toString();
@@ -59,13 +60,9 @@ public class CustomOAuthService extends DefaultOAuth2UserService {
             default -> throw new BaseException(GeneralErrorCode.NOT_SUPPORT_SOCIAL_PROVIDER);
         }
 
-        // DB 저장: 있다면 그 데이터 가져오고 없으면 새로 저장
-        User user = userRepository.findByProviderAndProviderUid(provider, providerUid)
-                .orElseGet(() -> {
-                    User newUser = UserConverter.toUser(dto);
-                    userRepository.save(newUser);
-                    return newUser;
-                });
-        return new OAuthMember(user, oAuthMember.getAttributes());
+        // OauthAccount 조회: 있으면 기존 유저, 없으면 신규 유저(온보딩 필요)
+        return oauthAccountRepository.findByProviderAndProviderUid(provider, providerUid)
+                .map(account -> OAuthMember.ofExisting(account.getUser(), dto, oAuthMember.getAttributes()))
+                .orElseGet(() -> OAuthMember.ofNew(dto, oAuthMember.getAttributes()));
     }
 }
