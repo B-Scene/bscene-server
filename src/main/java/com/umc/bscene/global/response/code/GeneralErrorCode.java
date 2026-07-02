@@ -47,6 +47,18 @@ public enum GeneralErrorCode implements BaseResponseCode{
             INTERNAL_SERVER_ERROR,
             "COMMON_500_1",
             "서버 내부에서 알 수 없는 에러가 발생했습니다."
+    ),
+
+    // TODO: 회원/소셜 로그인 에러 - 도메인별 ErrorCode(MemberErrorCode)로 분리 여부 논의
+    MEMBER_NOT_FOUND(
+            NOT_FOUND,
+            "MEMBER_404_1",
+            "존재하지 않는 회원입니다."
+    ),
+    NOT_SUPPORT_SOCIAL_PROVIDER(
+            BAD_REQUEST,
+            "MEMBER_400_1",
+            "지원하지 않는 소셜 로그인입니다."
     )
     ;
 
