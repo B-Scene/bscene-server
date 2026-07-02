@@ -8,4 +8,4 @@ ENV TZ=Asia/Seoul
 
 EXPOSE 8080
 
-ENTRYPOINT ["java", "-jar", "app.jar", "--spring.config.additional-location=file:/app/config/"]
+ENTRYPOINT ["java", "-jar", "app.jar", "--spring.config.additional-location=optional:file:/app/config/"]
