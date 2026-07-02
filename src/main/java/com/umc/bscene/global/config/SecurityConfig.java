@@ -1,5 +1,9 @@
 package com.umc.bscene.global.config;
 
+import com.umc.bscene.global.security.enums.PermitAllUri;
+import com.umc.bscene.global.security.filter.JwtAuthFilter;
+import com.umc.bscene.global.security.service.CustomUserDetailsService;
+import com.umc.bscene.global.security.util.JwtUtil;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -10,20 +14,21 @@ import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+
+import java.util.Arrays;
 
 @EnableWebSecurity
 @Configuration
 @RequiredArgsConstructor
 public class SecurityConfig {
 
-    private final String[] allowUris = {
-            "/auth/signup",
-            "/auth/login-id/check",
-            "/auth/login",
+    private final JwtUtil jwtUtil;
+    private final CustomUserDetailsService customUserDetailsService;
 
-            "/oauth2/**",
-            "/login/oauth2/**"
-    };
+    private final String[] allowUris = Arrays.stream(PermitAllUri.values())
+            .map(PermitAllUri::getUri)
+            .toArray(String[]::new);
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
@@ -34,7 +39,7 @@ public class SecurityConfig {
                 // URI 허용 여부
                 .authorizeHttpRequests(requests -> requests
                         .requestMatchers(allowUris).permitAll()
-                        .anyRequest().permitAll()
+                        .anyRequest().authenticated()
                 )
 
                 // 폼 로그인 비활성화
@@ -46,7 +51,9 @@ public class SecurityConfig {
                 // 세션 미사용
                 .sessionManagement(session -> session
                         .sessionCreationPolicy(SessionCreationPolicy.STATELESS)
-                );
+                )
+
+                .addFilterBefore(jwtAuthFilter(), UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
     }
@@ -54,5 +61,10 @@ public class SecurityConfig {
     @Bean
     public PasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder();
+    }
+
+    @Bean
+    public JwtAuthFilter jwtAuthFilter() {
+        return new JwtAuthFilter(jwtUtil, customUserDetailsService);
     }
 }

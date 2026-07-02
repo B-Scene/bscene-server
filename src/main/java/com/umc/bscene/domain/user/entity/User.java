@@ -2,6 +2,7 @@ package com.umc.bscene.domain.user.entity;
 
 import com.umc.bscene.domain.user.enums.Gender;
 import com.umc.bscene.domain.user.enums.UserMode;
+import com.umc.bscene.domain.user.enums.UserRole;
 import com.umc.bscene.domain.user.enums.UserStatus;
 import com.umc.bscene.global.entity.BaseEntity;
 import jakarta.persistence.*;
@@ -12,7 +13,7 @@ import java.time.LocalDateTime;
 @Entity
 @Getter
 @Builder
-@AllArgsConstructor
+@AllArgsConstructor(access = AccessLevel.PRIVATE)
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @Table(name = "users")
 public class User extends BaseEntity {
@@ -30,6 +31,11 @@ public class User extends BaseEntity {
 
     @Column(name = "phone", nullable = false, length = 11)
     private String phone;
+
+    @Column(name = "role", nullable = false)
+    @Enumerated(EnumType.STRING)
+    @Builder.Default
+    private UserRole role = UserRole.USER;
 
     @Column(name = "current_mode")
     @Enumerated(EnumType.STRING)
