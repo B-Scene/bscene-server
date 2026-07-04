@@ -9,8 +9,10 @@ import com.umc.bscene.domain.auth.response.code.AuthErrorCode;
 import com.umc.bscene.domain.phoneverification.enums.PhoneVerificationPurpose;
 import com.umc.bscene.domain.phoneverification.service.PhoneVerificationService;
 import com.umc.bscene.domain.user.entity.User;
+import com.umc.bscene.domain.term.entity.UserTerms;
 import com.umc.bscene.domain.user.enums.Gender;
 import com.umc.bscene.domain.user.repository.UserRepository;
+import com.umc.bscene.domain.term.repository.UserTermsRepository;
 import com.umc.bscene.global.security.entity.AuthMember;
 import com.umc.bscene.global.security.util.JwtUtil;
 import lombok.RequiredArgsConstructor;
@@ -28,6 +30,7 @@ import java.time.Duration;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.Base64;
+import java.util.List;
 
 @Service
 @RequiredArgsConstructor
@@ -42,6 +45,8 @@ public class AuthService {
     private final JwtUtil jwtUtil;
 
     private final PhoneVerificationService phoneVerificationService;
+
+    private final UserTermsRepository userTermsRepository;
 
     @Transactional
     public SignupResponse signup(SignupRequest request) {
@@ -78,6 +83,8 @@ public class AuthService {
         } catch (DataIntegrityViolationException e) {
             throw new AuthException(AuthErrorCode.DUPLICATE_LOGIN_ID);
         }
+
+        saveUserTerms(savedUser, request.termAgreements());
 
         phoneVerificationService.removeVerified(PhoneVerificationPurpose.SIGNUP, request.phone());
 
@@ -134,6 +141,19 @@ public class AuthService {
         } catch (DateTimeException e) {
             throw new AuthException(AuthErrorCode.INVALID_SIGNUP_REQUEST);
         }
+    }
+
+    private void saveUserTerms(User user, List<TermAgreementRequest> termAgreements) {
+        List<UserTerms> userTerms = termAgreements.stream()
+                .map(agreement -> UserTerms.builder()
+                        .user(user)
+                        .termId(agreement.termId())
+                        .isAgreed(agreement.agreed())
+                        .agreedAt(LocalDateTime.now())
+                        .build())
+                .toList();
+
+        userTermsRepository.saveAll(userTerms);
     }
 
     @Transactional

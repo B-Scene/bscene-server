@@ -1,6 +1,9 @@
 package com.umc.bscene.domain.auth.dto.request;
 
+import jakarta.validation.Valid;
 import jakarta.validation.constraints.*;
+
+import java.util.List;
 
 public record SignupRequest(
         @NotBlank
@@ -32,6 +35,10 @@ public record SignupRequest(
 
         @NotBlank
         @Pattern(regexp = "^010\\d{8}$", message = "휴대폰 번호 형식이 올바르지 않습니다.")
-        String phone
+        String phone,
+
+        @NotEmpty(message = "약관 동의 정보는 필수입니다.")
+        List<@Valid TermAgreementRequest> termAgreements
 ) {
 }
+
