@@ -12,7 +12,7 @@ import java.time.LocalDateTime;
 @Builder
 @AllArgsConstructor(access = AccessLevel.PRIVATE)
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-@Table(name = "localCredentials")
+@Table(name = "LocalCredentials")
 public class LocalCredential extends BaseEntity {
 
     @Id
