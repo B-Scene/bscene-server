@@ -18,7 +18,10 @@ public enum PermitAllUri {
     PHONE_VERIFICATIONS("/phone-verifications/**"),
 
     OAUTH2_AUTHORIZATION("/oauth2/**"),
-    OAUTH2_CALLBACK("/login/oauth2/**");
+    OAUTH2_CALLBACK("/login/oauth2/**"),
+
+    GENRES("/genres");
+
 
     private final String uri;
 }
