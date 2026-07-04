@@ -13,9 +13,9 @@ import java.time.LocalDateTime;
 @AllArgsConstructor(access = AccessLevel.PRIVATE)
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @Table(
-        name = "user_terms",
+        name = "UserTerms",
         uniqueConstraints = {
-                @UniqueConstraint(columnNames = {"user_id", "term_id"})
+                @UniqueConstraint(columnNames = {"userId", "termId"})
         }
 )
 public class UserTerms extends BaseEntity {
@@ -25,20 +25,20 @@ public class UserTerms extends BaseEntity {
     private Long id;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "user_id", nullable = false)
+    @JoinColumn(name = "userId", nullable = false)
     private User user;
 
     /* 추후 Terms 엔티티 생성시 변경
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "term_id", nullable = false)
+    @JoinColumn(name = "termId", nullable = false)
     private Terms terms;
      */
-    @Column(name = "term_id", nullable = false)
+    @Column(name = "termId", nullable = false)
     private Long termId;
 
-    @Column(name = "is_agreed", nullable = false)
+    @Column(name = "isAgreed", nullable = false)
     private Boolean isAgreed;
 
-    @Column(name = "agreed_at", nullable = false)
+    @Column(name = "agreedAt", nullable = false)
     private LocalDateTime agreedAt;
 }

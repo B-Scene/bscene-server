@@ -16,47 +16,47 @@ import java.time.LocalDateTime;
 @Builder
 @AllArgsConstructor(access = AccessLevel.PRIVATE)
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-@Table(name = "users")
+@Table(name = "User")
 public class User extends BaseEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "name", nullable = false, length = 10)
+    @Column(nullable = false, length = 10)
     private String name;
 
-    @Column(name = "birth_date", nullable = false)
+    @Column(nullable = false)
     private LocalDate birthDate;
 
-    @Column(name = "gender", nullable = false)
+    @Column(nullable = false)
     @Enumerated(EnumType.STRING)
     private Gender gender;
 
-    @Column(name = "phone", nullable = false, unique = true, length = 11)
+    @Column(nullable = false, unique = true, length = 11)
     private String phone;
 
-    @Column(name = "role", nullable = false)
+    @Column(nullable = false)
     @Enumerated(EnumType.STRING)
     @Builder.Default
     private UserRole role = UserRole.USER;
 
-    @Column(name = "current_mode")
+    @Column
     @Enumerated(EnumType.STRING)
     private UserMode currentMode;
 
-    @Column(name = "onboarding_completed", nullable = false)
+    @Column(nullable = false)
     @Builder.Default
     private Boolean onboardingCompleted = false;
 
-    @Column(name = "onboarding_completed_at")
+    @Column
     private LocalDateTime onboardingCompletedAt;
 
-    @Column(name = "status", nullable = false)
+    @Column(nullable = false)
     @Enumerated(EnumType.STRING)
     @Builder.Default
     private UserStatus status = UserStatus.ACTIVE;
 
-    @Column(name = "deleted_at")
+    @Column
     private LocalDateTime deletedAt;
 }
