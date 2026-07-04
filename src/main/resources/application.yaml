@@ -19,3 +19,23 @@ spring:
     properties:
       hibernate:
         format_sql: true
+
+  data:
+    redis:
+      host: localhost
+      port: 6379
+
+jwt:
+  token:
+    secretKey: ${JWT_SECRET_KEY}
+    expiration:
+      access: 3600000         # 1시간
+      refresh: 1209600000     # 14일
+
+sms:
+  mode: ${SMS_MODE:log}
+
+coolsms:
+  api-key: ${COOLSMS_API_KEY:dummy}
+  api-secret: ${COOLSMS_API_SECRET:dummy}
+  from-number: ${COOLSMS_FROM_NUMBER:01012345678}
