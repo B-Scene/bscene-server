@@ -8,6 +8,7 @@ import com.umc.bscene.global.entity.BaseEntity;
 import jakarta.persistence.*;
 import lombok.*;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 @Entity
@@ -24,6 +25,9 @@ public class User extends BaseEntity {
 
     @Column(name = "name", nullable = false, length = 10)
     private String name;
+
+    @Column(name = "birth_date", nullable = false)
+    private LocalDate birthDate;
 
     @Column(name = "gender", nullable = false)
     @Enumerated(EnumType.STRING)

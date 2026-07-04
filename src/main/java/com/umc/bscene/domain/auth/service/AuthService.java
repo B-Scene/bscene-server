@@ -9,6 +9,7 @@ import com.umc.bscene.domain.auth.response.code.AuthErrorCode;
 import com.umc.bscene.domain.phoneverification.enums.PhoneVerificationPurpose;
 import com.umc.bscene.domain.phoneverification.service.PhoneVerificationService;
 import com.umc.bscene.domain.user.entity.User;
+import com.umc.bscene.domain.user.enums.Gender;
 import com.umc.bscene.domain.user.repository.UserRepository;
 import com.umc.bscene.global.security.entity.AuthMember;
 import com.umc.bscene.global.security.util.JwtUtil;
@@ -22,7 +23,9 @@ import org.springframework.transaction.annotation.Transactional;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.time.DateTimeException;
 import java.time.Duration;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.Base64;
 
@@ -48,9 +51,16 @@ public class AuthService {
         validateDuplicateLoginId(request.loginId());
         validateDuplicatePhone(request.phone());
 
+        Gender gender = convertGender(request.genderCode());
+        LocalDate birthDate = convertBirthDate(
+                request.birthDatePrefix(),
+                request.genderCode()
+        );
+
         User user = User.builder()
                 .name(request.name())
-                .gender(request.gender())
+                .gender(gender)
+                .birthDate(birthDate)
                 .phone(request.phone())
                 .build();
 
@@ -97,6 +107,32 @@ public class AuthService {
     private void validateDuplicateLoginId(String loginId) {
         if (localCredentialRepository.existsByLoginId(loginId)) {
             throw new AuthException(AuthErrorCode.DUPLICATE_LOGIN_ID);
+        }
+    }
+
+    private Gender convertGender(String genderCode) {
+        return switch (genderCode) {
+            case "1", "3" -> Gender.MALE;
+            case "2", "4" -> Gender.FEMALE;
+            default -> throw new AuthException(AuthErrorCode.INVALID_SIGNUP_REQUEST);
+        };
+    }
+
+    private LocalDate convertBirthDate(String birthDatePrefix, String genderCode) {
+        int yearPrefix = switch (genderCode) {
+            case "1", "2" -> 1900;
+            case "3", "4" -> 2000;
+            default -> throw new AuthException(AuthErrorCode.INVALID_SIGNUP_REQUEST);
+        };
+
+        int year = yearPrefix + Integer.parseInt(birthDatePrefix.substring(0, 2));
+        int month = Integer.parseInt(birthDatePrefix.substring(2, 4));
+        int day = Integer.parseInt(birthDatePrefix.substring(4, 6));
+
+        try {
+            return LocalDate.of(year, month, day);
+        } catch (DateTimeException e) {
+            throw new AuthException(AuthErrorCode.INVALID_SIGNUP_REQUEST);
         }
     }
 
