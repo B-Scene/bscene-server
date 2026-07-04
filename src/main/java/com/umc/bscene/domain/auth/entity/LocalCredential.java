@@ -12,7 +12,7 @@ import java.time.LocalDateTime;
 @Builder
 @AllArgsConstructor(access = AccessLevel.PRIVATE)
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-@Table(name = "local_credentials")
+@Table(name = "localCredentials")
 public class LocalCredential extends BaseEntity {
 
     @Id
@@ -20,19 +20,19 @@ public class LocalCredential extends BaseEntity {
     private Long id;
 
     @OneToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "user_id", nullable = false, unique = true)
+    @JoinColumn(name = "userId", nullable = false, unique = true)
     private User user;
 
-    @Column(name = "login_id", nullable = false, unique = true, length = 100)
+    @Column(name = "loginId", nullable = false, unique = true, length = 100)
     private String loginId;
 
-    @Column(name = "password_hash", nullable = false, length = 255)
+    @Column(name = "passwordHash", nullable = false, length = 255)
     private String passwordHash;
 
-    @Column(name = "password_changed_at", nullable = false)
+    @Column(name = "passwordChangedAt", nullable = false)
     private LocalDateTime passwordChangedAt;
 
-    @Column(name = "deleted_at")
+    @Column(name = "deletedAt")
     private LocalDateTime deletedAt;
 
     public void changePassword(String passwordHash) {
