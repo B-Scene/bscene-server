@@ -30,22 +30,19 @@ public class PhoneVerificationService {
     private final StringRedisTemplate stringRedisTemplate;
     private final SecureRandom secureRandom = new SecureRandom();
 
+    private final SmsSender smsSender;
+
     @Transactional
     public PhoneVerificationSendResponse send(PhoneVerificationSendRequest request) {
         String code = generateVerificationCode();
         String key = generateVerificationKey(request.getPurpose(), request.getPhone());
 
+        smsSender.sendVerificationCode(request.getPhone(), code);
+
         stringRedisTemplate.opsForValue().set(
                 key,
                 code,
                 Duration.ofSeconds(VERIFICATION_CODE_TTL_SECONDS)
-        );
-
-        // 개발 환경 확인용 로그, 실제 SMS 연동 시 SMS 발송 로직으로 교체
-        log.info("휴대폰 인증번호 발급 phone={}, purpose={}, code={}",
-                request.getPhone(),
-                request.getPurpose(),
-                code
         );
 
         return PhoneVerificationSendResponse.builder()

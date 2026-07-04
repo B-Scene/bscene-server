@@ -40,6 +40,9 @@ dependencies {
 	runtimeOnly 'io.jsonwebtoken:jjwt-impl:0.12.6'
 	runtimeOnly 'io.jsonwebtoken:jjwt-jackson:0.12.6'
 
+	// coolsms
+	implementation 'net.nurigo:sdk:4.3.0'
+
 	// Test Only
 	testRuntimeOnly 'com.h2database:h2'
 }
