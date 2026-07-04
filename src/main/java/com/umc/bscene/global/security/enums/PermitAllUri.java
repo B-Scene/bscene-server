@@ -11,6 +11,8 @@ public enum PermitAllUri {
     AUTH_LOGIN_ID_CHECK("/auth/login-id/check"),
     AUTH_LOGIN("/auth/login"),
 
+    PHONE_VERIFICATIONS("/phone-verifications/**"),
+
     OAUTH2_AUTHORIZATION("/oauth2/**"),
     OAUTH2_CALLBACK("/login/oauth2/**");
 
