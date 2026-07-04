@@ -10,6 +10,7 @@ public enum PermitAllUri {
     AUTH_SIGNUP("/auth/signup"),
     AUTH_LOGIN_ID_CHECK("/auth/login-id/check"),
     AUTH_LOGIN("/auth/login"),
+    AUTH_LOGIN_ID_FIND("/auth/login-id/find"),
 
     PHONE_VERIFICATIONS("/phone-verifications/**"),
 

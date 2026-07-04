@@ -10,4 +10,5 @@ public interface LocalCredentialRepository extends JpaRepository<LocalCredential
     boolean existsByLoginId(String loginId);
 
     Optional<LocalCredential> findByLoginId(String loginId);
+    Optional<LocalCredential> findByUser_NameAndUser_Phone(String name, String phone);
 }

@@ -3,6 +3,7 @@ package com.umc.bscene.domain.auth.service;
 import com.umc.bscene.domain.auth.dto.request.LoginRequest;
 import com.umc.bscene.domain.auth.dto.request.SignupRequest;
 import com.umc.bscene.domain.auth.dto.response.LoginIdCheckResponse;
+import com.umc.bscene.domain.auth.dto.response.LoginIdFindResponse;
 import com.umc.bscene.domain.auth.dto.response.LoginUserResponse;
 import com.umc.bscene.domain.auth.dto.response.SignupResponse;
 import com.umc.bscene.domain.auth.dto.response.TokenResponse;
@@ -10,6 +11,8 @@ import com.umc.bscene.domain.auth.entity.LocalCredential;
 import com.umc.bscene.domain.auth.exception.AuthException;
 import com.umc.bscene.domain.auth.repository.LocalCredentialRepository;
 import com.umc.bscene.domain.auth.response.code.AuthErrorCode;
+import com.umc.bscene.domain.phoneverification.enums.PhoneVerificationPurpose;
+import com.umc.bscene.domain.phoneverification.service.PhoneVerificationService;
 import com.umc.bscene.domain.user.entity.User;
 import com.umc.bscene.domain.user.repository.UserRepository;
 import com.umc.bscene.global.security.entity.AuthMember;
@@ -39,6 +42,8 @@ public class AuthService {
 
     private final StringRedisTemplate stringRedisTemplate;
     private final JwtUtil jwtUtil;
+
+    private final PhoneVerificationService phoneVerificationService;
 
     @Transactional
     public SignupResponse signup(SignupRequest request) {
@@ -128,6 +133,17 @@ public class AuthService {
         );
     }
 
+    public LoginIdFindResponse findLoginId(String name, String phone) {
+        phoneVerificationService.validateVerified(PhoneVerificationPurpose.FIND_LOGIN_ID, phone);
+
+        LocalCredential localCredential = localCredentialRepository.findByUser_NameAndUser_Phone(name, phone)
+                .orElseThrow(() -> new AuthException(AuthErrorCode.MEMBER_NOT_FOUND));
+
+        return LoginIdFindResponse.builder()
+                .loginId(maskLoginId(localCredential.getLoginId()))
+                .build();
+    }
+
     private String hashToken(String token) {
         try {
             MessageDigest messageDigest = MessageDigest.getInstance("SHA-256");
@@ -136,5 +152,28 @@ public class AuthService {
         } catch (NoSuchAlgorithmException e) {
             throw new IllegalStateException("토큰 해시에 실패했습니다.", e);
         }
+    }
+
+    private String maskLoginId(String loginId) {
+        int atIndex = loginId.indexOf("@");
+
+        if (atIndex <= 0) {
+            return "****";
+        }
+
+        String localPart = loginId.substring(0, atIndex);
+        String domainPart = loginId.substring(atIndex);
+
+        if (localPart.length() == 1) {
+            return localPart + domainPart;
+        }
+
+        if (localPart.length() <= 3) {
+            return localPart.charAt(0) + "*".repeat(localPart.length() - 1) + domainPart;
+        }
+
+        String visiblePart = localPart.substring(0, localPart.length() - 3);
+
+        return visiblePart + "***" + domainPart;
     }
 }

@@ -3,6 +3,7 @@ package com.umc.bscene.domain.auth.controller;
 import com.umc.bscene.domain.auth.dto.request.LoginRequest;
 import com.umc.bscene.domain.auth.dto.request.SignupRequest;
 import com.umc.bscene.domain.auth.dto.response.LoginIdCheckResponse;
+import com.umc.bscene.domain.auth.dto.response.LoginIdFindResponse;
 import com.umc.bscene.domain.auth.dto.response.SignupResponse;
 import com.umc.bscene.domain.auth.dto.response.TokenResponse;
 import com.umc.bscene.domain.auth.response.code.AuthSuccessCode;
@@ -57,6 +58,21 @@ public class AuthController {
         SuccessResponse<TokenResponse> successResponse = SuccessResponse.of(
                 response,
                 AuthSuccessCode.LOGIN_SUCCESS
+        );
+
+        return ResponseEntity.status(successResponse.getStatus()).body(successResponse);
+    }
+
+    // 아이디 찾기 API
+    @GetMapping("/login-id/find")
+    public ResponseEntity<SuccessResponse<LoginIdFindResponse>> findLoginId(
+            @RequestParam String name,
+            @RequestParam String phone
+    ) {
+        LoginIdFindResponse response = authService.findLoginId(name, phone);
+        SuccessResponse<LoginIdFindResponse> successResponse = SuccessResponse.of(
+                response,
+                AuthSuccessCode.LOGIN_ID_FIND_SUCCESS
         );
 
         return ResponseEntity.status(successResponse.getStatus()).body(successResponse);
