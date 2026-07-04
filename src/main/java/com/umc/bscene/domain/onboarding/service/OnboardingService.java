@@ -1,5 +1,6 @@
 package com.umc.bscene.domain.onboarding.service;
 
+import com.umc.bscene.domain.onboarding.dto.response.FanNicknameCheckResponse;
 import com.umc.bscene.domain.onboarding.dto.response.GenreResponse;
 import com.umc.bscene.domain.onboarding.dto.response.OnboardingStatusResponse;
 import com.umc.bscene.domain.onboarding.dto.response.RegionResponse;
@@ -117,5 +118,12 @@ public class OnboardingService {
         }
 
         return requiredSteps;
+    }
+
+    // 팬 닉네임 중복 확인
+    public FanNicknameCheckResponse checkFanNickname(String nickname) {
+        boolean exists = fanProfileRepository.existsByNickname(nickname);
+
+        return new FanNicknameCheckResponse(!exists);
     }
 }

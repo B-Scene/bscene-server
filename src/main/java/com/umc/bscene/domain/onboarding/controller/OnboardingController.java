@@ -1,5 +1,6 @@
 package com.umc.bscene.domain.onboarding.controller;
 
+import com.umc.bscene.domain.onboarding.dto.response.FanNicknameCheckResponse;
 import com.umc.bscene.domain.onboarding.dto.response.GenreResponse;
 import com.umc.bscene.domain.onboarding.dto.response.OnboardingStatusResponse;
 import com.umc.bscene.domain.onboarding.response.code.OnboardingSuccessCode;
@@ -10,6 +11,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
@@ -41,6 +43,20 @@ public class OnboardingController {
         SuccessResponse<OnboardingStatusResponse> successResponse = SuccessResponse.of(
                 response,
                 OnboardingSuccessCode.ONBOARDING_STATUS_GET_SUCCESS
+        );
+
+        return ResponseEntity.status(successResponse.getStatus()).body(successResponse);
+    }
+
+    // 팬 닉네임 중복 확인 API
+    @GetMapping("/onboarding/fan-nickname/check")
+    public ResponseEntity<SuccessResponse<FanNicknameCheckResponse>> checkFanNickname(
+            @RequestParam String nickname
+    ) {
+        FanNicknameCheckResponse response = onboardingService.checkFanNickname(nickname);
+        SuccessResponse<FanNicknameCheckResponse> successResponse = SuccessResponse.of(
+                response,
+                OnboardingSuccessCode.FAN_NICKNAME_CHECK_SUCCESS
         );
 
         return ResponseEntity.status(successResponse.getStatus()).body(successResponse);
