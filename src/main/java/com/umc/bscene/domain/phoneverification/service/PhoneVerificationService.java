@@ -96,4 +96,9 @@ public class PhoneVerificationService {
     private String generateVerifiedKey(PhoneVerificationPurpose purpose, String phone) {
         return VERIFIED_KEY_PREFIX + purpose.name() + ":" + phone;
     }
+
+    public void removeVerified(PhoneVerificationPurpose purpose, String phone) {
+        String verifiedKey = generateVerifiedKey(purpose, phone);
+        stringRedisTemplate.delete(verifiedKey);
+    }
 }

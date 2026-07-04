@@ -47,6 +47,8 @@ public class AuthService {
 
     @Transactional
     public SignupResponse signup(SignupRequest request) {
+        phoneVerificationService.validateVerified(PhoneVerificationPurpose.SIGNUP, request.phone());
+
         validatePasswordConfirm(request.password(), request.passwordConfirm());
         validateDuplicateLoginId(request.loginId());
 
@@ -70,6 +72,8 @@ public class AuthService {
         } catch (DataIntegrityViolationException e) {
             throw new AuthException(AuthErrorCode.DUPLICATE_LOGIN_ID);
         }
+
+        phoneVerificationService.removeVerified(PhoneVerificationPurpose.SIGNUP, request.phone());
 
         return new SignupResponse(
                 savedUser.getId(),
@@ -138,6 +142,8 @@ public class AuthService {
 
         LocalCredential localCredential = localCredentialRepository.findByUser_NameAndUser_Phone(name, phone)
                 .orElseThrow(() -> new AuthException(AuthErrorCode.MEMBER_NOT_FOUND));
+
+        phoneVerificationService.removeVerified(PhoneVerificationPurpose.FIND_LOGIN_ID, phone);
 
         return LoginIdFindResponse.builder()
                 .loginId(maskLoginId(localCredential.getLoginId()))
