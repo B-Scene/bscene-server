@@ -1,9 +1,6 @@
 package com.umc.bscene.domain.auth.controller;
 
-import com.umc.bscene.domain.auth.dto.request.LoginRequest;
-import com.umc.bscene.domain.auth.dto.request.PasswordResetRequest;
-import com.umc.bscene.domain.auth.dto.request.ReissueRequest;
-import com.umc.bscene.domain.auth.dto.request.SignupRequest;
+import com.umc.bscene.domain.auth.dto.request.*;
 import com.umc.bscene.domain.auth.dto.response.*;
 import com.umc.bscene.domain.auth.response.code.AuthSuccessCode;
 import com.umc.bscene.domain.auth.service.AuthService;
@@ -100,6 +97,20 @@ public class AuthController {
         SuccessResponse<AccessTokenResponse> successResponse = SuccessResponse.of(
                 response,
                 AuthSuccessCode.TOKEN_REISSUE_SUCCESS
+        );
+
+        return ResponseEntity.status(successResponse.getStatus()).body(successResponse);
+    }
+
+    // 로그아웃 API
+    @PostMapping("/logout")
+    public ResponseEntity<SuccessResponse<Void>> logout(
+            @Valid @RequestBody LogoutRequest request
+    ) {
+        authService.logout(request);
+        SuccessResponse<Void> successResponse = SuccessResponse.of(
+                (Void) null,
+                AuthSuccessCode.LOGOUT_SUCCESS
         );
 
         return ResponseEntity.status(successResponse.getStatus()).body(successResponse);

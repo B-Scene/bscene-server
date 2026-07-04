@@ -12,6 +12,7 @@ public enum PermitAllUri {
     AUTH_LOGIN("/auth/login"),
     AUTH_LOGIN_ID_FIND("/auth/login-id/find"),
     AUTH_PASSWORD_RESET("/auth/password-reset"),
+    AUTH_LOGOUT("/auth/logout"),
     AUTH_REISSUE("/auth/reissue"),
 
     PHONE_VERIFICATIONS("/phone-verifications/**"),

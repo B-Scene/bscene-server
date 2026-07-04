@@ -1,9 +1,6 @@
 package com.umc.bscene.domain.auth.service;
 
-import com.umc.bscene.domain.auth.dto.request.LoginRequest;
-import com.umc.bscene.domain.auth.dto.request.PasswordResetRequest;
-import com.umc.bscene.domain.auth.dto.request.ReissueRequest;
-import com.umc.bscene.domain.auth.dto.request.SignupRequest;
+import com.umc.bscene.domain.auth.dto.request.*;
 import com.umc.bscene.domain.auth.dto.response.*;
 import com.umc.bscene.domain.auth.entity.LocalCredential;
 import com.umc.bscene.domain.auth.exception.AuthException;
@@ -235,5 +232,25 @@ public class AuthService {
                 .accessToken(accessToken)
                 .accessTokenExpiresIn(jwtUtil.getAccessTokenExpiration())
                 .build();
+    }
+
+    // 로그아웃
+    public void logout(LogoutRequest request) {
+        String refreshToken = request.refreshToken();
+
+        if (!jwtUtil.isValid(refreshToken)) {
+            throw new AuthException(AuthErrorCode.INVALID_REFRESH_TOKEN);
+        }
+
+        if (!"refresh".equals(jwtUtil.getType(refreshToken))) {
+            throw new AuthException(AuthErrorCode.INVALID_REFRESH_TOKEN);
+        }
+
+        String refreshTokenHash = hashToken(refreshToken);
+        Boolean deleted = stringRedisTemplate.delete("refreshToken:" + refreshTokenHash);
+
+        if (!Boolean.TRUE.equals(deleted)) {
+            throw new AuthException(AuthErrorCode.INVALID_REFRESH_TOKEN);
+        }
     }
 }
