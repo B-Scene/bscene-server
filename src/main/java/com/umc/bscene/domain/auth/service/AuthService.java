@@ -51,6 +51,7 @@ public class AuthService {
 
         validatePasswordConfirm(request.password(), request.passwordConfirm());
         validateDuplicateLoginId(request.loginId());
+        validateDuplicatePhone(request.phone());
 
         User user = User.builder()
                 .name(request.name())
@@ -79,6 +80,12 @@ public class AuthService {
                 savedUser.getId(),
                 savedUser.getOnboardingCompleted()
         );
+    }
+
+    private void validateDuplicatePhone(String phone) {
+        if (userRepository.existsByPhone(phone)) {
+            throw new AuthException(AuthErrorCode.DUPLICATE_PHONE);
+        }
     }
 
     public LoginIdCheckResponse checkLoginId(String loginId) {

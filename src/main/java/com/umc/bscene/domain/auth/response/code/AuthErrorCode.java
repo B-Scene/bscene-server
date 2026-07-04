@@ -18,7 +18,8 @@ public enum AuthErrorCode implements BaseResponseCode {
 
     MEMBER_NOT_FOUND(NOT_FOUND, "AUTH404_1", "일치하는 회원 정보를 찾을 수 없습니다."),
 
-    DUPLICATE_LOGIN_ID(CONFLICT, "AUTH409_1", "이미 사용 중인 로그인 아이디입니다.");
+    DUPLICATE_LOGIN_ID(CONFLICT, "AUTH409_1", "이미 사용 중인 로그인 아이디입니다."),
+    DUPLICATE_PHONE(CONFLICT, "AUTH409_2", "이미 가입된 휴대폰 번호입니다.");
 
     private final int status;
     private final String code;
