@@ -2,12 +2,9 @@ package com.umc.bscene.domain.auth.service;
 
 import com.umc.bscene.domain.auth.dto.request.LoginRequest;
 import com.umc.bscene.domain.auth.dto.request.PasswordResetRequest;
+import com.umc.bscene.domain.auth.dto.request.ReissueRequest;
 import com.umc.bscene.domain.auth.dto.request.SignupRequest;
-import com.umc.bscene.domain.auth.dto.response.LoginIdCheckResponse;
-import com.umc.bscene.domain.auth.dto.response.LoginIdFindResponse;
-import com.umc.bscene.domain.auth.dto.response.LoginUserResponse;
-import com.umc.bscene.domain.auth.dto.response.SignupResponse;
-import com.umc.bscene.domain.auth.dto.response.TokenResponse;
+import com.umc.bscene.domain.auth.dto.response.*;
 import com.umc.bscene.domain.auth.entity.LocalCredential;
 import com.umc.bscene.domain.auth.exception.AuthException;
 import com.umc.bscene.domain.auth.repository.LocalCredentialRepository;
@@ -206,5 +203,37 @@ public class AuthService {
         localCredential.changePassword(passwordEncoder.encode(request.newPassword()));
 
         phoneVerificationService.removeVerified(PhoneVerificationPurpose.PASSWORD_RESET, request.phone());
+    }
+
+    // AccessToken 재발급
+    public AccessTokenResponse reissue(ReissueRequest request) {
+        String refreshToken = request.refreshToken();
+
+        if (!jwtUtil.isValid(refreshToken)) {
+            throw new AuthException(AuthErrorCode.INVALID_REFRESH_TOKEN);
+        }
+
+        if (!"refresh".equals(jwtUtil.getType(refreshToken))) {
+            throw new AuthException(AuthErrorCode.INVALID_REFRESH_TOKEN);
+        }
+
+        String refreshTokenHash = hashToken(refreshToken);
+        String userId = stringRedisTemplate.opsForValue().get("refreshToken:" + refreshTokenHash);
+
+        if (userId == null) {
+            throw new AuthException(AuthErrorCode.INVALID_REFRESH_TOKEN);
+        }
+
+        User user = userRepository.findById(Long.parseLong(userId))
+                .orElseThrow(() -> new AuthException(AuthErrorCode.INVALID_REFRESH_TOKEN));
+
+        AuthMember authMember = new AuthMember(user);
+        String accessToken = jwtUtil.createAccessToken(authMember);
+
+        return AccessTokenResponse.builder()
+                .grantType("Bearer")
+                .accessToken(accessToken)
+                .accessTokenExpiresIn(jwtUtil.getAccessTokenExpiration())
+                .build();
     }
 }

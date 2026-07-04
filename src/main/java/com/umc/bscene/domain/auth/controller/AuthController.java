@@ -2,11 +2,9 @@ package com.umc.bscene.domain.auth.controller;
 
 import com.umc.bscene.domain.auth.dto.request.LoginRequest;
 import com.umc.bscene.domain.auth.dto.request.PasswordResetRequest;
+import com.umc.bscene.domain.auth.dto.request.ReissueRequest;
 import com.umc.bscene.domain.auth.dto.request.SignupRequest;
-import com.umc.bscene.domain.auth.dto.response.LoginIdCheckResponse;
-import com.umc.bscene.domain.auth.dto.response.LoginIdFindResponse;
-import com.umc.bscene.domain.auth.dto.response.SignupResponse;
-import com.umc.bscene.domain.auth.dto.response.TokenResponse;
+import com.umc.bscene.domain.auth.dto.response.*;
 import com.umc.bscene.domain.auth.response.code.AuthSuccessCode;
 import com.umc.bscene.domain.auth.service.AuthService;
 import com.umc.bscene.global.response.SuccessResponse;
@@ -88,6 +86,20 @@ public class AuthController {
         SuccessResponse<Void> successResponse = SuccessResponse.of(
                 (Void) null,
                 AuthSuccessCode.PASSWORD_RESET_SUCCESS
+        );
+
+        return ResponseEntity.status(successResponse.getStatus()).body(successResponse);
+    }
+
+    // Access Token 재발급 API
+    @PostMapping("/reissue")
+    public ResponseEntity<SuccessResponse<AccessTokenResponse>> reissue(
+            @Valid @RequestBody ReissueRequest request
+    ) {
+        AccessTokenResponse response = authService.reissue(request);
+        SuccessResponse<AccessTokenResponse> successResponse = SuccessResponse.of(
+                response,
+                AuthSuccessCode.TOKEN_REISSUE_SUCCESS
         );
 
         return ResponseEntity.status(successResponse.getStatus()).body(successResponse);
