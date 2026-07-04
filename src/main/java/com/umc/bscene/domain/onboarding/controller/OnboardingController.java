@@ -1,12 +1,16 @@
 package com.umc.bscene.domain.onboarding.controller;
 
 import com.umc.bscene.domain.onboarding.dto.response.GenreResponse;
+import com.umc.bscene.domain.onboarding.dto.response.OnboardingStatusResponse;
 import com.umc.bscene.domain.onboarding.response.code.OnboardingSuccessCode;
 import com.umc.bscene.domain.onboarding.service.OnboardingService;
 import com.umc.bscene.global.response.SuccessResponse;
+import com.umc.bscene.global.security.entity.AuthMember;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
 
@@ -23,6 +27,20 @@ public class OnboardingController {
         SuccessResponse<List<GenreResponse>> successResponse = SuccessResponse.of(
                 response,
                 OnboardingSuccessCode.GENRES_GET_SUCCESS
+        );
+
+        return ResponseEntity.status(successResponse.getStatus()).body(successResponse);
+    }
+
+    // 내 온보딩 상태 조회 API
+    @GetMapping("/users/me/onboarding/status")
+    public ResponseEntity<SuccessResponse<OnboardingStatusResponse>> getMyOnboardingStatus(
+            @AuthenticationPrincipal AuthMember authMember
+    ) {
+        OnboardingStatusResponse response = onboardingService.getMyOnboardingStatus(authMember);
+        SuccessResponse<OnboardingStatusResponse> successResponse = SuccessResponse.of(
+                response,
+                OnboardingSuccessCode.ONBOARDING_STATUS_GET_SUCCESS
         );
 
         return ResponseEntity.status(successResponse.getStatus()).body(successResponse);
