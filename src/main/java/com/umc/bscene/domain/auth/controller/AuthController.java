@@ -1,6 +1,7 @@
 package com.umc.bscene.domain.auth.controller;
 
 import com.umc.bscene.domain.auth.dto.request.LoginRequest;
+import com.umc.bscene.domain.auth.dto.request.PasswordResetRequest;
 import com.umc.bscene.domain.auth.dto.request.SignupRequest;
 import com.umc.bscene.domain.auth.dto.response.LoginIdCheckResponse;
 import com.umc.bscene.domain.auth.dto.response.LoginIdFindResponse;
@@ -73,6 +74,20 @@ public class AuthController {
         SuccessResponse<LoginIdFindResponse> successResponse = SuccessResponse.of(
                 response,
                 AuthSuccessCode.LOGIN_ID_FIND_SUCCESS
+        );
+
+        return ResponseEntity.status(successResponse.getStatus()).body(successResponse);
+    }
+
+    // 비밀번호 재설정 API
+    @PatchMapping("/password-reset")
+    public ResponseEntity<SuccessResponse<Void>> resetPassword(
+            @Valid @RequestBody PasswordResetRequest request
+    ) {
+        authService.resetPassword(request);
+        SuccessResponse<Void> successResponse = SuccessResponse.of(
+                (Void) null,
+                AuthSuccessCode.PASSWORD_RESET_SUCCESS
         );
 
         return ResponseEntity.status(successResponse.getStatus()).body(successResponse);

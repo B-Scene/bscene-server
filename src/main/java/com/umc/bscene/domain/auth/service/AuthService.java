@@ -1,6 +1,7 @@
 package com.umc.bscene.domain.auth.service;
 
 import com.umc.bscene.domain.auth.dto.request.LoginRequest;
+import com.umc.bscene.domain.auth.dto.request.PasswordResetRequest;
 import com.umc.bscene.domain.auth.dto.request.SignupRequest;
 import com.umc.bscene.domain.auth.dto.response.LoginIdCheckResponse;
 import com.umc.bscene.domain.auth.dto.response.LoginIdFindResponse;
@@ -188,5 +189,22 @@ public class AuthService {
         String visiblePart = localPart.substring(0, localPart.length() - 3);
 
         return visiblePart + "***" + domainPart;
+    }
+
+    @Transactional
+    public void resetPassword(PasswordResetRequest request) {
+        phoneVerificationService.validateVerified(PhoneVerificationPurpose.PASSWORD_RESET, request.phone());
+        validatePasswordConfirm(request.newPassword(), request.newPasswordConfirm());
+
+        LocalCredential localCredential = localCredentialRepository.findByLoginId(request.loginId())
+                .orElseThrow(() -> new AuthException(AuthErrorCode.MEMBER_NOT_FOUND));
+
+        if (!localCredential.getUser().getPhone().equals(request.phone())) {
+            throw new AuthException(AuthErrorCode.MEMBER_NOT_FOUND);
+        }
+
+        localCredential.changePassword(passwordEncoder.encode(request.newPassword()));
+
+        phoneVerificationService.removeVerified(PhoneVerificationPurpose.PASSWORD_RESET, request.phone());
     }
 }

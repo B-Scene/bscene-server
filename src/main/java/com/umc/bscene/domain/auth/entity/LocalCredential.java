@@ -34,4 +34,9 @@ public class LocalCredential extends BaseEntity {
 
     @Column(name = "deleted_at")
     private LocalDateTime deletedAt;
+
+    public void changePassword(String passwordHash) {
+        this.passwordHash = passwordHash;
+        this.passwordChangedAt = LocalDateTime.now();
+    }
 }
