@@ -1,4 +1,4 @@
-package com.umc.bscene.domain.auth.dto.request;
+package com.umc.bscene.domain.auth.dto.auth.request;
 
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.*;
