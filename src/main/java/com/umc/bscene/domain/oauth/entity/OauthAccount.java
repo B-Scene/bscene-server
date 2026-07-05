@@ -42,4 +42,8 @@ public class OauthAccount extends BaseEntity {
 
     @Column(name = "provider_uid", nullable = false, length = 255)
     private String providerUid;
+
+    // 소셜 제공자에서 받아온 이메일(아이디). 로컬 계정의 loginId에 대응
+    @Column(name = "email", nullable = false, length = 255)
+    private String email;
 }

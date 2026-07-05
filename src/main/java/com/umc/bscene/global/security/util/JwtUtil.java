@@ -47,8 +47,8 @@ public class JwtUtil {
         return createToken(member, refreshExpiration, "refresh");
     }
 
-    // 소셜 신규 유저용 임시 회원가입 토큰 생성 (provider/providerUid/name 보관)
-    public String createSignupToken(String provider, String providerUid, String name) {
+    // 소셜 신규 유저용 임시 회원가입 토큰 생성 (provider/providerUid/name/email 보관)
+    public String createSignupToken(String provider, String providerUid, String name, String email) {
         Instant now = Instant.now();
 
         return Jwts.builder()
@@ -57,6 +57,7 @@ public class JwtUtil {
                 .claim("provider", provider)
                 .claim("providerUid", providerUid)
                 .claim("name", name)
+                .claim("email", email)
                 .issuedAt(Date.from(now))
                 .expiration(Date.from(now.plus(signupExpiration)))
                 .signWith(secretKey)
@@ -102,6 +103,11 @@ public class JwtUtil {
     // signup 토큰에서 name 추출
     public String getName(String token) {
         return getClaims(token).getPayload().get("name", String.class);
+    }
+
+    // signup 토큰에서 email(소셜 제공자 이메일 = 아이디) 추출
+    public String getEmail(String token) {
+        return getClaims(token).getPayload().get("email", String.class);
     }
 
     /** 토큰 유효성 확인
