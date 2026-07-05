@@ -90,11 +90,11 @@ public class AuthController {
 
     // Access Token 재발급 API
     @PostMapping("/reissue")
-    public ResponseEntity<SuccessResponse<AccessTokenResponse>> reissue(
+    public ResponseEntity<SuccessResponse<ReissueResponse>> reissue(
             @Valid @RequestBody ReissueRequest request
     ) {
-        AccessTokenResponse response = authService.reissue(request);
-        SuccessResponse<AccessTokenResponse> successResponse = SuccessResponse.of(
+        ReissueResponse response = authService.reissue(request);
+        SuccessResponse<ReissueResponse> successResponse = SuccessResponse.of(
                 response,
                 AuthSuccessCode.TOKEN_REISSUE_SUCCESS
         );

@@ -4,15 +4,16 @@ import com.umc.bscene.domain.auth.dto.request.*;
 import com.umc.bscene.domain.auth.dto.response.*;
 import com.umc.bscene.domain.auth.entity.LocalCredential;
 import com.umc.bscene.domain.auth.exception.AuthException;
-import com.umc.bscene.domain.auth.repository.LocalCredentialRepository;
-import com.umc.bscene.domain.auth.response.code.AuthErrorCode;
 import com.umc.bscene.domain.auth.phoneverification.enums.PhoneVerificationPurpose;
 import com.umc.bscene.domain.auth.phoneverification.service.PhoneVerificationService;
-import com.umc.bscene.domain.user.entity.User;
+import com.umc.bscene.domain.auth.repository.LocalCredentialRepository;
+import com.umc.bscene.domain.auth.response.code.AuthErrorCode;
 import com.umc.bscene.domain.auth.term.entity.UserTerms;
-import com.umc.bscene.domain.user.enums.Gender;
-import com.umc.bscene.domain.user.repository.UserRepository;
 import com.umc.bscene.domain.auth.term.repository.UserTermsRepository;
+import com.umc.bscene.domain.user.entity.User;
+import com.umc.bscene.domain.user.enums.Gender;
+import com.umc.bscene.domain.user.enums.UserStatus;
+import com.umc.bscene.domain.user.repository.UserRepository;
 import com.umc.bscene.global.security.entity.AuthMember;
 import com.umc.bscene.global.security.util.JwtUtil;
 import lombok.RequiredArgsConstructor;
@@ -156,6 +157,7 @@ public class AuthService {
         userTermsRepository.saveAll(userTerms);
     }
 
+    // 로그인
     @Transactional
     public TokenResponse login(LoginRequest request) {
         LocalCredential localCredential = localCredentialRepository.findByLoginId(request.loginId())
@@ -166,6 +168,8 @@ public class AuthService {
         }
 
         User user = localCredential.getUser();
+        validateUserStatus(user);
+
         AuthMember authMember = new AuthMember(user);
 
         String accessToken = jwtUtil.createAccessToken(authMember);
@@ -241,6 +245,21 @@ public class AuthService {
         return visiblePart + "***" + domainPart;
     }
 
+    private void validateUserStatus(User user) {
+        if (user.getStatus() == UserStatus.SUSPENDED) {
+            throw new AuthException(AuthErrorCode.SUSPENDED_ACCOUNT);
+        }
+
+        if (user.getStatus() == UserStatus.INACTIVE) {
+            throw new AuthException(AuthErrorCode.INACTIVE_ACCOUNT);
+        }
+
+        if (user.getStatus() == UserStatus.DELETED) {
+            throw new AuthException(AuthErrorCode.DELETED_ACCOUNT);
+        }
+    }
+
+    // 비밀번호 재설정
     @Transactional
     public void resetPassword(PasswordResetRequest request) {
         phoneVerificationService.validateVerified(PhoneVerificationPurpose.PASSWORD_RESET, request.phone());
@@ -258,8 +277,8 @@ public class AuthService {
         phoneVerificationService.removeVerified(PhoneVerificationPurpose.PASSWORD_RESET, request.phone());
     }
 
-    // AccessToken 재발급
-    public AccessTokenResponse reissue(ReissueRequest request) {
+    // Reissue로 인한 AccessToken, RefreshToken 재발급
+    public ReissueResponse reissue(ReissueRequest request) {
         String refreshToken = request.refreshToken();
 
         if (!jwtUtil.isValid(refreshToken)) {
@@ -281,11 +300,22 @@ public class AuthService {
                 .orElseThrow(() -> new AuthException(AuthErrorCode.INVALID_REFRESH_TOKEN));
 
         AuthMember authMember = new AuthMember(user);
-        String accessToken = jwtUtil.createAccessToken(authMember);
+        String newAccessToken = jwtUtil.createAccessToken(authMember);
+        String newRefreshToken = jwtUtil.createRefreshToken(authMember);
 
-        return AccessTokenResponse.builder()
+        stringRedisTemplate.delete("refreshToken:" + refreshTokenHash);
+
+        String newRefreshTokenHash = hashToken(newRefreshToken);
+        stringRedisTemplate.opsForValue().set(
+                "refreshToken:" + newRefreshTokenHash,
+                String.valueOf(user.getId()),
+                Duration.ofMillis(jwtUtil.getRefreshTokenExpiration())
+        );
+
+        return ReissueResponse.builder()
                 .grantType("Bearer")
-                .accessToken(accessToken)
+                .accessToken(newAccessToken)
+                .refreshToken(newRefreshToken)
                 .accessTokenExpiresIn(jwtUtil.getAccessTokenExpiration())
                 .build();
     }
