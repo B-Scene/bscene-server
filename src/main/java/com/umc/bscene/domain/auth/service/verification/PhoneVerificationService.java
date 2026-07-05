@@ -1,8 +1,8 @@
 package com.umc.bscene.domain.auth.service.verification;
 
-import com.umc.bscene.domain.auth.phoneverification.dto.request.PhoneVerificationSendRequest;
-import com.umc.bscene.domain.auth.phoneverification.dto.request.PhoneVerificationVerifyRequest;
-import com.umc.bscene.domain.auth.phoneverification.dto.response.PhoneVerificationSendResponse;
+import com.umc.bscene.domain.auth.dto.verification.request.PhoneVerificationSendRequest;
+import com.umc.bscene.domain.auth.dto.verification.request.PhoneVerificationVerifyRequest;
+import com.umc.bscene.domain.auth.dto.verification.response.PhoneVerificationSendResponse;
 import com.umc.bscene.domain.auth.enums.verification.PhoneVerificationPurpose;
 import com.umc.bscene.domain.auth.exception.verification.PhoneVerificationException;
 import com.umc.bscene.domain.auth.enums.code.PhoneVerificationErrorCode;
