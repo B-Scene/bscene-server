@@ -23,15 +23,18 @@ public class JwtUtil {
     private final SecretKey secretKey;
     private final Duration accessExpiration;
     private final Duration refreshExpiration;
+    private final Duration signupExpiration;
 
     public JwtUtil(
             @Value("${jwt.token.secretKey}") String secret,
             @Value("${jwt.token.expiration.access}") Long accessExpiration,
-            @Value("${jwt.token.expiration.refresh}") Long refreshExpiration
+            @Value("${jwt.token.expiration.refresh}") Long refreshExpiration,
+            @Value("${jwt.token.expiration.signup}") Long signupExpiration
     ) {
         this.secretKey = Keys.hmacShaKeyFor(secret.getBytes(StandardCharsets.UTF_8));
         this.accessExpiration = Duration.ofMillis(accessExpiration);
         this.refreshExpiration = Duration.ofMillis(refreshExpiration);
+        this.signupExpiration = Duration.ofMillis(signupExpiration);
     }
 
     // AccessToken 생성
@@ -42,6 +45,23 @@ public class JwtUtil {
     // RefreshToken 생성
     public String createRefreshToken(AuthMember member) {
         return createToken(member, refreshExpiration, "refresh");
+    }
+
+    // 소셜 신규 유저용 임시 회원가입 토큰 생성 (provider/providerUid/name/email 보관)
+    public String createSignupToken(String provider, String providerUid, String name, String email) {
+        Instant now = Instant.now();
+
+        return Jwts.builder()
+                .subject(providerUid)
+                .claim("type", "signup")
+                .claim("provider", provider)
+                .claim("providerUid", providerUid)
+                .claim("name", name)
+                .claim("email", email)
+                .issuedAt(Date.from(now))
+                .expiration(Date.from(now.plus(signupExpiration)))
+                .signWith(secretKey)
+                .compact();
     }
 
     /** 토큰에서 userId 가져오기
@@ -68,6 +88,26 @@ public class JwtUtil {
         } catch (JwtException e) {
             return null;
         }
+    }
+
+    // signup 토큰에서 provider 추출
+    public String getProvider(String token) {
+        return getClaims(token).getPayload().get("provider", String.class);
+    }
+
+    // signup 토큰에서 providerUid 추출
+    public String getProviderUid(String token) {
+        return getClaims(token).getPayload().get("providerUid", String.class);
+    }
+
+    // signup 토큰에서 name 추출
+    public String getName(String token) {
+        return getClaims(token).getPayload().get("name", String.class);
+    }
+
+    // signup 토큰에서 email(소셜 제공자 이메일 = 아이디) 추출
+    public String getEmail(String token) {
+        return getClaims(token).getPayload().get("email", String.class);
     }
 
     /** 토큰 유효성 확인
