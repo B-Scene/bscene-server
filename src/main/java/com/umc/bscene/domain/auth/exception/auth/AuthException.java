@@ -1,4 +1,4 @@
-package com.umc.bscene.domain.auth.exception;
+package com.umc.bscene.domain.auth.exception.auth;
 
 import com.umc.bscene.global.exception.BaseException;
 import com.umc.bscene.global.response.code.BaseResponseCode;
