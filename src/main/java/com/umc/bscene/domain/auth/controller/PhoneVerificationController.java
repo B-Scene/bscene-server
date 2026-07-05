@@ -1,4 +1,4 @@
-package com.umc.bscene.domain.auth.phoneverification.controller;
+package com.umc.bscene.domain.auth.controller;
 
 import com.umc.bscene.domain.auth.dto.verification.request.PhoneVerificationSendRequest;
 import com.umc.bscene.domain.auth.dto.verification.request.PhoneVerificationVerifyRequest;
