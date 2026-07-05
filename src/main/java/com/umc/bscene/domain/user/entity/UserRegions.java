@@ -1,6 +1,6 @@
 package com.umc.bscene.domain.user.entity;
 
-import com.umc.bscene.domain.auth.onboarding.enums.Region;
+import com.umc.bscene.domain.auth.enums.onboarding.Region;
 import com.umc.bscene.global.entity.BaseEntity;
 import jakarta.persistence.*;
 import lombok.*;

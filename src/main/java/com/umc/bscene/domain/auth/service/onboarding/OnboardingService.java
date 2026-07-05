@@ -4,7 +4,7 @@ import com.umc.bscene.domain.auth.onboarding.dto.response.FanNicknameCheckRespon
 import com.umc.bscene.domain.auth.onboarding.dto.response.GenreResponse;
 import com.umc.bscene.domain.auth.onboarding.dto.response.OnboardingStatusResponse;
 import com.umc.bscene.domain.auth.onboarding.dto.response.RegionResponse;
-import com.umc.bscene.domain.auth.onboarding.enums.Genre;
+import com.umc.bscene.domain.auth.enums.onboarding.Genre;
 import com.umc.bscene.domain.user.entity.FanProfile;
 import com.umc.bscene.domain.user.entity.User;
 import com.umc.bscene.domain.user.entity.UserAvailableModes;
