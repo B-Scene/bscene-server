@@ -1,4 +1,4 @@
-package com.umc.bscene.domain.auth.repository;
+package com.umc.bscene.domain.auth.repository.credential;
 
 import com.umc.bscene.domain.auth.entity.credential.LocalCredential;
 import org.springframework.data.jpa.repository.JpaRepository;

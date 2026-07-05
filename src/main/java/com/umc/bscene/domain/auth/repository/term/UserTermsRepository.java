@@ -1,4 +1,4 @@
-package com.umc.bscene.domain.auth.term.repository;
+package com.umc.bscene.domain.auth.repository.term;
 
 import com.umc.bscene.domain.auth.entity.term.UserTerms;
 import org.springframework.data.jpa.repository.JpaRepository;
