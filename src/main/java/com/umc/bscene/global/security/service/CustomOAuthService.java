@@ -1,9 +1,9 @@
 package com.umc.bscene.global.security.service;
 
 import com.umc.bscene.domain.oauth.enums.SocialProvider;
+import com.umc.bscene.domain.oauth.exception.OauthException;
 import com.umc.bscene.domain.oauth.repository.OauthAccountRepository;
-import com.umc.bscene.global.exception.BaseException;
-import com.umc.bscene.global.response.code.GeneralErrorCode;
+import com.umc.bscene.domain.oauth.response.code.OauthErrorCode;
 import com.umc.bscene.global.security.dto.response.GoogleResponse;
 import com.umc.bscene.global.security.dto.response.KakaoResponse;
 import com.umc.bscene.global.security.dto.response.OAuthResponse;
@@ -36,33 +36,62 @@ public class CustomOAuthService extends DefaultOAuth2UserService {
             provider = SocialProvider.valueOf(
                     userRequest.getClientRegistration().getRegistrationId().toUpperCase());
         } catch (IllegalArgumentException e) {
-            throw new BaseException(GeneralErrorCode.NOT_SUPPORT_SOCIAL_PROVIDER);
+            throw new OauthException(OauthErrorCode.NOT_SUPPORT_PROVIDER);
         }
 
         // provider별로 응답 구조가 달라 각 case 안에서 파싱
-        String providerUid;
-        OAuthResponse dto;
-        switch (provider) {
-            case KAKAO -> {
-                providerUid = String.valueOf((Long) oAuthMember.getAttribute("id"));
-                Map<String, Object> account = oAuthMember.getAttribute("kakao_account");
-                Map<String, Object> profile = (Map<String, Object>) account.get("profile");
-                String email = account.get("email").toString();
-                String name = profile.get("nickname").toString();
-                dto = new KakaoResponse(providerUid, email, name);
-            }
-            case GOOGLE -> {
-                providerUid = oAuthMember.getAttribute("sub").toString();
-                String email = oAuthMember.getAttribute("email").toString();
-                String name = oAuthMember.getAttribute("name").toString();
-                dto = new GoogleResponse(providerUid, email, name);
-            }
-            default -> throw new BaseException(GeneralErrorCode.NOT_SUPPORT_SOCIAL_PROVIDER);
-        }
+        OAuthResponse dto = switch (provider) {
+            case KAKAO -> parseKakao(oAuthMember);
+            case GOOGLE -> parseGoogle(oAuthMember);
+        };
 
         // OauthAccount 조회: 있으면 기존 유저, 없으면 신규 유저(온보딩 필요)
-        return oauthAccountRepository.findByProviderAndProviderUid(provider, providerUid)
+        return oauthAccountRepository.findByProviderAndProviderUid(provider, dto.getProviderUid())
                 .map(account -> OAuthMember.ofExisting(account.getUser(), dto, oAuthMember.getAttributes()))
                 .orElseGet(() -> OAuthMember.ofNew(dto, oAuthMember.getAttributes()));
+    }
+
+    private OAuthResponse parseKakao(OAuth2User oAuthMember) {
+        Object id = oAuthMember.getAttribute("id");
+        if (id == null) {
+            throw new OauthException(OauthErrorCode.NOT_SUPPORT_PROVIDER);
+        }
+        String providerUid = String.valueOf(id);
+
+        // 이메일은 아이디로 쓰이므로 필수. 미동의 시 kakao_account.email 자체가 없음
+        Map<String, Object> account = oAuthMember.getAttribute("kakao_account");
+        Object email = (account == null) ? null : account.get("email");
+        if (email == null) {
+            throw new OauthException(OauthErrorCode.EMAIL_NOT_PROVIDED);
+        }
+
+        // 닉네임은 아이디가 아니라 필수 아님(회원가입 시 이름을 직접 입력받음). 없으면 null 허용
+        String name = extractKakaoNickname(account);
+
+        return new KakaoResponse(providerUid, email.toString(), name);
+    }
+
+    private OAuthResponse parseGoogle(OAuth2User oAuthMember) {
+        Object sub = oAuthMember.getAttribute("sub");
+        if (sub == null) {
+            throw new OauthException(OauthErrorCode.NOT_SUPPORT_PROVIDER);
+        }
+
+        Object email = oAuthMember.getAttribute("email");
+        if (email == null) {
+            throw new OauthException(OauthErrorCode.EMAIL_NOT_PROVIDED);
+        }
+
+        Object name = oAuthMember.getAttribute("name");
+        return new GoogleResponse(sub.toString(), email.toString(), name == null ? null : name.toString());
+    }
+
+    private String extractKakaoNickname(Map<String, Object> account) {
+        Object profile = account.get("profile");
+        if (profile instanceof Map<?, ?> profileMap) {
+            Object nickname = profileMap.get("nickname");
+            return nickname == null ? null : nickname.toString();
+        }
+        return null;
     }
 }
