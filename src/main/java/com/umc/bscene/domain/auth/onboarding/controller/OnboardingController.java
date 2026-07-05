@@ -1,8 +1,8 @@
 package com.umc.bscene.domain.auth.onboarding.controller;
 
-import com.umc.bscene.domain.auth.onboarding.dto.response.FanNicknameCheckResponse;
-import com.umc.bscene.domain.auth.onboarding.dto.response.GenreResponse;
-import com.umc.bscene.domain.auth.onboarding.dto.response.OnboardingStatusResponse;
+import com.umc.bscene.domain.auth.dto.onboarding.response.FanNicknameCheckResponse;
+import com.umc.bscene.domain.auth.dto.onboarding.response.GenreResponse;
+import com.umc.bscene.domain.auth.dto.onboarding.response.OnboardingStatusResponse;
 import com.umc.bscene.domain.auth.enums.code.OnboardingSuccessCode;
 import com.umc.bscene.domain.auth.service.onboarding.OnboardingService;
 import com.umc.bscene.global.response.SuccessResponse;

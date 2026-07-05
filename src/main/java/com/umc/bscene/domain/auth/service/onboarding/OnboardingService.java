@@ -1,9 +1,9 @@
 package com.umc.bscene.domain.auth.service.onboarding;
 
-import com.umc.bscene.domain.auth.onboarding.dto.response.FanNicknameCheckResponse;
-import com.umc.bscene.domain.auth.onboarding.dto.response.GenreResponse;
-import com.umc.bscene.domain.auth.onboarding.dto.response.OnboardingStatusResponse;
-import com.umc.bscene.domain.auth.onboarding.dto.response.RegionResponse;
+import com.umc.bscene.domain.auth.dto.onboarding.response.FanNicknameCheckResponse;
+import com.umc.bscene.domain.auth.dto.onboarding.response.GenreResponse;
+import com.umc.bscene.domain.auth.dto.onboarding.response.OnboardingStatusResponse;
+import com.umc.bscene.domain.auth.dto.onboarding.response.RegionResponse;
 import com.umc.bscene.domain.auth.enums.onboarding.Genre;
 import com.umc.bscene.domain.user.entity.FanProfile;
 import com.umc.bscene.domain.user.entity.User;
