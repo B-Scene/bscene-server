@@ -17,6 +17,8 @@ assignees: ''
 - [ ] ✅ testing
 - [ ] 🔥 remove unused file
 - [ ] 📝 docs fix(dependency, env_var, etc)
+- [ ] ⛔️ hot fix
+- [ ] 🐳 Docker
 <br><br>
 ## ✨ Issue describtion
 <!---
