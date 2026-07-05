@@ -4,15 +4,15 @@ import com.umc.bscene.domain.auth.dto.request.*;
 import com.umc.bscene.domain.auth.dto.response.*;
 import com.umc.bscene.domain.auth.entity.LocalCredential;
 import com.umc.bscene.domain.auth.exception.AuthException;
-import com.umc.bscene.domain.auth.repository.LocalCredentialRepository;
-import com.umc.bscene.domain.auth.response.code.AuthErrorCode;
 import com.umc.bscene.domain.auth.phoneverification.enums.PhoneVerificationPurpose;
 import com.umc.bscene.domain.auth.phoneverification.service.PhoneVerificationService;
-import com.umc.bscene.domain.user.entity.User;
+import com.umc.bscene.domain.auth.repository.LocalCredentialRepository;
+import com.umc.bscene.domain.auth.response.code.AuthErrorCode;
 import com.umc.bscene.domain.auth.term.entity.UserTerms;
+import com.umc.bscene.domain.auth.term.repository.UserTermsRepository;
+import com.umc.bscene.domain.user.entity.User;
 import com.umc.bscene.domain.user.enums.Gender;
 import com.umc.bscene.domain.user.repository.UserRepository;
-import com.umc.bscene.domain.auth.term.repository.UserTermsRepository;
 import com.umc.bscene.global.security.entity.AuthMember;
 import com.umc.bscene.global.security.util.JwtUtil;
 import lombok.RequiredArgsConstructor;
@@ -258,8 +258,8 @@ public class AuthService {
         phoneVerificationService.removeVerified(PhoneVerificationPurpose.PASSWORD_RESET, request.phone());
     }
 
-    // AccessToken 재발급
-    public AccessTokenResponse reissue(ReissueRequest request) {
+    // Reissue로 인한 AccessToken, RefreshToken 재발급
+    public ReissueResponse reissue(ReissueRequest request) {
         String refreshToken = request.refreshToken();
 
         if (!jwtUtil.isValid(refreshToken)) {
@@ -281,11 +281,22 @@ public class AuthService {
                 .orElseThrow(() -> new AuthException(AuthErrorCode.INVALID_REFRESH_TOKEN));
 
         AuthMember authMember = new AuthMember(user);
-        String accessToken = jwtUtil.createAccessToken(authMember);
+        String newAccessToken = jwtUtil.createAccessToken(authMember);
+        String newRefreshToken = jwtUtil.createRefreshToken(authMember);
 
-        return AccessTokenResponse.builder()
+        stringRedisTemplate.delete("refreshToken:" + refreshTokenHash);
+
+        String newRefreshTokenHash = hashToken(newRefreshToken);
+        stringRedisTemplate.opsForValue().set(
+                "refreshToken:" + newRefreshTokenHash,
+                String.valueOf(user.getId()),
+                Duration.ofMillis(jwtUtil.getRefreshTokenExpiration())
+        );
+
+        return ReissueResponse.builder()
                 .grantType("Bearer")
-                .accessToken(accessToken)
+                .accessToken(newAccessToken)
+                .refreshToken(newRefreshToken)
                 .accessTokenExpiresIn(jwtUtil.getAccessTokenExpiration())
                 .build();
     }
