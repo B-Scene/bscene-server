@@ -6,7 +6,7 @@ import com.umc.bscene.domain.auth.entity.credential.LocalCredential;
 import com.umc.bscene.domain.auth.exception.auth.AuthException;
 import com.umc.bscene.domain.auth.repository.credential.LocalCredentialRepository;
 import com.umc.bscene.domain.auth.response.code.AuthErrorCode;
-import com.umc.bscene.domain.auth.phoneverification.enums.PhoneVerificationPurpose;
+import com.umc.bscene.domain.auth.enums.verification.PhoneVerificationPurpose;
 import com.umc.bscene.domain.auth.service.verification.PhoneVerificationService;
 import com.umc.bscene.domain.user.entity.User;
 import com.umc.bscene.domain.auth.entity.term.UserTerms;
