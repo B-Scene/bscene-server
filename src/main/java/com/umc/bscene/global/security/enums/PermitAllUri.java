@@ -21,7 +21,8 @@ public enum PermitAllUri {
     OAUTH2_CALLBACK("/oauth/callback/**"),
     OAUTH_SIGNUP("/auth/oauth/signup"),
 
-    GENRES("/genres");
+    GENRES("/genres"),
+    REGIONS("/regions");
 
     private final String uri;
 }
