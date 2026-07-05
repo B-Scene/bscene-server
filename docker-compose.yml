@@ -67,6 +67,29 @@ services:
       && (while :; do sleep 6h & wait $${!}; nginx -s reload; done&)
       && exec nginx -g 'daemon off;'"
 
+  mediamtx:
+    image: bluenviron/mediamtx:1.19.2
+    container_name: mediamtx
+    restart: always
+    env_file: ./.env
+    environment:
+      - MTX_RTSPTRANSPORTS=tcp
+    ports:
+      - "8554:8554"
+    expose:
+      - "8888"
+    volumes:
+      - ./mediamtx/mediamtx.yml:/mediamtx.yml:ro
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 256M
+        reservations:
+          memory: 64M
+    networks:
+      - bscene
+
 networks:
   bscene:
     driver: bridge
