@@ -1,7 +1,7 @@
 package com.umc.bscene.domain.auth.service.auth;
 
-import com.umc.bscene.domain.auth.dto.request.*;
-import com.umc.bscene.domain.auth.dto.response.*;
+import com.umc.bscene.domain.auth.dto.auth.request.*;
+import com.umc.bscene.domain.auth.dto.auth.response.*;
 import com.umc.bscene.domain.auth.entity.credential.LocalCredential;
 import com.umc.bscene.domain.auth.exception.auth.AuthException;
 import com.umc.bscene.domain.auth.repository.credential.LocalCredentialRepository;

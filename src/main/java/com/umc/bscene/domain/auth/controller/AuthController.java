@@ -1,7 +1,7 @@
 package com.umc.bscene.domain.auth.controller;
 
-import com.umc.bscene.domain.auth.dto.request.*;
-import com.umc.bscene.domain.auth.dto.response.*;
+import com.umc.bscene.domain.auth.dto.auth.request.*;
+import com.umc.bscene.domain.auth.dto.auth.response.*;
 import com.umc.bscene.domain.auth.response.code.AuthSuccessCode;
 import com.umc.bscene.domain.auth.service.auth.AuthService;
 import com.umc.bscene.global.response.SuccessResponse;
