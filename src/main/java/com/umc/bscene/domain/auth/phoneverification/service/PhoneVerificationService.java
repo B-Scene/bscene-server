@@ -26,14 +26,19 @@ public class PhoneVerificationService {
     private static final long VERIFIED_TTL_SECONDS = 600L;
     private static final String VERIFICATION_KEY_PREFIX = "phoneVerification:";
     private static final String VERIFIED_KEY_PREFIX = "phoneVerification:verified:";
+    private static final long SEND_COOLDOWN_SECONDS = 60L;
+    private static final String SEND_COOLDOWN_KEY_PREFIX = "phoneVerification:sendCooldown:";
 
     private final StringRedisTemplate stringRedisTemplate;
     private final SecureRandom secureRandom = new SecureRandom();
 
     private final SmsSender smsSender;
 
+    // 인증번호 발송
     @Transactional
     public PhoneVerificationSendResponse send(PhoneVerificationSendRequest request) {
+        validateSendCooldown(request.getPurpose(), request.getPhone());
+
         String code = generateVerificationCode();
         String key = generateVerificationKey(request.getPurpose(), request.getPhone());
 
@@ -45,11 +50,14 @@ public class PhoneVerificationService {
                 Duration.ofSeconds(VERIFICATION_CODE_TTL_SECONDS)
         );
 
+        saveSendCooldown(request.getPurpose(), request.getPhone());
+
         return PhoneVerificationSendResponse.builder()
                 .expiresInSeconds(VERIFICATION_CODE_TTL_SECONDS)
                 .build();
     }
 
+    // 인증번호 인증
     @Transactional
     public void verify(PhoneVerificationVerifyRequest request) {
         String key = generateVerificationKey(request.getPurpose(), request.getPhone());
@@ -97,5 +105,28 @@ public class PhoneVerificationService {
     public void removeVerified(PhoneVerificationPurpose purpose, String phone) {
         String verifiedKey = generateVerifiedKey(purpose, phone);
         stringRedisTemplate.delete(verifiedKey);
+    }
+
+    private void validateSendCooldown(PhoneVerificationPurpose purpose, String phone) {
+        String cooldownKey = generateSendCooldownKey(purpose, phone);
+        Boolean exists = stringRedisTemplate.hasKey(cooldownKey);
+
+        if (Boolean.TRUE.equals(exists)) {
+            throw new PhoneVerificationException(PhoneVerificationErrorCode.PHONE_VERIFICATION_SEND_TOO_FREQUENT);
+        }
+    }
+
+    private void saveSendCooldown(PhoneVerificationPurpose purpose, String phone) {
+        String cooldownKey = generateSendCooldownKey(purpose, phone);
+
+        stringRedisTemplate.opsForValue().set(
+                cooldownKey,
+                "true",
+                Duration.ofSeconds(SEND_COOLDOWN_SECONDS)
+        );
+    }
+
+    private String generateSendCooldownKey(PhoneVerificationPurpose purpose, String phone) {
+        return SEND_COOLDOWN_KEY_PREFIX + purpose.name() + ":" + phone;
     }
 }
