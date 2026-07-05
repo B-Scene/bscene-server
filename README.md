@@ -26,6 +26,8 @@
 | `ci`       | `ci/￼#ISSUE_NUM￼`       | 🔄 CI 관련 수정      |
 | `cd`       | `cd/￼#ISSUE_NUM￼`       | 🔄 CD 관련 수정      |
 | `revert`   | `revert/￼#ISSUE_NUM￼`   | ⚠️ 특정 커밋으로 되돌리기  |
+| `hotfix`   | `hotfix/￼#ISSUE_NUM￼`   | 🔥 배포된 사항 중 시급히 수정 필요한 것 |
+| `docker`   | `docker/￼#ISSUE_NUM￼`   | 🐳 Docker 작업 |
 
 이후, 이 브랜치에서 작업하는 내용을 누구나 알 수 있도록 명시합니다.
 완성 예시 : `feat/#1-login-api`
