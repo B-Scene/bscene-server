@@ -1,4 +1,4 @@
-package com.umc.bscene.domain.auth.phoneverification.dto.request;
+package com.umc.bscene.domain.auth.dto.verification.request;
 
 import com.umc.bscene.domain.auth.enums.verification.PhoneVerificationPurpose;
 import jakarta.validation.constraints.NotBlank;
@@ -10,15 +10,11 @@ import lombok.NoArgsConstructor;
 
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-public class PhoneVerificationVerifyRequest {
+public class PhoneVerificationSendRequest {
 
     @NotBlank(message = "휴대폰 번호는 필수입니다.")
     @Pattern(regexp = "^010\\d{8}$", message = "휴대폰 번호 형식이 올바르지 않습니다.")
     private String phone;
-
-    @NotBlank(message = "인증번호는 필수입니다.")
-    @Pattern(regexp = "^\\d{6}$", message = "인증번호는 6자리 숫자입니다.")
-    private String code;
 
     @NotNull(message = "인증 목적은 필수입니다.")
     private PhoneVerificationPurpose purpose;

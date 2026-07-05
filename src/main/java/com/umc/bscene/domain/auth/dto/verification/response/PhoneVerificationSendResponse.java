@@ -1,4 +1,4 @@
-package com.umc.bscene.domain.auth.phoneverification.dto.response;
+package com.umc.bscene.domain.auth.dto.verification.response;
 
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
