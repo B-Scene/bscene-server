@@ -1,4 +1,8 @@
 spring:
+  mvc:
+    servlet:
+      path: /api
+
   application:
     name: bscene
   config:
