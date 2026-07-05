@@ -1,4 +1,4 @@
-package com.umc.bscene.domain.auth.onboarding.dto.response;
+package com.umc.bscene.domain.auth.dto.onboarding.response;
 
 import com.umc.bscene.domain.user.enums.UserMode;
 
