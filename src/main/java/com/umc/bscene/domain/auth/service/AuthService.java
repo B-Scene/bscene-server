@@ -2,14 +2,14 @@ package com.umc.bscene.domain.auth.service;
 
 import com.umc.bscene.domain.auth.dto.request.*;
 import com.umc.bscene.domain.auth.dto.response.*;
-import com.umc.bscene.domain.auth.entity.LocalCredential;
+import com.umc.bscene.domain.auth.entity.credential.LocalCredential;
 import com.umc.bscene.domain.auth.exception.AuthException;
 import com.umc.bscene.domain.auth.repository.LocalCredentialRepository;
 import com.umc.bscene.domain.auth.response.code.AuthErrorCode;
 import com.umc.bscene.domain.auth.phoneverification.enums.PhoneVerificationPurpose;
 import com.umc.bscene.domain.auth.phoneverification.service.PhoneVerificationService;
 import com.umc.bscene.domain.user.entity.User;
-import com.umc.bscene.domain.auth.term.entity.UserTerms;
+import com.umc.bscene.domain.auth.entity.term.UserTerms;
 import com.umc.bscene.domain.user.enums.Gender;
 import com.umc.bscene.domain.user.repository.UserRepository;
 import com.umc.bscene.domain.auth.term.repository.UserTermsRepository;
