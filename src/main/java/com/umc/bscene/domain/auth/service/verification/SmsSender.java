@@ -1,4 +1,4 @@
-package com.umc.bscene.domain.auth.phoneverification.service;
+package com.umc.bscene.domain.auth.service.verification;
 
 import com.umc.bscene.domain.auth.phoneverification.exception.PhoneVerificationException;
 import com.umc.bscene.domain.auth.phoneverification.response.code.PhoneVerificationErrorCode;

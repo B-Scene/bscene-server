@@ -1,4 +1,4 @@
-package com.umc.bscene.domain.auth.onboarding.service;
+package com.umc.bscene.domain.auth.service.onboarding;
 
 import com.umc.bscene.domain.auth.onboarding.dto.response.FanNicknameCheckResponse;
 import com.umc.bscene.domain.auth.onboarding.dto.response.GenreResponse;
