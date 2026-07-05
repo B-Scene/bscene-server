@@ -16,7 +16,9 @@ public enum AuthErrorCode implements BaseResponseCode {
 
     INVALID_REFRESH_TOKEN(UNAUTHORIZED, "AUTH401_4", "유효하지 않은 Refresh Token입니다."),
 
-    UNAVAILABLE_ACCOUNT(FORBIDDEN, "AUTH403_1", "이용할 수 없는 계정입니다."),
+    SUSPENDED_ACCOUNT(FORBIDDEN, "AUTH403_1", "정지된 계정입니다."),
+    INACTIVE_ACCOUNT(FORBIDDEN, "AUTH403_2", "휴면 계정입니다. 휴면 해제가 필요합니다."),
+    DELETED_ACCOUNT(FORBIDDEN, "AUTH403_3", "탈퇴한 계정입니다."),
 
     MEMBER_NOT_FOUND(NOT_FOUND, "AUTH404_1", "일치하는 회원 정보를 찾을 수 없습니다."),
 

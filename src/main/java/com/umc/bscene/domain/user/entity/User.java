@@ -59,4 +59,11 @@ public class User extends BaseEntity {
 
     @Column
     private LocalDateTime deletedAt;
+
+    // 온보딩 완료 처리: 현재 모드 설정 + 완료 플래그/시각 기록
+    public void completeOnboarding(UserMode currentMode) {
+        this.currentMode = currentMode;
+        this.onboardingCompleted = true;
+        this.onboardingCompletedAt = LocalDateTime.now();
+    }
 }

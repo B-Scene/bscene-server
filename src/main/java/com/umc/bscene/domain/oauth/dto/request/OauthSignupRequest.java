@@ -1,8 +1,13 @@
 package com.umc.bscene.domain.oauth.dto.request;
 
+import com.umc.bscene.domain.auth.dto.auth.request.TermAgreementRequest;
+import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
+
+import java.util.List;
 
 public record OauthSignupRequest(
 
@@ -23,6 +28,9 @@ public record OauthSignupRequest(
 
         @NotBlank
         @Pattern(regexp = "^010\\d{8}$", message = "휴대폰 번호 형식이 올바르지 않습니다.")
-        String phone
+        String phone,
+
+        @NotEmpty
+        List<@Valid TermAgreementRequest> terms
 ) {
 }
