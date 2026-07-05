@@ -1,4 +1,4 @@
-package com.umc.bscene.domain.auth.onboarding.enums;
+package com.umc.bscene.domain.auth.enums.onboarding;
 
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
