@@ -1,4 +1,4 @@
-package com.umc.bscene.domain.onboarding.response.code;
+package com.umc.bscene.domain.auth.onboarding.response.code;
 
 import com.umc.bscene.global.response.code.BaseResponseCode;
 import lombok.Getter;

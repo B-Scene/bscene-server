@@ -1,4 +1,4 @@
-package com.umc.bscene.domain.onboarding.dto.response;
+package com.umc.bscene.domain.auth.onboarding.dto.response;
 
 public record GenreResponse(
         String code,

@@ -1,10 +1,10 @@
-package com.umc.bscene.domain.onboarding.controller;
+package com.umc.bscene.domain.auth.onboarding.controller;
 
-import com.umc.bscene.domain.onboarding.dto.response.FanNicknameCheckResponse;
-import com.umc.bscene.domain.onboarding.dto.response.GenreResponse;
-import com.umc.bscene.domain.onboarding.dto.response.OnboardingStatusResponse;
-import com.umc.bscene.domain.onboarding.response.code.OnboardingSuccessCode;
-import com.umc.bscene.domain.onboarding.service.OnboardingService;
+import com.umc.bscene.domain.auth.onboarding.dto.response.FanNicknameCheckResponse;
+import com.umc.bscene.domain.auth.onboarding.dto.response.GenreResponse;
+import com.umc.bscene.domain.auth.onboarding.dto.response.OnboardingStatusResponse;
+import com.umc.bscene.domain.auth.onboarding.response.code.OnboardingSuccessCode;
+import com.umc.bscene.domain.auth.onboarding.service.OnboardingService;
 import com.umc.bscene.global.response.SuccessResponse;
 import com.umc.bscene.global.security.entity.AuthMember;
 import lombok.RequiredArgsConstructor;
