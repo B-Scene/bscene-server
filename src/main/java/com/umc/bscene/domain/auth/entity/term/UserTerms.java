@@ -1,4 +1,4 @@
-package com.umc.bscene.domain.auth.term.entity;
+package com.umc.bscene.domain.auth.entity.term;
 
 import com.umc.bscene.domain.user.entity.User;
 import com.umc.bscene.global.entity.BaseEntity;
