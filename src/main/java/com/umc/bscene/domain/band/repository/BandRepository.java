@@ -8,4 +8,6 @@ import java.util.List;
 public interface BandRepository extends JpaRepository<Band, Long> {
 
     List<Band> findByOwner_Id(Long ownerId);
+
+    boolean existsByName(String name);
 }

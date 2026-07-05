@@ -3,9 +3,11 @@ package com.umc.bscene.domain.band.service;
 import com.umc.bscene.domain.band.dto.request.BandCreateRequest;
 import com.umc.bscene.domain.band.dto.request.BandMemberInviteRequest;
 import com.umc.bscene.domain.band.dto.response.BandMemberResponse;
+import com.umc.bscene.domain.band.dto.response.BandMemberSearchItem;
 import com.umc.bscene.domain.band.dto.response.BandResponse;
 import com.umc.bscene.domain.band.entity.Band;
 import com.umc.bscene.domain.band.entity.BandMember;
+import com.umc.bscene.domain.band.enums.BandMemberStatus;
 import com.umc.bscene.domain.band.exception.BandException;
 import com.umc.bscene.domain.band.repository.BandMemberRepository;
 import com.umc.bscene.domain.band.repository.BandRepository;
@@ -30,6 +32,10 @@ public class BandService {
     // 밴드 개설 (요청자가 오너가 됨)
     @Transactional
     public BandResponse createBand(Long ownerId, BandCreateRequest request) {
+        if (bandRepository.existsByName(request.name())) {
+            throw new BandException(BandErrorCode.DUPLICATE_BAND_NAME);
+        }
+
         Band band = Band.builder()
                 .owner(userRepository.getReferenceById(ownerId))
                 .name(request.name())
@@ -38,8 +44,16 @@ public class BandService {
                 .profileImageUrl(request.profileImageUrl())
                 .description(request.description())
                 .build();
+        Band savedBand = bandRepository.save(band);
 
-        return BandResponse.from(bandRepository.save(band));
+        BandMember ownerMembership = BandMember.builder()
+                .band(savedBand)
+                .user(userRepository.getReferenceById(ownerId))
+                .status(BandMemberStatus.ACCEPTED)
+                .build();
+        bandMemberRepository.save(ownerMembership);
+
+        return BandResponse.from(savedBand);
     }
 
     // 밴드 멤버 초대 (오너만 가능)
@@ -70,11 +84,27 @@ public class BandService {
         bandMember.accept();
     }
 
-    // 밴드 멤버 제거 (오너만 가능)
+    // 초대 거절 (row 삭제, INVITED 상태에서만 가능)
+    @Transactional
+    public void rejectInvite(Long userId, Long bandId) {
+        BandMember bandMember = getBandMember(bandId, userId);
+
+        if (bandMember.getStatus() != BandMemberStatus.INVITED) {
+            throw new BandException(BandErrorCode.ALREADY_ACCEPTED_MEMBER);
+        }
+
+        bandMemberRepository.delete(bandMember);
+    }
+
+    // 밴드 멤버 제거/초대 취소 (오너만 가능)
     @Transactional
     public void removeMember(Long requesterId, Long bandId, Long targetUserId) {
         Band band = getBand(bandId);
         validateOwner(band, requesterId);
+
+        if (band.getOwner().getId().equals(targetUserId)) {
+            throw new BandException(BandErrorCode.CANNOT_REMOVE_OWNER);
+        }
 
         BandMember bandMember = getBandMember(bandId, targetUserId);
         bandMemberRepository.delete(bandMember);
@@ -86,6 +116,19 @@ public class BandService {
 
         return bandMemberRepository.findByBand_Id(bandId).stream()
                 .map(BandMemberResponse::from)
+                .toList();
+    }
+
+    // 초대 대상 닉네임 검색
+    public List<BandMemberSearchItem> searchInviteTargets(Long bandId, String keyword) {
+        getBand(bandId);
+
+        return userRepository.findByNameContaining(keyword).stream()
+                .map(user -> new BandMemberSearchItem(
+                        user.getId(),
+                        user.getName(),
+                        bandMemberRepository.existsByBand_IdAndUser_Id(bandId, user.getId())
+                ))
                 .toList();
     }
 
