@@ -17,6 +17,8 @@ public enum PhoneVerificationErrorCode implements BaseResponseCode {
     PHONE_VERIFICATION_REQUIRED(BAD_REQUEST, "PHONE400_4", "휴대폰 인증이 필요합니다."),
     PHONE_VERIFICATION_SEND_TOO_FREQUENT(BAD_REQUEST, "PHONE400_5", "인증번호는 일정 시간 후 다시 발송할 수 있습니다."),
     PHONE_VERIFICATION_SEND_LIMIT_EXCEEDED(BAD_REQUEST, "PHONE400_6", "일일 인증번호 발송 횟수를 초과했습니다."),
+    PHONE_VERIFICATION_VERIFY_LIMIT_EXCEEDED(BAD_REQUEST, "PHONE400_7", "인증번호 인증 시도 횟수를 초과했습니다."),
+    PHONE_VERIFICATION_DAILY_VERIFY_LIMIT_EXCEEDED(BAD_REQUEST, "PHONE400_8", "일일 인증번호 인증 횟수를 초과했습니다."),
 
     SMS_SEND_FAILED(BAD_GATEWAY, "PHONE502_1", "인증번호 문자 발송에 실패했습니다.");
 
