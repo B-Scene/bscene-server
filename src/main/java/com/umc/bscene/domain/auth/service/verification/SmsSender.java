@@ -1,7 +1,7 @@
 package com.umc.bscene.domain.auth.service.verification;
 
 import com.umc.bscene.domain.auth.exception.verification.PhoneVerificationException;
-import com.umc.bscene.domain.auth.phoneverification.response.code.PhoneVerificationErrorCode;
+import com.umc.bscene.domain.auth.enums.code.PhoneVerificationErrorCode;
 import lombok.extern.slf4j.Slf4j;
 import net.nurigo.sdk.NurigoApp;
 import net.nurigo.sdk.message.model.Message;
