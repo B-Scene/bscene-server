@@ -1,11 +1,7 @@
-server:
-  servlet:
-    context-path: /api
-
 spring:
-
-  profiles:
-    active: dev
+  mvc:
+    servlet:
+      path: /api
 
   application:
     name: bscene
@@ -67,3 +63,8 @@ jwt:
       access: 3600000 # 1시간
       refresh: 1209600000 # 14일
       signup: 600000 # 10분 (소셜 신규 유저 임시 토큰)
+
+# RTMP + LL-HLS
+mediamtx:
+  hls-url: ${MEDIAMTX_HLS_URL:http://localhost:8888}
+
