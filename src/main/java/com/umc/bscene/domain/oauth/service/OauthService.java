@@ -1,7 +1,10 @@
 package com.umc.bscene.domain.oauth.service;
 
+import com.umc.bscene.domain.auth.dto.request.TermAgreementRequest;
 import com.umc.bscene.domain.auth.dto.response.LoginUserResponse;
 import com.umc.bscene.domain.auth.dto.response.TokenResponse;
+import com.umc.bscene.domain.auth.term.entity.UserTerms;
+import com.umc.bscene.domain.auth.term.repository.UserTermsRepository;
 import com.umc.bscene.domain.oauth.dto.request.OauthSignupRequest;
 import com.umc.bscene.domain.oauth.dto.response.OauthLoginResponse;
 import com.umc.bscene.domain.oauth.entity.OauthAccount;
@@ -27,7 +30,9 @@ import java.security.NoSuchAlgorithmException;
 import java.time.DateTimeException;
 import java.time.Duration;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.Base64;
+import java.util.List;
 
 @Service
 @RequiredArgsConstructor
@@ -36,6 +41,7 @@ public class OauthService {
 
     private final UserRepository userRepository;
     private final OauthAccountRepository oauthAccountRepository;
+    private final UserTermsRepository userTermsRepository;
     private final StringRedisTemplate stringRedisTemplate;
     private final JwtUtil jwtUtil;
 
@@ -103,7 +109,22 @@ public class OauthService {
                 .build();
         oauthAccountRepository.save(oauthAccount);
 
+        saveTerms(savedUser, request.terms());
+
         return login(savedUser);
+    }
+
+    // 약관 동의 저장 (로컬 회원가입과 동일하게 termId 기반)
+    private void saveTerms(User user, List<TermAgreementRequest> terms) {
+        List<UserTerms> entities = terms.stream()
+                .map(term -> UserTerms.builder()
+                        .user(user)
+                        .termId(term.termId())
+                        .isAgreed(term.agreed())
+                        .agreedAt(LocalDateTime.now())
+                        .build())
+                .toList();
+        userTermsRepository.saveAll(entities);
     }
 
     // access/refresh 토큰 발급 + RefreshToken 저장
