@@ -1,6 +1,6 @@
 package com.umc.bscene.domain.oauth.controller;
 
-import com.umc.bscene.domain.auth.dto.response.TokenResponse;
+import com.umc.bscene.domain.auth.dto.auth.response.TokenResponse;
 import com.umc.bscene.domain.oauth.dto.request.OauthSignupRequest;
 import com.umc.bscene.domain.oauth.response.code.OauthSuccessCode;
 import com.umc.bscene.domain.oauth.service.OauthService;

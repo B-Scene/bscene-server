@@ -1,10 +1,10 @@
 package com.umc.bscene.domain.oauth.service;
 
-import com.umc.bscene.domain.auth.dto.request.TermAgreementRequest;
-import com.umc.bscene.domain.auth.dto.response.LoginUserResponse;
-import com.umc.bscene.domain.auth.dto.response.TokenResponse;
-import com.umc.bscene.domain.auth.term.entity.UserTerms;
-import com.umc.bscene.domain.auth.term.repository.UserTermsRepository;
+import com.umc.bscene.domain.auth.dto.auth.request.TermAgreementRequest;
+import com.umc.bscene.domain.auth.dto.auth.response.LoginUserResponse;
+import com.umc.bscene.domain.auth.dto.auth.response.TokenResponse;
+import com.umc.bscene.domain.auth.entity.term.UserTerms;
+import com.umc.bscene.domain.auth.repository.term.UserTermsRepository;
 import com.umc.bscene.domain.oauth.dto.request.OauthSignupRequest;
 import com.umc.bscene.domain.oauth.dto.response.OauthLoginResponse;
 import com.umc.bscene.domain.oauth.entity.OauthAccount;

@@ -1,6 +1,6 @@
 package com.umc.bscene.domain.oauth.dto.response;
 
-import com.umc.bscene.domain.auth.dto.response.TokenResponse;
+import com.umc.bscene.domain.auth.dto.auth.response.TokenResponse;
 
 /**
  * 소셜 로그인 성공 응답.
