@@ -12,6 +12,7 @@ import com.umc.bscene.domain.auth.term.entity.UserTerms;
 import com.umc.bscene.domain.auth.term.repository.UserTermsRepository;
 import com.umc.bscene.domain.user.entity.User;
 import com.umc.bscene.domain.user.enums.Gender;
+import com.umc.bscene.domain.user.enums.UserStatus;
 import com.umc.bscene.domain.user.repository.UserRepository;
 import com.umc.bscene.global.security.entity.AuthMember;
 import com.umc.bscene.global.security.util.JwtUtil;
@@ -156,6 +157,7 @@ public class AuthService {
         userTermsRepository.saveAll(userTerms);
     }
 
+    // 로그인
     @Transactional
     public TokenResponse login(LoginRequest request) {
         LocalCredential localCredential = localCredentialRepository.findByLoginId(request.loginId())
@@ -166,6 +168,8 @@ public class AuthService {
         }
 
         User user = localCredential.getUser();
+        validateUserStatus(user);
+
         AuthMember authMember = new AuthMember(user);
 
         String accessToken = jwtUtil.createAccessToken(authMember);
@@ -241,6 +245,21 @@ public class AuthService {
         return visiblePart + "***" + domainPart;
     }
 
+    private void validateUserStatus(User user) {
+        if (user.getStatus() == UserStatus.SUSPENDED) {
+            throw new AuthException(AuthErrorCode.SUSPENDED_ACCOUNT);
+        }
+
+        if (user.getStatus() == UserStatus.INACTIVE) {
+            throw new AuthException(AuthErrorCode.INACTIVE_ACCOUNT);
+        }
+
+        if (user.getStatus() == UserStatus.DELETED) {
+            throw new AuthException(AuthErrorCode.DELETED_ACCOUNT);
+        }
+    }
+
+    // 비밀번호 재설정
     @Transactional
     public void resetPassword(PasswordResetRequest request) {
         phoneVerificationService.validateVerified(PhoneVerificationPurpose.PASSWORD_RESET, request.phone());
