@@ -7,6 +7,39 @@ services:
     env_file: ./.env
     expose:
       - "8080"
+    depends_on:
+      - redis
+    networks:
+      - bscene
+
+  redis:
+    image: redis:7-alphine
+    container_name: redis
+    restart: always
+    expose:
+      - "6379"
+    volumes:
+      - redis-data:/data
+    command:
+      - "redis-server"
+      - "--appendonly"
+      - "yes"
+      - "--maxmemory"
+      - "192mb"
+      - "--maxmemory-policy"
+      - "volatile-ttl"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 256M
+        reservations:
+          memory: 64M
     networks:
       - bscene
 
@@ -37,3 +70,6 @@ services:
 networks:
   bscene:
     driver: bridge
+
+volumes:
+  redis-data:
