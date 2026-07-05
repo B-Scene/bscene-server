@@ -4,7 +4,7 @@ import com.umc.bscene.domain.auth.phoneverification.dto.request.PhoneVerificatio
 import com.umc.bscene.domain.auth.phoneverification.dto.request.PhoneVerificationVerifyRequest;
 import com.umc.bscene.domain.auth.phoneverification.dto.response.PhoneVerificationSendResponse;
 import com.umc.bscene.domain.auth.phoneverification.enums.PhoneVerificationPurpose;
-import com.umc.bscene.domain.auth.phoneverification.exception.PhoneVerificationException;
+import com.umc.bscene.domain.auth.exception.verification.PhoneVerificationException;
 import com.umc.bscene.domain.auth.phoneverification.response.code.PhoneVerificationErrorCode;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;

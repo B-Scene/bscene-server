@@ -3,7 +3,7 @@ package com.umc.bscene.domain.auth.service.auth;
 import com.umc.bscene.domain.auth.dto.request.*;
 import com.umc.bscene.domain.auth.dto.response.*;
 import com.umc.bscene.domain.auth.entity.credential.LocalCredential;
-import com.umc.bscene.domain.auth.exception.AuthException;
+import com.umc.bscene.domain.auth.exception.auth.AuthException;
 import com.umc.bscene.domain.auth.repository.credential.LocalCredentialRepository;
 import com.umc.bscene.domain.auth.response.code.AuthErrorCode;
 import com.umc.bscene.domain.auth.phoneverification.enums.PhoneVerificationPurpose;
