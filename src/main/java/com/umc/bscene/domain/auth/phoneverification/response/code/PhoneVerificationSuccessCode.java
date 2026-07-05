@@ -1,4 +1,4 @@
-package com.umc.bscene.domain.phoneverification.response.code;
+package com.umc.bscene.domain.auth.phoneverification.response.code;
 
 import com.umc.bscene.global.response.code.BaseResponseCode;
 import lombok.Getter;

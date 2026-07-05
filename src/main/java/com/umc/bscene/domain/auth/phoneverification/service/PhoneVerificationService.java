@@ -1,11 +1,11 @@
-package com.umc.bscene.domain.phoneverification.service;
+package com.umc.bscene.domain.auth.phoneverification.service;
 
-import com.umc.bscene.domain.phoneverification.dto.request.PhoneVerificationSendRequest;
-import com.umc.bscene.domain.phoneverification.dto.request.PhoneVerificationVerifyRequest;
-import com.umc.bscene.domain.phoneverification.dto.response.PhoneVerificationSendResponse;
-import com.umc.bscene.domain.phoneverification.enums.PhoneVerificationPurpose;
-import com.umc.bscene.domain.phoneverification.exception.PhoneVerificationException;
-import com.umc.bscene.domain.phoneverification.response.code.PhoneVerificationErrorCode;
+import com.umc.bscene.domain.auth.phoneverification.dto.request.PhoneVerificationSendRequest;
+import com.umc.bscene.domain.auth.phoneverification.dto.request.PhoneVerificationVerifyRequest;
+import com.umc.bscene.domain.auth.phoneverification.dto.response.PhoneVerificationSendResponse;
+import com.umc.bscene.domain.auth.phoneverification.enums.PhoneVerificationPurpose;
+import com.umc.bscene.domain.auth.phoneverification.exception.PhoneVerificationException;
+import com.umc.bscene.domain.auth.phoneverification.response.code.PhoneVerificationErrorCode;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.StringRedisTemplate;

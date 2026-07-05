@@ -1,6 +1,6 @@
-package com.umc.bscene.domain.phoneverification.dto.request;
+package com.umc.bscene.domain.auth.phoneverification.dto.request;
 
-import com.umc.bscene.domain.phoneverification.enums.PhoneVerificationPurpose;
+import com.umc.bscene.domain.auth.phoneverification.enums.PhoneVerificationPurpose;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;

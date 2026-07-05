@@ -1,4 +1,4 @@
-package com.umc.bscene.domain.phoneverification.exception;
+package com.umc.bscene.domain.auth.phoneverification.exception;
 
 import com.umc.bscene.global.exception.BaseException;
 import com.umc.bscene.global.response.code.BaseResponseCode;
