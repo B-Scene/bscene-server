@@ -1,4 +1,4 @@
-package com.umc.bscene.domain.auth.phoneverification.enums;
+package com.umc.bscene.domain.auth.enums.verification;
 
 public enum PhoneVerificationPurpose {
     SIGNUP,
