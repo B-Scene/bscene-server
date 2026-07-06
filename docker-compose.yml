@@ -71,13 +71,13 @@ services:
     image: bluenviron/mediamtx:1.19.2
     container_name: mediamtx
     restart: always
-    env_file: ./.env
     environment:
-      - MTX_RTSPTRANSPORTS=tcp
+      - MTX_WEBRTCADDITIONALHOSTS=${SERVER_HOST}
     ports:
-      - "8554:8554"
+      - "8189:8189/udp"
     expose:
-      - "8888"
+      - "8889"  # nginx 접근
+      - "9997"  # spring 접근
     volumes:
       - ./mediamtx/mediamtx.yml:/mediamtx.yml:ro
     deploy:
