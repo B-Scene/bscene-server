@@ -20,6 +20,7 @@ public enum PermitAllUri {
     OAUTH2_AUTHORIZATION("/oauth2/**"),
     OAUTH2_CALLBACK("/oauth/callback/**"),
     OAUTH_SIGNUP("/auth/oauth/signup"),
+    OAUTH_EXCHANGE("/auth/oauth/exchange"),
 
     GENRES("/genres"),
     REGIONS("/regions");
