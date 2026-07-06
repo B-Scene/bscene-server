@@ -58,6 +58,7 @@ services:
       - /var/www/certbot:/var/www/certbot:ro
     depends_on:
       - spring
+      - mediamtx
     networks:
       - bscene
     command: >
