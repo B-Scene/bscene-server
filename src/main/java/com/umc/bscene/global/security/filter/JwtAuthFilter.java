@@ -47,19 +47,22 @@ public class JwtAuthFilter extends OncePerRequestFilter {
             // Bearer이면 토큰만 추출
             token = token.replace("Bearer ", "");
 
-            // AccessToken 검증 후 userId 추출
-            String userId = jwtUtil.validateAccessTokenAndGetUserId(token);
+            // AccessToken 검증하기
+            if (jwtUtil.isValid(token) && "access".equals(jwtUtil.getType(token))) {
+                // 토큰에서 userId 추출
+                String userId = jwtUtil.getUserId(token);
 
-            // userId로 회원 조회 후 인증 객체 생성
-            UserDetails user = customUserDetailsService.loadUserByUsername(userId);
-            Authentication auth = new UsernamePasswordAuthenticationToken(
-                    user,
-                    null,
-                    user.getAuthorities()
-            );
+                // userId로 회원 조회 후 인증 객체 생성
+                UserDetails user = customUserDetailsService.loadUserByUsername(userId);
+                Authentication auth = new UsernamePasswordAuthenticationToken(
+                        user,
+                        null,
+                        user.getAuthorities()
+                );
 
-            // 인증 완료 후 SecurityContextHolder에 등록
-            SecurityContextHolder.getContext().setAuthentication(auth);
+                // 인증 완료 후 SecurityContextHolder에 등록
+                SecurityContextHolder.getContext().setAuthentication(auth);
+            }
 
             filterChain.doFilter(request, response);
         } catch (JwtAuthenticationException e) {
