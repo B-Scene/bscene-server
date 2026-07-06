@@ -1,0 +1,22 @@
+package com.umc.bscene.domain.performance.response.code;
+
+import com.umc.bscene.global.response.code.BaseResponseCode;
+import lombok.Getter;
+import lombok.RequiredArgsConstructor;
+
+import static com.umc.bscene.global.constant.StaticValue.*;
+
+@Getter
+@RequiredArgsConstructor
+public enum PerformanceErrorCode implements BaseResponseCode {
+
+    PAST_DATE_NOT_ALLOWED(BAD_REQUEST, "SHOW400_1", "지난 날짜는 등록할 수 없어요."),
+
+    NOT_PERFORMANCE_BAND_MEMBER(FORBIDDEN, "SHOW403_1", "공연에 대한 권한이 없어요."),
+
+    PERFORMANCE_NOT_FOUND(NOT_FOUND, "SHOW404_1", "존재하지 않는 공연이에요.");
+
+    private final int status;
+    private final String code;
+    private final String message;
+}
