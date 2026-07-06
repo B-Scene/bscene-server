@@ -1,10 +1,7 @@
 package com.umc.bscene.global.security.util;
 
 import com.umc.bscene.global.security.entity.AuthMember;
-import io.jsonwebtoken.Claims;
-import io.jsonwebtoken.Jws;
-import io.jsonwebtoken.JwtException;
-import io.jsonwebtoken.Jwts;
+import io.jsonwebtoken.*;
 import io.jsonwebtoken.security.Keys;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.GrantedAuthority;
@@ -161,4 +158,5 @@ public class JwtUtil {
     public Long getRefreshTokenExpiration() {
         return refreshExpiration.toMillis();
     }
+
 }

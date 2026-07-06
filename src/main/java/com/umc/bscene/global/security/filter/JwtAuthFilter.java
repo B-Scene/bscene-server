@@ -2,7 +2,9 @@ package com.umc.bscene.global.security.filter;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.umc.bscene.global.response.ErrorResponse;
+import com.umc.bscene.global.response.code.BaseResponseCode;
 import com.umc.bscene.global.response.code.GeneralErrorCode;
+import com.umc.bscene.global.security.exception.JwtAuthenticationException;
 import com.umc.bscene.global.security.service.CustomUserDetailsService;
 import com.umc.bscene.global.security.util.JwtUtil;
 import jakarta.servlet.FilterChain;
@@ -13,8 +15,8 @@ import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
-import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
@@ -64,15 +66,20 @@ public class JwtAuthFilter extends OncePerRequestFilter {
 
             filterChain.doFilter(request, response);
         } catch (Exception e) {
-            ObjectMapper mapper = new ObjectMapper();
-            GeneralErrorCode code = GeneralErrorCode.UNAUTHORIZED_ERROR;
-
-            response.setContentType("application/json;charset=UTF-8");
-            response.setStatus(code.getStatus());
-
-            ErrorResponse<Void> errorResponse = ErrorResponse.from(code);
-
-            mapper.writeValue(response.getOutputStream(), errorResponse);
+            writeErrorResponse(response, GeneralErrorCode.UNAUTHORIZED_ERROR);
         }
+    }
+
+    private void writeErrorResponse(
+            HttpServletResponse response,
+            BaseResponseCode code
+    ) throws IOException {
+        ObjectMapper mapper = new ObjectMapper();
+        ErrorResponse<Void> errorResponse = ErrorResponse.from(code);
+
+        response.setContentType("application/json;charset=UTF-8");
+        response.setStatus(code.getStatus());
+
+        mapper.writeValue(response.getOutputStream(), errorResponse);
     }
 }
