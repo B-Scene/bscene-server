@@ -1,0 +1,7 @@
+sms:
+  mode: log
+
+coolsms:
+  api-key: dummy
+  api-secret: dummy
+  from-number: "01000000000"
