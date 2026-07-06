@@ -15,6 +15,7 @@ import java.time.LocalDateTime;
 public class AudioStream extends BaseEntity {
 
     @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name = "audio_stream_id")
     private Long id;
 
     @Column(nullable = false)
