@@ -69,4 +69,4 @@ jwt:
       signup: 600000 # 10분 (소셜 신규 유저 임시 토큰)
 
 cors:
-  allowed-origins: ${FRONT_ORIGIN:http:localhost:5173}
+  allowed-origins: ${FRONT_ORIGIN:http://localhost:5173}
