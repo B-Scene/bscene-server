@@ -157,10 +157,24 @@ public class BandService {
         validateBandMember(band, userId);
         validateEtcMusicLink(request);
 
-        MusicLink musicLink = musicLinkRepository.findByBand_Id(bandId)
-                .orElseGet(() -> musicLinkRepository.save(MusicLink.builder().band(band).build()));
+        MusicLink musicLink = musicLinkRepository.findByBand_Id(bandId).orElse(null);
 
-        musicLink.update(
+        // 기존 링크: 더티체킹
+        if (musicLink != null) {
+            musicLink.update(
+                    request.spotifyUrl(),
+                    request.youtubeUrl(),
+                    request.soundcloudUrl(),
+                    request.etcPlatform(),
+                    request.etcUrl(),
+                    request.otherUrl()
+            );
+            return MusicLinkResponse.from(musicLink);
+        }
+
+        // 신규 링크: 명시적으로 save
+        MusicLink newMusicLink = MusicLink.builder().band(band).build();
+        newMusicLink.update(
                 request.spotifyUrl(),
                 request.youtubeUrl(),
                 request.soundcloudUrl(),
@@ -169,7 +183,7 @@ public class BandService {
                 request.otherUrl()
         );
 
-        return MusicLinkResponse.from(musicLink);
+        return MusicLinkResponse.from(musicLinkRepository.save(newMusicLink));
     }
 
     private Band getBand(Long bandId) {
