@@ -65,8 +65,6 @@ public class JwtAuthFilter extends OncePerRequestFilter {
             }
 
             filterChain.doFilter(request, response);
-        } catch (JwtAuthenticationException e) {
-            writeErrorResponse(response, e.getBaseResponseCode());
         } catch (Exception e) {
             writeErrorResponse(response, GeneralErrorCode.UNAUTHORIZED_ERROR);
         }
