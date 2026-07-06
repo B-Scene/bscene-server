@@ -1,5 +1,6 @@
 package com.umc.bscene.domain.performance.entity;
 
+import com.umc.bscene.domain.band.entity.Band;
 import com.umc.bscene.domain.performance.enums.PerformanceStatus;
 import com.umc.bscene.global.entity.BaseEntity;
 import jakarta.persistence.*;
@@ -19,6 +20,11 @@ public class Performance extends BaseEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
+
+    // 공연을 등록한 밴드
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "bandId", nullable = false)
+    private Band band;
 
     @Column(nullable = false, length = 200)
     private String title;
