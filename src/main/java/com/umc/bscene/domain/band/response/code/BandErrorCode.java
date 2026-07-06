@@ -10,8 +10,11 @@ import static com.umc.bscene.global.constant.StaticValue.*;
 @RequiredArgsConstructor
 public enum BandErrorCode implements BaseResponseCode {
 
+    INVALID_ETC_MUSIC_LINK(BAD_REQUEST, "MUSIC400_1", "플랫폼과 링크를 함께 입력해주세요."),
+
     NOT_BAND_OWNER(FORBIDDEN, "BAND403_1", "밴드 오너만 수행할 수 있는 작업입니다."),
     CANNOT_REMOVE_OWNER(FORBIDDEN, "BAND403_2", "밴드 오너는 제거할 수 없습니다."),
+    NOT_BAND_MEMBER(FORBIDDEN, "MUSIC403_1", "음원 링크를 수정할 권한이 없어요."),
 
     BAND_NOT_FOUND(NOT_FOUND, "BAND404_1", "존재하지 않는 밴드입니다."),
     BAND_MEMBER_NOT_FOUND(NOT_FOUND, "BAND404_2", "존재하지 않는 밴드 멤버입니다."),
