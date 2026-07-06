@@ -3,6 +3,7 @@ package com.umc.bscene.global.config;
 import com.umc.bscene.global.security.enums.PermitAllUri;
 import com.umc.bscene.global.security.filter.JwtAuthFilter;
 import com.umc.bscene.global.security.handler.CustomAuthenticationEntryPoint;
+import com.umc.bscene.global.security.handler.OAuthFailureHandler;
 import com.umc.bscene.global.security.handler.OAuthSuccessHandler;
 import com.umc.bscene.global.security.service.CustomOAuthService;
 import com.umc.bscene.global.security.service.CustomUserDetailsService;
@@ -31,6 +32,7 @@ public class SecurityConfig {
     private final CustomUserDetailsService customUserDetailsService;
     private final CustomOAuthService customOAuthService;
     private final OAuthSuccessHandler oAuthSuccessHandler;
+    private final OAuthFailureHandler oAuthFailureHandler;
     private final CustomAuthenticationEntryPoint customAuthenticationEntryPoint;
 
     private final String[] allowUris = Arrays.stream(PermitAllUri.values())
@@ -64,8 +66,10 @@ public class SecurityConfig {
                         .redirectionEndpoint(redirect -> redirect.baseUri("/oauth/callback/*"))
                         // 소셜 유저 정보 로드
                         .userInfoEndpoint(userInfo -> userInfo.userService(customOAuthService))
-                        // 로그인 성공 시 JWT 발급 핸들러
+                        // 로그인 성공 시: 일회성 코드 발급 후 프론트로 리다이렉트
                         .successHandler(oAuthSuccessHandler)
+                        // 로그인 실패 시: 프론트로 error 실어 리다이렉트
+                        .failureHandler(oAuthFailureHandler)
                 )
 
                 // 세션 미사용

@@ -1,5 +1,7 @@
 package com.umc.bscene.domain.oauth.service;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.umc.bscene.domain.auth.dto.auth.request.TermAgreementRequest;
 import com.umc.bscene.domain.auth.dto.auth.response.LoginUserResponse;
 import com.umc.bscene.domain.auth.dto.auth.response.TokenResponse;
@@ -35,11 +37,16 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.Base64;
 import java.util.List;
+import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
 public class OauthService {
+
+    // 일회성 교환 코드 Redis 키 프리픽스 / TTL (짧게 — 리다이렉트 직후 바로 교환)
+    private static final String EXCHANGE_KEY_PREFIX = "oauth:exchange:";
+    private static final long EXCHANGE_CODE_TTL_SECONDS = 60L;
 
     private final UserRepository userRepository;
     private final OauthAccountRepository oauthAccountRepository;
@@ -47,6 +54,7 @@ public class OauthService {
     private final PhoneVerificationService phoneVerificationService;
     private final StringRedisTemplate stringRedisTemplate;
     private final JwtUtil jwtUtil;
+    private final ObjectMapper objectMapper = new ObjectMapper();
 
     // 소셜 로그인 성공 처리: 기존 유저는 토큰 발급, 신규 유저는 임시 signup 토큰 발급
     @Transactional
@@ -64,6 +72,35 @@ public class OauthService {
         }
 
         return OauthLoginResponse.ofExisting(login(member.getUser()));
+    }
+
+    // 로그인 결과를 일회성 코드에 담아 Redis에 저장(짧은 TTL). 성공 핸들러가 프론트로 code만 리다이렉트
+    public String issueExchangeCode(OauthLoginResponse result) {
+        String code = UUID.randomUUID().toString();
+        try {
+            String json = objectMapper.writeValueAsString(result);
+            stringRedisTemplate.opsForValue().set(
+                    EXCHANGE_KEY_PREFIX + code,
+                    json,
+                    Duration.ofSeconds(EXCHANGE_CODE_TTL_SECONDS)
+            );
+        } catch (JsonProcessingException e) {
+            throw new IllegalStateException("소셜 로그인 결과 직렬화에 실패했습니다.", e);
+        }
+        return code;
+    }
+
+    // 프론트가 code로 실제 로그인 결과를 교환(1회용: 조회와 동시에 삭제)
+    public OauthLoginResponse exchangeCode(String code) {
+        String json = stringRedisTemplate.opsForValue().getAndDelete(EXCHANGE_KEY_PREFIX + code);
+        if (json == null) {
+            throw new OauthException(OauthErrorCode.INVALID_EXCHANGE_CODE);
+        }
+        try {
+            return objectMapper.readValue(json, OauthLoginResponse.class);
+        } catch (JsonProcessingException e) {
+            throw new IllegalStateException("소셜 로그인 결과 역직렬화에 실패했습니다.", e);
+        }
     }
 
     // 소셜 회원가입: 임시 토큰 + 온보딩 정보로 User + OauthAccount 생성 후 토큰 발급
