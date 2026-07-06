@@ -17,6 +17,7 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.security.web.servlet.util.matcher.PathPatternRequestMatcher;
 
 import java.util.Arrays;
 
@@ -42,6 +43,10 @@ public class SecurityConfig {
 
                 // URI 허용 여부
                 .authorizeHttpRequests(requests -> requests
+                        .requestMatchers(
+                                PathPatternRequestMatcher.pathPattern("/oauth2/**"),
+                                PathPatternRequestMatcher.pathPattern("/oauth/callback")
+                        ).permitAll()
                         .requestMatchers(allowUris).permitAll()
                         .anyRequest().authenticated()
                 )
