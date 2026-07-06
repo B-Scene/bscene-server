@@ -120,11 +120,11 @@ public class BandService {
         bandMemberRepository.delete(bandMember);
     }
 
-    // 밴드 멤버 목록 조회
+    // 밴드 멤버 목록 조회 (수락한 멤버만)
     public List<BandMemberResponse> getMembers(Long bandId) {
         getBand(bandId);
 
-        return bandMemberRepository.findByBand_Id(bandId).stream()
+        return bandMemberRepository.findByBand_IdAndStatus(bandId, BandMemberStatus.ACCEPTED).stream()
                 .map(BandMemberResponse::from)
                 .toList();
     }
