@@ -17,11 +17,9 @@ public enum PermitAllUri {
 
     PHONE_VERIFICATIONS("/phone-verifications/**"),
 
-    /*
     OAUTH2_AUTHORIZATION("/oauth2/**"),
     OAUTH2_CALLBACK("/oauth/callback/**"),
     OAUTH_SIGNUP("/auth/oauth/signup"),
-    */
 
     GENRES("/genres"),
     REGIONS("/regions");
