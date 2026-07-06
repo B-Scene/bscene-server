@@ -43,10 +43,6 @@ public class SecurityConfig {
 
                 // URI 허용 여부
                 .authorizeHttpRequests(requests -> requests
-                        .requestMatchers(
-                                PathPatternRequestMatcher.pathPattern("/oauth2/**"),
-                                PathPatternRequestMatcher.pathPattern("/oauth/callback")
-                        ).permitAll()
                         .requestMatchers(allowUris).permitAll()
                         .anyRequest().authenticated()
                 )

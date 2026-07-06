@@ -1,11 +1,11 @@
+server:
+  servlet:
+    context-path: /api
+
 spring:
 
   profiles:
     active: dev
-
-  mvc:
-    servlet:
-      path: /api
 
   application:
     name: bscene
