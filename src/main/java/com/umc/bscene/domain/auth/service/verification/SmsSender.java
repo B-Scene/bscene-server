@@ -5,6 +5,7 @@ import com.umc.bscene.domain.auth.enums.code.PhoneVerificationErrorCode;
 import lombok.extern.slf4j.Slf4j;
 import net.nurigo.sdk.NurigoApp;
 import net.nurigo.sdk.message.model.Message;
+import net.nurigo.sdk.message.request.SingleMessageSendingRequest;
 import net.nurigo.sdk.message.service.DefaultMessageService;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
@@ -45,7 +46,7 @@ public class SmsSender {
         message.setText("[B:Scene] 인증번호는 " + code + "입니다.");
 
         try {
-            messageService.send(message);
+            messageService.sendOne(new SingleMessageSendingRequest(message));
         } catch (Exception e) {
             throw new PhoneVerificationException(PhoneVerificationErrorCode.SMS_SEND_FAILED);
         }
