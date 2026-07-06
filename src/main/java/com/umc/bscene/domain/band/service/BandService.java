@@ -81,6 +81,11 @@ public class BandService {
     @Transactional
     public void acceptInvite(Long userId, Long bandId) {
         BandMember bandMember = getBandMember(bandId, userId);
+
+        if (bandMember.getStatus() != BandMemberStatus.INVITED) {
+            throw new BandException(BandErrorCode.ALREADY_ACCEPTED_INVITE);
+        }
+
         bandMember.accept();
     }
 
