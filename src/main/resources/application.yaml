@@ -68,6 +68,6 @@ sms:
   mode: ${SMS_MODE:log}
 
 coolsms:
-  api-key: ${COOLSMS_API_KEY:dummy}
-  api-secret: ${COOLSMS_API_SECRET:dummy}
-  from-number: ${COOLSMS_FROM_NUMBER:01012345678}
+  api-key: ${COOLSMS_API_KEY}
+  api-secret: ${COOLSMS_API_SECRET}
+  from-number: ${COOLSMS_FROM_NUMBER}
