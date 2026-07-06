@@ -1,0 +1,24 @@
+logLevel: info
+
+# 안 쓰는 프로토콜 전부 비활성화
+rtsp: no
+rtmp: no
+hls: no
+srt: no
+
+# WebRTC (WHIP/WHEP)
+webrtc: yes
+webrtcAddress: :8889
+webrtcLocalUDPAddress: :8189
+# webrtcAdditionalHosts는 compose의 MTX_WEBRTCADDITIONALHOSTS로 주입됨
+
+# Control API (spring의 on-air 폴링용, 내부망 전용)
+api: yes
+apiAddress: :9997
+
+# 인증을 Spring에 위임
+authMethod: http
+authHTTPAddress: http://spring:8080/api/internal/mediamtx/auth
+
+paths:
+  all_others:
