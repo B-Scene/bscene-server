@@ -8,6 +8,7 @@ import com.umc.bscene.domain.band.repository.BandRepository;
 import com.umc.bscene.domain.band.response.code.BandErrorCode;
 import com.umc.bscene.domain.performance.dto.request.PerformanceCreateRequest;
 import com.umc.bscene.domain.performance.dto.request.PerformanceUpdateRequest;
+import com.umc.bscene.domain.performance.dto.response.PerformanceListResponse;
 import com.umc.bscene.domain.performance.dto.response.PerformanceResponse;
 import com.umc.bscene.domain.performance.dto.response.PerformanceSummaryResponse;
 import com.umc.bscene.domain.performance.entity.Performance;
@@ -33,7 +34,7 @@ public class PerformanceService {
 
     // 공연 등록 (밴드 멤버만 가능, 지난 날짜 등록 불가)
     @Transactional
-    public PerformanceResponse createPerformance(Long userId, Long bandId, PerformanceCreateRequest request) {
+    public PerformanceSummaryResponse createPerformance(Long userId, Long bandId, PerformanceCreateRequest request) {
         Band band = getBand(bandId);
         validateBandMember(band, userId);
         validateNotPastDate(request.performanceDate());
@@ -51,16 +52,19 @@ public class PerformanceService {
                 .posterImageUrl(request.posterImageUrl())
                 .build();
 
-        return PerformanceResponse.from(performanceRepository.save(performance));
+        return PerformanceSummaryResponse.from(performanceRepository.save(performance));
     }
 
     // 밴드의 공연 목록 조회
-    public List<PerformanceSummaryResponse> getPerformances(Long bandId) {
+    public PerformanceListResponse getPerformances(Long bandId) {
         getBand(bandId);
 
-        return performanceRepository.findByBand_IdAndStatusOrderByPerformanceDateAsc(bandId, PerformanceStatus.ACTIVE).stream()
+        List<PerformanceSummaryResponse> performances = performanceRepository
+                .findByBand_IdAndStatusOrderByPerformanceDateAsc(bandId, PerformanceStatus.ACTIVE).stream()
                 .map(PerformanceSummaryResponse::from)
                 .toList();
+
+        return PerformanceListResponse.from(performances);
     }
 
     // 공연 상세 조회

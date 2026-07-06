@@ -2,6 +2,7 @@ package com.umc.bscene.domain.performance.controller;
 
 import com.umc.bscene.domain.performance.dto.request.PerformanceCreateRequest;
 import com.umc.bscene.domain.performance.dto.request.PerformanceUpdateRequest;
+import com.umc.bscene.domain.performance.dto.response.PerformanceListResponse;
 import com.umc.bscene.domain.performance.dto.response.PerformanceResponse;
 import com.umc.bscene.domain.performance.dto.response.PerformanceSummaryResponse;
 import com.umc.bscene.domain.performance.response.code.PerformanceSuccessCode;
@@ -14,8 +15,6 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.List;
-
 @RestController
 @RequiredArgsConstructor
 public class PerformanceController {
@@ -24,13 +23,13 @@ public class PerformanceController {
 
     // 공연 등록 API (밴드 멤버만 가능)
     @PostMapping("/bands/{bandId}/performances")
-    public ResponseEntity<SuccessResponse<PerformanceResponse>> createPerformance(
+    public ResponseEntity<SuccessResponse<PerformanceSummaryResponse>> createPerformance(
             @AuthenticationPrincipal AuthMember authMember,
             @PathVariable Long bandId,
             @Valid @RequestBody PerformanceCreateRequest request
     ) {
-        PerformanceResponse response = performanceService.createPerformance(authMember.getUser().getId(), bandId, request);
-        SuccessResponse<PerformanceResponse> successResponse = SuccessResponse.of(
+        PerformanceSummaryResponse response = performanceService.createPerformance(authMember.getUser().getId(), bandId, request);
+        SuccessResponse<PerformanceSummaryResponse> successResponse = SuccessResponse.of(
                 response,
                 PerformanceSuccessCode.PERFORMANCE_CREATE_SUCCESS
         );
@@ -40,11 +39,11 @@ public class PerformanceController {
 
     // 공연 목록 조회 API (일정 탭)
     @GetMapping("/bands/{bandId}/performances")
-    public ResponseEntity<SuccessResponse<List<PerformanceSummaryResponse>>> getPerformances(
+    public ResponseEntity<SuccessResponse<PerformanceListResponse>> getPerformances(
             @PathVariable Long bandId
     ) {
-        List<PerformanceSummaryResponse> response = performanceService.getPerformances(bandId);
-        SuccessResponse<List<PerformanceSummaryResponse>> successResponse = SuccessResponse.of(
+        PerformanceListResponse response = performanceService.getPerformances(bandId);
+        SuccessResponse<PerformanceListResponse> successResponse = SuccessResponse.of(
                 response,
                 PerformanceSuccessCode.PERFORMANCE_LIST_GET_SUCCESS
         );
