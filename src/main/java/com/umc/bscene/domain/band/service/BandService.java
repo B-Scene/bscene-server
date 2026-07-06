@@ -2,15 +2,19 @@ package com.umc.bscene.domain.band.service;
 
 import com.umc.bscene.domain.band.dto.request.BandCreateRequest;
 import com.umc.bscene.domain.band.dto.request.BandMemberInviteRequest;
+import com.umc.bscene.domain.band.dto.request.MusicLinkSaveRequest;
 import com.umc.bscene.domain.band.dto.response.BandMemberResponse;
 import com.umc.bscene.domain.band.dto.response.BandMemberSearchItem;
 import com.umc.bscene.domain.band.dto.response.BandResponse;
+import com.umc.bscene.domain.band.dto.response.MusicLinkResponse;
 import com.umc.bscene.domain.band.entity.Band;
 import com.umc.bscene.domain.band.entity.BandMember;
+import com.umc.bscene.domain.band.entity.MusicLink;
 import com.umc.bscene.domain.band.enums.BandMemberStatus;
 import com.umc.bscene.domain.band.exception.BandException;
 import com.umc.bscene.domain.band.repository.BandMemberRepository;
 import com.umc.bscene.domain.band.repository.BandRepository;
+import com.umc.bscene.domain.band.repository.MusicLinkRepository;
 import com.umc.bscene.domain.band.response.code.BandErrorCode;
 import com.umc.bscene.domain.user.entity.User;
 import com.umc.bscene.domain.user.repository.UserRepository;
@@ -27,6 +31,7 @@ public class BandService {
 
     private final BandRepository bandRepository;
     private final BandMemberRepository bandMemberRepository;
+    private final MusicLinkRepository musicLinkRepository;
     private final UserRepository userRepository;
 
     // 밴드 개설 (요청자가 오너가 됨)
@@ -137,6 +142,36 @@ public class BandService {
                 .toList();
     }
 
+    // 음원 링크 조회 (없으면 빈 값 반환)
+    public MusicLinkResponse getMusicLink(Long bandId) {
+        getBand(bandId);
+
+        MusicLink musicLink = musicLinkRepository.findByBand_Id(bandId).orElse(null);
+        return MusicLinkResponse.from(musicLink);
+    }
+
+    // 음원 링크 저장 (등록/수정 upsert, 밴드 멤버만 가능)
+    @Transactional
+    public MusicLinkResponse saveMusicLink(Long userId, Long bandId, MusicLinkSaveRequest request) {
+        Band band = getBand(bandId);
+        validateBandMember(band, userId);
+        validateEtcMusicLink(request);
+
+        MusicLink musicLink = musicLinkRepository.findByBand_Id(bandId)
+                .orElseGet(() -> musicLinkRepository.save(MusicLink.builder().band(band).build()));
+
+        musicLink.update(
+                request.spotifyUrl(),
+                request.youtubeUrl(),
+                request.soundcloudUrl(),
+                request.etcPlatform(),
+                request.etcUrl(),
+                request.otherUrl()
+        );
+
+        return MusicLinkResponse.from(musicLink);
+    }
+
     private Band getBand(Long bandId) {
         return bandRepository.findById(bandId)
                 .orElseThrow(() -> new BandException(BandErrorCode.BAND_NOT_FOUND));
@@ -150,6 +185,22 @@ public class BandService {
     private void validateOwner(Band band, Long userId) {
         if (!band.getOwner().getId().equals(userId)) {
             throw new BandException(BandErrorCode.NOT_BAND_OWNER);
+        }
+    }
+
+    private void validateBandMember(Band band, Long userId) {
+        if (!bandMemberRepository.existsByBand_IdAndUser_IdAndStatus(band.getId(), userId, BandMemberStatus.ACCEPTED)) {
+            throw new BandException(BandErrorCode.NOT_BAND_MEMBER);
+        }
+    }
+
+    // etcPlatform과 etcUrl은 함께 있거나 함께 없어야 함
+    private void validateEtcMusicLink(MusicLinkSaveRequest request) {
+        boolean hasEtcPlatform = request.etcPlatform() != null;
+        boolean hasEtcUrl = request.etcUrl() != null && !request.etcUrl().isBlank();
+
+        if (hasEtcPlatform != hasEtcUrl) {
+            throw new BandException(BandErrorCode.INVALID_ETC_MUSIC_LINK);
         }
     }
 }
