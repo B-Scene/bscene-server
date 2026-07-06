@@ -18,6 +18,9 @@ public class AudioStream extends BaseEntity {
     @Column(name = "audio_stream_id")
     private Long id;
 
+    // userId이지만, 제약 조건은 명시하지 X. 애플리케이션 단에서 정합성 보장
+    private Long broadcasterId;
+
     @Column(nullable = false)
     private String path;
 
