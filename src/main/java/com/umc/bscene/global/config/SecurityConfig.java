@@ -2,6 +2,7 @@ package com.umc.bscene.global.config;
 
 import com.umc.bscene.global.security.enums.PermitAllUri;
 import com.umc.bscene.global.security.filter.JwtAuthFilter;
+import com.umc.bscene.global.security.handler.CustomAuthenticationEntryPoint;
 import com.umc.bscene.global.security.handler.OAuthSuccessHandler;
 import com.umc.bscene.global.security.service.CustomOAuthService;
 import com.umc.bscene.global.security.service.CustomUserDetailsService;
@@ -18,7 +19,6 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
-import org.springframework.security.web.servlet.util.matcher.PathPatternRequestMatcher;
 
 import java.util.Arrays;
 
@@ -31,6 +31,7 @@ public class SecurityConfig {
     private final CustomUserDetailsService customUserDetailsService;
     private final CustomOAuthService customOAuthService;
     private final OAuthSuccessHandler oAuthSuccessHandler;
+    private final CustomAuthenticationEntryPoint customAuthenticationEntryPoint;
 
     private final String[] allowUris = Arrays.stream(PermitAllUri.values())
             .map(PermitAllUri::getUri)
@@ -70,6 +71,11 @@ public class SecurityConfig {
                 // 세션 미사용
                 .sessionManagement(session -> session
                         .sessionCreationPolicy(SessionCreationPolicy.STATELESS)
+                )
+
+                // 인증 예외 응답 설정
+                .exceptionHandling(exception -> exception
+                        .authenticationEntryPoint(customAuthenticationEntryPoint)
                 )
 
                 .addFilterBefore(jwtAuthFilter(), UsernamePasswordAuthenticationFilter.class);

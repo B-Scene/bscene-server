@@ -28,6 +28,16 @@ public enum GeneralErrorCode implements BaseResponseCode{
             "COMMON_401_1",
             "인증되지 않은 유저는 해당 리소스에 접근할 수 없습니다."
     ),
+    EXPIRED_ACCESS_TOKEN(
+            UNAUTHORIZED,
+            "COMMON_401_2",
+            "Access Token이 만료되었습니다."
+    ),
+    INVALID_ACCESS_TOKEN(
+            UNAUTHORIZED,
+            "COMMON_401_3",
+            "유효하지 않은 Access Token입니다."
+    ),
     ACCESS_DENIED_REQUEST(
             FORBIDDEN,
             "COMMON_403_1",

@@ -1,10 +1,9 @@
 package com.umc.bscene.global.security.util;
 
+import com.umc.bscene.global.response.code.GeneralErrorCode;
 import com.umc.bscene.global.security.entity.AuthMember;
-import io.jsonwebtoken.Claims;
-import io.jsonwebtoken.Jws;
-import io.jsonwebtoken.JwtException;
-import io.jsonwebtoken.Jwts;
+import com.umc.bscene.global.security.exception.JwtAuthenticationException;
+import io.jsonwebtoken.*;
 import io.jsonwebtoken.security.Keys;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.GrantedAuthority;
@@ -160,5 +159,28 @@ public class JwtUtil {
     // RefreshToken 만료 시간 반환
     public Long getRefreshTokenExpiration() {
         return refreshExpiration.toMillis();
+    }
+
+    /**
+     * AccessToken을 검증하고 subject에 담긴 userId를 반환
+     *
+     * @param token 검증할 AccessToken
+     * @return 토큰 subject에 담긴 userId
+     */
+    public String validateAccessTokenAndGetUserId(String token) {
+        try {
+            Jws<Claims> claims = getClaims(token);
+            String type = claims.getPayload().get("type", String.class);
+
+            if (!"access".equals(type)) {
+                throw new JwtAuthenticationException(GeneralErrorCode.INVALID_ACCESS_TOKEN);
+            }
+
+            return claims.getPayload().getSubject();
+        } catch (ExpiredJwtException e) {
+            throw new JwtAuthenticationException(GeneralErrorCode.EXPIRED_ACCESS_TOKEN);
+        } catch (JwtException | IllegalArgumentException e) {
+            throw new JwtAuthenticationException(GeneralErrorCode.INVALID_ACCESS_TOKEN);
+        }
     }
 }
