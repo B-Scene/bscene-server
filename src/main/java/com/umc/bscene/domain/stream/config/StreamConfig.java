@@ -1,30 +1,66 @@
 package com.umc.bscene.domain.stream.config;
 
 import com.umc.bscene.domain.stream.controller.MediaMtxController;
+import com.umc.bscene.domain.stream.dto.response.BandInfoForGetLiveResponse;
+import com.umc.bscene.domain.stream.port.BandMemberPort;
 import com.umc.bscene.domain.stream.repository.AudioStreamRepository;
 import com.umc.bscene.domain.stream.repository.StreamMemberRepository;
+import com.umc.bscene.domain.stream.service.MediaMtxLivePoller;
 import com.umc.bscene.domain.stream.service.StreamService;
 import com.umc.bscene.domain.stream.service.StreamServiceImpl;
 import com.umc.bscene.global.security.util.JwtUtil;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.data.redis.core.StringRedisTemplate;
+import org.springframework.web.client.RestClient;
+
+import java.util.List;
+import java.util.Set;
 
 @Configuration
 public class StreamConfig {
+
+    @Bean
+    public RestClient mtxRestClient(
+           @Value("${mediamtx.api-url}") String apiUrl
+    ) {
+        return RestClient.builder().baseUrl(apiUrl).build();
+    }
+
+    @Bean
+    public MediaMtxLivePoller mediaMtxLivePoller(
+            RestClient mtxRestClient,
+            StreamService streamService
+    ) {
+        return new MediaMtxLivePoller(mtxRestClient, streamService);
+    }
+
+    // FIXME: BandMemberPort를 빈으로 등록하기 위한 Dummy 익명 클래스 작성
+    @Bean
+    public BandMemberPort bandMemberPort() {
+        return new BandMemberPort() {
+            @Override
+            public List<BandInfoForGetLiveResponse> getBandNameWithBandProfileByBroadcasterId(Set<Long> broadcasterIds) {
+                return List.of();
+            }
+        };
+    }
 
     @Bean
     public StreamService streamService(
             JwtUtil jwtUtil,
             AudioStreamRepository audioStreamRepository,
             StreamMemberRepository streamMemberRepository,
-            StringRedisTemplate stringRedisTemplate
+            StringRedisTemplate stringRedisTemplate,
+            BandMemberPort bandMemberPort
     ) {
         return new StreamServiceImpl(
                 jwtUtil,
                 audioStreamRepository,
                 streamMemberRepository,
-                stringRedisTemplate
+                stringRedisTemplate,
+                bandMemberPort
         );
     }
 
