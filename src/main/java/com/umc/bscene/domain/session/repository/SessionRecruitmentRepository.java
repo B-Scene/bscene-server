@@ -7,6 +7,7 @@ import com.umc.bscene.domain.session.enums.SessionRegion;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -16,16 +17,21 @@ public interface SessionRecruitmentRepository extends JpaRepository<SessionRecru
     Optional<SessionRecruitment> findBySessionRecruitmentIdAndDeletedAtIsNull(Long sessionRecruitmentId);
 
     // 전체 조회
-    List<SessionRecruitment> findByDeletedAtIsNullOrderBySessionRecruitmentIdDesc(Pageable pageable);
+    List<SessionRecruitment> findByDeletedAtIsNullAndDeadlineAtAfterOrderBySessionRecruitmentIdDesc(
+            LocalDateTime now,
+            Pageable pageable
+    );
 
     // 전체 조회 + 커서
-    List<SessionRecruitment> findByDeletedAtIsNullAndSessionRecruitmentIdLessThanOrderBySessionRecruitmentIdDesc(
+    List<SessionRecruitment> findByDeletedAtIsNullAndDeadlineAtAfterAndSessionRecruitmentIdLessThanOrderBySessionRecruitmentIdDesc(
+            LocalDateTime now,
             Long cursorId,
             Pageable pageable
     );
 
     // 필터 조회
-    List<SessionRecruitment> findByDeletedAtIsNullAndPartAndGenreAndRegionOrderBySessionRecruitmentIdDesc(
+    List<SessionRecruitment> findByDeletedAtIsNullAndDeadlineAtAfterAndPartAndGenreAndRegionOrderBySessionRecruitmentIdDesc(
+            LocalDateTime now,
             Part part,
             SessionGenre genre,
             SessionRegion region,
@@ -33,7 +39,8 @@ public interface SessionRecruitmentRepository extends JpaRepository<SessionRecru
     );
 
     // 필터 조회 + 커서
-    List<SessionRecruitment> findByDeletedAtIsNullAndPartAndGenreAndRegionAndSessionRecruitmentIdLessThanOrderBySessionRecruitmentIdDesc(
+    List<SessionRecruitment> findByDeletedAtIsNullAndDeadlineAtAfterAndPartAndGenreAndRegionAndSessionRecruitmentIdLessThanOrderBySessionRecruitmentIdDesc(
+            LocalDateTime now,
             Part part,
             SessionGenre genre,
             SessionRegion region,
@@ -42,13 +49,15 @@ public interface SessionRecruitmentRepository extends JpaRepository<SessionRecru
     );
 
     // 검색어 조회
-    List<SessionRecruitment> findByDeletedAtIsNullAndRecruitmentTitleContainingOrderBySessionRecruitmentIdDesc(
+    List<SessionRecruitment> findByDeletedAtIsNullAndDeadlineAtAfterAndRecruitmentTitleContainingOrderBySessionRecruitmentIdDesc(
+            LocalDateTime now,
             String keyword,
             Pageable pageable
     );
 
     // 검색어 조회 + 커서
-    List<SessionRecruitment> findByDeletedAtIsNullAndRecruitmentTitleContainingAndSessionRecruitmentIdLessThanOrderBySessionRecruitmentIdDesc(
+    List<SessionRecruitment> findByDeletedAtIsNullAndDeadlineAtAfterAndRecruitmentTitleContainingAndSessionRecruitmentIdLessThanOrderBySessionRecruitmentIdDesc(
+            LocalDateTime now,
             String keyword,
             Long cursorId,
             Pageable pageable

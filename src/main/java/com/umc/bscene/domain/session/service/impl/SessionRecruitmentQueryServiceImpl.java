@@ -14,6 +14,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
 
@@ -35,6 +36,7 @@ public class SessionRecruitmentQueryServiceImpl implements SessionRecruitmentQue
     ) {
         int pageSize = size == null ? 10 : size;
         PageRequest pageRequest = PageRequest.of(0, pageSize + 1);
+        LocalDateTime now = LocalDateTime.now();
 
         List<SessionRecruitment> recruitments = findRecruitments(
                 part,
@@ -42,7 +44,8 @@ public class SessionRecruitmentQueryServiceImpl implements SessionRecruitmentQue
                 region,
                 keyword,
                 cursorId,
-                pageRequest
+                pageRequest,
+                now
         );
 
         boolean hasNext = recruitments.size() > pageSize;
@@ -73,7 +76,8 @@ public class SessionRecruitmentQueryServiceImpl implements SessionRecruitmentQue
             SessionRegion region,
             String keyword,
             Long cursorId,
-            PageRequest pageRequest
+            PageRequest pageRequest,
+            LocalDateTime now
     ) {
         boolean hasFilter = part != null && genre != null && region != null;
         boolean hasKeyword = keyword != null && !keyword.isBlank();
@@ -82,7 +86,8 @@ public class SessionRecruitmentQueryServiceImpl implements SessionRecruitmentQue
         if (hasFilter) {
             if (hasCursor) {
                 return sessionRecruitmentRepository
-                        .findByDeletedAtIsNullAndPartAndGenreAndRegionAndSessionRecruitmentIdLessThanOrderBySessionRecruitmentIdDesc(
+                        .findByDeletedAtIsNullAndDeadlineAtAfterAndPartAndGenreAndRegionAndSessionRecruitmentIdLessThanOrderBySessionRecruitmentIdDesc(
+                                now,
                                 part,
                                 genre,
                                 region,
@@ -92,7 +97,8 @@ public class SessionRecruitmentQueryServiceImpl implements SessionRecruitmentQue
             }
 
             return sessionRecruitmentRepository
-                    .findByDeletedAtIsNullAndPartAndGenreAndRegionOrderBySessionRecruitmentIdDesc(
+                    .findByDeletedAtIsNullAndDeadlineAtAfterAndPartAndGenreAndRegionOrderBySessionRecruitmentIdDesc(
+                            now,
                             part,
                             genre,
                             region,
@@ -103,7 +109,8 @@ public class SessionRecruitmentQueryServiceImpl implements SessionRecruitmentQue
         if (hasKeyword) {
             if (hasCursor) {
                 return sessionRecruitmentRepository
-                        .findByDeletedAtIsNullAndRecruitmentTitleContainingAndSessionRecruitmentIdLessThanOrderBySessionRecruitmentIdDesc(
+                        .findByDeletedAtIsNullAndDeadlineAtAfterAndRecruitmentTitleContainingAndSessionRecruitmentIdLessThanOrderBySessionRecruitmentIdDesc(
+                                now,
                                 keyword,
                                 cursorId,
                                 pageRequest
@@ -111,7 +118,8 @@ public class SessionRecruitmentQueryServiceImpl implements SessionRecruitmentQue
             }
 
             return sessionRecruitmentRepository
-                    .findByDeletedAtIsNullAndRecruitmentTitleContainingOrderBySessionRecruitmentIdDesc(
+                    .findByDeletedAtIsNullAndDeadlineAtAfterAndRecruitmentTitleContainingOrderBySessionRecruitmentIdDesc(
+                            now,
                             keyword,
                             pageRequest
                     );
@@ -119,14 +127,18 @@ public class SessionRecruitmentQueryServiceImpl implements SessionRecruitmentQue
 
         if (hasCursor) {
             return sessionRecruitmentRepository
-                    .findByDeletedAtIsNullAndSessionRecruitmentIdLessThanOrderBySessionRecruitmentIdDesc(
+                    .findByDeletedAtIsNullAndDeadlineAtAfterAndSessionRecruitmentIdLessThanOrderBySessionRecruitmentIdDesc(
+                            now,
                             cursorId,
                             pageRequest
                     );
         }
 
         return sessionRecruitmentRepository
-                .findByDeletedAtIsNullOrderBySessionRecruitmentIdDesc(pageRequest);
+                .findByDeletedAtIsNullAndDeadlineAtAfterOrderBySessionRecruitmentIdDesc(
+                        now,
+                        pageRequest
+                );
     }
 
     private SessionRecruitmentListItemResponse toListItemResponse(SessionRecruitment recruitment) {

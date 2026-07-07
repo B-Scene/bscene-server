@@ -18,6 +18,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
+
 @Service
 @RequiredArgsConstructor
 @Transactional
@@ -40,6 +42,8 @@ public class SessionRecruitmentCommandServiceImpl implements SessionRecruitmentC
                 .orElseThrow(() -> new BandException(BandErrorCode.BAND_MEMBER_NOT_FOUND));
 
         Band band = bandMember.getBand();
+
+        validateDeadlineAt(request.getDeadlineAt());
 
         SessionRecruitment recruitment = SessionRecruitment.builder()
                 .band(band)
@@ -79,6 +83,8 @@ public class SessionRecruitmentCommandServiceImpl implements SessionRecruitmentC
                 )
                 .orElseThrow(() -> new BandProfileException(SessionErrorCode.BAND_PERMISSION_DENIED));
 
+        validateDeadlineAt(request.getDeadlineAt());
+
         recruitment.update(
                 request.getRecruitmentTitle(),
                 request.getContent(),
@@ -94,6 +100,7 @@ public class SessionRecruitmentCommandServiceImpl implements SessionRecruitmentC
 
         return SessionRecruitmentCreateResponse.from(recruitment);
     }
+
     @Override
     public void deleteSessionRecruitment(
             Long userId,
@@ -113,5 +120,11 @@ public class SessionRecruitmentCommandServiceImpl implements SessionRecruitmentC
                 .orElseThrow(() -> new BandProfileException(SessionErrorCode.BAND_PERMISSION_DENIED));
 
         sessionRecruitmentRepository.delete(recruitment);
+    }
+
+    private void validateDeadlineAt(LocalDateTime deadlineAt) {
+        if (!deadlineAt.isAfter(LocalDateTime.now())) {
+            throw new BandProfileException(SessionErrorCode.INVALID_SESSION_RECRUITMENT_DEADLINE);
+        }
     }
 }
