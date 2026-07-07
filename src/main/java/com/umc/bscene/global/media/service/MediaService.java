@@ -1,8 +1,8 @@
-package com.umc.bscene.domain.media.service;
+package com.umc.bscene.global.media.service;
 
-import com.umc.bscene.domain.media.dto.request.MediaPresignedUrlRequest;
-import com.umc.bscene.domain.media.dto.response.MediaPresignedUrlResponse;
-import com.umc.bscene.domain.media.enums.MediaCategory;
+import com.umc.bscene.global.media.dto.request.MediaPresignedUrlRequest;
+import com.umc.bscene.global.media.dto.response.MediaPresignedUrlResponse;
+import com.umc.bscene.global.media.enums.MediaCategory;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;

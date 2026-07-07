@@ -1,9 +1,9 @@
-package com.umc.bscene.domain.media.controller;
+package com.umc.bscene.global.media.controller;
 
-import com.umc.bscene.domain.media.dto.request.MediaPresignedUrlRequest;
-import com.umc.bscene.domain.media.dto.response.MediaPresignedUrlResponse;
-import com.umc.bscene.domain.media.response.code.MediaSuccessCode;
-import com.umc.bscene.domain.media.service.MediaService;
+import com.umc.bscene.global.media.dto.request.MediaPresignedUrlRequest;
+import com.umc.bscene.global.media.dto.response.MediaPresignedUrlResponse;
+import com.umc.bscene.global.media.response.code.MediaSuccessCode;
+import com.umc.bscene.global.media.service.MediaService;
 import com.umc.bscene.global.response.SuccessResponse;
 import com.umc.bscene.global.security.entity.AuthMember;
 import jakarta.validation.Valid;

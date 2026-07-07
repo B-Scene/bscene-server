@@ -1,4 +1,4 @@
-package com.umc.bscene.domain.media.enums;
+package com.umc.bscene.global.media.enums;
 
 // S3 key 접두사로 사용 (업로드 목적별 폴더 구분)
 public enum MediaCategory {

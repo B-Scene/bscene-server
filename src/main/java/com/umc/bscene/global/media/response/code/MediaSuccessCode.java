@@ -1,4 +1,4 @@
-package com.umc.bscene.domain.media.response.code;
+package com.umc.bscene.global.media.response.code;
 
 import com.umc.bscene.global.response.code.BaseResponseCode;
 import lombok.Getter;

@@ -1,4 +1,4 @@
-package com.umc.bscene.domain.media.dto.response;
+package com.umc.bscene.global.media.dto.response;
 
 public record MediaPresignedUrlResponse(
         // 클라이언트가 이 URL로 파일을 직접 PUT 업로드

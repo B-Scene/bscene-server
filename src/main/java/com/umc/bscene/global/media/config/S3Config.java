@@ -1,4 +1,4 @@
-package com.umc.bscene.domain.media.config;
+package com.umc.bscene.global.media.config;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
