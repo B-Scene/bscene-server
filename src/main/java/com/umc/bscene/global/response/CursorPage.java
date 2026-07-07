@@ -1,5 +1,6 @@
 package com.umc.bscene.global.response;
 
+import java.util.Collections;
 import java.util.List;
 
 public class CursorPage<T> {
@@ -27,5 +28,9 @@ public class CursorPage<T> {
 
     public static <T> CursorPage<T> ofLastPage(List<T> items) {
         return new CursorPage<>(items, new PageInfo(null, false));
+    }
+
+    public static <T> CursorPage<T> empty() {
+        return new CursorPage<>(Collections.emptyList(), new PageInfo(null, false));
     }
 }
