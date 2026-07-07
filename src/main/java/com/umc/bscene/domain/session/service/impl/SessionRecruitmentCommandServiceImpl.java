@@ -43,6 +43,7 @@ public class SessionRecruitmentCommandServiceImpl implements SessionRecruitmentC
 
         SessionRecruitment recruitment = SessionRecruitment.builder()
                 .band(band)
+                .recruitmentTitle(request.getRecruitmentTitle())
                 .content(request.getContent())
                 .part(request.getPart())
                 .skillLevel(request.getSkillLevel())
@@ -79,6 +80,7 @@ public class SessionRecruitmentCommandServiceImpl implements SessionRecruitmentC
                 .orElseThrow(() -> new BandProfileException(SessionErrorCode.BAND_PERMISSION_DENIED));
 
         recruitment.update(
+                request.getRecruitmentTitle(),
                 request.getContent(),
                 request.getPart(),
                 request.getSkillLevel(),

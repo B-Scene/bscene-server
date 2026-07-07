@@ -9,4 +9,6 @@ public interface BandProfileCommandService {
             Long userId,
             MyBandProfileUpdateRequest request
     );
+
+
 }

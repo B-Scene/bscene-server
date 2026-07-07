@@ -32,7 +32,11 @@ public enum SessionErrorCode implements BaseResponseCode {
             "INVALID_SESSION_RECRUITMENT_REQUEST",
             "세션 모집 공고 필수 입력값을 확인해주세요."
     ),
-
+    INVALID_SESSION_RECRUITMENT_FILTER(
+            HttpStatus.BAD_REQUEST.value(),
+            "INVALID_SESSION_RECRUITMENT_FILTER",
+            "유효하지 않은 세션 모집 공고 필터값입니다."
+    ),
     BAND_PERMISSION_DENIED(
             HttpStatus.FORBIDDEN.value(),
             "BAND_PERMISSION_DENIED",

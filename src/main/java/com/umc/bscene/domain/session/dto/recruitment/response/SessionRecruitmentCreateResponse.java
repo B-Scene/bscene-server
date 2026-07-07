@@ -13,6 +13,7 @@ import java.time.LocalDateTime;
 @JsonPropertyOrder({
         "sessionRecruitmentId",
         "bandId",
+        "recruitmentTitle",
         "content",
         "part",
         "skillLevel",
@@ -28,7 +29,7 @@ public class SessionRecruitmentCreateResponse {
 
     private Long sessionRecruitmentId;
     private Long bandId;
-
+    private String recruitmentTitle;
     private String content;
     private String part;
     private String skillLevel;
@@ -45,6 +46,7 @@ public class SessionRecruitmentCreateResponse {
         return SessionRecruitmentCreateResponse.builder()
                 .sessionRecruitmentId(recruitment.getSessionRecruitmentId())
                 .bandId(recruitment.getBand().getId())
+                .recruitmentTitle(recruitment.getRecruitmentTitle())
                 .content(recruitment.getContent())
                 .part(recruitment.getPart().name())
                 .skillLevel(recruitment.getSkillLevel().name())

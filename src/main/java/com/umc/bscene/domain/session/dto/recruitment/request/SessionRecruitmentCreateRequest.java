@@ -16,6 +16,8 @@ public class SessionRecruitmentCreateRequest {
     private Long bandMemberId;
 
     private String content;
+    @NotNull(message = "모집 공고 제목은 필수입니다.")
+    private String recruitmentTitle;
 
     @NotNull(message = "모집 파트는 필수입니다.")
     private Part part;

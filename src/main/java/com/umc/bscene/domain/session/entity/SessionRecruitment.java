@@ -60,11 +60,13 @@ public class SessionRecruitment extends BaseEntity {
 
     @Column
     private LocalDateTime deletedAt;
-
+    @Column(nullable = false, length = 100)
+    private String recruitmentTitle;
     public void delete() {
         this.deletedAt = LocalDateTime.now();
     }
     public void update(
+            String recruitmentTitle,
             String content,
             Part part,
             SkillLevel skillLevel,
@@ -75,6 +77,7 @@ public class SessionRecruitment extends BaseEntity {
             LocalDateTime deadlineAt,
             String qualification
     ) {
+        this.recruitmentTitle = recruitmentTitle;
         this.content = content;
         this.part = part;
         this.skillLevel = skillLevel;

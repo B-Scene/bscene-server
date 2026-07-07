@@ -18,4 +18,5 @@ public interface SessionRecruitmentCommandService {
             Long userId,
             Long sessionRecruitmentId
     );
+
 }

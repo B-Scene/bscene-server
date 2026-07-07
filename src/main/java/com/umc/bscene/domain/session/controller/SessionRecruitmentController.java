@@ -7,6 +7,11 @@ import com.umc.bscene.domain.session.enums.code.SessionSuccessCode;
 import com.umc.bscene.domain.session.service.SessionRecruitmentCommandService;
 import com.umc.bscene.global.response.SuccessResponse;
 import com.umc.bscene.global.security.entity.AuthMember;
+import com.umc.bscene.domain.session.dto.recruitment.response.SessionRecruitmentListResponse;
+import com.umc.bscene.domain.session.enums.Part;
+import com.umc.bscene.domain.session.enums.SessionGenre;
+import com.umc.bscene.domain.session.enums.SessionRegion;
+import com.umc.bscene.domain.session.service.SessionRecruitmentQueryService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -18,7 +23,7 @@ import org.springframework.web.bind.annotation.*;
 public class SessionRecruitmentController {
 
     private final SessionRecruitmentCommandService sessionRecruitmentCommandService;
-
+    private final SessionRecruitmentQueryService sessionRecruitmentQueryService;
     @PostMapping
     public SuccessResponse<SessionRecruitmentCreateResponse> createSessionRecruitment(
             @AuthenticationPrincipal AuthMember authMember,
@@ -34,7 +39,31 @@ public class SessionRecruitmentController {
                 SessionSuccessCode.SESSION_RECRUITMENT_CREATE_SUCCESS
         );
     }
+    // 세션 모집 공고 목록 조회
+    @GetMapping
+    public SuccessResponse<SessionRecruitmentListResponse> getSessionRecruitments(
+            @RequestParam(required = false) Part part,
+            @RequestParam(required = false) SessionGenre genre,
+            @RequestParam(required = false) SessionRegion region,
+            @RequestParam(required = false) String keyword,
+            @RequestParam(required = false) Long cursorId,
+            @RequestParam(defaultValue = "10") Integer size
+    ) {
+        SessionRecruitmentListResponse response =
+                sessionRecruitmentQueryService.getSessionRecruitments(
+                        part,
+                        genre,
+                        region,
+                        keyword,
+                        cursorId,
+                        size
+                );
 
+        return SuccessResponse.of(
+                response,
+                SessionSuccessCode.SESSION_RECRUITMENT_LIST_SUCCESS
+        );
+    }
     @PatchMapping("/{sessionRecruitmentId}")
     public SuccessResponse<SessionRecruitmentCreateResponse> updateSessionRecruitment(
             @AuthenticationPrincipal AuthMember authMember,
