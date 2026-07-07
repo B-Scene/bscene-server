@@ -4,7 +4,7 @@ public record BandInfoForGetLiveResponse(
         Long broadcasterId,
         BandInfo bandInfo
 ) {
-    record BandInfo(
+    public record BandInfo(
             String bandName,
             String bandProfileImageUrl
     ) {}
