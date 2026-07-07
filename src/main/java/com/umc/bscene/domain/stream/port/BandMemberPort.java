@@ -12,5 +12,5 @@ public interface BandMemberPort {
      * @param broadcasterIds 오디오 송출자의 ID를 Set으로 전달합니다.
      * @return BandInfoForGetLiveResponse를 반환해주세요.
      */
-    List<BandInfoForGetLiveResponse> getBandNameWithBandProfileByBroadcasterId(Set<String> broadcasterIds);
+    List<BandInfoForGetLiveResponse> getBandNameWithBandProfileByBroadcasterId(Set<Long> broadcasterIds);
 }
