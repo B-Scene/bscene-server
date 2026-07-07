@@ -3,8 +3,8 @@ package com.umc.bscene.domain.stream.service;
 import com.umc.bscene.domain.stream.dto.request.StreamCreateRequest;
 import com.umc.bscene.domain.stream.dto.response.LiveStreamResponse;
 import com.umc.bscene.domain.stream.dto.response.StreamCreateResponse;
+import com.umc.bscene.global.response.CursorPage;
 
-import java.util.List;
 import java.util.Set;
 
 public interface StreamService {
@@ -18,6 +18,7 @@ public interface StreamService {
     void closeStream(Long userId, String path);
 
     // 방송 상태
-    List<LiveStreamResponse> getLiveStreams();
-    void syncLiveState(Set<String> readyPath);
+    CursorPage<LiveStreamResponse> getLiveStreams(Long cursor, int size);
+
+    void syncLiveState(Set<String> readyPaths);
 }
