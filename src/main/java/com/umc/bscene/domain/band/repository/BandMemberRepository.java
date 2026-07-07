@@ -18,4 +18,18 @@ public interface BandMemberRepository extends JpaRepository<BandMember, Long> {
     List<BandMember> findByBand_IdAndStatus(Long bandId, BandMemberStatus status);
 
     Long countByBand_IdAndStatus(Long bandId, BandMemberStatus status);
+  
+    Optional<BandMember> findFirstByUser_IdAndStatus(Long userId, BandMemberStatus status);
+
+    Optional<BandMember> findByIdAndUser_IdAndStatus(
+            Long bandMemberId,
+            Long userId,
+            BandMemberStatus status
+    );
+  
+    Optional<BandMember> findByBand_IdAndUser_IdAndStatus(
+            Long bandId,
+            Long userId,
+            BandMemberStatus status
+    );
 }
