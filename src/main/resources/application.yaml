@@ -76,3 +76,10 @@ oauth:
   front-redirect-uri: ${FRONT_ORIGIN:http://localhost:5173}/oauth/callback
   # 로그인 실패 시: 프론트 로그인 페이지로 리다이렉트 (?error=코드) → 프론트가 토스트 등으로 안내
   front-failure-uri: ${FRONT_ORIGIN:http://localhost:5173}/login
+
+aws:
+  s3:
+    bucket: ${AWS_S3_BUCKET}
+    region: ${AWS_REGION:ap-northeast-2}
+    access-key: ${AWS_ACCESS_KEY_ID}
+    secret-key: ${AWS_SECRET_ACCESS_KEY}
