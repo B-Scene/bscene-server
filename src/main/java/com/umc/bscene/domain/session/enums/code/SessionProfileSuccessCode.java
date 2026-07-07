@@ -25,6 +25,12 @@ public enum SessionProfileSuccessCode implements BaseResponseCode {
             HttpStatus.OK.value(),
             "MY_SESSION_PROFILE_UPDATE_SUCCESS",
             "내 세션 프로필 저장에 성공했습니다."
+    ),
+
+    SESSION_RECRUITMENT_CREATE_SUCCESS(
+            HttpStatus.CREATED.value(),
+            "SESSION_RECRUITMENT_CREATE_SUCCESS",
+            "세션 모집 공고 등록에 성공했습니다."
     );
 
     private final int status;

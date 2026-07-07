@@ -28,7 +28,7 @@ import java.util.List;
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @Table(name = "session_profiles")
-public class SessionProfile extends BaseEntity {
+public class BandProfile extends BaseEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -64,10 +64,10 @@ public class SessionProfile extends BaseEntity {
     private LocalDateTime deletedAt;
 
     @OneToMany(mappedBy = "sessionProfile", cascade = CascadeType.ALL, orphanRemoval = true)
-    private List<SessionProfileLink> portfolioLinks = new ArrayList<>();
+    private List<BandProfileLink> portfolioLinks = new ArrayList<>();
 
     @Builder
-    private SessionProfile(
+    private BandProfile(
             Long userId,
             String nickname,
             Part part,
@@ -103,7 +103,7 @@ public class SessionProfile extends BaseEntity {
         this.portfolioLinks.clear();
     }
 
-    public void addPortfolioLink(SessionProfileLink portfolioLink) {
+    public void addPortfolioLink(BandProfileLink portfolioLink) {
         this.portfolioLinks.add(portfolioLink);
     }
 }

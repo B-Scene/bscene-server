@@ -1,0 +1,59 @@
+package com.umc.bscene.domain.session.service.impl;
+
+import com.umc.bscene.domain.band.entity.Band;
+import com.umc.bscene.domain.band.entity.BandMember;
+import com.umc.bscene.domain.band.enums.BandMemberStatus;
+import com.umc.bscene.domain.band.exception.BandException;
+import com.umc.bscene.domain.band.repository.BandMemberRepository;
+import com.umc.bscene.domain.band.response.code.BandErrorCode;
+import com.umc.bscene.domain.session.dto.recruitment.request.SessionRecruitmentCreateRequest;
+import com.umc.bscene.domain.session.dto.recruitment.response.SessionRecruitmentCreateResponse;
+import com.umc.bscene.domain.session.entity.SessionRecruitment;
+import com.umc.bscene.domain.session.repository.SessionRecruitmentRepository;
+import com.umc.bscene.domain.session.service.SessionRecruitmentCommandService;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+@Service
+@RequiredArgsConstructor
+@Transactional
+public class SessionRecruitmentCommandServiceImpl implements SessionRecruitmentCommandService {
+
+    private final SessionRecruitmentRepository sessionRecruitmentRepository;
+    private final BandMemberRepository bandMemberRepository;
+
+    @Override
+    public SessionRecruitmentCreateResponse createSessionRecruitment(
+            Long userId,
+            SessionRecruitmentCreateRequest request
+    ) {
+
+        BandMember bandMember = bandMemberRepository
+                .findByIdAndUser_IdAndStatus(
+                        request.getBandMemberId(),
+                        userId,
+                        BandMemberStatus.ACCEPTED
+                )
+                .orElseThrow(() -> new BandException(BandErrorCode.BAND_MEMBER_NOT_FOUND));
+
+        Band band = bandMember.getBand();
+
+        SessionRecruitment recruitment = SessionRecruitment.builder()
+                .band(band)
+                .content(request.getContent())
+                .part(request.getPart())
+                .skillLevel(request.getSkillLevel())
+                .genre(request.getGenre())
+                .region(request.getRegion())
+                .practiceSchedule(request.getPracticeSchedule())
+                .practicePlace(request.getPracticePlace())
+                .deadlineAt(request.getDeadlineAt())
+                .qualification(request.getQualification())
+                .build();
+
+        SessionRecruitment savedRecruitment = sessionRecruitmentRepository.save(recruitment);
+
+        return SessionRecruitmentCreateResponse.from(savedRecruitment);
+    }
+}

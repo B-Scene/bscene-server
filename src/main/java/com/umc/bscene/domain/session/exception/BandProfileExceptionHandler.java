@@ -1,6 +1,6 @@
 package com.umc.bscene.domain.session.exception;
 
-import com.umc.bscene.domain.session.controller.SessionProfileController;
+import com.umc.bscene.domain.session.controller.BandProfileController;
 import com.umc.bscene.domain.session.enums.code.SessionProfileErrorCode;
 import com.umc.bscene.global.response.ErrorResponse;
 import lombok.extern.slf4j.Slf4j;
@@ -9,9 +9,9 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
-@RestControllerAdvice(assignableTypes = SessionProfileController.class)
+@RestControllerAdvice(assignableTypes = BandProfileController.class)
 @Slf4j
-public class SessionProfileExceptionHandler {
+public class BandProfileExceptionHandler {
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<ErrorResponse<?>> handleMethodArgumentNotValidException(
