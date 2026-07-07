@@ -2,16 +2,16 @@ package com.umc.bscene.domain.band.service;
 
 import com.umc.bscene.domain.band.dto.request.BandCreateRequest;
 import com.umc.bscene.domain.band.dto.request.BandMemberInviteRequest;
+import com.umc.bscene.domain.band.dto.request.BandUpdateRequest;
 import com.umc.bscene.domain.band.dto.request.MusicLinkSaveRequest;
-import com.umc.bscene.domain.band.dto.response.BandMemberResponse;
-import com.umc.bscene.domain.band.dto.response.BandMemberSearchItem;
-import com.umc.bscene.domain.band.dto.response.BandResponse;
-import com.umc.bscene.domain.band.dto.response.MusicLinkResponse;
+import com.umc.bscene.domain.band.dto.response.*;
 import com.umc.bscene.domain.band.entity.Band;
 import com.umc.bscene.domain.band.entity.BandMember;
 import com.umc.bscene.domain.band.entity.MusicLink;
 import com.umc.bscene.domain.band.enums.BandMemberStatus;
 import com.umc.bscene.domain.band.exception.BandException;
+import com.umc.bscene.domain.band.port.FollowPort;
+import com.umc.bscene.domain.band.port.PerformancePort;
 import com.umc.bscene.domain.band.repository.BandMemberRepository;
 import com.umc.bscene.domain.band.repository.BandRepository;
 import com.umc.bscene.domain.band.repository.MusicLinkRepository;
@@ -33,6 +33,8 @@ public class BandService {
     private final BandMemberRepository bandMemberRepository;
     private final MusicLinkRepository musicLinkRepository;
     private final UserRepository userRepository;
+    private final FollowPort followPort;
+    private final PerformancePort performancePort;
 
     // 밴드 개설 (요청자가 오너가 됨)
     @Transactional
@@ -59,6 +61,54 @@ public class BandService {
         bandMemberRepository.save(ownerMembership);
 
         return BandResponse.from(savedBand);
+    }
+
+    // 밴드명 중복 체크
+    public BandNameCheckResponse checkBandName(String bandName) {
+        boolean available = !bandRepository.existsByName(bandName);
+        return new BandNameCheckResponse(available);
+    }
+
+    // 밴드 프로필 조회
+    public BandProfileResponse getBandProfile(Long bandId) {
+        Band band = getBand(bandId);
+
+        Long followerCount = followPort.countFollowersByBandId(bandId);
+        Long memberCount = bandMemberRepository.countByBand_IdAndStatus(bandId, BandMemberStatus.ACCEPTED);
+        Long performanceCount = performancePort.countPerformancesByBandId(bandId);
+
+        return BandProfileResponse.of(band, followerCount, memberCount, performanceCount);
+    }
+
+    // 밴드 프로필 수정
+    @Transactional
+    public BandProfileResponse updateBandProfile(
+            Long requesterId,
+            Long bandId,
+            BandUpdateRequest request
+    ) {
+        Band band = getBand(bandId);
+        validateOwner(band, requesterId);
+
+        if (request.name() != null
+                && !request.name().equals(band.getName())
+                && bandRepository.existsByName(request.name())) {
+            throw new BandException(BandErrorCode.DUPLICATE_BAND_NAME);
+        }
+
+        band.update(
+                request.name(),
+                request.genre(),
+                request.region(),
+                request.profileImageUrl(),
+                request.description()
+        );
+
+        Long followerCount = followPort.countFollowersByBandId(bandId);
+        Long memberCount = bandMemberRepository.countByBand_IdAndStatus(bandId, BandMemberStatus.ACCEPTED);
+        Long performanceCount = performancePort.countPerformancesByBandId(bandId);
+
+        return BandProfileResponse.of(band, followerCount, memberCount, performanceCount);
     }
 
     // 밴드 멤버 초대 (오너만 가능)
