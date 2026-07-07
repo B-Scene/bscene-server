@@ -1,5 +1,6 @@
 package com.umc.bscene.domain.session.enums;
 
+import com.fasterxml.jackson.annotation.JsonValue;
 
 public enum Part {
 
@@ -15,6 +16,8 @@ public enum Part {
         this.description = description;
     }
 
+    // JSON 응답 시 enum 이름(VOCAL)이 아닌 한글(보컬)로 반환
+    @JsonValue
     public String getDescription() {
         return description;
     }

@@ -14,7 +14,7 @@ import java.util.List;
 
 @Getter
 @NoArgsConstructor
-public class MySessionProfileUpdateRequest {
+public class MyBandProfileUpdateRequest {
 
     @NotNull(message = "세션 파트는 필수입니다.")
     private Part part;

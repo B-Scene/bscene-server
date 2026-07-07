@@ -23,6 +23,7 @@ public enum BandErrorCode implements BaseResponseCode {
     ALREADY_BAND_MEMBER(CONFLICT, "BAND409_1", "이미 밴드에 초대되었거나 소속된 사용자입니다."),
     DUPLICATE_BAND_NAME(CONFLICT, "BAND409_2", "이미 사용 중인 밴드명이에요."),
     ALREADY_ACCEPTED_MEMBER(CONFLICT, "BAND409_3", "이미 수락된 멤버는 거절할 수 없습니다."),
+    BAND_PERMISSION_DENIED(FORBIDDEN, "BAND403_3", "밴드 멤버만 사용할 수 있는 기능입니다."),
     ALREADY_ACCEPTED_INVITE(CONFLICT, "BAND409_4", "이미 수락된 초대입니다.");
 
     private final int status;

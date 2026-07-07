@@ -1,10 +1,10 @@
 package com.umc.bscene.domain.session.controller;
 
-import com.umc.bscene.domain.session.dto.profile.request.MySessionProfileUpdateRequest;
-import com.umc.bscene.domain.session.dto.profile.response.MySessionProfileResponse;
-import com.umc.bscene.domain.session.enums.code.SessionProfileSuccessCode;
-import com.umc.bscene.domain.session.service.SessionProfileCommandService;
-import com.umc.bscene.domain.session.service.SessionProfileQueryService;
+import com.umc.bscene.domain.session.dto.profile.request.MyBandProfileUpdateRequest;
+import com.umc.bscene.domain.session.dto.profile.response.MyBandProfileResponse;
+import com.umc.bscene.domain.session.enums.code.SessionSuccessCode;
+import com.umc.bscene.domain.session.service.BandProfileCommandService;
+import com.umc.bscene.domain.session.service.BandProfileQueryService;
 import com.umc.bscene.global.response.SuccessResponse;
 import com.umc.bscene.global.security.entity.AuthMember;
 import jakarta.validation.Valid;
@@ -19,46 +19,46 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/users")
-public class SessionProfileController {
+public class BandProfileController {
 
-    private final SessionProfileQueryService sessionProfileQueryService;
-    private final SessionProfileCommandService sessionProfileCommandService;
+    private final BandProfileQueryService sessionProfileQueryService;
+    private final BandProfileCommandService sessionProfileCommandService;
 
     @GetMapping("/me/session-profile")
-    public SuccessResponse<MySessionProfileResponse> getMySessionProfile(
+    public SuccessResponse<MyBandProfileResponse> getMySessionProfile(
             @AuthenticationPrincipal AuthMember authMember
     ) {
         Long userId = authMember.getUser().getId();
 
-        MySessionProfileResponse response =
+        MyBandProfileResponse response =
                 sessionProfileQueryService.getMySessionProfile(userId);
 
         if (!response.getHasProfile()) {
             return SuccessResponse.of(
                     response,
-                    SessionProfileSuccessCode.MY_SESSION_PROFILE_EMPTY
+                    SessionSuccessCode.MY_SESSION_PROFILE_EMPTY
             );
         }
 
         return SuccessResponse.of(
                 response,
-                SessionProfileSuccessCode.MY_SESSION_PROFILE_GET_SUCCESS
+                SessionSuccessCode.MY_SESSION_PROFILE_GET_SUCCESS
         );
     }
 
     @PutMapping("/me/session-profile")
-    public SuccessResponse<MySessionProfileResponse> saveMySessionProfile(
+    public SuccessResponse<MyBandProfileResponse> saveMySessionProfile(
             @AuthenticationPrincipal AuthMember authMember,
-            @Valid @RequestBody MySessionProfileUpdateRequest request
+            @Valid @RequestBody MyBandProfileUpdateRequest request
     ) {
         Long userId = authMember.getUser().getId();
 
-        MySessionProfileResponse response =
+        MyBandProfileResponse response =
                 sessionProfileCommandService.saveMySessionProfile(userId, request);
 
         return SuccessResponse.of(
                 response,
-                SessionProfileSuccessCode.MY_SESSION_PROFILE_UPDATE_SUCCESS
+                SessionSuccessCode.MY_SESSION_PROFILE_UPDATE_SUCCESS
         );
     }
 }
