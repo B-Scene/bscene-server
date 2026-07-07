@@ -44,6 +44,7 @@ public class PostService {
         Band band = getBand(bandId);
         validateBandMember(band, userId);
         validateTagCount(request.tags());
+        validateMediaUrls(request.type(), request.mediaUrls());
 
         Post post = Post.builder()
                 .band(band)
@@ -97,6 +98,7 @@ public class PostService {
         post.update(request.title(), request.description());
 
         if (request.mediaUrls() != null) {
+            validateMediaUrls(post.getType(), request.mediaUrls());
             post.clearMedia();
             addMediaList(post, request.mediaUrls());
         }
@@ -151,6 +153,26 @@ public class PostService {
     private void validateTagCount(List<String> tags) {
         if (tags != null && tags.size() > MAX_TAG_COUNT) {
             throw new PostException(PostErrorCode.TAG_LIMIT_EXCEEDED);
+        }
+    }
+
+    private void validateMediaUrls(PostType type, List<String> mediaUrls) {
+        switch (type) {
+            case PHOTO -> {
+                if (mediaUrls == null || mediaUrls.isEmpty()) {
+                    throw new PostException(PostErrorCode.PHOTO_MEDIA_REQUIRED);
+                }
+            }
+            case VIDEO -> {
+                if (mediaUrls == null || mediaUrls.size() != 1) {
+                    throw new PostException(PostErrorCode.INVALID_VIDEO_MEDIA_COUNT);
+                }
+            }
+            case TEXT -> {
+                if (mediaUrls != null && !mediaUrls.isEmpty()) {
+                    throw new PostException(PostErrorCode.TEXT_MEDIA_NOT_ALLOWED);
+                }
+            }
         }
     }
 }

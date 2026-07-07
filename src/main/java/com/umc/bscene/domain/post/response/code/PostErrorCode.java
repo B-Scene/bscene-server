@@ -11,6 +11,9 @@ import static com.umc.bscene.global.constant.StaticValue.*;
 public enum PostErrorCode implements BaseResponseCode {
 
     TAG_LIMIT_EXCEEDED(BAD_REQUEST, "POST4001", "태그는 최대 6개까지 입력할 수 있어요."),
+    PHOTO_MEDIA_REQUIRED(BAD_REQUEST, "POST4002", "사진은 미디어 URL을 1장 이상 입력해주세요."),
+    INVALID_VIDEO_MEDIA_COUNT(BAD_REQUEST, "POST4003", "영상은 미디어 URL을 1개만 입력할 수 있어요."),
+    TEXT_MEDIA_NOT_ALLOWED(BAD_REQUEST, "POST4004", "글 콘텐츠는 미디어 URL을 입력할 수 없어요."),
 
     NOT_POST_BAND_MEMBER(FORBIDDEN, "POST4031", "콘텐츠를 수정할 권한이 없어요."),
 
