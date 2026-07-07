@@ -7,8 +7,11 @@ import com.umc.bscene.domain.band.exception.BandException;
 import com.umc.bscene.domain.band.repository.BandMemberRepository;
 import com.umc.bscene.domain.band.response.code.BandErrorCode;
 import com.umc.bscene.domain.session.dto.recruitment.request.SessionRecruitmentCreateRequest;
+import com.umc.bscene.domain.session.dto.recruitment.request.SessionRecruitmentUpdateRequest;
 import com.umc.bscene.domain.session.dto.recruitment.response.SessionRecruitmentCreateResponse;
 import com.umc.bscene.domain.session.entity.SessionRecruitment;
+import com.umc.bscene.domain.session.enums.code.BandProfileErrorCode;
+import com.umc.bscene.domain.session.exception.BandProfileException;
 import com.umc.bscene.domain.session.repository.SessionRecruitmentRepository;
 import com.umc.bscene.domain.session.service.SessionRecruitmentCommandService;
 import lombok.RequiredArgsConstructor;
@@ -28,7 +31,6 @@ public class SessionRecruitmentCommandServiceImpl implements SessionRecruitmentC
             Long userId,
             SessionRecruitmentCreateRequest request
     ) {
-
         BandMember bandMember = bandMemberRepository
                 .findByIdAndUser_IdAndStatus(
                         request.getBandMemberId(),
@@ -55,5 +57,39 @@ public class SessionRecruitmentCommandServiceImpl implements SessionRecruitmentC
         SessionRecruitment savedRecruitment = sessionRecruitmentRepository.save(recruitment);
 
         return SessionRecruitmentCreateResponse.from(savedRecruitment);
+    }
+
+    @Override
+    public SessionRecruitmentCreateResponse updateSessionRecruitment(
+            Long userId,
+            Long sessionRecruitmentId,
+            SessionRecruitmentUpdateRequest request
+    ) {
+        SessionRecruitment recruitment = sessionRecruitmentRepository.findById(sessionRecruitmentId)
+                .orElseThrow(() -> new BandProfileException(BandProfileErrorCode.SESSION_RECRUITMENT_NOT_FOUND));
+
+        Band band = recruitment.getBand();
+
+        bandMemberRepository
+                .findByBand_IdAndUser_IdAndStatus(
+                        band.getId(),
+                        userId,
+                        BandMemberStatus.ACCEPTED
+                )
+                .orElseThrow(() -> new BandProfileException(BandProfileErrorCode.BAND_PERMISSION_DENIED));
+
+        recruitment.update(
+                request.getContent(),
+                request.getPart(),
+                request.getSkillLevel(),
+                request.getGenre(),
+                request.getRegion(),
+                request.getPracticeSchedule(),
+                request.getPracticePlace(),
+                request.getDeadlineAt(),
+                request.getQualification()
+        );
+
+        return SessionRecruitmentCreateResponse.from(recruitment);
     }
 }

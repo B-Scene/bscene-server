@@ -64,4 +64,25 @@ public class SessionRecruitment extends BaseEntity {
     public void delete() {
         this.deletedAt = LocalDateTime.now();
     }
+    public void update(
+            String content,
+            Part part,
+            SkillLevel skillLevel,
+            SessionGenre genre,
+            SessionRegion region,
+            String practiceSchedule,
+            String practicePlace,
+            LocalDateTime deadlineAt,
+            String qualification
+    ) {
+        this.content = content;
+        this.part = part;
+        this.skillLevel = skillLevel;
+        this.genre = genre;
+        this.region = region;
+        this.practiceSchedule = practiceSchedule;
+        this.practicePlace = practicePlace;
+        this.deadlineAt = deadlineAt;
+        this.qualification = qualification;
+    }
 }

@@ -7,12 +7,18 @@ import org.springframework.http.HttpStatus;
 
 @Getter
 @RequiredArgsConstructor
-public enum SessionProfileErrorCode implements BaseResponseCode {
+public enum BandProfileErrorCode implements BaseResponseCode {
 
     SESSION_PROFILE_NOT_FOUND(
             HttpStatus.NOT_FOUND.value(),
             "SESSION_PROFILE_NOT_FOUND",
             "세션 프로필을 찾을 수 없습니다."
+    ),
+
+    SESSION_RECRUITMENT_NOT_FOUND(
+            HttpStatus.NOT_FOUND.value(),
+            "SESSION_RECRUITMENT_NOT_FOUND",
+            "세션 모집 공고를 찾을 수 없습니다."
     ),
 
     INVALID_SESSION_PROFILE_REQUEST(
@@ -30,7 +36,7 @@ public enum SessionProfileErrorCode implements BaseResponseCode {
     BAND_PERMISSION_DENIED(
             HttpStatus.FORBIDDEN.value(),
             "BAND_PERMISSION_DENIED",
-            "세션 모집 공고를 등록할 권한이 없습니다."
+            "세션 모집 공고에 대한 권한이 없습니다."
     );
 
     private final int status;

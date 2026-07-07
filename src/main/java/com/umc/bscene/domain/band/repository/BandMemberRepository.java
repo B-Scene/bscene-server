@@ -24,4 +24,9 @@ public interface BandMemberRepository extends JpaRepository<BandMember, Long> {
             Long userId,
             BandMemberStatus status
     );
+    Optional<BandMember> findByBand_IdAndUser_IdAndStatus(
+            Long bandId,
+            Long userId,
+            BandMemberStatus status
+    );
 }
