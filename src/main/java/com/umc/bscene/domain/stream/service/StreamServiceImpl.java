@@ -6,6 +6,8 @@ import com.umc.bscene.domain.stream.dto.response.LiveStreamResponse;
 import com.umc.bscene.domain.stream.dto.response.StreamCreateResponse;
 import com.umc.bscene.domain.stream.entity.AudioStream;
 import com.umc.bscene.domain.stream.enums.StreamStatus;
+import com.umc.bscene.domain.stream.enums.code.error.StreamErrorCode;
+import com.umc.bscene.domain.stream.exception.StreamException;
 import com.umc.bscene.domain.stream.port.BandMemberPort;
 import com.umc.bscene.domain.stream.repository.AudioStreamRepository;
 import com.umc.bscene.domain.stream.repository.StreamMemberRepository;
@@ -68,8 +70,7 @@ public class StreamServiceImpl implements StreamService {
 
         // user 1명당 stream 1개만 생성 가능
         if(audioStreamRepository.existsByBroadcasterIdAndStatus(userId, StreamStatus.OPEN))
-            // FIXME: 추후에 stream 패키지까지 내린 레벨의 예외 객체로 수정 필요
-            throw new RuntimeException();
+            throw new StreamException(StreamErrorCode.DUPLICATE_LIVE_CREATE_TRY);
 
         // Path Unique 제약조건 실패 시 재생성
         AudioStream savedAudioStream = saveWithUniquePath(userId);
