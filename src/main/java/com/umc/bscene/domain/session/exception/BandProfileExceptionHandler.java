@@ -2,7 +2,7 @@ package com.umc.bscene.domain.session.exception;
 
 import com.umc.bscene.domain.session.controller.BandProfileController;
 import com.umc.bscene.domain.session.controller.SessionRecruitmentController;
-import com.umc.bscene.domain.session.enums.code.BandProfileErrorCode;
+import com.umc.bscene.domain.session.enums.code.SessionErrorCode;
 import com.umc.bscene.global.response.ErrorResponse;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
@@ -32,7 +32,7 @@ public class BandProfileExceptionHandler {
             MethodArgumentNotValidException e
     ) {
         ErrorResponse<?> errorResponse =
-                ErrorResponse.from(BandProfileErrorCode.INVALID_SESSION_RECRUITMENT_REQUEST);
+                ErrorResponse.from(SessionErrorCode.INVALID_SESSION_RECRUITMENT_REQUEST);
 
         return ResponseEntity.status(errorResponse.getStatus()).body(errorResponse);
     }

@@ -7,7 +7,7 @@ import org.springframework.http.HttpStatus;
 
 @Getter
 @RequiredArgsConstructor
-public enum BandProfileSuccessCode implements BaseResponseCode {
+public enum SessionSuccessCode implements BaseResponseCode {
 
     MY_SESSION_PROFILE_GET_SUCCESS(
             HttpStatus.OK.value(),
@@ -37,6 +37,11 @@ public enum BandProfileSuccessCode implements BaseResponseCode {
             HttpStatus.OK.value(),
             "SESSION_RECRUITMENT_UPDATE_SUCCESS",
             "세션 모집 공고 수정에 성공했습니다."
+    ),
+    SESSION_RECRUITMENT_DELETE_SUCCESS(
+            HttpStatus.OK.value(),
+            "SESSION_RECRUITMENT_DELETE_SUCCESS",
+            "세션 모집 공고 삭제에 성공했습니다."
     );
 
     private final int status;

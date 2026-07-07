@@ -14,4 +14,8 @@ public interface SessionRecruitmentCommandService {
             Long sessionRecruitmentId,
             SessionRecruitmentUpdateRequest request
     );
+    void deleteSessionRecruitment(
+            Long userId,
+            Long sessionRecruitmentId
+    );
 }

@@ -3,7 +3,7 @@ package com.umc.bscene.domain.session.controller;
 import com.umc.bscene.domain.session.dto.recruitment.request.SessionRecruitmentCreateRequest;
 import com.umc.bscene.domain.session.dto.recruitment.request.SessionRecruitmentUpdateRequest;
 import com.umc.bscene.domain.session.dto.recruitment.response.SessionRecruitmentCreateResponse;
-import com.umc.bscene.domain.session.enums.code.BandProfileSuccessCode;
+import com.umc.bscene.domain.session.enums.code.SessionSuccessCode;
 import com.umc.bscene.domain.session.service.SessionRecruitmentCommandService;
 import com.umc.bscene.global.response.SuccessResponse;
 import com.umc.bscene.global.security.entity.AuthMember;
@@ -31,7 +31,7 @@ public class SessionRecruitmentController {
 
         return SuccessResponse.of(
                 response,
-                BandProfileSuccessCode.SESSION_RECRUITMENT_CREATE_SUCCESS
+                SessionSuccessCode.SESSION_RECRUITMENT_CREATE_SUCCESS
         );
     }
 
@@ -52,7 +52,25 @@ public class SessionRecruitmentController {
 
         return SuccessResponse.of(
                 response,
-                BandProfileSuccessCode.SESSION_RECRUITMENT_UPDATE_SUCCESS
+                SessionSuccessCode.SESSION_RECRUITMENT_UPDATE_SUCCESS
         );
     }
+    @DeleteMapping("/{sessionRecruitmentId}")
+    public SuccessResponse<Void> deleteSessionRecruitment(
+            @AuthenticationPrincipal AuthMember authMember,
+            @PathVariable Long sessionRecruitmentId
+    ) {
+        Long userId = authMember.getUser().getId();
+
+        sessionRecruitmentCommandService.deleteSessionRecruitment(
+                userId,
+                sessionRecruitmentId
+        );
+
+        return new SuccessResponse<>(
+                null,
+                SessionSuccessCode.SESSION_RECRUITMENT_DELETE_SUCCESS
+        );
+    }
+
 }

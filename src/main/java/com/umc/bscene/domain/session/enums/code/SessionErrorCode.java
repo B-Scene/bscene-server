@@ -7,7 +7,7 @@ import org.springframework.http.HttpStatus;
 
 @Getter
 @RequiredArgsConstructor
-public enum BandProfileErrorCode implements BaseResponseCode {
+public enum SessionErrorCode implements BaseResponseCode {
 
     SESSION_PROFILE_NOT_FOUND(
             HttpStatus.NOT_FOUND.value(),

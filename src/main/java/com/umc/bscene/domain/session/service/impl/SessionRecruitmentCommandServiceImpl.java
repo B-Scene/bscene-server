@@ -10,7 +10,7 @@ import com.umc.bscene.domain.session.dto.recruitment.request.SessionRecruitmentC
 import com.umc.bscene.domain.session.dto.recruitment.request.SessionRecruitmentUpdateRequest;
 import com.umc.bscene.domain.session.dto.recruitment.response.SessionRecruitmentCreateResponse;
 import com.umc.bscene.domain.session.entity.SessionRecruitment;
-import com.umc.bscene.domain.session.enums.code.BandProfileErrorCode;
+import com.umc.bscene.domain.session.enums.code.SessionErrorCode;
 import com.umc.bscene.domain.session.exception.BandProfileException;
 import com.umc.bscene.domain.session.repository.SessionRecruitmentRepository;
 import com.umc.bscene.domain.session.service.SessionRecruitmentCommandService;
@@ -66,7 +66,7 @@ public class SessionRecruitmentCommandServiceImpl implements SessionRecruitmentC
             SessionRecruitmentUpdateRequest request
     ) {
         SessionRecruitment recruitment = sessionRecruitmentRepository.findById(sessionRecruitmentId)
-                .orElseThrow(() -> new BandProfileException(BandProfileErrorCode.SESSION_RECRUITMENT_NOT_FOUND));
+                .orElseThrow(() -> new BandProfileException(SessionErrorCode.SESSION_RECRUITMENT_NOT_FOUND));
 
         Band band = recruitment.getBand();
 
@@ -76,7 +76,7 @@ public class SessionRecruitmentCommandServiceImpl implements SessionRecruitmentC
                         userId,
                         BandMemberStatus.ACCEPTED
                 )
-                .orElseThrow(() -> new BandProfileException(BandProfileErrorCode.BAND_PERMISSION_DENIED));
+                .orElseThrow(() -> new BandProfileException(SessionErrorCode.BAND_PERMISSION_DENIED));
 
         recruitment.update(
                 request.getContent(),
@@ -91,5 +91,25 @@ public class SessionRecruitmentCommandServiceImpl implements SessionRecruitmentC
         );
 
         return SessionRecruitmentCreateResponse.from(recruitment);
+    }
+    @Override
+    public void deleteSessionRecruitment(
+            Long userId,
+            Long sessionRecruitmentId
+    ) {
+        SessionRecruitment recruitment = sessionRecruitmentRepository.findById(sessionRecruitmentId)
+                .orElseThrow(() -> new BandProfileException(SessionErrorCode.SESSION_RECRUITMENT_NOT_FOUND));
+
+        Band band = recruitment.getBand();
+
+        bandMemberRepository
+                .findByBand_IdAndUser_IdAndStatus(
+                        band.getId(),
+                        userId,
+                        BandMemberStatus.ACCEPTED
+                )
+                .orElseThrow(() -> new BandProfileException(SessionErrorCode.BAND_PERMISSION_DENIED));
+
+        sessionRecruitmentRepository.delete(recruitment);
     }
 }
