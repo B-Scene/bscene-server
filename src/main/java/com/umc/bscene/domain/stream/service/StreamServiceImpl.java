@@ -106,11 +106,10 @@ public class StreamServiceImpl implements StreamService {
     public void closeStream(Long userId, String path) {
 
         AudioStream audioStream = audioStreamRepository.findByPath(path)
-                .orElseThrow(RuntimeException::new);    // FIXME: 추후에 stream 패키지까지 내린 레벨의 예외 객체로 수정 필요
+                .orElseThrow(() -> new StreamException(StreamErrorCode.AUDIO_STREAM_NOT_FOUND));
 
         if(!audioStream.getBroadcasterId().equals(userId))
-            // FIXME: 추후에 stream 패키지까지 내린 레벨의 예외 객체로 수정 필요
-            throw new RuntimeException();
+            throw new StreamException(StreamErrorCode.FORBIDDEN_REQUEST);
 
         audioStream.close();                                                 // 종료 상태로 변경
         redisTemplate.delete(LIVE_KEY_PREFIX + audioStream.getPath());  // Redis도 정리
