@@ -4,5 +4,7 @@ package com.umc.bscene.global.media.enums;
 public enum MediaCategory {
     POST,
     BAND_PROFILE,
-    PERFORMANCE_POSTER
+    PERFORMANCE_POSTER,
+    USER_PROFILE,
+    ETC
 }
