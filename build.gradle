@@ -47,6 +47,10 @@ dependencies {
 	// coolsms
 	implementation 'net.nurigo:sdk:4.3.0'
 
+	// AWS S3 (presigned url)
+	implementation platform('software.amazon.awssdk:bom:2.29.52')
+	implementation 'software.amazon.awssdk:s3'
+
 	// Test Only
 	testRuntimeOnly 'com.h2database:h2'
 }
