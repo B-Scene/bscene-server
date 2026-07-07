@@ -1,11 +1,14 @@
 package com.umc.bscene.domain.session.service.impl;
 
+import com.umc.bscene.domain.session.dto.recruitment.response.SessionRecruitmentDetailResponse;
 import com.umc.bscene.domain.session.dto.recruitment.response.SessionRecruitmentListItemResponse;
 import com.umc.bscene.domain.session.dto.recruitment.response.SessionRecruitmentListResponse;
 import com.umc.bscene.domain.session.entity.SessionRecruitment;
 import com.umc.bscene.domain.session.enums.Part;
 import com.umc.bscene.domain.session.enums.SessionGenre;
 import com.umc.bscene.domain.session.enums.SessionRegion;
+import com.umc.bscene.domain.session.enums.code.SessionErrorCode;
+import com.umc.bscene.domain.session.exception.SessionException;
 import com.umc.bscene.domain.session.repository.SessionRecruitmentRepository;
 import com.umc.bscene.domain.session.service.SessionRecruitmentQueryService;
 import lombok.RequiredArgsConstructor;
@@ -67,6 +70,42 @@ public class SessionRecruitmentQueryServiceImpl implements SessionRecruitmentQue
                 .size(pageSize)
                 .nextCursor(nextCursor)
                 .hasNext(hasNext)
+                .build();
+    }
+
+    // 세션 모집 공고 상세 조회
+    @Override
+    public SessionRecruitmentDetailResponse getSessionRecruitmentDetail(Long recruitmentId) {
+
+        SessionRecruitment recruitment = sessionRecruitmentRepository.findById(recruitmentId)
+                .orElseThrow(() -> new SessionException(SessionErrorCode.SESSION_RECRUITMENT_NOT_FOUND));
+
+        return SessionRecruitmentDetailResponse.builder()
+                .sessionRecruitmentId(recruitment.getSessionRecruitmentId())
+                .recruitmentTitle(recruitment.getRecruitmentTitle())
+                .deadlineAt(recruitment.getDeadlineAt())
+                .dDay(calculateDDay(recruitment.getDeadlineAt().toLocalDate()))
+
+                // createdAt 기준 3일 이내면 true
+                .isNew(recruitment.getCreatedAt() != null
+                        && recruitment.getCreatedAt().toLocalDate().isAfter(LocalDate.now().minusDays(3)))
+
+                // 밴드 정보
+                .bandId(recruitment.getBand().getId())
+                .bandName(recruitment.getBand().getName())
+                .bandProfileImageUrl(recruitment.getBand().getProfileImageUrl())
+                .bandGenre(recruitment.getGenre().getDescription())
+                .bandRegion(recruitment.getRegion().getDescription())
+
+
+                // 모집 상세 정보
+                .content(recruitment.getContent())
+                .part(recruitment.getPart().getDescription())
+                .genre(recruitment.getGenre().getDescription())
+                .region(recruitment.getRegion().getDescription())
+                .practiceSchedule(recruitment.getPracticeSchedule())
+                .practicePlace(recruitment.getPracticePlace())
+                .qualification(recruitment.getQualification())
                 .build();
     }
 

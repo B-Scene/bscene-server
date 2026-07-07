@@ -16,7 +16,7 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
-
+import com.umc.bscene.domain.session.dto.recruitment.response.SessionRecruitmentDetailResponse;
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/sessions/recruitments")
@@ -99,6 +99,20 @@ public class SessionRecruitmentController {
         return new SuccessResponse<>(
                 null,
                 SessionSuccessCode.SESSION_RECRUITMENT_DELETE_SUCCESS
+        );
+    }
+    // 세션 모집 공고 상세 조회
+    @GetMapping("/{recruitmentId}")
+    public SuccessResponse<SessionRecruitmentDetailResponse> getSessionRecruitmentDetail(
+            @PathVariable Long recruitmentId
+    ) {
+
+        SessionRecruitmentDetailResponse response =
+                sessionRecruitmentQueryService.getSessionRecruitmentDetail(recruitmentId);
+
+        return SuccessResponse.of(
+                response,
+                SessionSuccessCode.SESSION_RECRUITMENT_DETAIL_SUCCESS
         );
     }
 

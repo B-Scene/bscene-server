@@ -1,5 +1,6 @@
 package com.umc.bscene.domain.session.service;
 
+import com.umc.bscene.domain.session.dto.recruitment.response.SessionRecruitmentDetailResponse;
 import com.umc.bscene.domain.session.dto.recruitment.response.SessionRecruitmentListResponse;
 import com.umc.bscene.domain.session.enums.Part;
 import com.umc.bscene.domain.session.enums.SessionGenre;
@@ -15,4 +16,5 @@ public interface SessionRecruitmentQueryService {
             Long cursorId,
             Integer size
     );
+    SessionRecruitmentDetailResponse getSessionRecruitmentDetail(Long recruitmentId);
 }

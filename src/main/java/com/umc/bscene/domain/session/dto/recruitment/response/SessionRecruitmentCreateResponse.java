@@ -48,10 +48,15 @@ public class SessionRecruitmentCreateResponse {
                 .bandId(recruitment.getBand().getId())
                 .recruitmentTitle(recruitment.getRecruitmentTitle())
                 .content(recruitment.getContent())
-                .part(recruitment.getPart().name())
-                .skillLevel(recruitment.getSkillLevel().name())
-                .genre(recruitment.getGenre().name())
+
+                // 한글 응답
+                .part(recruitment.getPart().getDescription())
+                .skillLevel(recruitment.getSkillLevel().getDescription())
+                .genre(recruitment.getGenre().getDescription())
+
+                // enum 유지(@JsonValue로 한글 직렬화)
                 .region(recruitment.getRegion())
+
                 .practiceSchedule(recruitment.getPracticeSchedule())
                 .practicePlace(recruitment.getPracticePlace())
                 .deadlineAt(recruitment.getDeadlineAt())
