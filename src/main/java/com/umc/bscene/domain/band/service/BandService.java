@@ -3,10 +3,7 @@ package com.umc.bscene.domain.band.service;
 import com.umc.bscene.domain.band.dto.request.BandCreateRequest;
 import com.umc.bscene.domain.band.dto.request.BandMemberInviteRequest;
 import com.umc.bscene.domain.band.dto.request.MusicLinkSaveRequest;
-import com.umc.bscene.domain.band.dto.response.BandMemberResponse;
-import com.umc.bscene.domain.band.dto.response.BandMemberSearchItem;
-import com.umc.bscene.domain.band.dto.response.BandResponse;
-import com.umc.bscene.domain.band.dto.response.MusicLinkResponse;
+import com.umc.bscene.domain.band.dto.response.*;
 import com.umc.bscene.domain.band.entity.Band;
 import com.umc.bscene.domain.band.entity.BandMember;
 import com.umc.bscene.domain.band.entity.MusicLink;
@@ -59,6 +56,12 @@ public class BandService {
         bandMemberRepository.save(ownerMembership);
 
         return BandResponse.from(savedBand);
+    }
+
+    // 밴드명 중복 체크
+    public BandNameCheckResponse checkBandName(String bandName) {
+        boolean available = !bandRepository.existsByName(bandName);
+        return new BandNameCheckResponse(available);
     }
 
     // 밴드 멤버 초대 (오너만 가능)
