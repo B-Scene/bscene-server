@@ -40,4 +40,18 @@ public class Band extends BaseEntity {
 
     @Column(length = 1000)
     private String description;
+
+    public void update(
+            String name,
+            Genre genre,
+            Region region,
+            String profileImageUrl,
+            String description
+    ) {
+        if (name != null) this.name = name;
+        if (genre != null) this.genre = genre;
+        if (region != null) this.region = region;
+        if (profileImageUrl != null) this.profileImageUrl = profileImageUrl;
+        if (description != null) this.description = description;
+    }
 }

@@ -1,6 +1,7 @@
 package com.umc.bscene.domain.band.controller;
 
 import com.umc.bscene.domain.band.dto.request.BandCreateRequest;
+import com.umc.bscene.domain.band.dto.request.BandUpdateRequest;
 import com.umc.bscene.domain.band.dto.response.BandNameCheckResponse;
 import com.umc.bscene.domain.band.dto.response.BandProfileResponse;
 import com.umc.bscene.domain.band.dto.response.BandResponse;
@@ -53,6 +54,7 @@ public class BandController {
         return ResponseEntity.status(successResponse.getStatus()).body(successResponse);
     }
 
+    // 밴드 프로필 조회
     @GetMapping("/{bandId}")
     public ResponseEntity<SuccessResponse<BandProfileResponse>> getBandProfile(
             @PathVariable Long bandId
@@ -61,6 +63,26 @@ public class BandController {
         SuccessResponse<BandProfileResponse> successResponse = SuccessResponse.of(
                 response,
                 BandSuccessCode.BAND_PROFILE_GET_SUCCESS
+        );
+
+        return ResponseEntity.status(successResponse.getStatus()).body(successResponse);
+    }
+
+    // 밴드 프로필 수정
+    @PatchMapping("/{bandId}")
+    public ResponseEntity<SuccessResponse<BandProfileResponse>> updateBandProfile(
+            @AuthenticationPrincipal AuthMember authMember,
+            @PathVariable Long bandId,
+            @RequestBody BandUpdateRequest request
+    ) {
+        BandProfileResponse response = bandService.updateBandProfile(
+                authMember.getUser().getId(),
+                bandId,
+                request
+        );
+        SuccessResponse<BandProfileResponse> successResponse = SuccessResponse.of(
+                response,
+                BandSuccessCode.BAND_PROFILE_UPDATE_SUCCESS
         );
 
         return ResponseEntity.status(successResponse.getStatus()).body(successResponse);

@@ -22,6 +22,7 @@ public enum BandSuccessCode implements BaseResponseCode {
     BAND_NAME_AVAILABLE(OK, "BAND200_6", "사용 가능한 밴드명이에요."),
     BAND_NAME_DUPLICATED(OK, "BAND200_7", "이미 사용 중인 밴드명이에요."),
     BAND_PROFILE_GET_SUCCESS(OK, "BAND200_8", "밴드 프로필을 조회했습니다."),
+    BAND_PROFILE_UPDATE_SUCCESS(OK, "BAND200_9", "밴드 프로필을 수정했습니다."),
     MUSIC_LINK_GET_SUCCESS(OK, "MUSIC200_1", "음원 링크를 조회했습니다."),
     MUSIC_LINK_SAVE_SUCCESS(OK, "MUSIC200_2", "저장됐어요.");
 

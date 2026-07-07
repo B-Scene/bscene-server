@@ -2,6 +2,7 @@ package com.umc.bscene.domain.band.service;
 
 import com.umc.bscene.domain.band.dto.request.BandCreateRequest;
 import com.umc.bscene.domain.band.dto.request.BandMemberInviteRequest;
+import com.umc.bscene.domain.band.dto.request.BandUpdateRequest;
 import com.umc.bscene.domain.band.dto.request.MusicLinkSaveRequest;
 import com.umc.bscene.domain.band.dto.response.*;
 import com.umc.bscene.domain.band.entity.Band;
@@ -71,6 +72,37 @@ public class BandService {
     // 밴드 프로필 조회
     public BandProfileResponse getBandProfile(Long bandId) {
         Band band = getBand(bandId);
+
+        Long followerCount = followPort.countFollowersByBandId(bandId);
+        Long memberCount = bandMemberRepository.countByBand_IdAndStatus(bandId, BandMemberStatus.ACCEPTED);
+        Long performanceCount = performancePort.countPerformancesByBandId(bandId);
+
+        return BandProfileResponse.of(band, followerCount, memberCount, performanceCount);
+    }
+
+    // 밴드 프로필 수정
+    @Transactional
+    public BandProfileResponse updateBandProfile(
+            Long requesterId,
+            Long bandId,
+            BandUpdateRequest request
+    ) {
+        Band band = getBand(bandId);
+        validateOwner(band, requesterId);
+
+        if (request.name() != null
+                && !request.name().equals(band.getName())
+                && bandRepository.existsByName(request.name())) {
+            throw new BandException(BandErrorCode.DUPLICATE_BAND_NAME);
+        }
+
+        band.update(
+                request.name(),
+                request.genre(),
+                request.region(),
+                request.profileImageUrl(),
+                request.description()
+        );
 
         Long followerCount = followPort.countFollowersByBandId(bandId);
         Long memberCount = bandMemberRepository.countByBand_IdAndStatus(bandId, BandMemberStatus.ACCEPTED);
