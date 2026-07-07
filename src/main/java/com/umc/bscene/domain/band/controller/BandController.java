@@ -2,6 +2,7 @@ package com.umc.bscene.domain.band.controller;
 
 import com.umc.bscene.domain.band.dto.request.BandCreateRequest;
 import com.umc.bscene.domain.band.dto.response.BandNameCheckResponse;
+import com.umc.bscene.domain.band.dto.response.BandProfileResponse;
 import com.umc.bscene.domain.band.dto.response.BandResponse;
 import com.umc.bscene.domain.band.response.code.BandSuccessCode;
 import com.umc.bscene.domain.band.service.BandService;
@@ -47,6 +48,19 @@ public class BandController {
         SuccessResponse<BandNameCheckResponse> successResponse = SuccessResponse.of(
                 response,
                 successCode
+        );
+
+        return ResponseEntity.status(successResponse.getStatus()).body(successResponse);
+    }
+
+    @GetMapping("/{bandId}")
+    public ResponseEntity<SuccessResponse<BandProfileResponse>> getBandProfile(
+            @PathVariable Long bandId
+    ) {
+        BandProfileResponse response = bandService.getBandProfile(bandId);
+        SuccessResponse<BandProfileResponse> successResponse = SuccessResponse.of(
+                response,
+                BandSuccessCode.BAND_PROFILE_GET_SUCCESS
         );
 
         return ResponseEntity.status(successResponse.getStatus()).body(successResponse);

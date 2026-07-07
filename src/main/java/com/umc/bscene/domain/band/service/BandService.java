@@ -9,6 +9,8 @@ import com.umc.bscene.domain.band.entity.BandMember;
 import com.umc.bscene.domain.band.entity.MusicLink;
 import com.umc.bscene.domain.band.enums.BandMemberStatus;
 import com.umc.bscene.domain.band.exception.BandException;
+import com.umc.bscene.domain.band.port.FollowPort;
+import com.umc.bscene.domain.band.port.PerformancePort;
 import com.umc.bscene.domain.band.repository.BandMemberRepository;
 import com.umc.bscene.domain.band.repository.BandRepository;
 import com.umc.bscene.domain.band.repository.MusicLinkRepository;
@@ -30,6 +32,8 @@ public class BandService {
     private final BandMemberRepository bandMemberRepository;
     private final MusicLinkRepository musicLinkRepository;
     private final UserRepository userRepository;
+    private final FollowPort followPort;
+    private final PerformancePort performancePort;
 
     // 밴드 개설 (요청자가 오너가 됨)
     @Transactional
@@ -62,6 +66,17 @@ public class BandService {
     public BandNameCheckResponse checkBandName(String bandName) {
         boolean available = !bandRepository.existsByName(bandName);
         return new BandNameCheckResponse(available);
+    }
+
+    // 밴드 프로필 조회
+    public BandProfileResponse getBandProfile(Long bandId) {
+        Band band = getBand(bandId);
+
+        Long followerCount = followPort.countFollowersByBandId(bandId);
+        Long memberCount = bandMemberRepository.countByBand_IdAndStatus(bandId, BandMemberStatus.ACCEPTED);
+        Long performanceCount = performancePort.countPerformancesByBandId(bandId);
+
+        return BandProfileResponse.of(band, followerCount, memberCount, performanceCount);
     }
 
     // 밴드 멤버 초대 (오너만 가능)
