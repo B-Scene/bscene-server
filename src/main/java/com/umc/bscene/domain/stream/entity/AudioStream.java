@@ -5,6 +5,7 @@ import com.umc.bscene.global.entity.BaseEntity;
 import jakarta.persistence.*;
 import lombok.*;
 
+import java.time.Instant;
 import java.time.LocalDateTime;
 
 @Entity
@@ -19,6 +20,7 @@ public class AudioStream extends BaseEntity {
     private Long id;
 
     // userId이지만, 제약 조건은 명시하지 X. 애플리케이션 단에서 정합성 보장
+    @Column(name = "broadcaster_id")
     private Long broadcasterId;
 
     @Column(nullable = false, unique = true)
@@ -42,4 +44,9 @@ public class AudioStream extends BaseEntity {
     private LocalDateTime startedAt;
 
     private LocalDateTime closedAt;
+
+    public void close() {
+        this.status = StreamStatus.CLOSED;
+        this.closedAt = LocalDateTime.from(Instant.now());
+    }
 }
