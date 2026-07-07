@@ -1,10 +1,12 @@
 package com.umc.bscene.domain.stream.service;
 
 import com.umc.bscene.domain.stream.dto.request.StreamCreateRequest;
+import com.umc.bscene.domain.stream.dto.response.BandInfoForGetLiveResponse;
 import com.umc.bscene.domain.stream.dto.response.LiveStreamResponse;
 import com.umc.bscene.domain.stream.dto.response.StreamCreateResponse;
 import com.umc.bscene.domain.stream.entity.AudioStream;
 import com.umc.bscene.domain.stream.enums.StreamStatus;
+import com.umc.bscene.domain.stream.port.BandMemberPort;
 import com.umc.bscene.domain.stream.repository.AudioStreamRepository;
 import com.umc.bscene.domain.stream.repository.StreamMemberRepository;
 import com.umc.bscene.global.response.CursorPage;
@@ -32,6 +34,7 @@ public class StreamServiceImpl implements StreamService {
     private final AudioStreamRepository audioStreamRepository;
     private final StreamMemberRepository streamMemberRepository;
     private final StringRedisTemplate redisTemplate;
+    private final BandMemberPort bandMemberPort;
 
     // 방송 가능을 알리는 티켓 발급
     @Override
@@ -124,32 +127,52 @@ public class StreamServiceImpl implements StreamService {
                 .map(k -> k.substring(LIVE_KEY_PREFIX.length()))
                 .toList();
 
+        // 오디오 송출 세션별 시청자수
         Map<String, Integer> listenerCounts = countListener(keys);
 
+        // 오디오 송출 세션에서 경로 추출
         List<String> livePaths = List.copyOf(listenerCounts.keySet());
+
+        // 커서 기반 페이지네이션 조회로 size + 1 조회
         List<AudioStream> lives = audioStreamRepository.findLivePage(
                 livePaths, cursor, PageRequest.ofSize(size + 1)
         );
 
+        // 커서 응답에 PageInfo 빌드를 위한 값 세팅
         Boolean hasNext = lives.size() > size;
         List<AudioStream> cursorPage = hasNext ? lives.subList(0, size) : lives;
         Long nextCursor = hasNext ? cursorPage.getLast().getId() : null;
 
+        // 커서 응답에서 송출자 ID 추출
         Set<Long> broadCasterIds = cursorPage.stream()
                 .map(AudioStream::getBroadcasterId)
                 .collect(Collectors.toSet());
 
+        // 송출자 ID Set을 이용하여 송출자 ID와 BandInfo를 매핑
+        Map<Long, BandInfoForGetLiveResponse.BandInfo> bandInfoMap = bandMemberPort.getBandNameWithBandProfileByBroadcasterId(broadCasterIds).stream()
+                .collect(Collectors.toMap(
+                        BandInfoForGetLiveResponse::broadcasterId,
+                        BandInfoForGetLiveResponse::bandInfo,
+                        (a, b) -> a
+                ));
+
+        // 커서 페이지네이션 응답 빌드
         return CursorPage.of(
                 cursorPage.stream()
-                        .map(s -> new LiveStreamResponse(
+                        .map(s -> {
+
+                            // 현재 오디오 송출 세션의 송출자 ID를 key로 밴드 정보를 꺼냄
+                            BandInfoForGetLiveResponse.BandInfo band = bandInfoMap.get(s.getBroadcasterId());
+
+                            // 오디오 송출 세션에 필요한 응답을 빌드 후 반환
+                            return new LiveStreamResponse(
                                 s.getId(),
-                                // FIXME: 밴드 프로필 이미지로 변경 필요
-                                "dummy",
+                                band != null ? band.bandProfileImageUrl() : "",
                                 s.getTitle(),
-                                // FIXME: 밴드 이름으로 변경 필요
-                                "dummy",
+                                band != null ? band.bandName() : "",
                                 listenerCounts.getOrDefault(s.getPath(), 0)
-                        ))
+                            );
+                        })
                         .toList(),
                 nextCursor, hasNext
         );
