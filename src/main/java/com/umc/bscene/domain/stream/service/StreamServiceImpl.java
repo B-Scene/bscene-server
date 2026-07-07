@@ -5,6 +5,7 @@ import com.umc.bscene.domain.stream.dto.response.BandInfoForGetLiveResponse;
 import com.umc.bscene.domain.stream.dto.response.LiveStreamResponse;
 import com.umc.bscene.domain.stream.dto.response.StreamCreateResponse;
 import com.umc.bscene.domain.stream.entity.AudioStream;
+import com.umc.bscene.domain.stream.enums.StreamMemberStatus;
 import com.umc.bscene.domain.stream.enums.StreamStatus;
 import com.umc.bscene.domain.stream.enums.code.error.StreamErrorCode;
 import com.umc.bscene.domain.stream.exception.StreamException;
@@ -68,8 +69,8 @@ public class StreamServiceImpl implements StreamService {
     @Transactional
     public StreamCreateResponse createStream(Long userId, StreamCreateRequest request) {
 
-        // user 1명당 stream 1개만 생성 가능
-        if(audioStreamRepository.existsByBroadcasterIdAndStatus(userId, StreamStatus.OPEN))
+        // 오디오 스트리밍 세션에 참여 중이 아닌 사람만 stream  생성 가능
+        if(streamMemberRepository.existsByIdWithStatuses(userId, StreamMemberStatus.ACCEPTED, StreamStatus.OPEN))
             throw new StreamException(StreamErrorCode.DUPLICATE_LIVE_CREATE_TRY);
 
         // Path Unique 제약조건 실패 시 재생성
