@@ -11,10 +11,8 @@ public record BandRecommendItem(
         Region region,
         String profileImageUrl,
         String description,
-        boolean isFollowing,
         int score
 ) {
-    // 팔로우 기능이 없어 isFollowing은 항상 false로 내려감
     public static BandRecommendItem of(Band band, int score) {
         return new BandRecommendItem(
                 band.getId(),
@@ -23,7 +21,6 @@ public record BandRecommendItem(
                 band.getRegion(),
                 band.getProfileImageUrl(),
                 band.getDescription(),
-                false,
                 score
         );
     }
