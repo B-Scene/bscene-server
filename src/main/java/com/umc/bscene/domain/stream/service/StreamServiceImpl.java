@@ -205,6 +205,7 @@ public class StreamServiceImpl implements StreamService {
     }
 
     @Override
+    @Transactional
     public void syncLiveState(Set<String> readyPaths) {
 
         // Redis에 LIVE_KEY_PREFIX로 등록된 모든 세션 조회
@@ -232,11 +233,7 @@ public class StreamServiceImpl implements StreamService {
             if(!readyPaths.contains(path)) {
                 redisTemplate.delete(LIVE_KEY_PREFIX + path);
 
-                AudioStream closedStream = audioStreamRepository.findByPath(path)
-                        .orElseThrow(() -> new StreamException(StreamErrorCode.AUDIO_STREAM_NOT_FOUND));
-
-                // Poller가 종료할 수 있게 함
-                closedStream.close();
+                audioStreamRepository.findByPath(path).ifPresent(AudioStream::close);
             }
         }
     }
