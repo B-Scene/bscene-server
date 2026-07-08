@@ -9,6 +9,7 @@ import com.umc.bscene.domain.band.response.code.BandErrorCode;
 import com.umc.bscene.domain.session.dto.recruitment.request.SessionRecruitmentCreateRequest;
 import com.umc.bscene.domain.session.dto.recruitment.request.SessionRecruitmentUpdateRequest;
 import com.umc.bscene.domain.session.dto.recruitment.response.SessionRecruitmentCreateResponse;
+import com.umc.bscene.domain.session.entity.BandProfile;
 import com.umc.bscene.domain.session.entity.SessionRecruitment;
 import com.umc.bscene.domain.session.enums.code.SessionErrorCode;
 import com.umc.bscene.domain.session.exception.BandProfileException;
@@ -42,11 +43,17 @@ public class SessionRecruitmentCommandServiceImpl implements SessionRecruitmentC
                 .orElseThrow(() -> new BandException(BandErrorCode.BAND_MEMBER_NOT_FOUND));
 
         Band band = bandMember.getBand();
+        BandProfile bandProfile = bandMember.getSessionProfile();
+
+        if (bandProfile == null) {
+            throw new BandProfileException(SessionErrorCode.BAND_PROFILE_NOT_FOUND);
+        }
 
         validateDeadlineAt(request.getDeadlineAt());
 
         SessionRecruitment recruitment = SessionRecruitment.builder()
                 .band(band)
+                .bandProfile(bandProfile)
                 .recruitmentTitle(request.getRecruitmentTitle())
                 .content(request.getContent())
                 .part(request.getPart())
