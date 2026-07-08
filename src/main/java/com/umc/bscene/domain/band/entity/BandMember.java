@@ -50,4 +50,10 @@ public class BandMember extends BaseEntity {
     public void accept() {
         this.status = BandMemberStatus.ACCEPTED;
     }
+
+    // 초대 수락 시 이 밴드에서 사용할 세션 프로필 지정
+    public void acceptWithSessionProfile(SessionProfile sessionProfile) {
+        this.sessionProfile = sessionProfile;
+        accept();
+    }
 }
