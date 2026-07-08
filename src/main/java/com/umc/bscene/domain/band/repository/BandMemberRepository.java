@@ -15,10 +15,12 @@ public interface BandMemberRepository extends JpaRepository<BandMember, Long> {
 
     Optional<BandMember> findByBand_IdAndUser_Id(Long bandId, Long userId);
 
+    List<BandMember> findByBand_IdOrderByIdAsc(Long bandId);
+
     List<BandMember> findByBand_IdAndStatus(Long bandId, BandMemberStatus status);
 
     Long countByBand_IdAndStatus(Long bandId, BandMemberStatus status);
-  
+
     Optional<BandMember> findFirstByUser_IdAndStatus(Long userId, BandMemberStatus status);
 
     Optional<BandMember> findByIdAndUser_IdAndStatus(
@@ -26,7 +28,7 @@ public interface BandMemberRepository extends JpaRepository<BandMember, Long> {
             Long userId,
             BandMemberStatus status
     );
-  
+
     Optional<BandMember> findByBand_IdAndUser_IdAndStatus(
             Long bandId,
             Long userId,

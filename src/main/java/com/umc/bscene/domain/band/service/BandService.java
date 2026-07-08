@@ -1,6 +1,7 @@
 package com.umc.bscene.domain.band.service;
 
 import com.umc.bscene.domain.band.dto.request.BandCreateRequest;
+import com.umc.bscene.domain.band.dto.request.BandMemberAcceptRequest;
 import com.umc.bscene.domain.band.dto.request.BandMemberInviteRequest;
 import com.umc.bscene.domain.band.dto.request.BandUpdateRequest;
 import com.umc.bscene.domain.band.dto.request.MusicLinkSaveRequest;
@@ -16,6 +17,10 @@ import com.umc.bscene.domain.band.repository.BandMemberRepository;
 import com.umc.bscene.domain.band.repository.BandRepository;
 import com.umc.bscene.domain.band.repository.MusicLinkRepository;
 import com.umc.bscene.domain.band.response.code.BandErrorCode;
+import com.umc.bscene.domain.session.entity.BandProfile;
+import com.umc.bscene.domain.session.enums.code.SessionErrorCode;
+import com.umc.bscene.domain.session.exception.BandProfileException;
+import com.umc.bscene.domain.session.repository.BandProfileRepository;
 import com.umc.bscene.domain.user.entity.User;
 import com.umc.bscene.domain.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
@@ -33,15 +38,18 @@ public class BandService {
     private final BandMemberRepository bandMemberRepository;
     private final MusicLinkRepository musicLinkRepository;
     private final UserRepository userRepository;
+    private final BandProfileRepository bandProfileRepository;
     private final FollowPort followPort;
     private final PerformancePort performancePort;
 
-    // 밴드 개설 (요청자가 오너가 됨)
+    // 밴드 개설 (요청자가 오너가 됨, 이 밴드에서 사용할 세션 프로필 선택)
     @Transactional
     public BandResponse createBand(Long ownerId, BandCreateRequest request) {
         if (bandRepository.existsByName(request.name())) {
             throw new BandException(BandErrorCode.DUPLICATE_BAND_NAME);
         }
+
+        BandProfile sessionProfile = getOwnSessionProfile(request.sessionProfileId(), ownerId);
 
         Band band = Band.builder()
                 .owner(userRepository.getReferenceById(ownerId))
@@ -56,6 +64,7 @@ public class BandService {
         BandMember ownerMembership = BandMember.builder()
                 .band(savedBand)
                 .user(userRepository.getReferenceById(ownerId))
+                .sessionProfile(sessionProfile)
                 .status(BandMemberStatus.ACCEPTED)
                 .build();
         bandMemberRepository.save(ownerMembership);
@@ -88,7 +97,7 @@ public class BandService {
             BandUpdateRequest request
     ) {
         Band band = getBand(bandId);
-        validateOwner(band, requesterId);
+        validateOwner(band, requesterId, BandErrorCode.NOT_BAND_OWNER);
 
         if (request.name() != null
                 && !request.name().equals(band.getName())
@@ -115,7 +124,7 @@ public class BandService {
     @Transactional
     public BandMemberResponse inviteMember(Long requesterId, Long bandId, BandMemberInviteRequest request) {
         Band band = getBand(bandId);
-        validateOwner(band, requesterId);
+        validateOwner(band, requesterId, BandErrorCode.BAND_MEMBER_INVITE_FORBIDDEN);
 
         User invitee = userRepository.findById(request.userId())
                 .orElseThrow(() -> new BandException(BandErrorCode.INVITEE_NOT_FOUND));
@@ -132,22 +141,27 @@ public class BandService {
         return BandMemberResponse.from(bandMemberRepository.save(bandMember));
     }
 
-    // 초대 수락
+    // 초대 수락 (이 밴드에서 사용할 세션 프로필 선택)
     @Transactional
-    public void acceptInvite(Long userId, Long bandId) {
-        BandMember bandMember = getBandMember(bandId, userId);
+    public BandMemberAcceptResponse acceptInvite(Long userId, Long bandId, BandMemberAcceptRequest request) {
+        getBand(bandId);
+        BandMember bandMember = getBandMember(bandId, userId, BandErrorCode.NOT_INVITED_MEMBER);
 
         if (bandMember.getStatus() != BandMemberStatus.INVITED) {
-            throw new BandException(BandErrorCode.ALREADY_ACCEPTED_INVITE);
+            throw new BandException(BandErrorCode.INVITE_ALREADY_PROCESSED);
         }
 
-        bandMember.accept();
+        BandProfile sessionProfile = getOwnSessionProfile(request.sessionProfileId(), userId);
+
+        bandMember.acceptWithSessionProfile(sessionProfile);
+
+        return BandMemberAcceptResponse.from(bandMember);
     }
 
     // 초대 거절 (row 삭제, INVITED 상태에서만 가능)
     @Transactional
     public void rejectInvite(Long userId, Long bandId) {
-        BandMember bandMember = getBandMember(bandId, userId);
+        BandMember bandMember = getBandMember(bandId, userId, BandErrorCode.BAND_MEMBER_NOT_FOUND);
 
         if (bandMember.getStatus() != BandMemberStatus.INVITED) {
             throw new BandException(BandErrorCode.ALREADY_ACCEPTED_MEMBER);
@@ -160,21 +174,21 @@ public class BandService {
     @Transactional
     public void removeMember(Long requesterId, Long bandId, Long targetUserId) {
         Band band = getBand(bandId);
-        validateOwner(band, requesterId);
+        validateOwner(band, requesterId, BandErrorCode.NOT_BAND_OWNER);
 
         if (band.getOwner().getId().equals(targetUserId)) {
             throw new BandException(BandErrorCode.CANNOT_REMOVE_OWNER);
         }
 
-        BandMember bandMember = getBandMember(bandId, targetUserId);
+        BandMember bandMember = getBandMember(bandId, targetUserId, BandErrorCode.BAND_MEMBER_NOT_FOUND);
         bandMemberRepository.delete(bandMember);
     }
 
-    // 밴드 멤버 목록 조회 (수락한 멤버만)
+    // 밴드 멤버 목록 조회 (수락한 멤버 + 초대 대기 중인 멤버)
     public List<BandMemberResponse> getMembers(Long bandId) {
         getBand(bandId);
 
-        return bandMemberRepository.findByBand_IdAndStatus(bandId, BandMemberStatus.ACCEPTED).stream()
+        return bandMemberRepository.findByBand_IdOrderByIdAsc(bandId).stream()
                 .map(BandMemberResponse::from)
                 .toList();
     }
@@ -241,15 +255,26 @@ public class BandService {
                 .orElseThrow(() -> new BandException(BandErrorCode.BAND_NOT_FOUND));
     }
 
-    private BandMember getBandMember(Long bandId, Long userId) {
+    private BandMember getBandMember(Long bandId, Long userId, BandErrorCode notFoundCode) {
         return bandMemberRepository.findByBand_IdAndUser_Id(bandId, userId)
-                .orElseThrow(() -> new BandException(BandErrorCode.BAND_MEMBER_NOT_FOUND));
+                .orElseThrow(() -> new BandException(notFoundCode));
     }
 
-    private void validateOwner(Band band, Long userId) {
+    private void validateOwner(Band band, Long userId, BandErrorCode forbiddenCode) {
         if (!band.getOwner().getId().equals(userId)) {
-            throw new BandException(BandErrorCode.NOT_BAND_OWNER);
+            throw new BandException(forbiddenCode);
         }
+    }
+
+    private BandProfile getOwnSessionProfile(Long sessionProfileId, Long userId) {
+        BandProfile sessionProfile = bandProfileRepository.findById(sessionProfileId)
+                .orElseThrow(() -> new BandProfileException(SessionErrorCode.SESSION_PROFILE_NOT_FOUND));
+
+        if (!sessionProfile.getUserId().equals(userId)) {
+            throw new BandException(BandErrorCode.NOT_OWN_SESSION_PROFILE);
+        }
+
+        return sessionProfile;
     }
 
     private void validateBandMember(Band band, Long userId) {

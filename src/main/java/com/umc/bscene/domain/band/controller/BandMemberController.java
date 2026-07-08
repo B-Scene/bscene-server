@@ -1,6 +1,8 @@
 package com.umc.bscene.domain.band.controller;
 
+import com.umc.bscene.domain.band.dto.request.BandMemberAcceptRequest;
 import com.umc.bscene.domain.band.dto.request.BandMemberInviteRequest;
+import com.umc.bscene.domain.band.dto.response.BandMemberAcceptResponse;
 import com.umc.bscene.domain.band.dto.response.BandMemberResponse;
 import com.umc.bscene.domain.band.dto.response.BandMemberSearchItem;
 import com.umc.bscene.domain.band.response.code.BandSuccessCode;
@@ -38,15 +40,16 @@ public class BandMemberController {
         return ResponseEntity.status(successResponse.getStatus()).body(successResponse);
     }
 
-    // 밴드 초대 수락 API
+    // 밴드 초대 수락 API (사용할 세션 프로필 선택)
     @PatchMapping("/accept")
-    public ResponseEntity<SuccessResponse<Void>> acceptInvite(
+    public ResponseEntity<SuccessResponse<BandMemberAcceptResponse>> acceptInvite(
             @AuthenticationPrincipal AuthMember authMember,
-            @PathVariable Long bandId
+            @PathVariable Long bandId,
+            @Valid @RequestBody BandMemberAcceptRequest request
     ) {
-        bandService.acceptInvite(authMember.getUser().getId(), bandId);
-        SuccessResponse<Void> successResponse = SuccessResponse.of(
-                (Void) null,
+        BandMemberAcceptResponse response = bandService.acceptInvite(authMember.getUser().getId(), bandId, request);
+        SuccessResponse<BandMemberAcceptResponse> successResponse = SuccessResponse.of(
+                response,
                 BandSuccessCode.BAND_MEMBER_ACCEPT_SUCCESS
         );
 
