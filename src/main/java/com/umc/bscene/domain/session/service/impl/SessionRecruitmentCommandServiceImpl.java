@@ -9,7 +9,7 @@ import com.umc.bscene.domain.band.response.code.BandErrorCode;
 import com.umc.bscene.domain.session.dto.recruitment.request.SessionRecruitmentCreateRequest;
 import com.umc.bscene.domain.session.dto.recruitment.request.SessionRecruitmentUpdateRequest;
 import com.umc.bscene.domain.session.dto.recruitment.response.SessionRecruitmentCreateResponse;
-import com.umc.bscene.domain.session.entity.BandProfile;
+import com.umc.bscene.domain.band.entity.BandProfile;
 import com.umc.bscene.domain.session.entity.SessionRecruitment;
 import com.umc.bscene.domain.session.enums.code.SessionErrorCode;
 import com.umc.bscene.domain.session.exception.BandProfileException;
@@ -43,7 +43,11 @@ public class SessionRecruitmentCommandServiceImpl implements SessionRecruitmentC
                 .orElseThrow(() -> new BandException(BandErrorCode.BAND_MEMBER_NOT_FOUND));
 
         Band band = bandMember.getBand();
-        BandProfile bandProfile = bandMember.getSessionProfile();
+
+        // 추가: 세션 모집 공고는 초기 밴드 생성자(대표자)만 등록 가능
+        validateBandOwner(band, userId);
+
+        BandProfile bandProfile = bandMember.getBandProfile();
 
         if (bandProfile == null) {
             throw new BandProfileException(SessionErrorCode.BAND_PROFILE_NOT_FOUND);
@@ -82,13 +86,8 @@ public class SessionRecruitmentCommandServiceImpl implements SessionRecruitmentC
 
         Band band = recruitment.getBand();
 
-        bandMemberRepository
-                .findByBand_IdAndUser_IdAndStatus(
-                        band.getId(),
-                        userId,
-                        BandMemberStatus.ACCEPTED
-                )
-                .orElseThrow(() -> new BandProfileException(SessionErrorCode.BAND_PERMISSION_DENIED));
+        // 변경: 수정도 대표자만 가능
+        validateBandOwner(band, userId);
 
         validateDeadlineAt(request.getDeadlineAt());
 
@@ -118,15 +117,16 @@ public class SessionRecruitmentCommandServiceImpl implements SessionRecruitmentC
 
         Band band = recruitment.getBand();
 
-        bandMemberRepository
-                .findByBand_IdAndUser_IdAndStatus(
-                        band.getId(),
-                        userId,
-                        BandMemberStatus.ACCEPTED
-                )
-                .orElseThrow(() -> new BandProfileException(SessionErrorCode.BAND_PERMISSION_DENIED));
+        // 변경: 삭제도 대표자만 가능
+        validateBandOwner(band, userId);
 
         sessionRecruitmentRepository.delete(recruitment);
+    }
+
+    private void validateBandOwner(Band band, Long userId) {
+        if (!band.getOwner().getId().equals(userId)) {
+            throw new BandProfileException(SessionErrorCode.BAND_PERMISSION_DENIED);
+        }
     }
 
     private void validateDeadlineAt(LocalDateTime deadlineAt) {

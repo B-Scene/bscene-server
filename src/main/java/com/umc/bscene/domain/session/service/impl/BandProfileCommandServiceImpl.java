@@ -1,13 +1,11 @@
 package com.umc.bscene.domain.session.service.impl;
 
-import com.umc.bscene.domain.session.dto.profile.request.MyBandProfileUpdateRequest;
-import com.umc.bscene.domain.session.dto.profile.response.MyBandProfileResponse;
-import com.umc.bscene.domain.session.entity.BandProfile;
-import com.umc.bscene.domain.session.entity.BandProfileLink;
-import com.umc.bscene.domain.session.repository.BandProfileRepository;
+import com.umc.bscene.domain.band.dto.request.MyBandProfileUpdateRequest;
+import com.umc.bscene.domain.band.dto.response.MyBandProfileResponse;
+import com.umc.bscene.domain.band.entity.BandProfile;
+import com.umc.bscene.domain.band.entity.BandProfileLink;
+import com.umc.bscene.domain.band.repository.BandProfileRepository;
 import com.umc.bscene.domain.session.service.BandProfileCommandService;
-import com.umc.bscene.domain.user.entity.User;
-import com.umc.bscene.domain.user.repository.UserRepository;
 import com.umc.bscene.global.exception.BaseException;
 import com.umc.bscene.global.response.code.GeneralErrorCode;
 import lombok.RequiredArgsConstructor;
@@ -19,29 +17,18 @@ import org.springframework.transaction.annotation.Transactional;
 @Transactional
 public class BandProfileCommandServiceImpl implements BandProfileCommandService {
 
-    private final BandProfileRepository sessionProfileRepository;
-    private final UserRepository userRepository;
+    private final BandProfileRepository bandProfileRepository;
 
     @Override
     public MyBandProfileResponse saveMySessionProfile(
             Long userId,
             MyBandProfileUpdateRequest request
     ) {
-        User user = userRepository.findById(userId)
+        BandProfile bandProfile = bandProfileRepository.findByUserIdWithPortfolioLinks(userId)
                 .orElseThrow(() -> new BaseException(GeneralErrorCode.UNAUTHORIZED_ERROR));
 
-        BandProfile sessionProfile = sessionProfileRepository.findByUserIdWithPortfolioLinks(userId)
-                .orElseGet(() -> BandProfile.builder()
-                        .userId(userId)
-                        .nickname(user.getName())
-                        .part(request.getPart())
-                        .skillLevel(request.getSkillLevel())
-                        .genre(request.getGenre())
-                        .region(request.getRegion())
-                        .intro(request.getIntro())
-                        .build());
-
-        sessionProfile.updateProfile(
+        bandProfile.updateProfile(
+                request.getNickname(),
                 request.getPart(),
                 request.getSkillLevel(),
                 request.getGenre(),
@@ -49,24 +36,24 @@ public class BandProfileCommandServiceImpl implements BandProfileCommandService 
                 request.getIntro()
         );
 
-        sessionProfile.clearPortfolioLinks();
+        bandProfile.clearPortfolioLinks();
 
         if (request.getPortfolioLinks() != null) {
             request.getPortfolioLinks().stream()
                     .filter(linkRequest -> linkRequest.getUrl() != null)
                     .filter(linkRequest -> !linkRequest.getUrl().isBlank())
                     .forEach(linkRequest ->
-                            sessionProfile.addPortfolioLink(
+                            bandProfile.addPortfolioLink(
                                     BandProfileLink.builder()
-                                            .sessionProfile(sessionProfile)
+                                            .bandProfile(bandProfile)
                                             .url(linkRequest.getUrl())
                                             .build()
                             )
                     );
         }
 
-        BandProfile savedSessionProfile = sessionProfileRepository.save(sessionProfile);
+        BandProfile savedBandProfile = bandProfileRepository.save(bandProfile);
 
-        return MyBandProfileResponse.from(savedSessionProfile);
+        return MyBandProfileResponse.from(savedBandProfile);
     }
 }
