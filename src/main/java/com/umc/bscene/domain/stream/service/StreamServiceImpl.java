@@ -3,6 +3,7 @@ package com.umc.bscene.domain.stream.service;
 import com.umc.bscene.domain.stream.dto.request.StreamCreateRequest;
 import com.umc.bscene.domain.stream.dto.response.BandInfoForGetLiveResponse;
 import com.umc.bscene.domain.stream.dto.response.LiveStreamResponse;
+import com.umc.bscene.domain.stream.dto.response.MtxPathResponse;
 import com.umc.bscene.domain.stream.dto.response.StreamCreateResponse;
 import com.umc.bscene.domain.stream.entity.AudioStream;
 import com.umc.bscene.domain.stream.entity.mapper.StreamMember;
@@ -23,6 +24,8 @@ import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.client.RestClient;
+import org.springframework.web.client.RestClientException;
 
 import java.time.Duration;
 import java.time.LocalDateTime;
@@ -35,12 +38,14 @@ import java.util.stream.Collectors;
 public class StreamServiceImpl implements StreamService {
 
     private static final String LIVE_KEY_PREFIX = "live:";
+    private static final String MTX_SOURCE_WEBRTC = "webRTCSession";
 
     private final JwtUtil jwtUtil;
     private final AudioStreamRepository audioStreamRepository;
     private final StreamMemberRepository streamMemberRepository;
     private final StringRedisTemplate redisTemplate;
     private final BandMemberPort bandMemberPort;
+    private final RestClient mtxRestClient;
 
     // 방송 가능을 알리는 티켓 발급
     @Override
@@ -235,6 +240,26 @@ public class StreamServiceImpl implements StreamService {
 
                 audioStreamRepository.findByPath(path).ifPresent(AudioStream::close);
             }
+        }
+    }
+
+    private void kickPublisher(String path) {
+        try {
+            MtxPathResponse info = mtxRestClient.get()
+                    .uri("v3/paths/get/{name}", path)
+                    .retrieve()
+                    .body(MtxPathResponse.class);
+
+            if (info == null || info.source() == null
+            || !MTX_SOURCE_WEBRTC.equals(info.source().type()))
+                return;
+
+            mtxRestClient.post()
+                    .uri("v3/webrtcsessions/kick/{id}", info.source().id())
+                    .retrieve()
+                    .toBodilessEntity();
+        } catch (RestClientException e) {
+            log.warn("MediaMTX 좀비 송출자 강제 해제 실패 path={}", path, e);
         }
     }
 
