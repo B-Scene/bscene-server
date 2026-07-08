@@ -19,6 +19,10 @@ apiAddress: :9997
 # 인증을 Spring에 위임
 authMethod: http
 authHTTPAddress: http://spring:8080/api/internal/mediamtx/auth
+authHTTPExclude:
+  - action: api
+  - action: metrics
+  - action: pprof
 
 paths:
   all_others:
