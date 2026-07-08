@@ -20,7 +20,7 @@ public class AudioStream extends BaseEntity {
     private Long id;
 
     // userId이지만, 제약 조건은 명시하지 X. 애플리케이션 단에서 정합성 보장
-    @Column(name = "broadcaster_id")
+    @Column(name = "broadcaster_id", nullable = false)
     private Long broadcasterId;
 
     @Column(nullable = false, unique = true)
