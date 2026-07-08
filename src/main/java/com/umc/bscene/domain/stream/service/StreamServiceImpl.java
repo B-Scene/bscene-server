@@ -25,7 +25,6 @@ import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Duration;
-import java.time.Instant;
 import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -85,7 +84,7 @@ public class StreamServiceImpl implements StreamService {
                     .thumbnailImageUrl("")                  // FIXME: S3 관련 업데이트 시 작성 필요
                     .status(request.scheduledAt() == null ? StreamStatus.OPEN : StreamStatus.SCHEDULED)
                     .scheduledAt(request.scheduledAt())
-                    .startedAt(request.scheduledAt() == null ? LocalDateTime.from(Instant.now()) : null)
+                    .startedAt(request.scheduledAt() == null ? LocalDateTime.now() : null)
                     .closedAt(null)
                     .build();
 
