@@ -1,8 +1,11 @@
 package com.umc.bscene.global.response;
 
+import lombok.Getter;
+
 import java.util.Collections;
 import java.util.List;
 
+@Getter
 public class CursorPage<T> {
 
     private List<T> items;
@@ -13,7 +16,7 @@ public class CursorPage<T> {
         this.pageInfo = pageInfo;
     }
 
-    record PageInfo(
+    public record PageInfo(
             Long nextCursor,
             Boolean hasNext
     ) {}
