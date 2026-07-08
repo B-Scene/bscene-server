@@ -1,6 +1,7 @@
 package com.umc.bscene.domain.band.entity;
 
 import com.umc.bscene.domain.band.enums.BandMemberStatus;
+import com.umc.bscene.domain.session.entity.SessionProfile;
 import com.umc.bscene.domain.user.entity.User;
 import com.umc.bscene.global.entity.BaseEntity;
 import jakarta.persistence.*;
@@ -34,6 +35,11 @@ public class BandMember extends BaseEntity {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "userId", nullable = false)
     private User user;
+
+    // 밴드 활동에 사용하는 세션 프로필 (하나의 프로필로 여러 밴드에 소속 가능)
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "session_profile_id")
+    private SessionProfile sessionProfile;
 
     @Column(nullable = false)
     @Enumerated(EnumType.STRING)

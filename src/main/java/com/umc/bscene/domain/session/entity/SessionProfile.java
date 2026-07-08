@@ -1,5 +1,6 @@
 package com.umc.bscene.domain.session.entity;
 
+import com.umc.bscene.domain.band.entity.BandMember;
 import com.umc.bscene.domain.session.enums.Part;
 import com.umc.bscene.domain.session.enums.SessionGenre;
 import com.umc.bscene.domain.session.enums.SessionRegion;
@@ -65,6 +66,10 @@ public class SessionProfile extends BaseEntity {
 
     @OneToMany(mappedBy = "sessionProfile", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<SessionProfileLink> portfolioLinks = new ArrayList<>();
+
+    // 이 프로필로 소속된 밴드 멤버십 (하나의 프로필로 여러 밴드에 소속 가능)
+    @OneToMany(mappedBy = "sessionProfile")
+    private List<BandMember> bandMembers = new ArrayList<>();
 
     @Builder
     private SessionProfile(
