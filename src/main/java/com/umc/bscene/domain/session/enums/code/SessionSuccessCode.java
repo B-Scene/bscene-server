@@ -52,23 +52,8 @@ public enum SessionSuccessCode implements BaseResponseCode {
             HttpStatus.OK.value(),
         "SESSION_RECRUITMENT_DETAIL_SUCCESS",
                 "세션 모집 공고 상세 조회에 성공했습니다."
-                ),
-    SESSION_APPLICATION_STATUS_UPDATED(
-        201,
-                "RECRUITMENT_201_N",
-                "지원 요청에 대한 수락, 거절 처리에 성공했습니다."
-    ),
-    SESSION_APPLICATION_ACCEPT_SUCCESS(
-        200,
-                "RECRUITMENT_200_1",
-                "지원 요청을 수락했습니다."
-    ),
+                );
 
-    SESSION_APPLICATION_REJECT_SUCCESS(
-        200,
-                "RECRUITMENT_200_2",
-                "지원 요청을 거절했습니다."
-    );
     private final int status;
     private final String code;
     private final String message;

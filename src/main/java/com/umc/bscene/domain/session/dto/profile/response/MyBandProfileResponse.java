@@ -1,7 +1,7 @@
-package com.umc.bscene.domain.band.dto.response;
+package com.umc.bscene.domain.session.dto.profile.response;
 
 import com.fasterxml.jackson.annotation.JsonPropertyOrder;
-import com.umc.bscene.domain.band.entity.BandProfile;
+import com.umc.bscene.domain.session.entity.BandProfile;
 import com.umc.bscene.domain.session.enums.Part;
 import com.umc.bscene.domain.session.enums.SessionGenre;
 import com.umc.bscene.domain.session.enums.SessionRegion;
@@ -15,7 +15,7 @@ import java.util.List;
 @Builder
 @JsonPropertyOrder({
         "hasProfile",
-        "bandProfileId",
+        "sessionProfileId",
         "userId",
         "nickname",
         "part",
@@ -29,7 +29,7 @@ public class MyBandProfileResponse {
 
     private Boolean hasProfile;
 
-    private Long bandProfileId;
+    private Long sessionProfileId;
     private Long userId;
     private String nickname;
 
@@ -45,7 +45,7 @@ public class MyBandProfileResponse {
     public static MyBandProfileResponse empty(Long userId) {
         return MyBandProfileResponse.builder()
                 .hasProfile(false)
-                .bandProfileId(null)
+                .sessionProfileId(null)
                 .userId(userId)
                 .nickname(null)
                 .part(null)
@@ -57,22 +57,22 @@ public class MyBandProfileResponse {
                 .build();
     }
 
-    public static MyBandProfileResponse from(BandProfile bandProfile) {
+    public static MyBandProfileResponse from(BandProfile sessionProfile) {
         return MyBandProfileResponse.builder()
                 .hasProfile(true)
-                .bandProfileId(bandProfile.getBandProfileId())
-                .userId(bandProfile.getUserId())
-                .nickname(bandProfile.getNickname())
-                .part(bandProfile.getPart())
-                .skillLevel(bandProfile.getSkillLevel())
-                .genre(bandProfile.getGenre())
-                .region(bandProfile.getRegion())
-                .intro(bandProfile.getIntro())
+                .sessionProfileId(sessionProfile.getSessionProfileId())
+                .userId(sessionProfile.getUserId())
+                .nickname(sessionProfile.getNickname())
+                .part(sessionProfile.getPart())
+                .skillLevel(sessionProfile.getSkillLevel())
+                .genre(sessionProfile.getGenre())
+                .region(sessionProfile.getRegion())
+                .intro(sessionProfile.getIntro())
                 .portfolioLinks(
-                        bandProfile.getPortfolioLinks().stream()
+                        sessionProfile.getPortfolioLinks().stream()
                                 .filter(link -> link.getDeletedAt() == null)
                                 .map(link -> PortfolioLinkResponse.builder()
-                                        .bandProfileLinkId(link.getBandProfileLinkId())
+                                        .sessionProfileLinkId(link.getSessionProfileLinkId())
                                         .url(link.getUrl())
                                         .build())
                                 .toList()
@@ -83,12 +83,12 @@ public class MyBandProfileResponse {
     @Getter
     @Builder
     @JsonPropertyOrder({
-            "bandProfileLinkId",
+            "sessionProfileLinkId",
             "url"
     })
     public static class PortfolioLinkResponse {
 
-        private Long bandProfileLinkId;
+        private Long sessionProfileLinkId;
         private String url;
     }
 }
