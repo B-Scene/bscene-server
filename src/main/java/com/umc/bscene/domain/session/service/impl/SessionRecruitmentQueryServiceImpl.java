@@ -90,12 +90,12 @@ public class SessionRecruitmentQueryServiceImpl implements SessionRecruitmentQue
                 .isNew(recruitment.getCreatedAt() != null
                         && recruitment.getCreatedAt().toLocalDate().isAfter(LocalDate.now().minusDays(3)))
 
-                // 밴드 정보
+                // 밴드 프로필 정보
                 .bandId(recruitment.getBand().getId())
-                .bandName(recruitment.getBand().getName())
-                .bandProfileImageUrl(recruitment.getBand().getProfileImageUrl())
-                .bandGenre(recruitment.getGenre().getDescription())
-                .bandRegion(recruitment.getRegion().getDescription())
+                .bandName(recruitment.getBandProfile().getNickname())
+                .bandProfileImageUrl(null)
+                .bandGenre(recruitment.getBandProfile().getGenre().getDescription())
+                .bandRegion(recruitment.getBandProfile().getRegion().getDescription())
 
 
                 // 모집 상세 정보
@@ -185,7 +185,7 @@ public class SessionRecruitmentQueryServiceImpl implements SessionRecruitmentQue
                 .sessionRecruitmentId(recruitment.getSessionRecruitmentId())
                 .bandId(recruitment.getBand().getId())
                 .recruitmentTitle(recruitment.getRecruitmentTitle())
-                .bandName(recruitment.getBand().getName())
+                .bandName(recruitment.getBandProfile().getNickname())
                 .part(recruitment.getPart())
                 .genre(recruitment.getGenre())
                 .region(recruitment.getRegion())

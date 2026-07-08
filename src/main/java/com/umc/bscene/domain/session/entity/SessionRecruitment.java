@@ -1,11 +1,12 @@
 package com.umc.bscene.domain.session.entity;
 
 import com.umc.bscene.domain.band.entity.Band;
+import com.umc.bscene.domain.band.entity.BandProfile;
 import com.umc.bscene.domain.session.enums.Part;
 import com.umc.bscene.domain.session.enums.SessionGenre;
+import com.umc.bscene.domain.session.enums.SessionRegion;
 import com.umc.bscene.domain.session.enums.SkillLevel;
 import com.umc.bscene.global.entity.BaseEntity;
-import com.umc.bscene.domain.session.enums.SessionRegion;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -26,6 +27,10 @@ public class SessionRecruitment extends BaseEntity {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "band_id", nullable = false)
     private Band band;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "session_profile_id", nullable = false)
+    private BandProfile bandProfile;
 
     @Column(length = 500)
     private String content;
@@ -60,11 +65,14 @@ public class SessionRecruitment extends BaseEntity {
 
     @Column
     private LocalDateTime deletedAt;
+
     @Column(nullable = false, length = 100)
     private String recruitmentTitle;
+
     public void delete() {
         this.deletedAt = LocalDateTime.now();
     }
+
     public void update(
             String recruitmentTitle,
             String content,

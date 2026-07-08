@@ -14,6 +14,11 @@ public enum SessionErrorCode implements BaseResponseCode {
             "SESSION_PROFILE_NOT_FOUND",
             "세션 프로필을 찾을 수 없습니다."
     ),
+    BAND_PROFILE_NOT_FOUND(
+            HttpStatus.NOT_FOUND.value(),
+            "BAND_PROFILE_NOT_FOUND",
+            "밴드 프로필을 찾을 수 없습니다."
+    ),
 
     SESSION_RECRUITMENT_NOT_FOUND(
             HttpStatus.NOT_FOUND.value(),
