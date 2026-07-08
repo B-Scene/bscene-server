@@ -21,7 +21,7 @@ import java.time.LocalDateTime;
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @Table(name = "session_profile_links")
-public class SessionProfileLink extends BaseEntity {
+public class BandProfileLink extends BaseEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -30,7 +30,7 @@ public class SessionProfileLink extends BaseEntity {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "session_profile_id", nullable = false)
-    private SessionProfile sessionProfile;
+    private BandProfile sessionProfile;
 
     @Column(name = "url", nullable = false, length = 500)
     private String url;
@@ -39,8 +39,8 @@ public class SessionProfileLink extends BaseEntity {
     private LocalDateTime deletedAt;
 
     @Builder
-    private SessionProfileLink(
-            SessionProfile sessionProfile,
+    private BandProfileLink(
+            BandProfile sessionProfile,
             String url
     ) {
         this.sessionProfile = sessionProfile;

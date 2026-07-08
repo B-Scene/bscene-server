@@ -1,6 +1,9 @@
 package com.umc.bscene.domain.band.controller;
 
 import com.umc.bscene.domain.band.dto.request.BandCreateRequest;
+import com.umc.bscene.domain.band.dto.request.BandUpdateRequest;
+import com.umc.bscene.domain.band.dto.response.BandNameCheckResponse;
+import com.umc.bscene.domain.band.dto.response.BandProfileResponse;
 import com.umc.bscene.domain.band.dto.response.BandRecommendResponse;
 import com.umc.bscene.domain.band.dto.response.BandResponse;
 import com.umc.bscene.domain.band.response.code.BandSuccessCode;
@@ -12,12 +15,7 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequiredArgsConstructor
@@ -53,6 +51,57 @@ public class BandController {
         SuccessResponse<BandRecommendResponse> successResponse = SuccessResponse.of(
                 response,
                 BandSuccessCode.BAND_RECOMMEND_LIST_GET_SUCCESS
+        );
+
+        return ResponseEntity.status(successResponse.getStatus()).body(successResponse);
+    }
+
+    // 밴드명 중복 체크 API
+    @GetMapping("/check-name")
+    public ResponseEntity<SuccessResponse<BandNameCheckResponse>> checkBandName(
+            @RequestParam String name
+    ) {
+        BandNameCheckResponse response = bandService.checkBandName(name);
+        BandSuccessCode successCode = response.available()
+                ? BandSuccessCode.BAND_NAME_AVAILABLE
+                : BandSuccessCode.BAND_NAME_DUPLICATED;
+        SuccessResponse<BandNameCheckResponse> successResponse = SuccessResponse.of(
+                response,
+                successCode
+        );
+
+        return ResponseEntity.status(successResponse.getStatus()).body(successResponse);
+    }
+
+    // 밴드 프로필 조회
+    @GetMapping("/{bandId}")
+    public ResponseEntity<SuccessResponse<BandProfileResponse>> getBandProfile(
+            @PathVariable Long bandId
+    ) {
+        BandProfileResponse response = bandService.getBandProfile(bandId);
+        SuccessResponse<BandProfileResponse> successResponse = SuccessResponse.of(
+                response,
+                BandSuccessCode.BAND_PROFILE_GET_SUCCESS
+        );
+
+        return ResponseEntity.status(successResponse.getStatus()).body(successResponse);
+    }
+
+    // 밴드 프로필 수정
+    @PatchMapping("/{bandId}")
+    public ResponseEntity<SuccessResponse<BandProfileResponse>> updateBandProfile(
+            @AuthenticationPrincipal AuthMember authMember,
+            @PathVariable Long bandId,
+            @RequestBody BandUpdateRequest request
+    ) {
+        BandProfileResponse response = bandService.updateBandProfile(
+                authMember.getUser().getId(),
+                bandId,
+                request
+        );
+        SuccessResponse<BandProfileResponse> successResponse = SuccessResponse.of(
+                response,
+                BandSuccessCode.BAND_PROFILE_UPDATE_SUCCESS
         );
 
         return ResponseEntity.status(successResponse.getStatus()).body(successResponse);

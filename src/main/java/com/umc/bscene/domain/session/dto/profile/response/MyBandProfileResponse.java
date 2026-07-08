@@ -1,7 +1,7 @@
 package com.umc.bscene.domain.session.dto.profile.response;
 
 import com.fasterxml.jackson.annotation.JsonPropertyOrder;
-import com.umc.bscene.domain.session.entity.SessionProfile;
+import com.umc.bscene.domain.session.entity.BandProfile;
 import com.umc.bscene.domain.session.enums.Part;
 import com.umc.bscene.domain.session.enums.SessionGenre;
 import com.umc.bscene.domain.session.enums.SessionRegion;
@@ -25,7 +25,7 @@ import java.util.List;
         "intro",
         "portfolioLinks"
 })
-public class MySessionProfileResponse {
+public class MyBandProfileResponse {
 
     private Boolean hasProfile;
 
@@ -42,8 +42,8 @@ public class MySessionProfileResponse {
 
     private List<PortfolioLinkResponse> portfolioLinks;
 
-    public static MySessionProfileResponse empty(Long userId) {
-        return MySessionProfileResponse.builder()
+    public static MyBandProfileResponse empty(Long userId) {
+        return MyBandProfileResponse.builder()
                 .hasProfile(false)
                 .sessionProfileId(null)
                 .userId(userId)
@@ -57,8 +57,8 @@ public class MySessionProfileResponse {
                 .build();
     }
 
-    public static MySessionProfileResponse from(SessionProfile sessionProfile) {
-        return MySessionProfileResponse.builder()
+    public static MyBandProfileResponse from(BandProfile sessionProfile) {
+        return MyBandProfileResponse.builder()
                 .hasProfile(true)
                 .sessionProfileId(sessionProfile.getSessionProfileId())
                 .userId(sessionProfile.getUserId())

@@ -21,4 +21,6 @@ public interface PerformanceRepository extends JpaRepository<Performance, Long> 
             @Param("status") PerformanceStatus status,
             @Param("since") LocalDate since
     );
+
+    Long countByBand_IdAndStatus(Long bandId, PerformanceStatus status);
 }

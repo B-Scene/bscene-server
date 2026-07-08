@@ -1,11 +1,11 @@
 package com.umc.bscene.domain.session.service.impl;
 
-import com.umc.bscene.domain.session.dto.profile.request.MySessionProfileUpdateRequest;
-import com.umc.bscene.domain.session.dto.profile.response.MySessionProfileResponse;
-import com.umc.bscene.domain.session.entity.SessionProfile;
-import com.umc.bscene.domain.session.entity.SessionProfileLink;
-import com.umc.bscene.domain.session.repository.SessionProfileRepository;
-import com.umc.bscene.domain.session.service.SessionProfileCommandService;
+import com.umc.bscene.domain.session.dto.profile.request.MyBandProfileUpdateRequest;
+import com.umc.bscene.domain.session.dto.profile.response.MyBandProfileResponse;
+import com.umc.bscene.domain.session.entity.BandProfile;
+import com.umc.bscene.domain.session.entity.BandProfileLink;
+import com.umc.bscene.domain.session.repository.BandProfileRepository;
+import com.umc.bscene.domain.session.service.BandProfileCommandService;
 import com.umc.bscene.domain.user.entity.User;
 import com.umc.bscene.domain.user.repository.UserRepository;
 import com.umc.bscene.global.exception.BaseException;
@@ -17,21 +17,21 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 @RequiredArgsConstructor
 @Transactional
-public class SessionProfileCommandServiceImpl implements SessionProfileCommandService {
+public class BandProfileCommandServiceImpl implements BandProfileCommandService {
 
-    private final SessionProfileRepository sessionProfileRepository;
+    private final BandProfileRepository sessionProfileRepository;
     private final UserRepository userRepository;
 
     @Override
-    public MySessionProfileResponse saveMySessionProfile(
+    public MyBandProfileResponse saveMySessionProfile(
             Long userId,
-            MySessionProfileUpdateRequest request
+            MyBandProfileUpdateRequest request
     ) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new BaseException(GeneralErrorCode.UNAUTHORIZED_ERROR));
 
-        SessionProfile sessionProfile = sessionProfileRepository.findByUserIdWithPortfolioLinks(userId)
-                .orElseGet(() -> SessionProfile.builder()
+        BandProfile sessionProfile = sessionProfileRepository.findByUserIdWithPortfolioLinks(userId)
+                .orElseGet(() -> BandProfile.builder()
                         .userId(userId)
                         .nickname(user.getName())
                         .part(request.getPart())
@@ -57,7 +57,7 @@ public class SessionProfileCommandServiceImpl implements SessionProfileCommandSe
                     .filter(linkRequest -> !linkRequest.getUrl().isBlank())
                     .forEach(linkRequest ->
                             sessionProfile.addPortfolioLink(
-                                    SessionProfileLink.builder()
+                                    BandProfileLink.builder()
                                             .sessionProfile(sessionProfile)
                                             .url(linkRequest.getUrl())
                                             .build()
@@ -65,8 +65,8 @@ public class SessionProfileCommandServiceImpl implements SessionProfileCommandSe
                     );
         }
 
-        SessionProfile savedSessionProfile = sessionProfileRepository.save(sessionProfile);
+        BandProfile savedSessionProfile = sessionProfileRepository.save(sessionProfile);
 
-        return MySessionProfileResponse.from(savedSessionProfile);
+        return MyBandProfileResponse.from(savedSessionProfile);
     }
 }
