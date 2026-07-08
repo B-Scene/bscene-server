@@ -72,9 +72,7 @@ cors:
   allowed-origins: ${FRONT_ORIGIN:http://localhost:5173}
 
 oauth:
-  # 로그인 성공 시: 프론트 콜백 페이지로 리다이렉트 (?code=)
   front-redirect-uri: ${FRONT_ORIGIN:http://localhost:5173}/oauth/callback
-  # 로그인 실패 시: 프론트 로그인 페이지로 리다이렉트 (?error=코드) → 프론트가 토스트 등으로 안내
   front-failure-uri: ${FRONT_ORIGIN:http://localhost:5173}/login
 
 aws:
