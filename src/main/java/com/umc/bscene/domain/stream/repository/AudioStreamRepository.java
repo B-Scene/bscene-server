@@ -27,11 +27,13 @@ public interface AudioStreamRepository extends JpaRepository<AudioStream, Long> 
 select a from AudioStream as a
 where a.path in :paths
     and (:cursor is null or a.id < :cursor)
-order by s.id desc
+order by a.id desc
 """)
     List<AudioStream> findLivePage(
             @Param("paths") List<String> paths,
             @Param("cursor") Long cursor,
             Pageable pageable
     );
+
+    Boolean existsByPath(String path);
 }
