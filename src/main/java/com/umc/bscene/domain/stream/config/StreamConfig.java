@@ -66,8 +66,4 @@ public class StreamConfig {
         );
     }
 
-    @Bean
-    public MediaMtxController mediaMtxController(StreamService streamService) {
-        return new MediaMtxController(streamService);
-    }
 }
