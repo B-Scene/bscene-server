@@ -1,7 +1,7 @@
 package com.umc.bscene.domain.session.controller;
 
-import com.umc.bscene.domain.band.dto.request.MyBandProfileUpdateRequest;
-import com.umc.bscene.domain.band.dto.response.MyBandProfileResponse;
+import com.umc.bscene.domain.session.dto.profile.request.MyBandProfileUpdateRequest;
+import com.umc.bscene.domain.session.dto.profile.response.MyBandProfileResponse;
 import com.umc.bscene.domain.session.enums.code.SessionSuccessCode;
 import com.umc.bscene.domain.session.service.BandProfileCommandService;
 import com.umc.bscene.domain.session.service.BandProfileQueryService;

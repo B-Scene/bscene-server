@@ -1,7 +1,7 @@
 package com.umc.bscene.domain.session.service.impl;
 
-import com.umc.bscene.domain.band.dto.response.MyBandProfileResponse;
-import com.umc.bscene.domain.band.repository.BandProfileRepository;
+import com.umc.bscene.domain.session.dto.profile.response.MyBandProfileResponse;
+import com.umc.bscene.domain.session.repository.BandProfileRepository;
 import com.umc.bscene.domain.session.service.BandProfileQueryService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;

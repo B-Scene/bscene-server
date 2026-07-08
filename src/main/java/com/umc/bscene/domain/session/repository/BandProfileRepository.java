@@ -1,6 +1,6 @@
-package com.umc.bscene.domain.band.repository;
+package com.umc.bscene.domain.session.repository;
 
-import com.umc.bscene.domain.band.entity.BandProfile;
+import com.umc.bscene.domain.session.entity.BandProfile;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;

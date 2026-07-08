@@ -1,7 +1,15 @@
-package com.umc.bscene.domain.band.entity;
+package com.umc.bscene.domain.session.entity;
 
 import com.umc.bscene.global.entity.BaseEntity;
-import jakarta.persistence.*;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
+import jakarta.persistence.Table;
 import lombok.AccessLevel;
 import lombok.Builder;
 import lombok.Getter;
@@ -12,17 +20,17 @@ import java.time.LocalDateTime;
 @Entity
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-@Table(name = "band_profile_links")
+@Table(name = "session_profile_links")
 public class BandProfileLink extends BaseEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "band_profile_link_id")
-    private Long bandProfileLinkId;
+    @Column(name = "session_profile_link_id")
+    private Long sessionProfileLinkId;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "band_profile_id", nullable = false)
-    private BandProfile bandProfile;
+    @JoinColumn(name = "session_profile_id", nullable = false)
+    private BandProfile sessionProfile;
 
     @Column(name = "url", nullable = false, length = 500)
     private String url;
@@ -32,10 +40,10 @@ public class BandProfileLink extends BaseEntity {
 
     @Builder
     private BandProfileLink(
-            BandProfile bandProfile,
+            BandProfile sessionProfile,
             String url
     ) {
-        this.bandProfile = bandProfile;
+        this.sessionProfile = sessionProfile;
         this.url = url;
     }
 

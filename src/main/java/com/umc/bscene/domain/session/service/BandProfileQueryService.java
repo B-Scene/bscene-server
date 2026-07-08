@@ -1,6 +1,6 @@
 package com.umc.bscene.domain.session.service;
 
-import com.umc.bscene.domain.band.dto.response.MyBandProfileResponse;
+import com.umc.bscene.domain.session.dto.profile.response.MyBandProfileResponse;
 
 public interface BandProfileQueryService {
 

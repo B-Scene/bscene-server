@@ -5,6 +5,6 @@ import jakarta.validation.constraints.NotNull;
 public record BandMemberAcceptRequest(
 
         @NotNull
-        Long bandProfileId
+        Long sessionProfileId
 ) {
 }
