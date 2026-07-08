@@ -24,6 +24,9 @@ import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationAdapter;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientException;
 
@@ -129,6 +132,13 @@ public class StreamServiceImpl implements StreamService {
 
         audioStream.close();                                                 // 종료 상태로 변경
         redisTemplate.delete(LIVE_KEY_PREFIX + audioStream.getPath());  // Redis도 정리
+
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override
+            public void afterCommit() {
+                kickPublisher(path);
+            }
+        });
     }
 
     @Override
