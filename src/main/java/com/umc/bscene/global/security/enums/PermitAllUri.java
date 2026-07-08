@@ -22,7 +22,10 @@ public enum PermitAllUri {
     OAUTH_SIGNUP("/auth/oauth/signup"),
 
     GENRES("/genres"),
-    REGIONS("/regions");
+    REGIONS("/regions"),
+
+    // MediaMTX 관련 API 개방
+    INTERNAL_MEDIAMTX("/internal/mediamtx/**"),;
 
     private final String uri;
 }
