@@ -3,8 +3,14 @@ logLevel: info
 # 안 쓰는 프로토콜 전부 비활성화
 rtsp: no
 rtmp: no
-hls: no
 srt: no
+
+# HLS
+hls: yes
+hlsAddress: :8888
+hlsVariant: lowLatency  # LL-HLS 옵션
+hlsAlwaysRemux: yes     # 청취자가 0명이어도 미리 세그먼트 생성
+hlsAllowOrigin: '*'     # 테스트용 CORD
 
 # WebRTC (WHIP/WHEP)
 webrtc: yes
