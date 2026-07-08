@@ -226,9 +226,18 @@ public class StreamServiceImpl implements StreamService {
             }
         }
 
+        // Redis에 라이브 중으로 등록되어 있지만, 현재 MediaMTX가 관리하는 방송 리스트엔 없는 경우
+        // => 비정상 종료인 경우
         for(String path : current) {
-            if(!readyPaths.contains(path))
+            if(!readyPaths.contains(path)) {
                 redisTemplate.delete(LIVE_KEY_PREFIX + path);
+
+                AudioStream closedStream = audioStreamRepository.findByPath(path)
+                        .orElseThrow(() -> new StreamException(StreamErrorCode.AUDIO_STREAM_NOT_FOUND));
+
+                // Poller가 종료할 수 있게 함
+                closedStream.close();
+            }
         }
     }
 
