@@ -3,6 +3,7 @@ package com.umc.bscene.domain.stream.service;
 import com.umc.bscene.domain.stream.dto.request.StreamCreateRequest;
 import com.umc.bscene.domain.stream.dto.response.LiveStreamResponse;
 import com.umc.bscene.domain.stream.dto.response.StreamCreateResponse;
+import com.umc.bscene.domain.user.entity.User;
 import com.umc.bscene.global.response.CursorPage;
 
 import java.util.Set;
@@ -14,7 +15,7 @@ public interface StreamService {
     Boolean canRead(String accessToken, String path);
 
     // 방송 시작, 종료
-    StreamCreateResponse createStream(Long userId, StreamCreateRequest request);
+    StreamCreateResponse createStream(User user, Long userId, StreamCreateRequest request);
     void closeStream(Long userId, String path);
 
     // 방송 상태
