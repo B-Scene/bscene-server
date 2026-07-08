@@ -55,14 +55,16 @@ public class StreamConfig {
             AudioStreamRepository audioStreamRepository,
             StreamMemberRepository streamMemberRepository,
             StringRedisTemplate stringRedisTemplate,
-            BandMemberPort bandMemberPort
+            BandMemberPort bandMemberPort,
+            RestClient mtxRestClient
     ) {
         return new StreamServiceImpl(
                 jwtUtil,
                 audioStreamRepository,
                 streamMemberRepository,
                 stringRedisTemplate,
-                bandMemberPort
+                bandMemberPort,
+                mtxRestClient
         );
     }
 
