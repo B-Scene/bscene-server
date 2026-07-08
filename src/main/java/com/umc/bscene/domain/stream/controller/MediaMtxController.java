@@ -8,17 +8,17 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
-import org.springframework.web.bind.annotation.ExceptionHandler;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.*;
 
 @Slf4j
+@RestController
 @RequiredArgsConstructor
 @RequestMapping("/internal/mediamtx")
 public class MediaMtxController {
 
     private final StreamService streamService;
 
+    @PostMapping("/auth")
     public ResponseEntity<Void> authorize(
             @Valid @RequestBody MtxAuthRequest request
     ) {
@@ -40,7 +40,7 @@ public class MediaMtxController {
              */
             case "read" -> request.path() != null && !request.path().isBlank()
                     && streamService.canRead(request.password(), request.path());
-            default -> request.path() == null || request.path().isBlank();
+            default -> false;
         };
 
         return allowed ? ResponseEntity.status(HttpStatus.OK).build()
@@ -56,7 +56,9 @@ public class MediaMtxController {
     public ResponseEntity<Void> onValidFail(
             MethodArgumentNotValidException e
     ) {
-        log.warn("| MediaMtxController.java | 필드 검증에 실패: {}", e.getBindingResult().getFieldErrors());
+        log.warn("| MediaMtxController.java | 필드 검증에 실패: {}", e.getBindingResult().getFieldErrors().stream()
+                .map(f -> f.getField() + ": " + f.getDefaultMessage())
+                .toList());
         return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
     }
 }
