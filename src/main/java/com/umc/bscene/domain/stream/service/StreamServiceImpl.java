@@ -234,7 +234,8 @@ public class StreamServiceImpl implements StreamService {
 
     private Long getUserId(String accessToken) {
         // JWT 토큰이 유효하지 않을 때
-        if(accessToken == null || !jwtUtil.isValid(accessToken))
+        if(accessToken == null || !jwtUtil.isValid(accessToken)
+        || !"access".equals(jwtUtil.getType(accessToken)))
             return null;
         /*
          * JWT 토큰이 유효한 경우, 사용자 기본 키를 추출
