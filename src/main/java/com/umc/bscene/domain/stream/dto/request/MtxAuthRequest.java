@@ -17,6 +17,7 @@ public record MtxAuthRequest(
                 message = "action 필드 양식이 잘못되었습니다.")
         String action,
 
+        @NotBlank(message = "path 필드는 필수 값입니다.")
         @Pattern(regexp = "^[a-zA-Z0-9\\-]{0,64}$",
                 message = "path 필드 양식이 잘못되었습니다.")
         String path,
