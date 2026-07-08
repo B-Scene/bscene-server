@@ -27,6 +27,7 @@ public interface AudioStreamRepository extends JpaRepository<AudioStream, Long> 
 select a from AudioStream as a
 where a.path in :paths
     and (:cursor is null or a.id < :cursor)
+    and a.status = 'OPEN'
 order by a.id desc
 """)
     List<AudioStream> findLivePage(
