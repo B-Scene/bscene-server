@@ -14,7 +14,9 @@ public enum PerformanceErrorCode implements BaseResponseCode {
 
     NOT_PERFORMANCE_BAND_MEMBER(FORBIDDEN, "SHOW403_1", "공연에 대한 권한이 없어요."),
 
-    PERFORMANCE_NOT_FOUND(NOT_FOUND, "SHOW404_1", "존재하지 않는 공연이에요.");
+    PERFORMANCE_NOT_FOUND(NOT_FOUND, "SHOW404_1", "존재하지 않는 공연이에요."),
+
+    ALREADY_ALARM_SET(CONFLICT, "SHOW409_1", "이미 알림을 설정한 공연이에요.");
 
     private final int status;
     private final String code;
