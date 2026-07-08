@@ -5,6 +5,7 @@ import com.umc.bscene.domain.stream.dto.response.BandInfoForGetLiveResponse;
 import com.umc.bscene.domain.stream.dto.response.LiveStreamResponse;
 import com.umc.bscene.domain.stream.dto.response.StreamCreateResponse;
 import com.umc.bscene.domain.stream.entity.AudioStream;
+import com.umc.bscene.domain.stream.entity.mapper.StreamMember;
 import com.umc.bscene.domain.stream.enums.StreamMemberStatus;
 import com.umc.bscene.domain.stream.enums.StreamStatus;
 import com.umc.bscene.domain.stream.enums.code.error.StreamErrorCode;
@@ -12,6 +13,7 @@ import com.umc.bscene.domain.stream.exception.StreamException;
 import com.umc.bscene.domain.stream.port.BandMemberPort;
 import com.umc.bscene.domain.stream.repository.AudioStreamRepository;
 import com.umc.bscene.domain.stream.repository.StreamMemberRepository;
+import com.umc.bscene.domain.user.entity.User;
 import com.umc.bscene.global.response.CursorPage;
 import com.umc.bscene.global.security.util.JwtUtil;
 import lombok.RequiredArgsConstructor;
@@ -23,6 +25,8 @@ import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Duration;
+import java.time.Instant;
+import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -67,37 +71,45 @@ public class StreamServiceImpl implements StreamService {
 
     @Override
     @Transactional
-    public StreamCreateResponse createStream(Long userId, StreamCreateRequest request) {
+    public StreamCreateResponse createStream(User user, Long userId, StreamCreateRequest request) {
 
         // 오디오 스트리밍 세션에 참여 중이 아닌 사람만 stream  생성 가능
         if(streamMemberRepository.existsByIdWithStatuses(userId, StreamMemberStatus.ACCEPTED, StreamStatus.OPEN))
             throw new StreamException(StreamErrorCode.DUPLICATE_LIVE_CREATE_TRY);
 
-        // Path Unique 제약조건 실패 시 재생성
-        AudioStream savedAudioStream = saveWithUniquePath(userId);
-
-        // FIXME: 빌드한 stream 객체에 대해 path와 title을 반환
-        return null;
-    }
-
-    private AudioStream saveWithUniquePath(Long userId) {
-        for(int attempt = 1; true; attempt++) {
-            AudioStream createdAudioStream = AudioStream.builder()
+        AudioStream createdAudioStream = AudioStream.builder()
                     .broadcasterId(userId)
                     .path(UUID.randomUUID().toString())
-                    .title("")                  // FIXME: 빈 String은 DTO 완성 시 수정
-                    .description("")
-                    .thumbnailImageUrl("")
-                    .status(StreamStatus.OPEN)  // FIXME: scheduledAt 필드가 누락 시, OPEN, 존재할 시 SCHEDULED로 분기 수정
-                    .scheduledAt(null)
-                    .startedAt(null)
+                    .title(request.title())
+                    .description(request.description())
+                    .thumbnailImageUrl("")                  // FIXME: S3 관련 업데이트 시 작성 필요
+                    .status(request.scheduledAt() == null ? StreamStatus.OPEN : StreamStatus.SCHEDULED)
+                    .scheduledAt(request.scheduledAt())
+                    .startedAt(request.scheduledAt() == null ? LocalDateTime.from(Instant.now()) : null)
                     .closedAt(null)
                     .build();
-            try {
-                return audioStreamRepository.save(createdAudioStream);
-            } catch (DataIntegrityViolationException e) {
-                log.warn("StreamService createStream 메소드에서 unique 제약 조건 만족 실패 예외", e);
-            }
+
+
+        try {
+            AudioStream save = audioStreamRepository.save(createdAudioStream);
+
+            if(save.getScheduledAt() == null)
+                streamMemberRepository.save(
+                        StreamMember.builder()
+                                .user(user)
+                                .audioStream(save)
+                                .status(StreamMemberStatus.ACCEPTED)
+                                .build()
+            );
+
+            return new StreamCreateResponse(
+                    save.getId(),
+                    save.getPath(),
+                    save.getTitle()
+            );
+        } catch (DataIntegrityViolationException e) {
+            log.warn("StreamService createStream 메소드에서 unique 제약 조건 만족 실패 예외", e);
+            throw new StreamException(StreamErrorCode.DB_CONSTRAINTS_FAILED);
         }
     }
 
