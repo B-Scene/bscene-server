@@ -7,6 +7,7 @@ import com.umc.bscene.global.security.service.CustomUserDetailsService;
 import com.umc.bscene.global.security.util.JwtUtil;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
+import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.NonNull;
@@ -33,17 +34,12 @@ public class JwtAuthFilter extends OncePerRequestFilter {
     ) throws ServletException, IOException {
 
         try {
-            // 토큰 가져오기
-            String token = request.getHeader("Authorization");
+            String token = getToken(request);
 
-            // token이 없거나 Bearer가 아니면 넘기기
-            if (token == null || !token.startsWith("Bearer ")) {
+            if (token == null) {
                 filterChain.doFilter(request, response);
                 return;
             }
-
-            // Bearer이면 토큰만 추출
-            token = token.replace("Bearer ", "");
 
             // AccessToken 검증하기
             if (jwtUtil.isValid(token) && "access".equals(jwtUtil.getType(token))) {
@@ -74,5 +70,18 @@ public class JwtAuthFilter extends OncePerRequestFilter {
 
             mapper.writeValue(response.getOutputStream(), errorResponse);
         }
+    }
+
+    private String getToken(HttpServletRequest request) {
+        String header = request.getHeader("Authorization");
+
+        if (header != null && header.startsWith("Bearer "))
+            return header.substring(7);
+
+        if (request.getCookies() != null)
+            for (Cookie cookie : request.getCookies())
+                if ("access_token".equals(cookie.getName())) return cookie.getValue();
+
+        return null;
     }
 }
