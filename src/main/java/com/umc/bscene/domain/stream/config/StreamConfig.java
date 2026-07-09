@@ -56,7 +56,8 @@ public class StreamConfig {
             StreamMemberRepository streamMemberRepository,
             StringRedisTemplate stringRedisTemplate,
             BandMemberPort bandMemberPort,
-            RestClient mtxRestClient
+            RestClient mtxRestClient,
+            @Value("${mediamtx.hls-url}") String hlsUrl
     ) {
         return new StreamServiceImpl(
                 jwtUtil,
@@ -64,7 +65,8 @@ public class StreamConfig {
                 streamMemberRepository,
                 stringRedisTemplate,
                 bandMemberPort,
-                mtxRestClient
+                mtxRestClient,
+                hlsUrl
         );
     }
 

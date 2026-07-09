@@ -1,10 +1,7 @@
 package com.umc.bscene.domain.stream.service;
 
 import com.umc.bscene.domain.stream.dto.request.StreamCreateRequest;
-import com.umc.bscene.domain.stream.dto.response.BandInfoForGetLiveResponse;
-import com.umc.bscene.domain.stream.dto.response.LiveStreamResponse;
-import com.umc.bscene.domain.stream.dto.response.MtxPathResponse;
-import com.umc.bscene.domain.stream.dto.response.StreamCreateResponse;
+import com.umc.bscene.domain.stream.dto.response.*;
 import com.umc.bscene.domain.stream.entity.AudioStream;
 import com.umc.bscene.domain.stream.entity.mapper.StreamMember;
 import com.umc.bscene.domain.stream.enums.StreamMemberStatus;
@@ -31,6 +28,7 @@ import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientException;
 
 import java.time.Duration;
+import java.time.Instant;
 import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -42,6 +40,7 @@ public class StreamServiceImpl implements StreamService {
 
     private static final String LIVE_KEY_PREFIX = "live:";
     private static final String MTX_SOURCE_WEBRTC = "webRTCSession";
+    private static final String VIEWER_KEY_PREFIX = "viewer:";
 
     private final JwtUtil jwtUtil;
     private final AudioStreamRepository audioStreamRepository;
@@ -49,6 +48,8 @@ public class StreamServiceImpl implements StreamService {
     private final StringRedisTemplate redisTemplate;
     private final BandMemberPort bandMemberPort;
     private final RestClient mtxRestClient;
+
+    private final String hlsUrl;
 
     // 방송 가능을 알리는 티켓 발급
     @Override
@@ -251,6 +252,66 @@ public class StreamServiceImpl implements StreamService {
                 audioStreamRepository.findByPath(path).ifPresent(AudioStream::close);
             }
         }
+    }
+
+    @Override
+    @Transactional
+    public StreamRoomResponse enterRoom(Long userId, Long liveId) {
+
+        AudioStream stream = audioStreamRepository.findById(liveId)
+                .orElseThrow(() -> new StreamException(StreamErrorCode.AUDIO_STREAM_NOT_FOUND));
+
+        // 라이브 방 진입은 했지만, WHIP 연결은 안 했을 수 있음 -> 라이브 시작 전.
+        // 따라서 Redis에서 LIVE prefix 키로 검색
+
+        boolean isLive = Boolean.TRUE.equals(
+                redisTemplate.hasKey(LIVE_KEY_PREFIX + stream.getPath())
+        );
+
+        // 시청자 등록
+        redisTemplate.opsForZSet().add(
+                VIEWER_KEY_PREFIX + liveId,
+                String.valueOf(userId),
+                Instant.now().getEpochSecond()
+        );
+
+        Long viewCount = redisTemplate.opsForZSet().zCard(VIEWER_KEY_PREFIX + liveId);
+
+        // 밴드 정보
+        BandInfoForGetLiveResponse.BandInfo band = bandMemberPort.getBandNameWithBandProfileByBroadcasterId(Set.of(stream.getBroadcasterId()))
+                .stream().findFirst()
+                .map(BandInfoForGetLiveResponse::bandInfo)
+                .orElse(null);
+
+        // role은 서버가 부여
+        boolean isBroadcaster = stream.getBroadcasterId().equals(userId);
+
+        StreamRoomResponse.Playback playback = isLive ? new StreamRoomResponse.Playback(
+                isBroadcaster ? "BROADCASTER" : "LISTENER",
+                isBroadcaster ? "WHIP" : "HLS",
+                isBroadcaster
+                    ? "" + "/" + stream.getPath() + "/whip"
+                    : hlsUrl + "/" + stream.getPath() + "/index.m3u8",
+                LocalDateTime.now().plus(Duration.ofSeconds(0)))
+                : null;
+
+        return new StreamRoomResponse(
+                stream.getId(),
+                isLive,
+                stream.getStartedAt(),
+                viewCount == null ? 0 : viewCount.intValue(),
+                band != null ? band.bandProfileImageUrl() : "",
+                band != null ? band.bandName() : "",
+                stream.getTitle(),
+                stream.getDescription(),
+                playback
+        );
+    }
+
+    @Override
+    @Transactional
+    public void leaveRoom(Long userId, Long liveId) {
+        redisTemplate.opsForZSet().remove(VIEWER_KEY_PREFIX + liveId, String.valueOf(userId));
     }
 
     private void kickPublisher(String path) {
