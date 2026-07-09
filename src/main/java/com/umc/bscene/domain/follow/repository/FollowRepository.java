@@ -2,6 +2,10 @@ package com.umc.bscene.domain.follow.repository;
 
 import com.umc.bscene.domain.follow.entity.Follow;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
+
+import java.util.List;
 
 public interface FollowRepository extends JpaRepository<Follow, Long> {
 
@@ -16,4 +20,8 @@ public interface FollowRepository extends JpaRepository<Follow, Long> {
 
     // 특정 사용자가 팔로우하는 밴드 수를 반환
     long countByUser_Id(Long userId);
+
+    // 특정 사용자가 팔로우하는 밴드 ID 목록을 반환
+    @Query("SELECT f.band.id FROM Follow f WHERE f.user.id = :userId")
+    List<Long> findBandIdsByUserId(@Param("userId") Long userId);
 }
