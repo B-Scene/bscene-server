@@ -68,4 +68,5 @@ jwt:
 mediamtx:
   hls-url: ${MEDIAMTX_HLS_URL:http://localhost:8888}
   api-url: ${MEDIAMTX_API_URL:http://localhost:9997}
+  webrtc-url: ${MEDIAMTX_API_URL:http://localhost:8889}
 

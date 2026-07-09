@@ -50,6 +50,7 @@ public class StreamServiceImpl implements StreamService {
     private final RestClient mtxRestClient;
 
     private final String hlsUrl;
+    private final String webrtcUrl;
 
     // 방송 가능을 알리는 티켓 발급
     @Override
