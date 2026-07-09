@@ -1,10 +1,10 @@
 package com.umc.bscene.domain.stream.config;
 
-import com.umc.bscene.domain.stream.controller.MediaMtxController;
 import com.umc.bscene.domain.stream.dto.response.BandInfoForGetLiveResponse;
 import com.umc.bscene.domain.stream.port.BandMemberPort;
 import com.umc.bscene.domain.stream.repository.AudioStreamRepository;
 import com.umc.bscene.domain.stream.repository.StreamMemberRepository;
+import com.umc.bscene.domain.stream.scheduler.StreamCleanupScheduler;
 import com.umc.bscene.domain.stream.service.MediaMtxLivePoller;
 import com.umc.bscene.domain.stream.service.StreamService;
 import com.umc.bscene.domain.stream.service.StreamServiceImpl;
@@ -72,4 +72,10 @@ public class StreamConfig {
         );
     }
 
+    @Bean
+    public StreamCleanupScheduler streamCleanupScheduler(
+            AudioStreamRepository audioStreamRepository
+    ) {
+        return new StreamCleanupScheduler(audioStreamRepository);
+    }
 }

@@ -43,7 +43,7 @@ order by a.id desc
     @Query("""
 select a from AudioStream as a
 where a.status = com.umc.bscene.domain.stream.enums.StreamStatus.SCHEDULED
-    and coalesce(a.scheduledAt, a.createdAt) < : threshold
+    and coalesce(a.scheduledAt, a.createdAt) < :threshold
 """)
     List<AudioStream> findAbandonedScheduled(
             @Param("threshold") LocalDateTime threshold
