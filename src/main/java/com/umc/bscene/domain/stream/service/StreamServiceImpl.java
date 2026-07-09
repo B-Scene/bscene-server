@@ -91,9 +91,9 @@ public class StreamServiceImpl implements StreamService {
                     .title(request.title())
                     .description(request.description())
                     .thumbnailImageUrl("")                  // FIXME: S3 관련 업데이트 시 작성 필요
-                    .status(request.scheduledAt() == null ? StreamStatus.OPEN : StreamStatus.SCHEDULED)
+                    .status(StreamStatus.SCHEDULED)         // 방 생성 이후 방 진입이 방송 시작의 트리거이므로 일단 SCHEDULED로 고정
                     .scheduledAt(request.scheduledAt())
-                    .startedAt(request.scheduledAt() == null ? LocalDateTime.now() : null)
+                    .startedAt(null)                        // 방 생성 이후 방 진입이 방송 시작의 트리거이므로 일단 null로 고정
                     .closedAt(null)
                     .build();
 
