@@ -250,8 +250,8 @@ public class StreamServiceImpl implements StreamService {
             if(!readyPaths.contains(path)) {
                 redisTemplate.delete(LIVE_KEY_PREFIX + path);
 
-                // 정리 스케줄러를 별도로 두므로 제거됨
-                // 기존 코드 : audioStreamRepository.findByPath(path).ifPresent(AudioStream::close);
+                // FE에서 마이크 온오프는 따로. 오프 시 무음 송출
+                audioStreamRepository.findByPath(path).ifPresent(AudioStream::close);
             }
         }
     }
