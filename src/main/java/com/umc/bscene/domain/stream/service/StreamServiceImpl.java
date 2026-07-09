@@ -11,6 +11,7 @@ import com.umc.bscene.domain.stream.exception.StreamException;
 import com.umc.bscene.domain.stream.port.BandMemberPort;
 import com.umc.bscene.domain.stream.repository.AudioStreamRepository;
 import com.umc.bscene.domain.stream.repository.StreamMemberRepository;
+import com.umc.bscene.domain.stream.sse.ViewerSseRegistry;
 import com.umc.bscene.domain.user.entity.User;
 import com.umc.bscene.global.response.CursorPage;
 import com.umc.bscene.global.security.util.JwtUtil;
@@ -48,6 +49,7 @@ public class StreamServiceImpl implements StreamService {
     private final StringRedisTemplate redisTemplate;
     private final BandMemberPort bandMemberPort;
     private final RestClient mtxRestClient;
+    private final ViewerSseRegistry viewerSseRegistry;
 
     private final String hlsUrl;
     private final String webrtcUrl;

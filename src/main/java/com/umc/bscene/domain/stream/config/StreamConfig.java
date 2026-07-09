@@ -63,6 +63,7 @@ public class StreamConfig {
             StringRedisTemplate stringRedisTemplate,
             BandMemberPort bandMemberPort,
             RestClient mtxRestClient,
+            ViewerSseRegistry viewerSseRegistry,
             @Value("${mediamtx.hls-url}") String hlsUrl,
             @Value("${mediamtx.webrtc-url}") String webrtcUrl
     ) {
@@ -73,6 +74,7 @@ public class StreamConfig {
                 stringRedisTemplate,
                 bandMemberPort,
                 mtxRestClient,
+                viewerSseRegistry,
                 hlsUrl,
                 webrtcUrl
         );
