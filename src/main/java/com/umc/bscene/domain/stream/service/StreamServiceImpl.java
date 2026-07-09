@@ -261,18 +261,38 @@ public class StreamServiceImpl implements StreamService {
         AudioStream stream = audioStreamRepository.findById(liveId)
                 .orElseThrow(() -> new StreamException(StreamErrorCode.AUDIO_STREAM_NOT_FOUND));
 
+        // 송출자, 청취자 구분
+        boolean isBroadcaster = stream.getBroadcasterId().equals(userId);
+
+        if (isBroadcaster) {
+            // 송출자일 때,
+            // 닫힌 혹은 취소된 라이브에 진입하려고하면 예외 발생
+            if (stream.getStatus() == StreamStatus.CLOSED || stream.getStatus() == StreamStatus.CANCELED)
+                throw new StreamException(StreamErrorCode.AUDIO_STREAM_NOT_LIVE);
+
+            // 예약된 라이브에 진입하면 그 라이브를 OPEN으로 변경
+            if (stream.getStatus() == StreamStatus.SCHEDULED)
+                stream.markStarted();
+        } else {
+            // 청취자일 때
+            // OPEN이 아닌 라이브에 진입 시 예외
+            if(stream.getStatus() != StreamStatus.OPEN) {
+                throw new StreamException(StreamErrorCode.AUDIO_STREAM_NOT_LIVE);
+            }
+
+            // 시청자 등록
+            redisTemplate.opsForZSet().add(
+                    VIEWER_KEY_PREFIX + liveId,
+                    String.valueOf(userId),
+                    Instant.now().getEpochSecond()
+            );
+        }
+
         // 라이브 방 진입은 했지만, WHIP 연결은 안 했을 수 있음 -> 라이브 시작 전.
         // 따라서 Redis에서 LIVE prefix 키로 검색
 
         boolean isLive = Boolean.TRUE.equals(
                 redisTemplate.hasKey(LIVE_KEY_PREFIX + stream.getPath())
-        );
-
-        // 시청자 등록
-        redisTemplate.opsForZSet().add(
-                VIEWER_KEY_PREFIX + liveId,
-                String.valueOf(userId),
-                Instant.now().getEpochSecond()
         );
 
         Long viewCount = redisTemplate.opsForZSet().zCard(VIEWER_KEY_PREFIX + liveId);
@@ -282,9 +302,6 @@ public class StreamServiceImpl implements StreamService {
                 .stream().findFirst()
                 .map(BandInfoForGetLiveResponse::bandInfo)
                 .orElse(null);
-
-        // role은 서버가 부여
-        boolean isBroadcaster = stream.getBroadcasterId().equals(userId);
 
         StreamRoomResponse.Playback playback = isLive ? new StreamRoomResponse.Playback(
                 isBroadcaster ? "BROADCASTER" : "LISTENER",
