@@ -309,9 +309,9 @@ public class StreamServiceImpl implements StreamService {
                 isBroadcaster ? "BROADCASTER" : "LISTENER",
                 isBroadcaster ? "WHIP" : "HLS",
                 isBroadcaster
-                    ? "" + "/" + stream.getPath() + "/whip"
+                    ? webrtcUrl + "/" + stream.getPath() + "/whip"
                     : hlsUrl + "/" + stream.getPath() + "/index.m3u8",
-                LocalDateTime.now().plus(Duration.ofSeconds(0)))
+                LocalDateTime.now().plus(Duration.ofSeconds(60)))
                 : null;
 
         return new StreamRoomResponse(
