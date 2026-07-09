@@ -82,9 +82,12 @@ public class StreamServiceImpl implements StreamService {
     @Transactional
     public StreamCreateResponse createStream(User user, Long userId, StreamCreateRequest request) {
 
-        // 오디오 스트리밍 세션에 참여 중이 아닌 사람만 stream  생성 가능
+        // enterRoom에서 라이브 진행하면서 여러 라이브를 동시 진행 못하게 막으므로, 여기 있던 코드는 지움
+
+        /* 기존 코드
         if(streamMemberRepository.existsByIdWithStatuses(userId, StreamMemberStatus.ACCEPTED, StreamStatus.OPEN))
             throw new StreamException(StreamErrorCode.DUPLICATE_LIVE_CREATE_TRY);
+        */
 
         AudioStream createdAudioStream = AudioStream.builder()
                     .broadcasterId(userId)
@@ -273,8 +276,12 @@ public class StreamServiceImpl implements StreamService {
                 throw new StreamException(StreamErrorCode.AUDIO_STREAM_NOT_LIVE);
 
             // 예약된 라이브에 진입하면 그 라이브를 OPEN으로 변경
-            if (stream.getStatus() == StreamStatus.SCHEDULED)
+            if (stream.getStatus() == StreamStatus.SCHEDULED) {
+                if (audioStreamRepository.existsByBroadcasterIdAndStatus(userId, StreamStatus.OPEN))
+                    throw new StreamException(StreamErrorCode.ALREADY_LIVE);
+
                 stream.markStarted();
+            }
         } else {
             // 청취자일 때
             // OPEN이 아닌 라이브에 진입 시 예외

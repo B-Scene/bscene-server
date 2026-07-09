@@ -8,6 +8,7 @@ import com.umc.bscene.domain.stream.scheduler.StreamCleanupScheduler;
 import com.umc.bscene.domain.stream.service.MediaMtxLivePoller;
 import com.umc.bscene.domain.stream.service.StreamService;
 import com.umc.bscene.domain.stream.service.StreamServiceImpl;
+import com.umc.bscene.domain.stream.sse.ViewerSseRegistry;
 import com.umc.bscene.global.security.util.JwtUtil;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
@@ -50,6 +51,11 @@ public class StreamConfig {
     }
 
     @Bean
+    public ViewerSseRegistry viewerSseRegistry() {
+        return new ViewerSseRegistry();
+    }
+
+    @Bean
     public StreamService streamService(
             JwtUtil jwtUtil,
             AudioStreamRepository audioStreamRepository,
@@ -74,8 +80,12 @@ public class StreamConfig {
 
     @Bean
     public StreamCleanupScheduler streamCleanupScheduler(
-            AudioStreamRepository audioStreamRepository
+            AudioStreamRepository audioStreamRepository,
+            StringRedisTemplate redisTemplate
     ) {
-        return new StreamCleanupScheduler(audioStreamRepository);
+        return new StreamCleanupScheduler(
+                audioStreamRepository,
+                redisTemplate
+        );
     }
 }
