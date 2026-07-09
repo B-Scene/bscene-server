@@ -7,6 +7,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -37,4 +38,16 @@ order by a.id desc
     );
 
     Boolean existsByPath(String path);
+
+    // scheduledAt이나, createdAt이
+    @Query("""
+select a from AudioStream as a
+where a.status = com.umc.bscene.domain.stream.enums.StreamStatus.SCHEDULED
+    and coalesce(a.scheduledAt, a.createdAt) < : threshold
+""")
+    List<AudioStream> findAbandonedScheduled(
+            @Param("threshold") LocalDateTime threshold
+    );
+
+    List<AudioStream> findByStatusAndStartedAtBefore(StreamStatus status, LocalDateTime thresholdAt);
 }
