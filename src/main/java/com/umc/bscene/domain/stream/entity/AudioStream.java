@@ -7,6 +7,7 @@ import lombok.*;
 
 import java.time.Instant;
 import java.time.LocalDateTime;
+import java.util.stream.Stream;
 
 @Entity
 @Getter
@@ -48,5 +49,12 @@ public class AudioStream extends BaseEntity {
     public void close() {
         this.status = StreamStatus.CLOSED;
         this.closedAt = LocalDateTime.now();
+    }
+
+    public void markStarted() {
+        if(this.startedAt == null)
+            this.startedAt = LocalDateTime.now();
+
+        this.status = StreamStatus.OPEN;
     }
 }
