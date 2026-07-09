@@ -1,5 +1,6 @@
 package com.umc.bscene.domain.notification.controller;
 
+import com.umc.bscene.domain.notification.dto.request.PushTestSendRequest;
 import com.umc.bscene.domain.notification.dto.request.PushTokenDeleteRequest;
 import com.umc.bscene.domain.notification.dto.request.PushTokenSaveRequest;
 import com.umc.bscene.domain.notification.response.code.NotificationSuccessCode;
@@ -44,6 +45,21 @@ public class NotificationController {
         SuccessResponse<Void> successResponse = SuccessResponse.of(
                 (Void) null,
                 NotificationSuccessCode.PUSH_TOKEN_DELETE_SUCCESS
+        );
+
+        return ResponseEntity.status(successResponse.getStatus()).body(successResponse);
+    }
+
+    // 푸시 알림 테스트
+    @PostMapping("/test")
+    public ResponseEntity<SuccessResponse<Void>> sendTestPush(
+            @AuthenticationPrincipal AuthMember authMember,
+            @Valid @RequestBody PushTestSendRequest request
+    ) {
+        notificationService.sendTestPush(authMember.getUser().getId(), request);
+        SuccessResponse<Void> successResponse = SuccessResponse.of(
+                (Void) null,
+                NotificationSuccessCode.PUSH_TEST_SEND_SUCCESS
         );
 
         return ResponseEntity.status(successResponse.getStatus()).body(successResponse);
