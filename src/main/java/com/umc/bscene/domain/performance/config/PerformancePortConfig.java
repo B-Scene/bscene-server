@@ -1,6 +1,6 @@
 package com.umc.bscene.domain.performance.config;
 
-import com.umc.bscene.domain.performance.adapter.BandPerformanceAdapter;
+import com.umc.bscene.domain.performance.adapter.PerformanceAdapter;
 import com.umc.bscene.domain.performance.repository.PerformanceRepository;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -9,9 +9,9 @@ import org.springframework.context.annotation.Configuration;
 public class PerformancePortConfig {
 
     @Bean
-    public BandPerformanceAdapter bandPerformanceAdapter(
+    public PerformanceAdapter PerformanceAdapter(
             PerformanceRepository performanceRepository
     ) {
-        return new BandPerformanceAdapter(performanceRepository);
+        return new PerformanceAdapter(performanceRepository);
     }
 }
