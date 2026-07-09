@@ -305,14 +305,23 @@ public class StreamServiceImpl implements StreamService {
                 .map(BandInfoForGetLiveResponse::bandInfo)
                 .orElse(null);
 
-        StreamRoomResponse.Playback playback = isLive ? new StreamRoomResponse.Playback(
-                isBroadcaster ? "BROADCASTER" : "LISTENER",
-                isBroadcaster ? "WHIP" : "HLS",
-                isBroadcaster
-                    ? webrtcUrl + "/" + stream.getPath() + "/whip"
-                    : hlsUrl + "/" + stream.getPath() + "/index.m3u8",
-                LocalDateTime.now().plus(Duration.ofSeconds(60)))
-                : null;
+        StreamRoomResponse.Playback playback;
+
+        if(isBroadcaster) {
+            // 송출자일 시, 반드시 송출 URL을 반환
+            playback = new StreamRoomResponse.Playback(
+                    "BROADCASTER", "WHIP",
+                    webrtcUrl + "/" + stream.getPath() + "/whip",
+                    LocalDateTime.now().plus(Duration.ofSeconds(60))
+            );
+        } else {
+            // 청취자일 시, OPEN이면 청취 URL, !OPEN이면 null로 빌드
+            playback = isLive ? new StreamRoomResponse.Playback(
+                    "LISTENER", "HLS",
+                    hlsUrl + "/" + stream.getPath() + "/index.m3u8",
+                    LocalDateTime.now().plus(Duration.ofSeconds(60))
+            ) : null;
+        }
 
         return new StreamRoomResponse(
                 stream.getId(),
