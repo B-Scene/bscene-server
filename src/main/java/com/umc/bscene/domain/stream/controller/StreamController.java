@@ -6,6 +6,7 @@ import com.umc.bscene.domain.stream.service.StreamService;
 import com.umc.bscene.global.response.ApiResponse;
 import com.umc.bscene.global.response.SuccessResponse;
 import com.umc.bscene.global.security.entity.AuthMember;
+import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -49,11 +50,14 @@ public class StreamController {
                 .body(body);
     }
 
-    @GetMapping(value = "/live/{liveId}/viewers", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
+    @GetMapping(value = "/{liveId}/viewers", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
     public SseEmitter subscribeViewer(
             @AuthenticationPrincipal AuthMember authMember,
-            @PathVariable Long liveId
+            @PathVariable Long liveId,
+            HttpServletResponse response
     ) {
+        // 리버스 프록시(nginx 등)가 이 SSE 응답만 버퍼링하지 않도록(실시간 전송)
+        response.setHeader("X-Accel-Buffering", "no");
         return streamService.subscribeViewerCount(authMember.getUser().getId(), liveId);
     }
 }

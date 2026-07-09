@@ -8,6 +8,7 @@ import com.umc.bscene.domain.stream.scheduler.StreamCleanupScheduler;
 import com.umc.bscene.domain.stream.service.MediaMtxLivePoller;
 import com.umc.bscene.domain.stream.service.StreamService;
 import com.umc.bscene.domain.stream.service.StreamServiceImpl;
+import com.umc.bscene.domain.stream.sse.ViewerSsePresence;
 import com.umc.bscene.domain.stream.sse.ViewerSseRegistry;
 import com.umc.bscene.global.security.util.JwtUtil;
 import org.springframework.beans.factory.annotation.Value;
@@ -56,6 +57,19 @@ public class StreamConfig {
     }
 
     @Bean
+    public ViewerSsePresence viewerSsePresence(
+            ViewerSseRegistry viewerSseRegistry,
+            StringRedisTemplate stringRedisTemplate,
+            AudioStreamRepository audioStreamRepository
+    ) {
+        return new ViewerSsePresence(
+                viewerSseRegistry,
+                stringRedisTemplate,
+                audioStreamRepository
+        );
+    }
+
+    @Bean
     public StreamService streamService(
             JwtUtil jwtUtil,
             AudioStreamRepository audioStreamRepository,
@@ -63,7 +77,7 @@ public class StreamConfig {
             StringRedisTemplate stringRedisTemplate,
             BandMemberPort bandMemberPort,
             RestClient mtxRestClient,
-            ViewerSseRegistry viewerSseRegistry,
+            ViewerSsePresence viewerSsePresence,
             @Value("${mediamtx.hls-url}") String hlsUrl,
             @Value("${mediamtx.webrtc-url}") String webrtcUrl
     ) {
@@ -74,7 +88,7 @@ public class StreamConfig {
                 stringRedisTemplate,
                 bandMemberPort,
                 mtxRestClient,
-                viewerSseRegistry,
+                viewerSsePresence,
                 hlsUrl,
                 webrtcUrl
         );

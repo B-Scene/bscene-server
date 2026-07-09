@@ -2,6 +2,8 @@ spring:
   mvc:
     servlet:
       path: /api
+    async:
+      request-timeout:
 
   application:
     name: bscene

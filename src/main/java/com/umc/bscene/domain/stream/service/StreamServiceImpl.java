@@ -11,7 +11,7 @@ import com.umc.bscene.domain.stream.exception.StreamException;
 import com.umc.bscene.domain.stream.port.BandMemberPort;
 import com.umc.bscene.domain.stream.repository.AudioStreamRepository;
 import com.umc.bscene.domain.stream.repository.StreamMemberRepository;
-import com.umc.bscene.domain.stream.sse.ViewerSseRegistry;
+import com.umc.bscene.domain.stream.sse.ViewerSsePresence;
 import com.umc.bscene.domain.user.entity.User;
 import com.umc.bscene.global.response.CursorPage;
 import com.umc.bscene.global.security.util.JwtUtil;
@@ -29,7 +29,6 @@ import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientException;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
-import java.io.IOException;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDateTime;
@@ -51,7 +50,7 @@ public class StreamServiceImpl implements StreamService {
     private final StringRedisTemplate redisTemplate;
     private final BandMemberPort bandMemberPort;
     private final RestClient mtxRestClient;
-    private final ViewerSseRegistry viewerSseRegistry;
+    private final ViewerSsePresence viewerSsePresence;
 
     private final String hlsUrl;
     private final String webrtcUrl;
@@ -299,6 +298,9 @@ public class StreamServiceImpl implements StreamService {
                     String.valueOf(userId),
                     Instant.now().getEpochSecond()
             );
+
+            // 새 시청자 입장 → 구독자들에게 카운트 반영
+            viewerSsePresence.broadcastCount(liveId);
         }
 
         // 라이브 방 진입은 했지만, WHIP 연결은 안 했을 수 있음 -> 라이브 시작 전.
@@ -351,37 +353,13 @@ public class StreamServiceImpl implements StreamService {
     @Transactional
     public void leaveRoom(Long userId, Long liveId) {
         redisTemplate.opsForZSet().remove(VIEWER_KEY_PREFIX + liveId, String.valueOf(userId));
+        viewerSsePresence.broadcastCount(liveId);
     }
 
     @Override
     public SseEmitter subscribeViewerCount(Long userId, Long liveId) {
-
-        // OPEN 방만 구독 허용
-        AudioStream found = audioStreamRepository.findById(liveId)
-                .orElseThrow(() -> new StreamException(StreamErrorCode.AUDIO_STREAM_NOT_FOUND));
-
-        // OPEN 아니면 not live 예외
-        if (found.getStatus() != StreamStatus.OPEN)
-            throw new StreamException(StreamErrorCode.AUDIO_STREAM_NOT_LIVE);
-
-        SseEmitter emitter = viewerSseRegistry.register(
-                liveId, () -> {
-                    // 연결 끊기면 leave 처리
-                    redisTemplate.opsForZSet().remove(VIEWER_KEY_PREFIX + liveId, String.valueOf(userId));
-                    viewerSseRegistry.broadcast(liveId, currentCount(liveId));
-                }
-        );
-
-        // 구독 즉시 현재 카운트 1회 전송
-        long count = currentCount(liveId);
-        try { emitter.send(SseEmitter.event().name("viewerCount").data(count)); }
-        catch (IOException ignored) {}
-        return emitter;
-    }
-
-    private long currentCount(Long liveId) {
-        Long c = redisTemplate.opsForZSet().zCard(LIVE_KEY_PREFIX + liveId);
-        return c == null ? 0 : c;
+        // 시청자 수 SSE 전담 컴포넌트에 위임(프레젠스·하트비트·유령 정리 포함)
+        return viewerSsePresence.subscribe(userId, liveId);
     }
 
     private void kickPublisher(String path) {
