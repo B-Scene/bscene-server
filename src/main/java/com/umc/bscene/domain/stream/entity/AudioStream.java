@@ -57,4 +57,9 @@ public class AudioStream extends BaseEntity {
 
         this.status = StreamStatus.OPEN;
     }
+
+    public void cancel() {
+        this.status = StreamStatus.CANCELED;
+        this.closedAt = LocalDateTime.now();
+    }
 }
