@@ -27,7 +27,9 @@ import org.springframework.transaction.support.TransactionSynchronizationAdapter
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientException;
+import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
+import java.io.IOException;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDateTime;
@@ -349,6 +351,37 @@ public class StreamServiceImpl implements StreamService {
     @Transactional
     public void leaveRoom(Long userId, Long liveId) {
         redisTemplate.opsForZSet().remove(VIEWER_KEY_PREFIX + liveId, String.valueOf(userId));
+    }
+
+    @Override
+    public SseEmitter subscribeViewerCount(Long userId, Long liveId) {
+
+        // OPEN 방만 구독 허용
+        AudioStream found = audioStreamRepository.findById(liveId)
+                .orElseThrow(() -> new StreamException(StreamErrorCode.AUDIO_STREAM_NOT_FOUND));
+
+        // OPEN 아니면 not live 예외
+        if (found.getStatus() != StreamStatus.OPEN)
+            throw new StreamException(StreamErrorCode.AUDIO_STREAM_NOT_LIVE);
+
+        SseEmitter emitter = viewerSseRegistry.register(
+                liveId, () -> {
+                    // 연결 끊기면 leave 처리
+                    redisTemplate.opsForZSet().remove(VIEWER_KEY_PREFIX + liveId, String.valueOf(userId));
+                    viewerSseRegistry.broadcast(liveId, currentCount(liveId));
+                }
+        );
+
+        // 구독 즉시 현재 카운트 1회 전송
+        long count = currentCount(liveId);
+        try { emitter.send(SseEmitter.event().name("viewerCount").data(count)); }
+        catch (IOException ignored) {}
+        return emitter;
+    }
+
+    private long currentCount(Long liveId) {
+        Long c = redisTemplate.opsForZSet().zCard(LIVE_KEY_PREFIX + liveId);
+        return c == null ? 0 : c;
     }
 
     private void kickPublisher(String path) {

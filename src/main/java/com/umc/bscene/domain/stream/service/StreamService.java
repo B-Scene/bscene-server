@@ -6,6 +6,7 @@ import com.umc.bscene.domain.stream.dto.response.StreamCreateResponse;
 import com.umc.bscene.domain.stream.dto.response.StreamRoomResponse;
 import com.umc.bscene.domain.user.entity.User;
 import com.umc.bscene.global.response.CursorPage;
+import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 import java.util.Set;
 
@@ -28,4 +29,6 @@ public interface StreamService {
     StreamRoomResponse enterRoom(Long userId, Long liveId);
 
     void leaveRoom(Long userId, Long liveId);
+
+    SseEmitter subscribeViewerCount(Long userId, Long liveId);
 }
