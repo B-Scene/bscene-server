@@ -3,6 +3,7 @@ package com.umc.bscene.domain.stream.service;
 import com.umc.bscene.domain.stream.dto.request.StreamCreateRequest;
 import com.umc.bscene.domain.stream.dto.response.LiveStreamResponse;
 import com.umc.bscene.domain.stream.dto.response.StreamCreateResponse;
+import com.umc.bscene.domain.stream.dto.response.StreamRoomResponse;
 import com.umc.bscene.domain.user.entity.User;
 import com.umc.bscene.global.response.CursorPage;
 
@@ -22,4 +23,9 @@ public interface StreamService {
     CursorPage<LiveStreamResponse> getLiveStreams(Long cursor, int size);
 
     void syncLiveState(Set<String> readyPaths);
+
+    // 방 진입 (송출자, 청취자 모두 이 메소드에서 처리
+    StreamRoomResponse enterRoom(Long userId, Long liveId);
+
+    void leaveRoom(Long userId, Long liveId);
 }
