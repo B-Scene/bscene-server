@@ -81,3 +81,8 @@ aws:
     region: ${AWS_REGION:ap-northeast-2}
     access-key: ${AWS_ACCESS_KEY_ID}
     secret-key: ${AWS_SECRET_ACCESS_KEY}
+
+notification:
+  fcm:
+    enabled: ${FCM_ENABLED:false}
+    credentials-base64: ${FCM_CREDENTIALS_BASE64:}
