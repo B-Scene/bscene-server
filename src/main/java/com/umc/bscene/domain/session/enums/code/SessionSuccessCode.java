@@ -58,7 +58,17 @@ public enum SessionSuccessCode implements BaseResponseCode {
             HttpStatus.OK.value(),
         "SESSION_RECRUITMENT_DETAIL_SUCCESS",
                 "세션 모집 공고 상세 조회에 성공했습니다."
-                );
+    ),
+    SESSION_RECRUITMENT_INTEREST_SET_SUCCESS(
+            HttpStatus.OK.value(),
+            "SESSION_RECRUITMENT_INTEREST_SET_SUCCESS",
+            "세션 모집 공고 찜에 성공했습니다."
+    ),
+    SESSION_RECRUITMENT_INTEREST_UNSET_SUCCESS(
+            HttpStatus.OK.value(),
+            "SESSION_RECRUITMENT_INTEREST_UNSET_SUCCESS",
+            "세션 모집 공고 찜 취소에 성공했습니다."
+    );
 
     private final int status;
     private final String code;
