@@ -17,7 +17,7 @@ public interface StreamService {
     Boolean canRead(String accessToken, String path);
 
     // 방송 시작, 종료
-    StreamCreateResponse createStream(User user, Long userId, StreamCreateRequest request);
+    StreamCreateResponse createStream(User user, StreamCreateRequest request);
     void closeStream(Long userId, Long streamId);
 
     // 방송 상태

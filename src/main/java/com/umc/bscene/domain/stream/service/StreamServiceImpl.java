@@ -83,7 +83,7 @@ public class StreamServiceImpl implements StreamService {
 
     @Override
     @Transactional
-    public StreamCreateResponse createStream(User user, Long userId, StreamCreateRequest request) {
+    public StreamCreateResponse createStream(User user, StreamCreateRequest request) {
 
         // enterRoom에서 라이브 진행하면서 여러 라이브를 동시 진행 못하게 막으므로, 여기 있던 코드는 지움
 
@@ -91,6 +91,8 @@ public class StreamServiceImpl implements StreamService {
         if(streamMemberRepository.existsByIdWithStatuses(userId, StreamMemberStatus.ACCEPTED, StreamStatus.OPEN))
             throw new StreamException(StreamErrorCode.DUPLICATE_LIVE_CREATE_TRY);
         */
+
+        Long userId = user.getId();
 
         AudioStream createdAudioStream = AudioStream.builder()
                     .broadcasterId(userId)
