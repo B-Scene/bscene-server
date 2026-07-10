@@ -29,7 +29,12 @@ authHTTPExclude:
   - action: api
   - action: metrics
   - action: pprof
-  - action: read
+# 오디오 스트리밍을 청취하는 것에도 인증 인가를 부여. 이 방식은 세션 연결 최초 1회만 진행되며, 이후의 밴 기능을 구현하더라도,
+# 청취자가 직접 세션을 끊거나, 네트워크 불안정, 기기 종료, 브라우저 탭 종료 등
+# 클라이언트 단에서 세션을 종료한 후, 다른 세션을 접속하려고 할 때 밴 기능이 활성화되는 방식. (immediate kick X)
+# 따라서, 그 기능을 구현하려면 nginx에서 커스텀 함수로 처리되어야 함.
+# 원래 코드
+# - action: read
 
 paths:
   all_others:
