@@ -40,11 +40,15 @@ public class ViewerSsePresence {
         if (stream.getStatus() != StreamStatus.OPEN)
             throw new StreamException(StreamErrorCode.AUDIO_STREAM_NOT_LIVE);
 
-        touch(liveId, userId); // 프레젠스 등록(score = now)
+        // 송출자는 시청자 수에 포함하지 않는다(카운트 업데이트는 수신하되 본인은 프레젠스 미포함)
+        boolean counted = !stream.getBroadcasterId().equals(userId);
 
-        SseEmitter emitter = registry.register(liveId, userId, () -> {
+        if (counted) touch(liveId, userId); // 프레젠스 등록(score = now)
+
+        SseEmitter emitter = registry.register(liveId, userId, counted, () -> {
             // 이 유저의 마지막 연결이 끊기면 프레젠스 제거 + 카운트 반영
-            redisTemplate.opsForZSet().remove(VIEWER_KEY_PREFIX + liveId, String.valueOf(userId));
+            if (counted)
+                redisTemplate.opsForZSet().remove(VIEWER_KEY_PREFIX + liveId, String.valueOf(userId));
             broadcastCount(liveId);
         });
 
