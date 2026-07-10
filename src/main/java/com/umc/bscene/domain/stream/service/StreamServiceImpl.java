@@ -20,6 +20,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.jspecify.annotations.NonNull;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.data.redis.core.Cursor;
+import org.springframework.data.redis.core.ScanOptions;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionSynchronization;
@@ -155,7 +157,7 @@ public class StreamServiceImpl implements StreamService {
     @Override
     public CursorPage<LiveStreamResponse> getLiveStreams(Long cursor, int size) {
 
-        Set<String> keys = redisTemplate.keys(LIVE_KEY_PREFIX + "*");
+        Set<String> keys = scanKeys(LIVE_KEY_PREFIX + "*");
 
         // Redis에 LIVE_KEY_PREFIX로 등록된 세션이 없을 때 빈 응답 반환
         if(keys == null || keys.isEmpty())
@@ -165,15 +167,9 @@ public class StreamServiceImpl implements StreamService {
                 .map(k -> k.substring(LIVE_KEY_PREFIX.length()))
                 .toList();
 
-        // 오디오 송출 세션별 시청자수
-        Map<String, Integer> listenerCounts = countListener(keys);
-
-        // 오디오 송출 세션에서 경로 추출
-        List<String> livePaths = List.copyOf(listenerCounts.keySet());
-
         // 커서 기반 페이지네이션 조회로 size + 1 조회
         List<AudioStream> lives = audioStreamRepository.findLivePage(
-                livePaths, cursor, PageRequest.ofSize(size + 1)
+                paths, cursor, PageRequest.ofSize(size + 1)
         );
 
         // 커서 응답에 PageInfo 빌드를 위한 값 세팅
@@ -208,7 +204,7 @@ public class StreamServiceImpl implements StreamService {
                                 band != null ? band.bandProfileImageUrl() : "",
                                 s.getTitle(),
                                 band != null ? band.bandName() : "",
-                                listenerCounts.getOrDefault(s.getPath(), 0)
+                                viewerCountOf(s.getId())
                             );
                         })
                         .toList(),
@@ -216,18 +212,20 @@ public class StreamServiceImpl implements StreamService {
         );
     }
 
-    private @NonNull Map<String, Integer> countListener(Set<String> keys) {
-        // 순서를 고정하고, redis에서 시청자 수를 조회
-        List<String> keyList = new ArrayList<>(keys);
-        List<String> values = redisTemplate.opsForValue().multiGet(keyList);
+    private int viewerCountOf(Long liveId) {
+        Long count = redisTemplate.opsForZSet().zCard(VIEWER_KEY_PREFIX + liveId);
+        return count == null ? 0 : count.intValue();
+    }
 
-        Map<String, Integer> listenerCounts = new HashMap<>();
-        for(int i = 0; i < keyList.size(); i++) {
-            String path = keyList.get(i).substring(LIVE_KEY_PREFIX.length());
-            String v = (values == null) ? null : values.get(i);
-            listenerCounts.put(path, v == null ? 0 : Integer.parseInt(v));
+    private Set<String> scanKeys(String pattern) {
+        Set<String> found = new HashSet<>();
+
+        try (Cursor<String> cursor = redisTemplate.scan(
+                ScanOptions.scanOptions().match(pattern).count(200).build()
+        )) {
+            while (cursor.hasNext()) found.add(cursor.next());
         }
-        return listenerCounts;
+        return found;
     }
 
     @Override
@@ -235,8 +233,7 @@ public class StreamServiceImpl implements StreamService {
     public void syncLiveState(Set<String> readyPaths) {
 
         // Redis에 LIVE_KEY_PREFIX로 등록된 모든 세션 조회
-        Set<String> current = Optional.ofNullable(redisTemplate.keys(LIVE_KEY_PREFIX + "*"))
-                .orElse(Set.of()).stream()
+        Set<String> current = scanKeys(LIVE_KEY_PREFIX + "*").stream()
                 .map(k -> k.substring(LIVE_KEY_PREFIX.length()))
                 .collect(Collectors.toSet());
 

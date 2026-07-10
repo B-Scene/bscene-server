@@ -17,6 +17,10 @@ public class ViewerSseRegistry {
 
     private final Map<Long, Map<Long, Presence>> rooms = new ConcurrentHashMap<>();
 
+    // 유저당 SSE 연결을 전역에서 1개로 제한하기 위한 인덱스: userId -> 현재 유효한 단일 emitter.
+    // (방 구조와 별개로, 다른 방으로 이동하거나 다중 탭으로 재접속할 때 이전 연결을 끊기 위함)
+    private final Map<Long, SseEmitter> userLatest = new ConcurrentHashMap<>();
+
     /** 한 유저의 SSE 연결들과, 그 유저를 시청자 수에 포함할지 여부(counted). */
     private static final class Presence {
         final Set<SseEmitter> emitters = ConcurrentHashMap.newKeySet();
@@ -32,6 +36,9 @@ public class ViewerSseRegistry {
         // 0L => 타임아웃 없음. 수명은 하트비트/연결 끊김으로 관리한다.
         SseEmitter emitter = new SseEmitter(0L);
 
+        // 새 연결을 먼저 방 구조에 등록한다.
+        // (기존 연결을 끊기 전에 새 연결을 넣어야, 같은 방 재접속 시 기존 emitter의
+        //  complete -> removeEmitter가 presence를 비워 onLastGone을 잘못 호출하는 것을 막는다.)
         rooms.computeIfAbsent(liveId, k -> new ConcurrentHashMap<>())
              .computeIfAbsent(userId, k -> new Presence(counted))
              .emitters.add(emitter);
@@ -40,10 +47,23 @@ public class ViewerSseRegistry {
         emitter.onCompletion(cleanup);
         emitter.onTimeout(() -> { emitter.complete(); cleanup.run(); });
         emitter.onError(e -> cleanup.run());
+
+        // 유저당 SSE 연결은 전역에서 1개만 유지한다: 기존 연결이 있으면 닫는다.
+        // - 같은 방 재접속: 위에서 새 emitter를 이미 넣었으므로 presence가 비지 않아 카운트가 유지된다.
+        // - 다른 방으로 이동: 이전 방 presence가 비면서 onLastGone이 돌아 이전 방 시청자에서 정상 제거된다.
+        SseEmitter previous = userLatest.put(userId, emitter);
+        if (previous != null && previous != emitter) {
+            try { previous.complete(); } catch (Exception ignored) { /* 이미 끊긴 연결이면 무시 */ }
+        }
+
         return emitter;
     }
 
     private void removeEmitter(Long liveId, Long userId, SseEmitter emitter, Runnable onLastGone) {
+        // 이 emitter가 현재 유효 연결일 때만 전역 인덱스에서 제거한다.
+        // (이미 새 연결이 replace 했다면 map의 값이 다르므로 지우지 않는다.)
+        userLatest.remove(userId, emitter);
+
         Map<Long, Presence> users = rooms.get(liveId);
         if (users == null) return;
         Presence presence = users.get(userId);
