@@ -61,6 +61,11 @@ spring:
             user-info-uri: "https://kapi.kakao.com/v2/user/me"
             userNameAttribute: id
 
+  # IO Burst, 스레드풀 고갈 대비 virtual thread 활성화
+  threads:
+    virtual:
+      enabled: true
+
 jwt:
   token:
     secretKey: ${JWT_SECRET_KEY}
