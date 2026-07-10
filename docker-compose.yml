@@ -76,6 +76,8 @@ services:
       - MTX_WEBRTCADDITIONALHOSTS=${SERVER_HOST}
     ports:
       - "8189:8189/udp"
+      - "8889"
+      - "8888"  # nginx HLS proxy
     expose:
       - "8889"  # nginx 접근
       - "9997"  # spring 접근
