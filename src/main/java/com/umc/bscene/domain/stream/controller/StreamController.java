@@ -56,7 +56,7 @@ public class StreamController {
                 .body(body);
     }
 
-    @GetMapping
+    @GetMapping("/live-now/all")
     public ResponseEntity<SuccessResponse<CursorPage<LiveStreamResponse>>> getInLiveStreams(
             @RequestParam(required = false) Long cursor,
             @RequestParam(defaultValue = "10") int size
