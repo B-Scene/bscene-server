@@ -3,12 +3,14 @@ package com.umc.bscene.domain.stream.dto.request;
 import jakarta.validation.constraints.Future;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
+import org.hibernate.validator.constraints.Length;
 
 import java.time.LocalDateTime;
 import java.util.List;
 
 public record StreamCreateRequest(
         @NotBlank(message = "title 필드는 필수 값입니다.")
+        @Length(max = 50, message = "title 필드는 최대 50자 미만이어야 합니다.")
         String title,
 
         @Size(max = 100, message = "description 필드는 100자를 초과할 수 없습니다.")
