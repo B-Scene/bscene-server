@@ -3,9 +3,12 @@ package com.umc.bscene.global.exception;
 import com.umc.bscene.global.response.ErrorResponse;
 import com.umc.bscene.global.response.code.BaseResponseCode;
 import com.umc.bscene.global.response.code.GeneralErrorCode;
+import jakarta.servlet.http.HttpServletRequest;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.web.context.request.async.AsyncRequestNotUsableException;
 import org.springframework.validation.BindException;
 import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -137,14 +140,32 @@ public class GlobalExceptionHandler {
     }
 
     /**
+     * SSE 등 비동기 응답 도중 클라이언트가 연결을 끊었을 때(Broken pipe) 발생.
+     * 정상적인 이탈 이벤트이므로 에러 응답을 시도하지 않는다.
+     * (이미 커밋된 text/event-stream 응답에는 JSON 바디를 쓸 수 없어 No converter 경고만 유발)
+     */
+    @ExceptionHandler(AsyncRequestNotUsableException.class)
+    public void handleAsyncRequestNotUsableException(AsyncRequestNotUsableException e) {
+        log.debug("AsyncRequestNotUsableException : 클라이언트 연결 종료 - {}", e.getMessage());
+    }
+
+    /**
      * 비즈니스 로직 에러
      */
     @ExceptionHandler(BaseException.class)
     public ResponseEntity<ErrorResponse<?>> handleBaseException(
-            BaseException e
+            BaseException e,
+            HttpServletRequest request
     ) {
         log.error("BaseException : {}", e.getBaseResponseCode().getMessage(), e);
         ErrorResponse<?> errorResponse = ErrorResponse.from(e.getBaseResponseCode());
+
+        // SSE(text/event-stream) 요청에는 JSON 바디를 쓸 수 없으므로(HttpMediaTypeNotAcceptableException)
+        // 상태 코드만 반환한다.
+        String accept = request.getHeader("Accept");
+        if (accept != null && accept.contains(MediaType.TEXT_EVENT_STREAM_VALUE))
+            return ResponseEntity.status(errorResponse.getStatus()).build();
+
         return ResponseEntity.status(errorResponse.getStatus()).body(errorResponse);
     }
 
