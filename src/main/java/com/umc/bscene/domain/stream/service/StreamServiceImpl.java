@@ -32,7 +32,6 @@ import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 import java.time.Duration;
 import java.time.Instant;
-import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -323,15 +322,13 @@ public class StreamServiceImpl implements StreamService {
             // 송출자일 시, 반드시 송출 URL을 반환
             playback = new StreamRoomResponse.Playback(
                     "BROADCASTER", "WHIP",
-                    webrtcUrl + "/" + stream.getPath() + "/whip",
-                    LocalDateTime.now().plus(Duration.ofSeconds(60))
+                    webrtcUrl + "/" + stream.getPath() + "/whip"
             );
         } else {
             // 청취자일 시, OPEN이면 청취 URL, !OPEN이면 null로 빌드
             playback = isLive ? new StreamRoomResponse.Playback(
                     "LISTENER", "HLS",
-                    hlsUrl + "/" + stream.getPath() + "/index.m3u8",
-                    LocalDateTime.now().plus(Duration.ofSeconds(60))
+                    hlsUrl + "/" + stream.getPath() + "/index.m3u8"
             ) : null;
         }
 

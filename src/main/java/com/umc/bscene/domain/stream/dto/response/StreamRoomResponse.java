@@ -23,9 +23,6 @@ public record StreamRoomResponse(
     public record Playback(
             String role,        // BROADCASTER / LISTENER
             String protocol,    // WHIP / HLS
-            String playbackUrl,
-
-            @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
-            LocalDateTime expiresAt
+            String playbackUrl
     ) {}
 }
