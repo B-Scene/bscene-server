@@ -5,9 +5,7 @@ import com.umc.bscene.global.entity.BaseEntity;
 import jakarta.persistence.*;
 import lombok.*;
 
-import java.time.Instant;
 import java.time.LocalDateTime;
-import java.util.stream.Stream;
 
 @Entity
 @Getter

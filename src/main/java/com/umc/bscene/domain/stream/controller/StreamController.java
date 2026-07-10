@@ -6,7 +6,6 @@ import com.umc.bscene.domain.stream.dto.response.StreamCreateResponse;
 import com.umc.bscene.domain.stream.dto.response.StreamRoomResponse;
 import com.umc.bscene.domain.stream.enums.code.success.StreamSuccessCode;
 import com.umc.bscene.domain.stream.service.StreamService;
-import com.umc.bscene.global.response.ApiResponse;
 import com.umc.bscene.global.response.CursorPage;
 import com.umc.bscene.global.response.SuccessResponse;
 import com.umc.bscene.global.security.entity.AuthMember;
