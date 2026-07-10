@@ -47,7 +47,12 @@ public enum SessionErrorCode implements BaseResponseCode {
     BAND_PERMISSION_DENIED(
             HttpStatus.FORBIDDEN.value(),
             "BAND_PERMISSION_DENIED",
-            "세션 모집 공고에 대한 권한이 없습니다."
+            "밴드 오너만 세션 모집 공고를 등록, 수정, 삭제할 수 있습니다."
+    ),
+    SESSION_RECRUITMENT_INTEREST_ALREADY_EXISTS(
+            HttpStatus.CONFLICT.value(),
+            "SESSION_RECRUITMENT_INTEREST_ALREADY_EXISTS",
+            "이미 찜한 세션 모집 공고입니다."
     );
 
     private final int status;

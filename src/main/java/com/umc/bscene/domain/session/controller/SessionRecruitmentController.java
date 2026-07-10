@@ -11,6 +11,7 @@ import com.umc.bscene.domain.session.dto.recruitment.response.SessionRecruitment
 import com.umc.bscene.domain.session.enums.Part;
 import com.umc.bscene.domain.session.enums.SessionGenre;
 import com.umc.bscene.domain.session.enums.SessionRegion;
+import com.umc.bscene.domain.session.enums.SkillLevel;
 import com.umc.bscene.domain.session.service.SessionRecruitmentQueryService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -42,7 +43,9 @@ public class SessionRecruitmentController {
     // 세션 모집 공고 목록 조회
     @GetMapping
     public SuccessResponse<SessionRecruitmentListResponse> getSessionRecruitments(
+            @AuthenticationPrincipal AuthMember authMember,
             @RequestParam(required = false) Part part,
+            @RequestParam(required = false) SkillLevel skillLevel,
             @RequestParam(required = false) SessionGenre genre,
             @RequestParam(required = false) SessionRegion region,
             @RequestParam(required = false) String keyword,
@@ -51,7 +54,9 @@ public class SessionRecruitmentController {
     ) {
         SessionRecruitmentListResponse response =
                 sessionRecruitmentQueryService.getSessionRecruitments(
+                        authMember.getUser().getId(),
                         part,
+                        skillLevel,
                         genre,
                         region,
                         keyword,
@@ -104,11 +109,15 @@ public class SessionRecruitmentController {
     // 세션 모집 공고 상세 조회
     @GetMapping("/{recruitmentId}")
     public SuccessResponse<SessionRecruitmentDetailResponse> getSessionRecruitmentDetail(
+            @AuthenticationPrincipal AuthMember authMember,
             @PathVariable Long recruitmentId
     ) {
 
         SessionRecruitmentDetailResponse response =
-                sessionRecruitmentQueryService.getSessionRecruitmentDetail(recruitmentId);
+                sessionRecruitmentQueryService.getSessionRecruitmentDetail(
+                        authMember.getUser().getId(),
+                        recruitmentId
+                );
 
         return SuccessResponse.of(
                 response,

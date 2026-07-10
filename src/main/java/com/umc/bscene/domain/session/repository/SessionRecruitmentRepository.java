@@ -4,8 +4,11 @@ import com.umc.bscene.domain.session.entity.SessionRecruitment;
 import com.umc.bscene.domain.session.enums.Part;
 import com.umc.bscene.domain.session.enums.SessionGenre;
 import com.umc.bscene.domain.session.enums.SessionRegion;
+import com.umc.bscene.domain.session.enums.SkillLevel;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -16,50 +19,29 @@ public interface SessionRecruitmentRepository extends JpaRepository<SessionRecru
     // 기존: 단건 조회/수정/삭제용
     Optional<SessionRecruitment> findBySessionRecruitmentIdAndDeletedAtIsNull(Long sessionRecruitmentId);
 
-    // 전체 조회
-    List<SessionRecruitment> findByDeletedAtIsNullAndDeadlineAtAfterOrderBySessionRecruitmentIdDesc(
-            LocalDateTime now,
-            Pageable pageable
-    );
-
-    // 전체 조회 + 커서
-    List<SessionRecruitment> findByDeletedAtIsNullAndDeadlineAtAfterAndSessionRecruitmentIdLessThanOrderBySessionRecruitmentIdDesc(
-            LocalDateTime now,
-            Long cursorId,
-            Pageable pageable
-    );
-
-    // 필터 조회
-    List<SessionRecruitment> findByDeletedAtIsNullAndDeadlineAtAfterAndPartAndGenreAndRegionOrderBySessionRecruitmentIdDesc(
-            LocalDateTime now,
-            Part part,
-            SessionGenre genre,
-            SessionRegion region,
-            Pageable pageable
-    );
-
-    // 필터 조회 + 커서
-    List<SessionRecruitment> findByDeletedAtIsNullAndDeadlineAtAfterAndPartAndGenreAndRegionAndSessionRecruitmentIdLessThanOrderBySessionRecruitmentIdDesc(
-            LocalDateTime now,
-            Part part,
-            SessionGenre genre,
-            SessionRegion region,
-            Long cursorId,
-            Pageable pageable
-    );
-
-    // 검색어 조회
-    List<SessionRecruitment> findByDeletedAtIsNullAndDeadlineAtAfterAndRecruitmentTitleContainingOrderBySessionRecruitmentIdDesc(
-            LocalDateTime now,
-            String keyword,
-            Pageable pageable
-    );
-
-    // 검색어 조회 + 커서
-    List<SessionRecruitment> findByDeletedAtIsNullAndDeadlineAtAfterAndRecruitmentTitleContainingAndSessionRecruitmentIdLessThanOrderBySessionRecruitmentIdDesc(
-            LocalDateTime now,
-            String keyword,
-            Long cursorId,
+    @Query("""
+        SELECT sr
+        FROM SessionRecruitment sr
+        JOIN FETCH sr.band
+        WHERE sr.deletedAt IS NULL
+          AND sr.deadlineAt > :now
+          AND (:part IS NULL OR sr.part = :part)
+          AND (:skillLevel IS NULL OR sr.skillLevel = :skillLevel)
+          AND (:genre IS NULL OR sr.genre = :genre)
+          AND (:region IS NULL OR sr.region = :region)
+          AND (:keyword IS NULL OR LOWER(sr.recruitmentTitle)
+              LIKE LOWER(CONCAT('%', :keyword, '%')))
+          AND (:cursorId IS NULL OR sr.sessionRecruitmentId < :cursorId)
+        ORDER BY sr.sessionRecruitmentId DESC
+    """)
+    List<SessionRecruitment> findRecruitments(
+            @Param("now") LocalDateTime now,
+            @Param("part") Part part,
+            @Param("skillLevel") SkillLevel skillLevel,
+            @Param("genre") SessionGenre genre,
+            @Param("region") SessionRegion region,
+            @Param("keyword") String keyword,
+            @Param("cursorId") Long cursorId,
             Pageable pageable
     );
 }
