@@ -29,6 +29,11 @@ spring:
       hibernate:
         format_sql: true
 
+  flyway:
+    enabled: true
+    baseline-on-migrate: true
+    baseline-version: 0
+
   data:
     redis:
       host: ${REDIS_HOST:localhost}
@@ -80,3 +85,21 @@ mediamtx:
   api-url: ${MEDIAMTX_API_URL:http://localhost:9997}
   webrtc-url: ${MEDIAMTX_WEBRTC_URL:http://localhost:8889}
 
+cors:
+  allowed-origins: ${FRONT_ORIGIN:http://localhost:5173}
+
+oauth:
+  front-redirect-uri: ${FRONT_ORIGIN:http://localhost:5173}/oauth/callback
+  front-failure-uri: ${FRONT_ORIGIN:http://localhost:5173}/login
+
+aws:
+  s3:
+    bucket: ${AWS_S3_BUCKET}
+    region: ${AWS_REGION:ap-northeast-2}
+    access-key: ${AWS_ACCESS_KEY_ID}
+    secret-key: ${AWS_SECRET_ACCESS_KEY}
+
+notification:
+  fcm:
+    enabled: ${FCM_ENABLED:false}
+    credentials-base64: ${FCM_CREDENTIALS_BASE64:}

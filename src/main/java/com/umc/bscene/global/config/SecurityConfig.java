@@ -2,6 +2,8 @@ package com.umc.bscene.global.config;
 
 import com.umc.bscene.global.security.enums.PermitAllUri;
 import com.umc.bscene.global.security.filter.JwtAuthFilter;
+import com.umc.bscene.global.security.handler.CustomAuthenticationEntryPoint;
+import com.umc.bscene.global.security.handler.OAuthFailureHandler;
 import com.umc.bscene.global.security.handler.OAuthSuccessHandler;
 import com.umc.bscene.global.security.service.CustomOAuthService;
 import com.umc.bscene.global.security.service.CustomUserDetailsService;
@@ -10,6 +12,7 @@ import jakarta.servlet.DispatcherType;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
@@ -18,7 +21,6 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
-import org.springframework.security.web.servlet.util.matcher.PathPatternRequestMatcher;
 
 import java.util.Arrays;
 
@@ -31,6 +33,8 @@ public class SecurityConfig {
     private final CustomUserDetailsService customUserDetailsService;
     private final CustomOAuthService customOAuthService;
     private final OAuthSuccessHandler oAuthSuccessHandler;
+    private final OAuthFailureHandler oAuthFailureHandler;
+    private final CustomAuthenticationEntryPoint customAuthenticationEntryPoint;
 
     private final String[] allowUris = Arrays.stream(PermitAllUri.values())
             .map(PermitAllUri::getUri)
@@ -39,6 +43,9 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
+                // CORS 활성화
+                .cors(Customizer.withDefaults())
+
                 // CSRF 비활성화
                 .csrf(AbstractHttpConfigurer::disable)
 
@@ -62,13 +69,20 @@ public class SecurityConfig {
                         .redirectionEndpoint(redirect -> redirect.baseUri("/oauth/callback/*"))
                         // 소셜 유저 정보 로드
                         .userInfoEndpoint(userInfo -> userInfo.userService(customOAuthService))
-                        // 로그인 성공 시 JWT 발급 핸들러
+                        // 로그인 성공 시: 일회성 코드 발급 후 프론트로 리다이렉트
                         .successHandler(oAuthSuccessHandler)
+                        // 로그인 실패 시: 프론트로 error 실어 리다이렉트
+                        .failureHandler(oAuthFailureHandler)
                 )
 
                 // 세션 미사용
                 .sessionManagement(session -> session
                         .sessionCreationPolicy(SessionCreationPolicy.STATELESS)
+                )
+
+                // 인증 예외 응답 설정
+                .exceptionHandling(exception -> exception
+                        .authenticationEntryPoint(customAuthenticationEntryPoint)
                 )
 
                 .addFilterBefore(jwtAuthFilter(), UsernamePasswordAuthenticationFilter.class);

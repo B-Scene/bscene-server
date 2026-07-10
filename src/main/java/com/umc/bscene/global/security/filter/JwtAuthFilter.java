@@ -2,7 +2,9 @@ package com.umc.bscene.global.security.filter;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.umc.bscene.global.response.ErrorResponse;
+import com.umc.bscene.global.response.code.BaseResponseCode;
 import com.umc.bscene.global.response.code.GeneralErrorCode;
+import com.umc.bscene.global.security.exception.JwtAuthenticationException;
 import com.umc.bscene.global.security.service.CustomUserDetailsService;
 import com.umc.bscene.global.security.util.JwtUtil;
 import jakarta.servlet.FilterChain;
@@ -14,8 +16,8 @@ import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
-import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;

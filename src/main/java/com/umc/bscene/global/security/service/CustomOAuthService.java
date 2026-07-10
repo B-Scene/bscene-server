@@ -1,7 +1,6 @@
 package com.umc.bscene.global.security.service;
 
 import com.umc.bscene.domain.oauth.enums.SocialProvider;
-import com.umc.bscene.domain.oauth.exception.OauthException;
 import com.umc.bscene.domain.oauth.repository.OauthAccountRepository;
 import com.umc.bscene.domain.oauth.response.code.OauthErrorCode;
 import com.umc.bscene.global.security.dto.response.GoogleResponse;
@@ -12,6 +11,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.security.oauth2.client.userinfo.DefaultOAuth2UserService;
 import org.springframework.security.oauth2.client.userinfo.OAuth2UserRequest;
 import org.springframework.security.oauth2.core.OAuth2AuthenticationException;
+import org.springframework.security.oauth2.core.OAuth2Error;
 import org.springframework.security.oauth2.core.user.OAuth2User;
 import org.springframework.stereotype.Service;
 
@@ -36,7 +36,7 @@ public class CustomOAuthService extends DefaultOAuth2UserService {
             provider = SocialProvider.valueOf(
                     userRequest.getClientRegistration().getRegistrationId().toUpperCase());
         } catch (IllegalArgumentException e) {
-            throw new OauthException(OauthErrorCode.NOT_SUPPORT_PROVIDER);
+            throw oauthAuthException(OauthErrorCode.NOT_SUPPORT_PROVIDER);
         }
 
         // provider별로 응답 구조가 달라 각 case 안에서 파싱
@@ -54,7 +54,7 @@ public class CustomOAuthService extends DefaultOAuth2UserService {
     private OAuthResponse parseKakao(OAuth2User oAuthMember) {
         Object id = oAuthMember.getAttribute("id");
         if (id == null) {
-            throw new OauthException(OauthErrorCode.NOT_SUPPORT_PROVIDER);
+            throw oauthAuthException(OauthErrorCode.NOT_SUPPORT_PROVIDER);
         }
         String providerUid = String.valueOf(id);
 
@@ -62,7 +62,7 @@ public class CustomOAuthService extends DefaultOAuth2UserService {
         Map<String, Object> account = oAuthMember.getAttribute("kakao_account");
         Object email = (account == null) ? null : account.get("email");
         if (email == null) {
-            throw new OauthException(OauthErrorCode.EMAIL_NOT_PROVIDED);
+            throw oauthAuthException(OauthErrorCode.EMAIL_NOT_PROVIDED);
         }
 
         // 닉네임은 아이디가 아니라 필수 아님(회원가입 시 이름을 직접 입력받음). 없으면 null 허용
@@ -74,12 +74,12 @@ public class CustomOAuthService extends DefaultOAuth2UserService {
     private OAuthResponse parseGoogle(OAuth2User oAuthMember) {
         Object sub = oAuthMember.getAttribute("sub");
         if (sub == null) {
-            throw new OauthException(OauthErrorCode.NOT_SUPPORT_PROVIDER);
+            throw oauthAuthException(OauthErrorCode.NOT_SUPPORT_PROVIDER);
         }
 
         Object email = oAuthMember.getAttribute("email");
         if (email == null) {
-            throw new OauthException(OauthErrorCode.EMAIL_NOT_PROVIDED);
+            throw oauthAuthException(OauthErrorCode.EMAIL_NOT_PROVIDED);
         }
 
         Object name = oAuthMember.getAttribute("name");
@@ -93,5 +93,13 @@ public class CustomOAuthService extends DefaultOAuth2UserService {
             return nickname == null ? null : nickname.toString();
         }
         return null;
+    }
+
+    // 필터 계층 예외 → OAuth2AuthenticationException에 에러 코드를 담아 실패 핸들러(OAuthFailureHandler)가 읽게 함
+    private OAuth2AuthenticationException oauthAuthException(OauthErrorCode errorCode) {
+        return new OAuth2AuthenticationException(
+                new OAuth2Error(errorCode.getCode(), errorCode.getMessage(), null),
+                errorCode.getMessage()
+        );
     }
 }
