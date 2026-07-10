@@ -13,6 +13,7 @@ import com.umc.bscene.domain.stream.repository.AudioStreamRepository;
 import com.umc.bscene.domain.stream.repository.StreamMemberRepository;
 import com.umc.bscene.domain.stream.sse.ViewerSsePresence;
 import com.umc.bscene.domain.user.entity.User;
+import com.umc.bscene.domain.user.enums.UserMode;
 import com.umc.bscene.global.response.CursorPage;
 import com.umc.bscene.global.security.util.JwtUtil;
 import lombok.RequiredArgsConstructor;
@@ -91,6 +92,9 @@ public class StreamServiceImpl implements StreamService {
         if(streamMemberRepository.existsByIdWithStatuses(userId, StreamMemberStatus.ACCEPTED, StreamStatus.OPEN))
             throw new StreamException(StreamErrorCode.DUPLICATE_LIVE_CREATE_TRY);
         */
+
+        // 팬 모드로 해당 요청을 진행하면, 라이브 방을 만들면 안되므로 바로 예외를 던지게끔 수정
+        blockFanMode(user);
 
         Long userId = user.getId();
 
@@ -391,5 +395,10 @@ public class StreamServiceImpl implements StreamService {
          * userId를 추출할 때, JwtException을 catch하므로, 별도 catch 하지 않음
          */
         return Long.parseLong(jwtUtil.getUserId(accessToken));
+    }
+
+    private void blockFanMode(User user) {
+        if (user.getCurrentMode() != UserMode.BAND)
+            throw new StreamException(StreamErrorCode.FORBIDDEN_REQUEST);
     }
 }
