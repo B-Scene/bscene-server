@@ -56,4 +56,8 @@ public class BandMember extends BaseEntity {
         this.sessionApplication = sessionApplication;
         accept();
     }
+
+    public void clearSessionApplication() {
+        this.sessionApplication = null;
+    }
 }
