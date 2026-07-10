@@ -11,6 +11,7 @@ public record PostCreateRequest(
         @NotBlank String title,
         String description,
         List<String> mediaUrls,
+        String thumbnailUrl,
         List<String> tags
 ) {
 }
