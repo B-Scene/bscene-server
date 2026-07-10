@@ -18,7 +18,7 @@ public interface StreamService {
 
     // 방송 시작, 종료
     StreamCreateResponse createStream(User user, Long userId, StreamCreateRequest request);
-    void closeStream(Long userId, String path);
+    void closeStream(Long userId, Long streamId);
 
     // 방송 상태
     CursorPage<LiveStreamResponse> getLiveStreams(Long cursor, int size);

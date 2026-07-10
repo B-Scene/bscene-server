@@ -130,16 +130,17 @@ public class StreamServiceImpl implements StreamService {
 
     @Override
     @Transactional
-    public void closeStream(Long userId, String path) {
+    public void closeStream(Long userId, Long streamId) {
 
-        AudioStream audioStream = audioStreamRepository.findByPath(path)
+        AudioStream audioStream = audioStreamRepository.findById(streamId)
                 .orElseThrow(() -> new StreamException(StreamErrorCode.AUDIO_STREAM_NOT_FOUND));
 
         if(!audioStream.getBroadcasterId().equals(userId))
             throw new StreamException(StreamErrorCode.FORBIDDEN_REQUEST);
 
+        String path = audioStream.getPath();
         audioStream.close();                                                 // 종료 상태로 변경
-        redisTemplate.delete(LIVE_KEY_PREFIX + audioStream.getPath());  // Redis도 정리
+        redisTemplate.delete(LIVE_KEY_PREFIX + path);  // Redis도 정리
 
         TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
             @Override
