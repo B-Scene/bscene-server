@@ -2,9 +2,9 @@ package com.umc.bscene.domain.notification.config;
 
 import com.google.firebase.messaging.FirebaseMessaging;
 import com.umc.bscene.domain.notification.adapter.NotificationAdapter;
-import com.umc.bscene.domain.notification.port.PushSender;
-import com.umc.bscene.domain.notification.service.FirebasePushSender;
-import com.umc.bscene.domain.notification.service.NoopPushSender;
+import com.umc.bscene.domain.notification.port.PushPort;
+import com.umc.bscene.domain.notification.adapter.FirebasePushAdapter;
+import com.umc.bscene.domain.notification.adapter.NoopPushAdapter;
 import com.umc.bscene.domain.notification.service.NotificationService;
 import com.umc.bscene.global.notification.port.NotificationPort;
 import org.springframework.beans.factory.ObjectProvider;
@@ -16,15 +16,15 @@ import org.springframework.context.annotation.Configuration;
 public class NotificationConfig {
 
     @Bean
-    public PushSender pushSender(
+    public PushPort pushPort(
             @Value("${notification.fcm.enabled:false}") boolean fcmEnabled,
             ObjectProvider<FirebaseMessaging> firebaseMessagingProvider
     ) {
         if (!fcmEnabled) {
-            return new NoopPushSender();
+            return new NoopPushAdapter();
         }
 
-        return new FirebasePushSender(firebaseMessagingProvider.getObject());
+        return new FirebasePushAdapter(firebaseMessagingProvider.getObject());
     }
 
     @Bean

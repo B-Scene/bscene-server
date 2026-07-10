@@ -5,7 +5,7 @@ import com.umc.bscene.domain.notification.dto.request.PushTokenDeleteRequest;
 import com.umc.bscene.domain.notification.dto.request.PushTokenSaveRequest;
 import com.umc.bscene.domain.notification.entity.Notification;
 import com.umc.bscene.domain.notification.entity.PushToken;
-import com.umc.bscene.domain.notification.port.PushSender;
+import com.umc.bscene.domain.notification.port.PushPort;
 import com.umc.bscene.domain.notification.repository.NotificationRepository;
 import com.umc.bscene.domain.notification.repository.PushTokenRepository;
 import com.umc.bscene.domain.user.entity.User;
@@ -24,7 +24,7 @@ public class NotificationService {
     private final UserRepository userRepository;
     private final NotificationRepository notificationRepository;
     private final PushTokenRepository pushTokenRepository;
-    private final PushSender pushSender;
+    private final PushPort pushPort;
 
     // FCM 토큰 저장/갱신
     @Transactional
@@ -53,7 +53,7 @@ public class NotificationService {
     @Transactional(readOnly = true)
     public void sendTestPush(Long userId, PushTestSendRequest request) {
         pushTokenRepository.findAllByUser_Id(userId)
-                .forEach(pushToken -> pushSender.send(
+                .forEach(pushToken -> pushPort.send(
                         pushToken.getToken(),
                         request.title(),
                         request.body()
@@ -71,7 +71,7 @@ public class NotificationService {
         List<PushToken> pushTokens = pushTokenRepository.findAllByUser_Id(receiverId);
 
         for (PushToken pushToken : pushTokens) {
-            pushSender.send(
+            pushPort.send(
                     pushToken.getToken(),
                     message.title(),
                     message.body()

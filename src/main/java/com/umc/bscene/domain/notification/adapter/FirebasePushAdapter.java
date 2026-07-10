@@ -1,16 +1,16 @@
-package com.umc.bscene.domain.notification.service;
+package com.umc.bscene.domain.notification.adapter;
 
 import com.google.firebase.messaging.FirebaseMessaging;
 import com.google.firebase.messaging.FirebaseMessagingException;
 import com.google.firebase.messaging.Message;
 import com.google.firebase.messaging.Notification;
-import com.umc.bscene.domain.notification.port.PushSender;
+import com.umc.bscene.domain.notification.port.PushPort;
 
-public class FirebasePushSender implements PushSender {
+public class FirebasePushAdapter implements PushPort {
 
     private final FirebaseMessaging firebaseMessaging;
 
-    public FirebasePushSender(FirebaseMessaging firebaseMessaging) {
+    public FirebasePushAdapter(FirebaseMessaging firebaseMessaging) {
         this.firebaseMessaging = firebaseMessaging;
     }
 
