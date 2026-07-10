@@ -27,6 +27,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationAdapter;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
+import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientException;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
@@ -377,6 +378,9 @@ public class StreamServiceImpl implements StreamService {
                     .uri("v3/webrtcsessions/kick/{id}", info.source().id())
                     .retrieve()
                     .toBodilessEntity();
+        } catch (HttpClientErrorException.NotFound e) {
+            // 프론트가 close 전에 WHIP 세션을 먼저 끊으면 MediaMTX에 path가 이미 없다.
+            // 정리 대상이 이미 사라진 정상 케이스이므로 조용히 넘어간다.
         } catch (RestClientException e) {
             log.warn("MediaMTX 좀비 송출자 강제 해제 실패 path={}", path, e);
         }
