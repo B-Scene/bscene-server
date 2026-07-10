@@ -5,9 +5,11 @@ import com.umc.bscene.domain.notification.dto.request.PushTokenDeleteRequest;
 import com.umc.bscene.domain.notification.dto.request.PushTokenSaveRequest;
 import com.umc.bscene.domain.notification.entity.Notification;
 import com.umc.bscene.domain.notification.entity.PushToken;
+import com.umc.bscene.domain.notification.exception.NotificationException;
 import com.umc.bscene.domain.notification.port.PushPort;
 import com.umc.bscene.domain.notification.repository.NotificationRepository;
 import com.umc.bscene.domain.notification.repository.PushTokenRepository;
+import com.umc.bscene.domain.notification.response.code.NotificationErrorCode;
 import com.umc.bscene.domain.user.entity.User;
 import com.umc.bscene.domain.user.repository.UserRepository;
 import com.umc.bscene.global.notification.message.PushMessage;
@@ -67,7 +69,7 @@ public class NotificationService {
     @Transactional
     public void send(Long receiverId, PushMessage message) {
         User receiver = userRepository.findById(receiverId)
-                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 사용자입니다."));
+                .orElseThrow(() -> new NotificationException(NotificationErrorCode.RECEIVER_NOT_FOUND));
 
         notificationRepository.save(Notification.of(receiver, message));
 
