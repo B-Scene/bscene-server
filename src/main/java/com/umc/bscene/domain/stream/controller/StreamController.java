@@ -48,7 +48,9 @@ public class StreamController {
     ) {
 
         streamService.leaveRoom(authMember.getUser().getId(), liveId);
-        SuccessResponse<Void> body = (SuccessResponse<Void>) SuccessResponse.of(null, StreamSuccessCode.LIVE_ROOM_LEAVE_SUCCESS);
+
+        // 첫 인자가 null이기 때문에, overloading 해석이 더 구체적인 ApiResponse.of로 매핑되는 이유로 인해 new 키워드 생성으로 수정
+        SuccessResponse<Void> body = new SuccessResponse<>(null, StreamSuccessCode.LIVE_ROOM_LEAVE_SUCCESS);
 
         return ResponseEntity
                 .status(HttpStatus.OK)
@@ -87,11 +89,11 @@ public class StreamController {
             @PathVariable Long liveId
     ) {
         streamService.closeStream(authMember.getUser().getId(), liveId);
-        SuccessResponse<Void> response = (SuccessResponse<Void>) SuccessResponse.of(null, StreamSuccessCode.LIVE_CLOSE_SUCCESS);
+        SuccessResponse<Void> body = new SuccessResponse<>(null, StreamSuccessCode.LIVE_CLOSE_SUCCESS);
 
         return ResponseEntity
                 .status(HttpStatus.OK)
-                .body(response);
+                .body(body);
     }
 
     @GetMapping(value = "/{liveId}/viewers", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
