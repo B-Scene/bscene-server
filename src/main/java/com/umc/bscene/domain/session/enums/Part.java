@@ -8,7 +8,8 @@ public enum Part {
     GUITAR("기타"),
     BASS("베이스"),
     KEYBOARD("키보드"),
-    DRUM("드럼");
+    DRUM("드럼"),
+    ETC("etc");
 
     private final String description;
 

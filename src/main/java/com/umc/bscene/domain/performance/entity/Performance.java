@@ -1,5 +1,6 @@
 package com.umc.bscene.domain.performance.entity;
 
+import com.umc.bscene.domain.auth.enums.onboarding.Genre;
 import com.umc.bscene.domain.band.entity.Band;
 import com.umc.bscene.domain.performance.enums.PerformanceStatus;
 import com.umc.bscene.global.entity.BaseEntity;
@@ -28,6 +29,10 @@ public class Performance extends BaseEntity {
 
     @Column(nullable = false, length = 200)
     private String title;
+
+    @Column(nullable = false)
+    @Enumerated(EnumType.STRING)
+    private Genre genre;
 
     @Column(nullable = false)
     private LocalDate performanceDate;
@@ -59,6 +64,7 @@ public class Performance extends BaseEntity {
     // 수정 API에서 전달된 값만 부분 반영
     public void update(
             String title,
+            Genre genre,
             LocalDate performanceDate,
             LocalTime startTime,
             String venue,
@@ -67,6 +73,7 @@ public class Performance extends BaseEntity {
             String posterImageUrl
     ) {
         if (title != null) this.title = title;
+        if (genre != null) this.genre = genre;
         if (performanceDate != null) this.performanceDate = performanceDate;
         if (startTime != null) this.startTime = startTime;
         if (venue != null) this.venue = venue;

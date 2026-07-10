@@ -1,5 +1,6 @@
 package com.umc.bscene.domain.performance.dto.request;
 
+import com.umc.bscene.domain.auth.enums.onboarding.Genre;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 
@@ -8,6 +9,7 @@ import java.time.LocalTime;
 
 public record PerformanceCreateRequest(
         @NotBlank String title,
+        @NotNull Genre genre,
         @NotNull LocalDate performanceDate,
         LocalTime startTime,
         String region,
