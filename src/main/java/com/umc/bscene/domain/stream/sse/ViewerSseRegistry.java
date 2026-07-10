@@ -83,7 +83,11 @@ public class ViewerSseRegistry {
         if (users == null) return;
         users.forEach((userId, presence) -> presence.emitters.forEach(emitter -> {
             try { emitter.send(SseEmitter.event().name("viewerCount").data(count)); }
-            catch (IOException | IllegalStateException e) { emitter.completeWithError(e); } // → onError → cleanup
+            catch (IOException | IllegalStateException e) {
+                // 죽은 emitter에 completeWithError가 다시 예외를 던지면 브로드캐스트 순회 전체가 중단되므로 삼킨다.
+                // (정리는 emitter 콜백/sweep이 담당) // → onError → cleanup
+                try { emitter.completeWithError(e); } catch (Exception ignored) { }
+            }
         }));
     }
 
@@ -97,7 +101,11 @@ public class ViewerSseRegistry {
             boolean alive = false;
             for (SseEmitter emitter : presence.emitters) {
                 try { emitter.send(SseEmitter.event().comment("ping")); alive = true; }
-                catch (IOException | IllegalStateException e) { emitter.completeWithError(e); }
+                catch (IOException | IllegalStateException e) {
+                    // 죽은 emitter에 completeWithError가 다시 예외를 던지면 하트비트 순회 전체가 중단되므로 삼킨다.
+                    // (정리는 emitter 콜백/sweep이 담당)
+                    try { emitter.completeWithError(e); } catch (Exception ignored) { }
+                }
             }
             if (alive && presence.counted) onAlive.accept(liveId, userId);
         }));
