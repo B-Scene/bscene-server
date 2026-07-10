@@ -99,6 +99,21 @@ public class StreamController {
                 .body(body);
     }
 
+    @PostMapping("/{liveId}/reports")
+    public ResponseEntity<SuccessResponse<?>> reportUser(
+            @AuthenticationPrincipal AuthMember authMember,
+            @PathVariable Long liveId,
+            @Valid @RequestBody StreamCreateRequest request
+    ) {
+
+        // Business Logic
+
+        // FIXME: 비즈니스 로직 완성 시 업데이트
+        return ResponseEntity
+                .status(HttpStatus.CREATED)
+                .body(SuccessResponse.empty(null));
+    }
+
     @GetMapping(value = "/{liveId}/viewers", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
     public SseEmitter subscribeViewer(
             @AuthenticationPrincipal AuthMember authMember,
