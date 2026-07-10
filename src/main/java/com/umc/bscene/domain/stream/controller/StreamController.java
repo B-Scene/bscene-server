@@ -17,7 +17,7 @@ import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 @RestController
 @RequiredArgsConstructor
-@RequestMapping("/live")
+@RequestMapping("/lives")
 public class StreamController {
 
     private final StreamService streamService;
