@@ -15,7 +15,9 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 @Service
 @RequiredArgsConstructor
@@ -56,7 +58,8 @@ public class NotificationService {
                 .forEach(pushToken -> pushPort.send(
                         pushToken.getToken(),
                         request.title(),
-                        request.body()
+                        request.body(),
+                        Map.of()
                 ));
     }
 
@@ -70,12 +73,31 @@ public class NotificationService {
 
         List<PushToken> pushTokens = pushTokenRepository.findAllByUser_Id(receiverId);
 
+        Map<String, String> data = createPushData(message);
+
         for (PushToken pushToken : pushTokens) {
             pushPort.send(
                     pushToken.getToken(),
                     message.title(),
-                    message.body()
+                    message.body(),
+                    data
             );
         }
+    }
+
+    private Map<String, String> createPushData(PushMessage message) {
+        Map<String, String> data = new HashMap<>();
+
+        data.put("type", message.type().name());
+
+        if (message.deepLink() != null) {
+            data.put("deepLink", message.deepLink());
+        }
+
+        if (message.referenceId() != null) {
+            data.put("referenceId", String.valueOf(message.referenceId()));
+        }
+
+        return data;
     }
 }

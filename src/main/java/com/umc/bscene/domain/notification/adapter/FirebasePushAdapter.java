@@ -6,6 +6,8 @@ import com.google.firebase.messaging.Message;
 import com.google.firebase.messaging.Notification;
 import com.umc.bscene.domain.notification.port.PushPort;
 
+import java.util.Map;
+
 public class FirebasePushAdapter implements PushPort {
 
     private final FirebaseMessaging firebaseMessaging;
@@ -15,13 +17,14 @@ public class FirebasePushAdapter implements PushPort {
     }
 
     @Override
-    public void send(String targetToken, String title, String body) {
+    public void send(String targetToken, String title, String body, Map<String, String> data) {
         Message message = Message.builder()
                 .setToken(targetToken)
                 .setNotification(Notification.builder()
                         .setTitle(title)
                         .setBody(body)
                         .build())
+                .putAllData(data)
                 .build();
 
         try {
