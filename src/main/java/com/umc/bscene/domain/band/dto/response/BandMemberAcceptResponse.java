@@ -5,15 +5,15 @@ import com.umc.bscene.domain.band.enums.BandMemberStatus;
 
 public record BandMemberAcceptResponse(
         Long bandId,
-        Long sessionApplicationId,
+        Long bandMemberProfileId,
         String nickname,
         BandMemberStatus status
 ) {
     public static BandMemberAcceptResponse from(BandMember bandMember) {
         return new BandMemberAcceptResponse(
                 bandMember.getBand().getId(),
-                bandMember.getSessionApplication().getSessionApplicationId(),
-                bandMember.getSessionApplication().getNickname(),
+                bandMember.getBandMemberProfile().getId(),
+                bandMember.getBandMemberProfile().getNickname(),
                 bandMember.getStatus()
         );
     }
