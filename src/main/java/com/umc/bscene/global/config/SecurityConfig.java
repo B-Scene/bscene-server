@@ -6,6 +6,7 @@ import com.umc.bscene.global.security.handler.OAuthSuccessHandler;
 import com.umc.bscene.global.security.service.CustomOAuthService;
 import com.umc.bscene.global.security.service.CustomUserDetailsService;
 import com.umc.bscene.global.security.util.JwtUtil;
+import jakarta.servlet.DispatcherType;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -43,6 +44,8 @@ public class SecurityConfig {
 
                 // URI 허용 여부
                 .authorizeHttpRequests(requests -> requests
+                        // SSE 완료 / 에러 콜백 시 발생하는 ASYNC, ERROR Dispatch는 재인가 대상에서 제외 (시청자수 관련 완결 API 콜백)
+                        .dispatcherTypeMatchers(DispatcherType.ASYNC, DispatcherType.ERROR).permitAll()
                         .requestMatchers(allowUris).permitAll()
                         .anyRequest().authenticated()
                 )
