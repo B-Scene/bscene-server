@@ -1,25 +1,206 @@
 package com.umc.bscene.domain.session.service.impl;
 
 import com.umc.bscene.domain.session.dto.application.response.MySessionApplicationResponse;
+import com.umc.bscene.domain.session.dto.application.response.SessionApplicationSearchItemResponse;
+import com.umc.bscene.domain.session.dto.application.response.SessionApplicationSearchResponse;
+import com.umc.bscene.domain.session.dto.application.response.SessionApplicationDetailResponse;
+import com.umc.bscene.domain.session.dto.application.response.MySessionApplicationSummaryResponse;
+import com.umc.bscene.domain.session.entity.SessionApplication;
+import com.umc.bscene.domain.session.entity.SessionBasicProfile;
+import com.umc.bscene.domain.session.enums.Part;
+import com.umc.bscene.domain.session.enums.SessionRegion;
+import com.umc.bscene.domain.session.enums.SkillLevel;
+import com.umc.bscene.domain.session.enums.code.SessionErrorCode;
+import com.umc.bscene.domain.session.enums.ApplicationStatus;
+import com.umc.bscene.domain.session.exception.SessionApplicationException;
 import com.umc.bscene.domain.session.repository.SessionApplicationRepository;
+import com.umc.bscene.domain.session.repository.SessionApplicationSubmissionRepository;
+import com.umc.bscene.domain.session.repository.SessionBasicProfileRepository;
+import com.umc.bscene.domain.user.entity.User;
+import com.umc.bscene.domain.user.repository.UserRepository;
+import com.umc.bscene.global.exception.BaseException;
+import com.umc.bscene.global.response.code.GeneralErrorCode;
 import com.umc.bscene.domain.session.service.SessionApplicationQueryService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Map;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
 public class SessionApplicationQueryServiceImpl implements SessionApplicationQueryService {
 
+    private static final String DEFAULT_PURPOSE = "기본";
+
     private final SessionApplicationRepository sessionApplicationRepository;
+    private final SessionApplicationSubmissionRepository submissionRepository;
+    private final SessionBasicProfileRepository sessionBasicProfileRepository;
+    private final UserRepository userRepository;
 
     @Override
     public List<MySessionApplicationResponse> getMySessionApplications(Long userId) {
         return sessionApplicationRepository.findAllByUserIdWithPortfolioLinks(userId).stream()
                 .map(MySessionApplicationResponse::from)
                 .toList();
+    }
+
+    @Override
+    public MySessionApplicationSummaryResponse getMySessionApplicationSummary(Long userId) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new BaseException(GeneralErrorCode.UNAUTHORIZED_ERROR));
+        SessionBasicProfile sessionProfile = sessionBasicProfileRepository
+                .findByUser_Id(userId)
+                .orElse(null);
+        SessionApplication defaultApplication = sessionApplicationRepository
+                .findFirstByUserIdAndPurposeAndDeletedAtIsNullOrderBySessionApplicationIdDesc(
+                        userId,
+                        DEFAULT_PURPOSE
+                )
+                .orElse(null);
+
+        long applicationCount = sessionApplicationRepository
+                .countByUserIdAndDeletedAtIsNull(userId);
+        long submissionCount = submissionRepository
+                .countBySessionApplication_UserId(userId);
+        long inProgressCount = submissionRepository
+                .countBySessionApplication_UserIdAndStatus(
+                        userId,
+                        ApplicationStatus.PENDING
+                );
+
+        return MySessionApplicationSummaryResponse.of(
+                defaultApplication,
+                user.getName(),
+                sessionProfile == null ? null : sessionProfile.getProfileImageUrl(),
+                applicationCount,
+                submissionCount,
+                inProgressCount
+        );
+    }
+
+    @Override
+    public SessionApplicationDetailResponse getDefaultApplicationDetail(
+            Long sessionApplicationId
+    ) {
+        SessionApplication application = sessionApplicationRepository
+                .findPublicDetailWithPortfolioLinks(
+                        sessionApplicationId,
+                        DEFAULT_PURPOSE
+                )
+                .orElseThrow(() -> new SessionApplicationException(
+                        SessionErrorCode.SESSION_APPLICATION_NOT_FOUND
+                ));
+
+        SessionBasicProfile sessionProfile = sessionBasicProfileRepository
+                .findByUser_Id(application.getUserId())
+                .orElse(null);
+        String userName = userRepository.findById(application.getUserId())
+                .map(User::getName)
+                .orElse(application.getNickname());
+        return SessionApplicationDetailResponse.from(
+                application,
+                userName,
+                sessionProfile == null ? null : sessionProfile.getProfileImageUrl()
+        );
+    }
+
+    @Override
+    public SessionApplicationSearchResponse searchDefaultApplications(
+            Long viewerUserId,
+            SessionRegion region,
+            SkillLevel skillLevel,
+            Part part,
+            String keyword,
+            Long cursorId,
+            Integer size
+    ) {
+        int pageSize = size == null ? 10 : Math.max(1, Math.min(size, 50));
+        String normalizedKeyword = keyword == null || keyword.isBlank()
+                ? null
+                : keyword.trim();
+
+        boolean explicitCondition = region != null
+                || skillLevel != null
+                || part != null
+                || normalizedKeyword != null;
+        SessionApplication myDefaultApplication = explicitCondition
+                ? null
+                : sessionApplicationRepository
+                        .findFirstByUserIdAndPurposeAndDeletedAtIsNullOrderBySessionApplicationIdDesc(
+                                viewerUserId,
+                                DEFAULT_PURPOSE
+                        )
+                        .orElse(null);
+        boolean recommendationEnabled = myDefaultApplication != null
+                && sessionApplicationRepository.existsRecommendedApplications(
+                        viewerUserId,
+                        DEFAULT_PURPOSE,
+                        myDefaultApplication.getGenre(),
+                        myDefaultApplication.getRegion()
+                );
+
+        List<SessionApplication> applications = sessionApplicationRepository
+                .searchDefaultApplications(
+                        viewerUserId,
+                        DEFAULT_PURPOSE,
+                        region,
+                        skillLevel,
+                        part,
+                        recommendationEnabled,
+                        recommendationEnabled ? myDefaultApplication.getGenre() : null,
+                        recommendationEnabled ? myDefaultApplication.getRegion() : null,
+                        normalizedKeyword,
+                        cursorId,
+                        PageRequest.of(0, pageSize + 1)
+                );
+
+        boolean hasNext = applications.size() > pageSize;
+        List<SessionApplication> slicedApplications = hasNext
+                ? applications.subList(0, pageSize)
+                : applications;
+
+        List<Long> userIds = slicedApplications.stream()
+                .map(SessionApplication::getUserId)
+                .distinct()
+                .toList();
+        Map<Long, SessionBasicProfile> sessionProfiles = userIds.isEmpty()
+                ? Map.of()
+                : sessionBasicProfileRepository.findAllByUser_IdIn(userIds).stream()
+                        .collect(Collectors.toMap(
+                                profile -> profile.getUser().getId(),
+                                Function.identity()
+                        ));
+        Map<Long, String> userNames = userIds.isEmpty()
+                ? Map.of()
+                : userRepository.findAllById(userIds).stream()
+                        .collect(Collectors.toMap(User::getId, User::getName));
+
+        List<SessionApplicationSearchItemResponse> content = slicedApplications.stream()
+                .map(application -> {
+                    SessionBasicProfile profile = sessionProfiles.get(application.getUserId());
+                    return SessionApplicationSearchItemResponse.from(
+                            application,
+                            userNames.get(application.getUserId()),
+                            profile == null ? null : profile.getProfileImageUrl()
+                    );
+                })
+                .toList();
+        Long nextCursor = hasNext && !slicedApplications.isEmpty()
+                ? slicedApplications.get(slicedApplications.size() - 1)
+                        .getSessionApplicationId()
+                : null;
+
+        return SessionApplicationSearchResponse.builder()
+                .content(content)
+                .size(pageSize)
+                .nextCursor(nextCursor)
+                .hasNext(hasNext)
+                .build();
     }
 }

@@ -48,6 +48,12 @@ public class SessionApplication extends BaseEntity {
     @Column(name = "purpose", nullable = false, length = 20)
     private String purpose;
 
+    @Column(name = "profile_image_url", length = 500)
+    private String profileImageUrl;
+
+    @Column(name = "is_public", nullable = false)
+    private Boolean isPublic = true;
+
     @Enumerated(EnumType.STRING)
     @Column(name = "part", nullable = false, length = 30)
     private Part part;
@@ -83,6 +89,7 @@ public class SessionApplication extends BaseEntity {
             String nickname,
             String title,
             String purpose,
+            String profileImageUrl,
             Part part,
             SkillLevel skillLevel,
             SessionGenre genre,
@@ -93,6 +100,9 @@ public class SessionApplication extends BaseEntity {
         this.nickname = nickname;
         this.title = title;
         this.purpose = purpose;
+        if (profileImageUrl != null) {
+            this.profileImageUrl = profileImageUrl;
+        }
         this.part = part;
         this.skillLevel = skillLevel;
         this.genre = genre;
@@ -103,6 +113,7 @@ public class SessionApplication extends BaseEntity {
     public void updateApplication(
             String title,
             String purpose,
+            String profileImageUrl,
             Part part,
             SkillLevel skillLevel,
             SessionGenre genre,
@@ -111,6 +122,9 @@ public class SessionApplication extends BaseEntity {
     ) {
         this.title = title;
         this.purpose = purpose;
+        if (profileImageUrl != null) {
+            this.profileImageUrl = profileImageUrl;
+        }
         this.part = part;
         this.skillLevel = skillLevel;
         this.genre = genre;
@@ -120,6 +134,10 @@ public class SessionApplication extends BaseEntity {
 
     public void clearPortfolioLinks() {
         this.portfolioLinks.clear();
+    }
+
+    public void updateVisibility(boolean isPublic) {
+        this.isPublic = isPublic;
     }
 
     public void addPortfolioLink(SessionApplicationLink portfolioLink) {
