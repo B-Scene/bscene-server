@@ -92,10 +92,10 @@ public class SessionRecruitmentQueryServiceImpl implements SessionRecruitmentQue
 
                 // 밴드 프로필 정보
                 .bandId(recruitment.getBand().getId())
-                .bandName(recruitment.getBandProfile().getNickname())
-                .bandProfileImageUrl(null)
-                .bandGenre(recruitment.getBandProfile().getGenre().getDescription())
-                .bandRegion(recruitment.getBandProfile().getRegion().getDescription())
+                .bandName(recruitment.getBand().getName())
+                .bandProfileImageUrl(recruitment.getBand().getProfileImageUrl())
+                .bandGenre(recruitment.getBand().getGenre().getName())
+                .bandRegion(recruitment.getBand().getRegion().getName())
 
 
                 // 모집 상세 정보
@@ -185,7 +185,7 @@ public class SessionRecruitmentQueryServiceImpl implements SessionRecruitmentQue
                 .sessionRecruitmentId(recruitment.getSessionRecruitmentId())
                 .bandId(recruitment.getBand().getId())
                 .recruitmentTitle(recruitment.getRecruitmentTitle())
-                .bandName(recruitment.getBandProfile().getNickname())
+                .bandName(recruitment.getBand().getName())
                 .part(recruitment.getPart())
                 .genre(recruitment.getGenre())
                 .region(recruitment.getRegion())

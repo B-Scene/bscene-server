@@ -9,22 +9,28 @@ import org.springframework.http.HttpStatus;
 @RequiredArgsConstructor
 public enum SessionSuccessCode implements BaseResponseCode {
 
-    MY_SESSION_PROFILE_GET_SUCCESS(
+    MY_SESSION_APPLICATION_GET_SUCCESS(
             HttpStatus.OK.value(),
-            "MY_SESSION_PROFILE_GET_SUCCESS",
-            "내 세션 프로필 조회에 성공했습니다."
+            "MY_SESSION_APPLICATION_GET_SUCCESS",
+            "내 지원서 조회에 성공했습니다."
     ),
 
-    MY_SESSION_PROFILE_EMPTY(
+    MY_SESSION_APPLICATION_EMPTY(
             HttpStatus.OK.value(),
-            "MY_SESSION_PROFILE_EMPTY",
-            "등록된 세션 프로필이 없습니다."
+            "MY_SESSION_APPLICATION_EMPTY",
+            "등록된 지원서가 없습니다."
     ),
 
-    MY_SESSION_PROFILE_UPDATE_SUCCESS(
+    MY_SESSION_APPLICATION_UPDATE_SUCCESS(
             HttpStatus.OK.value(),
-            "MY_SESSION_PROFILE_UPDATE_SUCCESS",
-            "내 세션 프로필 저장에 성공했습니다."
+            "MY_SESSION_APPLICATION_UPDATE_SUCCESS",
+            "내 지원서 저장에 성공했습니다."
+    ),
+
+    MY_SESSION_APPLICATION_CREATE_SUCCESS(
+            HttpStatus.CREATED.value(),
+            "MY_SESSION_APPLICATION_CREATE_SUCCESS",
+            "지원서 생성에 성공했습니다."
     ),
 
     SESSION_RECRUITMENT_CREATE_SUCCESS(

@@ -11,7 +11,7 @@ import static com.umc.bscene.global.constant.StaticValue.*;
 public enum BandErrorCode implements BaseResponseCode {
 
     INVALID_ETC_MUSIC_LINK(BAD_REQUEST, "MUSIC400_1", "플랫폼과 링크를 함께 입력해주세요."),
-    NOT_OWN_SESSION_PROFILE(BAD_REQUEST, "SESSION4001", "본인의 세션 프로필만 선택할 수 있어요."),
+    NOT_OWN_SESSION_APPLICATION(BAD_REQUEST, "SESSION4001", "본인의 지원서만 선택할 수 있어요."),
 
     NOT_BAND_OWNER(FORBIDDEN, "BAND403_1", "밴드 오너만 수행할 수 있는 작업입니다."),
     CANNOT_REMOVE_OWNER(FORBIDDEN, "BAND403_2", "밴드 오너는 제거할 수 없습니다."),

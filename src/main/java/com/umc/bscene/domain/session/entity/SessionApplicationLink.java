@@ -20,17 +20,17 @@ import java.time.LocalDateTime;
 @Entity
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-@Table(name = "session_profile_links")
-public class BandProfileLink extends BaseEntity {
+@Table(name = "session_application_links")
+public class SessionApplicationLink extends BaseEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "session_profile_link_id")
-    private Long sessionProfileLinkId;
+    @Column(name = "session_application_link_id")
+    private Long sessionApplicationLinkId;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "session_profile_id", nullable = false)
-    private BandProfile sessionProfile;
+    @JoinColumn(name = "session_application_id", nullable = false)
+    private SessionApplication sessionApplication;
 
     @Column(name = "url", nullable = false, length = 500)
     private String url;
@@ -39,11 +39,11 @@ public class BandProfileLink extends BaseEntity {
     private LocalDateTime deletedAt;
 
     @Builder
-    private BandProfileLink(
-            BandProfile sessionProfile,
+    private SessionApplicationLink(
+            SessionApplication sessionApplication,
             String url
     ) {
-        this.sessionProfile = sessionProfile;
+        this.sessionApplication = sessionApplication;
         this.url = url;
     }
 

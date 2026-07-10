@@ -28,19 +28,25 @@ import java.util.List;
 @Entity
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-@Table(name = "session_profiles")
-public class BandProfile extends BaseEntity {
+@Table(name = "session_applications")
+public class SessionApplication extends BaseEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "session_profile_id")
-    private Long sessionProfileId;
+    @Column(name = "session_application_id")
+    private Long sessionApplicationId;
 
     @Column(name = "user_id", nullable = false)
     private Long userId;
 
     @Column(name = "nickname", nullable = false, length = 30)
     private String nickname;
+
+    @Column(name = "title", nullable = false, length = 30)
+    private String title;
+
+    @Column(name = "purpose", nullable = false, length = 20)
+    private String purpose;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "part", nullable = false, length = 30)
@@ -64,17 +70,19 @@ public class BandProfile extends BaseEntity {
     @Column(name = "deleted_at")
     private LocalDateTime deletedAt;
 
-    @OneToMany(mappedBy = "sessionProfile", cascade = CascadeType.ALL, orphanRemoval = true)
-    private List<BandProfileLink> portfolioLinks = new ArrayList<>();
+    @OneToMany(mappedBy = "sessionApplication", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<SessionApplicationLink> portfolioLinks = new ArrayList<>();
 
     // 이 프로필로 소속된 밴드 멤버십 (하나의 프로필로 여러 밴드에 소속 가능)
-    @OneToMany(mappedBy = "sessionProfile")
+    @OneToMany(mappedBy = "sessionApplication")
     private List<BandMember> bandMembers = new ArrayList<>();
 
     @Builder
-    private BandProfile(
+    private SessionApplication(
             Long userId,
             String nickname,
+            String title,
+            String purpose,
             Part part,
             SkillLevel skillLevel,
             SessionGenre genre,
@@ -83,6 +91,8 @@ public class BandProfile extends BaseEntity {
     ) {
         this.userId = userId;
         this.nickname = nickname;
+        this.title = title;
+        this.purpose = purpose;
         this.part = part;
         this.skillLevel = skillLevel;
         this.genre = genre;
@@ -90,13 +100,17 @@ public class BandProfile extends BaseEntity {
         this.intro = intro;
     }
 
-    public void updateProfile(
+    public void updateApplication(
+            String title,
+            String purpose,
             Part part,
             SkillLevel skillLevel,
             SessionGenre genre,
             SessionRegion region,
             String intro
     ) {
+        this.title = title;
+        this.purpose = purpose;
         this.part = part;
         this.skillLevel = skillLevel;
         this.genre = genre;
@@ -108,7 +122,7 @@ public class BandProfile extends BaseEntity {
         this.portfolioLinks.clear();
     }
 
-    public void addPortfolioLink(BandProfileLink portfolioLink) {
+    public void addPortfolioLink(SessionApplicationLink portfolioLink) {
         this.portfolioLinks.add(portfolioLink);
     }
 }
