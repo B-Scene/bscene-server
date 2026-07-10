@@ -9,10 +9,9 @@ import com.umc.bscene.domain.band.response.code.BandErrorCode;
 import com.umc.bscene.domain.session.dto.recruitment.request.SessionRecruitmentCreateRequest;
 import com.umc.bscene.domain.session.dto.recruitment.request.SessionRecruitmentUpdateRequest;
 import com.umc.bscene.domain.session.dto.recruitment.response.SessionRecruitmentCreateResponse;
-import com.umc.bscene.domain.session.entity.BandProfile;
 import com.umc.bscene.domain.session.entity.SessionRecruitment;
 import com.umc.bscene.domain.session.enums.code.SessionErrorCode;
-import com.umc.bscene.domain.session.exception.BandProfileException;
+import com.umc.bscene.domain.session.exception.SessionException;
 import com.umc.bscene.domain.session.repository.SessionRecruitmentRepository;
 import com.umc.bscene.domain.session.service.SessionRecruitmentCommandService;
 import lombok.RequiredArgsConstructor;
@@ -43,17 +42,10 @@ public class SessionRecruitmentCommandServiceImpl implements SessionRecruitmentC
                 .orElseThrow(() -> new BandException(BandErrorCode.BAND_MEMBER_NOT_FOUND));
 
         Band band = bandMember.getBand();
-        BandProfile bandProfile = bandMember.getSessionProfile();
-
-        if (bandProfile == null) {
-            throw new BandProfileException(SessionErrorCode.BAND_PROFILE_NOT_FOUND);
-        }
-
         validateDeadlineAt(request.getDeadlineAt());
 
         SessionRecruitment recruitment = SessionRecruitment.builder()
                 .band(band)
-                .bandProfile(bandProfile)
                 .recruitmentTitle(request.getRecruitmentTitle())
                 .content(request.getContent())
                 .part(request.getPart())
@@ -78,7 +70,7 @@ public class SessionRecruitmentCommandServiceImpl implements SessionRecruitmentC
             SessionRecruitmentUpdateRequest request
     ) {
         SessionRecruitment recruitment = sessionRecruitmentRepository.findById(sessionRecruitmentId)
-                .orElseThrow(() -> new BandProfileException(SessionErrorCode.SESSION_RECRUITMENT_NOT_FOUND));
+                .orElseThrow(() -> new SessionException(SessionErrorCode.SESSION_RECRUITMENT_NOT_FOUND));
 
         Band band = recruitment.getBand();
 
@@ -88,7 +80,7 @@ public class SessionRecruitmentCommandServiceImpl implements SessionRecruitmentC
                         userId,
                         BandMemberStatus.ACCEPTED
                 )
-                .orElseThrow(() -> new BandProfileException(SessionErrorCode.BAND_PERMISSION_DENIED));
+                .orElseThrow(() -> new SessionException(SessionErrorCode.BAND_PERMISSION_DENIED));
 
         validateDeadlineAt(request.getDeadlineAt());
 
@@ -114,7 +106,7 @@ public class SessionRecruitmentCommandServiceImpl implements SessionRecruitmentC
             Long sessionRecruitmentId
     ) {
         SessionRecruitment recruitment = sessionRecruitmentRepository.findById(sessionRecruitmentId)
-                .orElseThrow(() -> new BandProfileException(SessionErrorCode.SESSION_RECRUITMENT_NOT_FOUND));
+                .orElseThrow(() -> new SessionException(SessionErrorCode.SESSION_RECRUITMENT_NOT_FOUND));
 
         Band band = recruitment.getBand();
 
@@ -124,14 +116,14 @@ public class SessionRecruitmentCommandServiceImpl implements SessionRecruitmentC
                         userId,
                         BandMemberStatus.ACCEPTED
                 )
-                .orElseThrow(() -> new BandProfileException(SessionErrorCode.BAND_PERMISSION_DENIED));
+                .orElseThrow(() -> new SessionException(SessionErrorCode.BAND_PERMISSION_DENIED));
 
         sessionRecruitmentRepository.delete(recruitment);
     }
 
     private void validateDeadlineAt(LocalDateTime deadlineAt) {
         if (!deadlineAt.isAfter(LocalDateTime.now())) {
-            throw new BandProfileException(SessionErrorCode.INVALID_SESSION_RECRUITMENT_DEADLINE);
+            throw new SessionException(SessionErrorCode.INVALID_SESSION_RECRUITMENT_DEADLINE);
         }
     }
 }

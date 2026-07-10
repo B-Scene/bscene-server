@@ -1,4 +1,4 @@
-package com.umc.bscene.domain.session.dto.profile.request;
+package com.umc.bscene.domain.session.dto.application.request;
 
 import com.umc.bscene.domain.session.enums.Part;
 import com.umc.bscene.domain.session.enums.SessionGenre;
@@ -6,6 +6,8 @@ import com.umc.bscene.domain.session.enums.SessionRegion;
 import com.umc.bscene.domain.session.enums.SkillLevel;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Size;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import org.hibernate.validator.constraints.URL;
@@ -14,7 +16,15 @@ import java.util.List;
 
 @Getter
 @NoArgsConstructor
-public class MyBandProfileUpdateRequest {
+public class MySessionApplicationUpdateRequest {
+
+    @NotBlank(message = "지원서 제목은 필수입니다.")
+    @Size(max = 30, message = "지원서 제목은 30자 이하여야 합니다.")
+    private String title;
+
+    @NotBlank(message = "지원서 용도는 필수입니다.")
+    @Size(max = 20, message = "지원서 용도는 20자 이하여야 합니다.")
+    private String purpose;
 
     @NotNull(message = "세션 파트는 필수입니다.")
     private Part part;

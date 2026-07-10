@@ -56,6 +56,10 @@ dependencies {
 
 	// Test Only
 	testRuntimeOnly 'com.h2database:h2'
+
+	//flyway
+	implementation 'org.flywaydb:flyway-core'
+	runtimeOnly 'org.flywaydb:flyway-mysql'
 }
 
 tasks.named('test') {

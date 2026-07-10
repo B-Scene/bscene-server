@@ -1,6 +1,7 @@
 package com.umc.bscene.domain.session.exception;
 
-import com.umc.bscene.domain.session.controller.BandProfileController;
+import com.umc.bscene.domain.session.controller.SessionApplicationController;
+import com.umc.bscene.domain.session.dto.application.request.MySessionApplicationUpdateRequest;
 import com.umc.bscene.domain.session.controller.SessionRecruitmentController;
 import com.umc.bscene.domain.session.enums.code.SessionErrorCode;
 import com.umc.bscene.global.response.ErrorResponse;
@@ -11,15 +12,15 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
 @RestControllerAdvice(basePackageClasses = {
-        BandProfileController.class,
+        SessionApplicationController.class,
         SessionRecruitmentController.class
 })
 @Slf4j
-public class BandProfileExceptionHandler {
+public class SessionApplicationExceptionHandler {
 
-    @ExceptionHandler(BandProfileException.class)
-    public ResponseEntity<ErrorResponse<?>> handleBandProfileException(
-            BandProfileException e
+    @ExceptionHandler(SessionApplicationException.class)
+    public ResponseEntity<ErrorResponse<?>> handleSessionApplicationException(
+            SessionApplicationException e
     ) {
         ErrorResponse<?> errorResponse =
                 ErrorResponse.from(e.getBaseResponseCode());
@@ -31,8 +32,12 @@ public class BandProfileExceptionHandler {
     public ResponseEntity<ErrorResponse<?>> handleMethodArgumentNotValidException(
             MethodArgumentNotValidException e
     ) {
-        ErrorResponse<?> errorResponse =
-                ErrorResponse.from(SessionErrorCode.INVALID_SESSION_RECRUITMENT_REQUEST);
+        SessionErrorCode errorCode =
+                e.getBindingResult().getTarget() instanceof MySessionApplicationUpdateRequest
+                        ? SessionErrorCode.INVALID_SESSION_APPLICATION_REQUEST
+                        : SessionErrorCode.INVALID_SESSION_RECRUITMENT_REQUEST;
+
+        ErrorResponse<?> errorResponse = ErrorResponse.from(errorCode);
 
         return ResponseEntity.status(errorResponse.getStatus()).body(errorResponse);
     }

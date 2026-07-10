@@ -9,7 +9,7 @@ public record BandMemberResponse(
         Long id,
         Long bandId,
         Long userId,
-        Long sessionProfileId,
+        Long sessionApplicationId,
         String sessionNickname,
         BandMemberStatus status,
         LocalDateTime createdAt
@@ -19,8 +19,8 @@ public record BandMemberResponse(
                 bandMember.getId(),
                 bandMember.getBand().getId(),
                 bandMember.getUser().getId(),
-                bandMember.getSessionProfile() != null ? bandMember.getSessionProfile().getSessionProfileId() : null,
-                bandMember.getSessionProfile() != null ? bandMember.getSessionProfile().getNickname() : null,
+                bandMember.getSessionApplication() != null ? bandMember.getSessionApplication().getSessionApplicationId() : null,
+                bandMember.getSessionApplication() != null ? bandMember.getSessionApplication().getNickname() : null,
                 bandMember.getStatus(),
                 bandMember.getCreatedAt()
         );

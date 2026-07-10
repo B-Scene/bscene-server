@@ -27,10 +27,6 @@ public class SessionRecruitment extends BaseEntity {
     @JoinColumn(name = "band_id", nullable = false)
     private Band band;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "session_profile_id", nullable = false)
-    private BandProfile bandProfile;
-
     @Column(length = 500)
     private String content;
 

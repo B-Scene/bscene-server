@@ -9,27 +9,21 @@ import org.springframework.http.HttpStatus;
 @RequiredArgsConstructor
 public enum SessionErrorCode implements BaseResponseCode {
 
-    SESSION_PROFILE_NOT_FOUND(
+    SESSION_APPLICATION_NOT_FOUND(
             HttpStatus.NOT_FOUND.value(),
-            "SESSION_PROFILE_NOT_FOUND",
-            "세션 프로필을 찾을 수 없습니다."
+            "SESSION_APPLICATION_NOT_FOUND",
+            "지원서를 찾을 수 없습니다."
     ),
-    BAND_PROFILE_NOT_FOUND(
-            HttpStatus.NOT_FOUND.value(),
-            "BAND_PROFILE_NOT_FOUND",
-            "밴드 프로필을 찾을 수 없습니다."
-    ),
-
     SESSION_RECRUITMENT_NOT_FOUND(
             HttpStatus.NOT_FOUND.value(),
             "SESSION_RECRUITMENT_NOT_FOUND",
             "세션 모집 공고를 찾을 수 없습니다."
     ),
 
-    INVALID_SESSION_PROFILE_REQUEST(
+    INVALID_SESSION_APPLICATION_REQUEST(
             HttpStatus.BAD_REQUEST.value(),
-            "INVALID_SESSION_PROFILE_REQUEST",
-            "세션 프로필 필수 입력값을 확인해주세요."
+            "INVALID_SESSION_APPLICATION_REQUEST",
+            "지원서 필수 입력값을 확인해주세요."
     ),
 
     INVALID_SESSION_RECRUITMENT_REQUEST(
