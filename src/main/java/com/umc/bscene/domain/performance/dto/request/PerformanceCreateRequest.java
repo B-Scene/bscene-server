@@ -1,7 +1,6 @@
 package com.umc.bscene.domain.performance.dto.request;
 
 import com.umc.bscene.domain.auth.enums.onboarding.Genre;
-import com.umc.bscene.domain.auth.enums.onboarding.Region;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 
@@ -12,12 +11,12 @@ public record PerformanceCreateRequest(
         @NotBlank String title,
         @NotNull Genre genre,
         @NotNull LocalDate performanceDate,
-        @NotNull LocalTime startTime,
-        @NotNull Region region,
+        LocalTime startTime,
+        String region,
         @NotBlank String venue,
-        @NotNull String description,
-        @NotNull Integer ticketPrice,
+        String description,
+        Integer ticketPrice,
         String ticketLink,
-        String posterImageUrl
+        @NotBlank String posterImageUrl
 ) {
 }
