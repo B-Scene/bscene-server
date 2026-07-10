@@ -24,10 +24,12 @@ public class StreamCleanupScheduler {
     @Scheduled(fixedDelay = 60_000)
     @Transactional
     public void cancelAbandonedScheduled() {
-        LocalDateTime threshold = LocalDateTime.now().minus(GRACE);
-        List<AudioStream> abandoned = audioStreamRepository.findAbandonedScheduled(threshold);
+        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime threshold = now.minus(GRACE);
 
-        abandoned.forEach(AudioStream::cancel);
+        // 조건부 벌크 UPDATE라 스케줄러가 엔티티를 읽은 사이 송출자가 진입(OPEN 전환)해도 덮어쓰지 않는다
+        // (status = SCHEDULED 조건이 DB에서 원자적으로 검사됨)
+        audioStreamRepository.cancelAbandonedScheduled(threshold, now);
     }
 
     @Scheduled(fixedDelay = 60_000)

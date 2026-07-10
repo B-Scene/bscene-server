@@ -4,6 +4,7 @@ import com.umc.bscene.domain.stream.entity.AudioStream;
 import com.umc.bscene.domain.stream.enums.StreamStatus;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -39,14 +40,19 @@ order by a.id desc
 
     Boolean existsByPath(String path);
 
-    // scheduledAt이나, createdAt이
+    // status = SCHEDULED 조건을 DB에서 원자적으로 검사하는 조건부 벌크 UPDATE (읽기-수정 사이의 lost update 방지)
+    // 방치 판정: 즉시 시작 방은 createdAt, 예약 방은 scheduledAt 기준(coalesce)
+    @Modifying(clearAutomatically = true)
     @Query("""
-select a from AudioStream as a
+update AudioStream a
+set a.status = com.umc.bscene.domain.stream.enums.StreamStatus.CANCELED,
+    a.closedAt = :now
 where a.status = com.umc.bscene.domain.stream.enums.StreamStatus.SCHEDULED
     and coalesce(a.scheduledAt, a.createdAt) < :threshold
 """)
-    List<AudioStream> findAbandonedScheduled(
-            @Param("threshold") LocalDateTime threshold
+    int cancelAbandonedScheduled(
+            @Param("threshold") LocalDateTime threshold,
+            @Param("now") LocalDateTime now
     );
 
     List<AudioStream> findByStatusAndStartedAtBefore(StreamStatus status, LocalDateTime thresholdAt);

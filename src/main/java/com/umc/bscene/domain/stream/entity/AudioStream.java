@@ -57,6 +57,10 @@ public class AudioStream extends BaseEntity {
     }
 
     public void cancel() {
+        // 이미 시작(OPEN)되었거나 종료된 방을 예약 취소로 덮지 않도록 방어
+        if(this.status != StreamStatus.SCHEDULED)
+            return;
+
         this.status = StreamStatus.CANCELED;
         this.closedAt = LocalDateTime.now();
     }
