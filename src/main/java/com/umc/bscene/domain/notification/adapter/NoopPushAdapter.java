@@ -1,8 +1,8 @@
-package com.umc.bscene.domain.notification.service;
+package com.umc.bscene.domain.notification.adapter;
 
-import com.umc.bscene.domain.notification.port.PushSender;
+import com.umc.bscene.domain.notification.port.PushPort;
 
-public class NoopPushSender implements PushSender {
+public class NoopPushAdapter implements PushPort {
 
     @Override
     public void send(String targetToken, String title, String body) {
