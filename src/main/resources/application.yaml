@@ -1,11 +1,12 @@
-server:
-  servlet:
-    context-path: /api
-
 spring:
-
   profiles:
     active: dev
+
+  mvc:
+    servlet:
+      path: /api
+    async:
+      request-timeout:
 
   application:
     name: bscene
@@ -65,6 +66,11 @@ spring:
             user-info-uri: "https://kapi.kakao.com/v2/user/me"
             userNameAttribute: id
 
+  # IO Burst, 스레드풀 고갈 대비 virtual thread 활성화
+  threads:
+    virtual:
+      enabled: true
+
 jwt:
   token:
     secretKey: ${JWT_SECRET_KEY}
@@ -72,6 +78,12 @@ jwt:
       access: 3600000 # 1시간
       refresh: 1209600000 # 14일
       signup: 600000 # 10분 (소셜 신규 유저 임시 토큰)
+
+# RTMP + LL-HLS
+mediamtx:
+  hls-url: ${MEDIAMTX_HLS_URL:http://localhost:8888}
+  api-url: ${MEDIAMTX_API_URL:http://localhost:9997}
+  webrtc-url: ${MEDIAMTX_WEBRTC_URL:http://localhost:8889}
 
 cors:
   allowed-origins: ${FRONT_ORIGIN:http://localhost:5173}
