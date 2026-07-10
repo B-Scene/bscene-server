@@ -33,43 +33,44 @@ public class JwtAuthFilter extends OncePerRequestFilter {
             @NonNull FilterChain filterChain
     ) throws ServletException, IOException {
 
-        try {
-            String token = getToken(request);
+        String token = getToken(request);
 
-            if (token == null) {
-                filterChain.doFilter(request, response);
-                return;
+        if (token != null) {
+            // 토큰 처리 예외만 401로 변환한다.
+            // filterChain.doFilter를 try 안에 두면 다운스트림(컨트롤러 등) 예외까지
+            // 전부 401로 둔갑하므로, catch 범위를 토큰 검증부로 한정한다.
+            try {
+                // AccessToken 검증하기
+                if (jwtUtil.isValid(token) && "access".equals(jwtUtil.getType(token))) {
+                    // 토큰에서 userId 추출
+                    String userId = jwtUtil.getUserId(token);
+
+                    // userId로 회원 조회 후 인증 객체 생성
+                    UserDetails user = customUserDetailsService.loadUserByUsername(userId);
+                    Authentication auth = new UsernamePasswordAuthenticationToken(
+                            user,
+                            null,
+                            user.getAuthorities()
+                    );
+
+                    // 인증 완료 후 SecurityContextHolder에 등록
+                    SecurityContextHolder.getContext().setAuthentication(auth);
+                }
+            } catch (Exception e) {
+                ObjectMapper mapper = new ObjectMapper();
+                GeneralErrorCode code = GeneralErrorCode.UNAUTHORIZED_ERROR;
+
+                response.setContentType("application/json;charset=UTF-8");
+                response.setStatus(code.getStatus());
+
+                ErrorResponse<Void> errorResponse = ErrorResponse.from(code);
+
+                mapper.writeValue(response.getOutputStream(), errorResponse);
+                return; // 401 응답을 썼으므로 체인 진행 중단
             }
-
-            // AccessToken 검증하기
-            if (jwtUtil.isValid(token) && "access".equals(jwtUtil.getType(token))) {
-                // 토큰에서 userId 추출
-                String userId = jwtUtil.getUserId(token);
-
-                // userId로 회원 조회 후 인증 객체 생성
-                UserDetails user = customUserDetailsService.loadUserByUsername(userId);
-                Authentication auth = new UsernamePasswordAuthenticationToken(
-                        user,
-                        null,
-                        user.getAuthorities()
-                );
-
-                // 인증 완료 후 SecurityContextHolder에 등록
-                SecurityContextHolder.getContext().setAuthentication(auth);
-            }
-
-            filterChain.doFilter(request, response);
-        } catch (Exception e) {
-            ObjectMapper mapper = new ObjectMapper();
-            GeneralErrorCode code = GeneralErrorCode.UNAUTHORIZED_ERROR;
-
-            response.setContentType("application/json;charset=UTF-8");
-            response.setStatus(code.getStatus());
-
-            ErrorResponse<Void> errorResponse = ErrorResponse.from(code);
-
-            mapper.writeValue(response.getOutputStream(), errorResponse);
         }
+
+        filterChain.doFilter(request, response);
     }
 
     private String getToken(HttpServletRequest request) {
