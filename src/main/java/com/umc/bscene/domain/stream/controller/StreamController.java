@@ -1,12 +1,17 @@
 package com.umc.bscene.domain.stream.controller;
 
+import com.umc.bscene.domain.stream.dto.request.StreamCreateRequest;
+import com.umc.bscene.domain.stream.dto.response.LiveStreamResponse;
+import com.umc.bscene.domain.stream.dto.response.StreamCreateResponse;
 import com.umc.bscene.domain.stream.dto.response.StreamRoomResponse;
 import com.umc.bscene.domain.stream.enums.code.success.StreamSuccessCode;
 import com.umc.bscene.domain.stream.service.StreamService;
 import com.umc.bscene.global.response.ApiResponse;
+import com.umc.bscene.global.response.CursorPage;
 import com.umc.bscene.global.response.SuccessResponse;
 import com.umc.bscene.global.security.entity.AuthMember;
 import jakarta.servlet.http.HttpServletResponse;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -48,6 +53,45 @@ public class StreamController {
         return ResponseEntity
                 .status(HttpStatus.OK)
                 .body(body);
+    }
+
+    @GetMapping
+    public ResponseEntity<SuccessResponse<CursorPage<LiveStreamResponse>>> getInLiveStreams(
+            @RequestParam(required = false) Long cursor,
+            @RequestParam(defaultValue = "10") int size
+    ) {
+        CursorPage<LiveStreamResponse> page = streamService.getLiveStreams(cursor, size);
+
+        return ResponseEntity
+                .status(HttpStatus.OK)
+                .body(SuccessResponse.of(page, StreamSuccessCode.ALL_LIVE_SUCCESS));
+    }
+
+    @PostMapping
+    public ResponseEntity<SuccessResponse<StreamCreateResponse>> createAudioStream(
+            @AuthenticationPrincipal AuthMember authMember,
+            @Valid @RequestBody StreamCreateRequest request
+    ) {
+        StreamCreateResponse response = streamService.createStream(
+                authMember.getUser(), request
+        );
+
+        return ResponseEntity
+                .status(HttpStatus.CREATED)
+                .body(SuccessResponse.of(response, StreamSuccessCode.LIVE_CREATE_SUCCESS));
+    }
+
+    @PostMapping("/{liveId}/close")
+    public ResponseEntity<SuccessResponse<Void>> closeAudioStream(
+            @AuthenticationPrincipal AuthMember authMember,
+            @PathVariable Long liveId
+    ) {
+        streamService.closeStream(authMember.getUser().getId(), liveId);
+        SuccessResponse<Void> response = (SuccessResponse<Void>) SuccessResponse.of(null, StreamSuccessCode.LIVE_CLOSE_SUCCESS);
+
+        return ResponseEntity
+                .status(HttpStatus.OK)
+                .body(response);
     }
 
     @GetMapping(value = "/{liveId}/viewers", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
