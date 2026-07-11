@@ -1,6 +1,6 @@
 package com.umc.bscene.domain.band.config;
 
-import com.umc.bscene.domain.band.adapter.BandMemberPortAdapter;
+import com.umc.bscene.domain.band.adapter.StreamAdapter;
 import com.umc.bscene.domain.band.repository.BandMemberRepository;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -9,7 +9,7 @@ import org.springframework.context.annotation.Configuration;
 public class BandMemberPortConfig {
 
     @Bean
-    public BandMemberPortAdapter bandMemberPortAdapter(BandMemberRepository bandMemberRepository) {
-        return new BandMemberPortAdapter(bandMemberRepository);
+    public StreamAdapter streamAdapter(BandMemberRepository bandMemberRepository) {
+        return new StreamAdapter(bandMemberRepository);
     }
 }

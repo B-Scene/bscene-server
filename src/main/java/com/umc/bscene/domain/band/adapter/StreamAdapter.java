@@ -13,7 +13,7 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 @RequiredArgsConstructor
-public class BandMemberPortAdapter implements BandMemberPort {
+public class StreamAdapter implements BandMemberPort {
 
     private final BandMemberRepository bandMemberRepository;
 
@@ -24,7 +24,7 @@ public class BandMemberPortAdapter implements BandMemberPort {
         }
 
         return bandMemberRepository.findWithBandByUser_IdInAndStatus(broadcasterIds, BandMemberStatus.ACCEPTED).stream()
-                // 한 유저가 여러 밴드에 속해도 가장 먼저 가입한(id가 가장 작은) 밴드 하나만 사용
+                // 활성 프로필이 없는 유저는 쿼리 결과에서 이미 제외됨. 정상적으로는 유저당 활성 멤버십이 최대 1개지만, 데이터 정합성이 깨진 경우를 대비해 방어적으로 dedup
                 .collect(Collectors.toMap(
                         member -> member.getUser().getId(),
                         member -> member,
