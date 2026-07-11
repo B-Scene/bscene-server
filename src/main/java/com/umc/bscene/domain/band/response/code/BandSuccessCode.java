@@ -25,7 +25,15 @@ public enum BandSuccessCode implements BaseResponseCode {
     BAND_PROFILE_UPDATE_SUCCESS(OK, "BAND200_9", "밴드 프로필을 수정했습니다."),
     BAND_RECOMMEND_LIST_GET_SUCCESS(OK, "BAND200_10", "추천 밴드 목록을 조회했습니다."),
     MUSIC_LINK_GET_SUCCESS(OK, "MUSIC200_1", "음원 링크를 조회했습니다."),
-    MUSIC_LINK_SAVE_SUCCESS(OK, "MUSIC200_2", "저장됐어요.");
+    MUSIC_LINK_SAVE_SUCCESS(OK, "MUSIC200_2", "저장됐어요."),
+
+    BAND_MEMBER_PROFILE_CREATE_SUCCESS(CREATED, "PROFILE201_1", "멤버 프로필을 생성했습니다."),
+    BAND_MEMBER_PROFILE_LIST_GET_SUCCESS(OK, "PROFILE200_1", "멤버 프로필 목록을 조회했습니다."),
+    BAND_MEMBER_PROFILE_GET_SUCCESS(OK, "PROFILE200_2", "멤버 프로필을 조회했습니다."),
+    BAND_MEMBER_PROFILE_UPDATE_SUCCESS(OK, "PROFILE200_3", "멤버 프로필을 수정했습니다."),
+    BAND_MEMBER_PROFILE_DELETE_SUCCESS(OK, "PROFILE200_4", "멤버 프로필을 삭제했습니다."),
+    BAND_MEMBER_PROFILE_ACTIVATE_SUCCESS(OK, "PROFILE200_5", "활성 프로필을 전환했습니다."),
+    BAND_MEMBER_PROFILE_ACTIVE_GET_SUCCESS(OK, "PROFILE200_6", "활성 프로필을 조회했습니다.");
 
     private final int status;
     private final String code;

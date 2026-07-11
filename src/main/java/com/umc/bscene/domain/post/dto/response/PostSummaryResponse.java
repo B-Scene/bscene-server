@@ -13,9 +13,9 @@ public record PostSummaryResponse(
         LocalDateTime createdAt
 ) {
     public static PostSummaryResponse from(Post post) {
-        String thumbnailUrl = post.getMediaList().isEmpty()
-                ? null
-                : post.getMediaList().get(0).getMediaUrl();
+        String thumbnailUrl = post.getThumbnailUrl() != null
+                ? post.getThumbnailUrl()
+                : post.getMediaList().isEmpty() ? null : post.getMediaList().get(0).getMediaUrl();
 
         return new PostSummaryResponse(
                 post.getId(),

@@ -14,6 +14,7 @@ import com.umc.bscene.domain.performance.dto.response.PerformanceSummaryResponse
 import com.umc.bscene.domain.performance.entity.Performance;
 import com.umc.bscene.domain.performance.enums.PerformanceStatus;
 import com.umc.bscene.domain.performance.exception.PerformanceException;
+import com.umc.bscene.domain.performance.repository.PerformanceInterestRepository;
 import com.umc.bscene.domain.performance.repository.PerformanceRepository;
 import com.umc.bscene.domain.performance.response.code.PerformanceErrorCode;
 import lombok.RequiredArgsConstructor;
@@ -29,6 +30,7 @@ import java.util.List;
 public class PerformanceService {
 
     private final PerformanceRepository performanceRepository;
+    private final PerformanceInterestRepository performanceInterestRepository;
     private final BandRepository bandRepository;
     private final BandMemberRepository bandMemberRepository;
 
@@ -42,6 +44,7 @@ public class PerformanceService {
         Performance performance = Performance.builder()
                 .band(band)
                 .title(request.title())
+                .genre(request.genre())
                 .performanceDate(request.performanceDate())
                 .startTime(request.startTime())
                 .region(request.region())
@@ -67,9 +70,14 @@ public class PerformanceService {
         return PerformanceListResponse.from(performances);
     }
 
-    // 공연 상세 조회
-    public PerformanceResponse getPerformanceDetail(Long performanceId) {
-        return PerformanceResponse.from(getActivePerformance(performanceId));
+    // 공연 상세 조회 (관심 등록 수, 요청자의 관심 등록 여부 포함)
+    public PerformanceResponse getPerformanceDetail(Long userId, Long performanceId) {
+        Performance performance = getActivePerformance(performanceId);
+
+        long interestCount = performanceInterestRepository.countByPerformance_Id(performanceId);
+        boolean isInterested = performanceInterestRepository.existsByPerformance_IdAndUser_Id(performanceId, userId);
+
+        return PerformanceResponse.of(performance, interestCount, isInterested);
     }
 
     // 공연 정보 수정 (등록한 밴드의 멤버만 가능)
@@ -83,6 +91,7 @@ public class PerformanceService {
 
         performance.update(
                 request.title(),
+                request.genre(),
                 request.performanceDate(),
                 request.startTime(),
                 request.venue(),
@@ -91,7 +100,10 @@ public class PerformanceService {
                 request.posterImageUrl()
         );
 
-        return PerformanceResponse.from(performance);
+        long interestCount = performanceInterestRepository.countByPerformance_Id(performanceId);
+        boolean isInterested = performanceInterestRepository.existsByPerformance_IdAndUser_Id(performanceId, userId);
+
+        return PerformanceResponse.of(performance, interestCount, isInterested);
     }
 
     // 공연 삭제 (등록한 밴드의 멤버만 가능, soft delete)

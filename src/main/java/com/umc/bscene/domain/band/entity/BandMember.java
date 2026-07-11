@@ -41,6 +41,11 @@ public class BandMember extends BaseEntity {
     @JoinColumn(name = "session_application_id")
     private SessionApplication sessionApplication;
 
+    // 이 밴드에서 사용하는 멤버 프로필
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "bandMemberProfileId")
+    private BandMemberProfile bandMemberProfile;
+
     @Column(nullable = false)
     @Enumerated(EnumType.STRING)
     @Builder.Default
@@ -51,9 +56,9 @@ public class BandMember extends BaseEntity {
         this.status = BandMemberStatus.ACCEPTED;
     }
 
-    // 초대 수락 시 이 밴드에서 사용할 세션 프로필 지정
-    public void acceptWithSessionApplication(SessionApplication sessionApplication) {
-        this.sessionApplication = sessionApplication;
+    // 초대 수락 시 이 밴드에서 사용할 멤버 프로필 지정
+    public void acceptWithProfile(BandMemberProfile bandMemberProfile) {
+        this.bandMemberProfile = bandMemberProfile;
         accept();
     }
 

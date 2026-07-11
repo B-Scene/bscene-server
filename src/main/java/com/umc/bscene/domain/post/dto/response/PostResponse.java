@@ -16,6 +16,7 @@ public record PostResponse(
         String title,
         String description,
         List<String> mediaUrls,
+        String thumbnailUrl,
         List<String> tags,
         LocalDateTime createdAt,
         LocalDateTime updatedAt
@@ -29,6 +30,7 @@ public record PostResponse(
                 post.getTitle(),
                 post.getDescription(),
                 post.getMediaList().stream().map(PostMedia::getMediaUrl).toList(),
+                post.getThumbnailUrl(),
                 post.getTagList().stream().map(PostTag::getTagName).toList(),
                 post.getCreatedAt(),
                 post.getUpdatedAt()
