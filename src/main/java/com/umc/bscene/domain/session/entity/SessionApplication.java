@@ -100,6 +100,7 @@ public class SessionApplication extends BaseEntity {
         this.nickname = nickname;
         this.title = title;
         this.purpose = purpose;
+        this.isPublic = true;
         if (profileImageUrl != null) {
             this.profileImageUrl = profileImageUrl;
         }

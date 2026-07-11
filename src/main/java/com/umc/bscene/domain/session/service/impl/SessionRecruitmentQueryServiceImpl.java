@@ -3,6 +3,10 @@ package com.umc.bscene.domain.session.service.impl;
 import com.umc.bscene.domain.session.dto.recruitment.response.SessionRecruitmentDetailResponse;
 import com.umc.bscene.domain.session.dto.recruitment.response.SessionRecruitmentListItemResponse;
 import com.umc.bscene.domain.session.dto.recruitment.response.SessionRecruitmentListResponse;
+import com.umc.bscene.domain.session.dto.recruitment.response.RecentRecruitmentItemResponse;
+import com.umc.bscene.domain.session.dto.recruitment.response.RecentRecruitmentListResponse;
+import com.umc.bscene.domain.session.entity.SessionRecruitmentView;
+import com.umc.bscene.domain.session.entity.SessionApplicationSubmission;
 import com.umc.bscene.domain.session.entity.SessionRecruitment;
 import com.umc.bscene.domain.session.enums.Part;
 import com.umc.bscene.domain.session.enums.SessionGenre;
@@ -12,6 +16,9 @@ import com.umc.bscene.domain.session.enums.code.SessionErrorCode;
 import com.umc.bscene.domain.session.exception.SessionException;
 import com.umc.bscene.domain.session.repository.SessionRecruitmentRepository;
 import com.umc.bscene.domain.session.repository.SessionRecruitmentInterestRepository;
+import com.umc.bscene.domain.session.repository.SessionRecruitmentViewRepository;
+import com.umc.bscene.domain.session.repository.SessionApplicationSubmissionRepository;
+import com.umc.bscene.domain.user.repository.UserRepository;
 import com.umc.bscene.domain.session.service.SessionRecruitmentQueryService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.PageRequest;
@@ -23,6 +30,9 @@ import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.Set;
+import java.util.Map;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -31,6 +41,9 @@ public class SessionRecruitmentQueryServiceImpl implements SessionRecruitmentQue
 
     private final SessionRecruitmentRepository sessionRecruitmentRepository;
     private final SessionRecruitmentInterestRepository interestRepository;
+    private final SessionRecruitmentViewRepository viewRepository;
+    private final SessionApplicationSubmissionRepository submissionRepository;
+    private final UserRepository userRepository;
 
     @Override
     public SessionRecruitmentListResponse getSessionRecruitments(
@@ -93,6 +106,7 @@ public class SessionRecruitmentQueryServiceImpl implements SessionRecruitmentQue
 
     // 세션 모집 공고 상세 조회
     @Override
+    @Transactional
     public SessionRecruitmentDetailResponse getSessionRecruitmentDetail(
             Long userId,
             Long recruitmentId
@@ -101,6 +115,15 @@ public class SessionRecruitmentQueryServiceImpl implements SessionRecruitmentQue
         SessionRecruitment recruitment = sessionRecruitmentRepository
                 .findBySessionRecruitmentIdAndDeletedAtIsNull(recruitmentId)
                 .orElseThrow(() -> new SessionException(SessionErrorCode.SESSION_RECRUITMENT_NOT_FOUND));
+
+        viewRepository
+                .findBySessionRecruitment_SessionRecruitmentIdAndUser_Id(recruitmentId, userId)
+                .ifPresent(viewRepository::delete);
+        viewRepository.flush();
+        viewRepository.save(SessionRecruitmentView.builder()
+                .sessionRecruitment(recruitment)
+                .user(userRepository.getReferenceById(userId))
+                .build());
 
         return SessionRecruitmentDetailResponse.builder()
                 .sessionRecruitmentId(recruitment.getSessionRecruitmentId())
@@ -156,6 +179,54 @@ public class SessionRecruitmentQueryServiceImpl implements SessionRecruitmentQue
                 .isNew(isNewRecruitment(recruitment.getCreatedAt(), now))
                 .isInterested(interestedIds.contains(recruitment.getSessionRecruitmentId()))
                 .build();
+    }
+
+    @Override
+    public RecentRecruitmentListResponse getRecentRecruitments(
+            Long userId,
+            Long cursorId,
+            Integer size
+    ) {
+        int pageSize = size == null ? 10 : Math.max(1, Math.min(size, 50));
+        List<SessionRecruitmentView> views = viewRepository.findRecentViews(
+                userId, cursorId, PageRequest.of(0, pageSize + 1)
+        );
+        boolean hasNext = views.size() > pageSize;
+        List<SessionRecruitmentView> sliced = hasNext
+                ? views.subList(0, pageSize)
+                : views;
+        List<Long> recruitmentIds = sliced.stream()
+                .map(view -> view.getSessionRecruitment().getSessionRecruitmentId())
+                .toList();
+        Map<Long, SessionApplicationSubmission> submissions = recruitmentIds.isEmpty()
+                ? Map.of()
+                : submissionRepository
+                        .findActiveSubmissionsForRecruitments(userId, recruitmentIds)
+                        .stream()
+                        .collect(Collectors.toMap(
+                                submission -> submission.getSessionRecruitment()
+                                        .getSessionRecruitmentId(),
+                                Function.identity(),
+                                (latest, ignored) -> latest
+                        ));
+        List<RecentRecruitmentItemResponse> content = sliced.stream()
+                .map(view -> {
+                    Long recruitmentId = view.getSessionRecruitment()
+                            .getSessionRecruitmentId();
+                    SessionApplicationSubmission submission = submissions.get(recruitmentId);
+                    return RecentRecruitmentItemResponse.of(
+                            view,
+                            submission == null ? null
+                                    : submission.getSessionApplication().getTitle()
+                    );
+                })
+                .toList();
+        Long nextCursor = hasNext && !sliced.isEmpty()
+                ? sliced.get(sliced.size() - 1).getSessionRecruitmentViewId()
+                : null;
+        return new RecentRecruitmentListResponse(
+                content, pageSize, nextCursor, hasNext
+        );
     }
 
     static boolean isNewRecruitment(LocalDateTime createdAt, LocalDateTime now) {

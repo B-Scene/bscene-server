@@ -64,6 +64,31 @@ public enum SessionErrorCode implements BaseResponseCode {
             HttpStatus.CONFLICT.value(),
             "SESSION_RECRUITMENT_INTEREST_ALREADY_EXISTS",
             "이미 찜한 세션 모집 공고입니다."
+    ),
+    SESSION_APPLICATION_ALREADY_SUBMITTED(
+            HttpStatus.CONFLICT.value(),
+            "SESSION_APPLICATION_ALREADY_SUBMITTED",
+            "이미 해당 지원서로 지원한 공고입니다."
+    ),
+    SESSION_RECRUITMENT_APPLICATION_CLOSED(
+            HttpStatus.BAD_REQUEST.value(),
+            "SESSION_RECRUITMENT_APPLICATION_CLOSED",
+            "지원이 마감된 공고입니다."
+    ),
+    SELF_RECRUITMENT_APPLICATION_NOT_ALLOWED(
+            HttpStatus.FORBIDDEN.value(),
+            "SELF_RECRUITMENT_APPLICATION_NOT_ALLOWED",
+            "본인이 만든 공고에는 지원할 수 없습니다."
+    ),
+    APPLICATION_SUBMISSION_NOT_FOUND(
+            HttpStatus.NOT_FOUND.value(),
+            "APPLICATION_SUBMISSION_NOT_FOUND",
+            "지원 내역을 찾을 수 없습니다."
+    ),
+    APPLICATION_SUBMISSION_CANCEL_NOT_ALLOWED(
+            HttpStatus.CONFLICT.value(),
+            "APPLICATION_SUBMISSION_CANCEL_NOT_ALLOWED",
+            "진행 중인 지원만 취소할 수 있습니다."
     );
 
     private final int status;

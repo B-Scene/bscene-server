@@ -19,6 +19,8 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
+import java.time.LocalDateTime;
+
 @Entity
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
@@ -48,6 +50,9 @@ public class SessionApplicationSubmission extends BaseEntity {
     @Column(nullable = false, length = 30)
     private ApplicationStatus status;
 
+    @Column(name = "checked_at")
+    private LocalDateTime checkedAt;
+
     @Builder
     private SessionApplicationSubmission(
             SessionRecruitment sessionRecruitment,
@@ -57,5 +62,15 @@ public class SessionApplicationSubmission extends BaseEntity {
         this.sessionRecruitment = sessionRecruitment;
         this.sessionApplication = sessionApplication;
         this.status = status == null ? ApplicationStatus.PENDING : status;
+    }
+
+    public void cancel() {
+        this.status = ApplicationStatus.CANCELED;
+    }
+
+    public void markChecked() {
+        if (this.checkedAt == null) {
+            this.checkedAt = LocalDateTime.now();
+        }
     }
 }

@@ -7,6 +7,7 @@ import com.umc.bscene.domain.session.dto.application.response.SessionApplication
 import com.umc.bscene.domain.session.dto.application.response.SessionApplicationDetailResponse;
 import com.umc.bscene.domain.session.dto.application.response.MySessionApplicationSummaryResponse;
 import com.umc.bscene.domain.session.dto.application.response.SessionApplicationVisibilityResponse;
+import com.umc.bscene.domain.session.dto.application.response.MyApplicationSubmissionListResponse;
 import com.umc.bscene.domain.session.enums.Part;
 import com.umc.bscene.domain.session.enums.SessionRegion;
 import com.umc.bscene.domain.session.enums.SkillLevel;
@@ -48,6 +49,58 @@ public class SessionApplicationController {
         return SuccessResponse.of(
                 response,
                 SessionSuccessCode.MY_SESSION_APPLICATION_SUMMARY_SUCCESS
+        );
+    }
+
+    @GetMapping("/submissions")
+    public SuccessResponse<MyApplicationSubmissionListResponse> getMyApplicationSubmissions(
+            @AuthenticationPrincipal AuthMember authMember,
+            @RequestParam(required = false) Long cursorId,
+            @RequestParam(defaultValue = "10") Integer size
+    ) {
+        MyApplicationSubmissionListResponse response = sessionApplicationQueryService
+                .getMyApplicationSubmissions(
+                        authMember.getUser().getId(),
+                        cursorId,
+                        size
+                );
+
+        return SuccessResponse.of(
+                response,
+                SessionSuccessCode.MY_APPLICATION_SUBMISSION_LIST_SUCCESS
+        );
+    }
+
+    @GetMapping("/submissions/{applicationSubmissionId}/application")
+    public SuccessResponse<SessionApplicationDetailResponse> getMySubmittedApplication(
+            @AuthenticationPrincipal AuthMember authMember,
+            @PathVariable Long applicationSubmissionId
+    ) {
+        SessionApplicationDetailResponse response = sessionApplicationQueryService
+                .getMySubmittedApplication(
+                        authMember.getUser().getId(),
+                        applicationSubmissionId
+                );
+
+        return SuccessResponse.of(
+                response,
+                SessionSuccessCode.MY_SUBMITTED_APPLICATION_DETAIL_SUCCESS
+        );
+    }
+
+    @DeleteMapping("/submissions/{applicationSubmissionId}")
+    public SuccessResponse<Void> cancelApplicationSubmission(
+            @AuthenticationPrincipal AuthMember authMember,
+            @PathVariable Long applicationSubmissionId
+    ) {
+        sessionApplicationCommandService.cancelSubmission(
+                authMember.getUser().getId(),
+                applicationSubmissionId
+        );
+
+        return new SuccessResponse<>(
+                null,
+                SessionSuccessCode.APPLICATION_SUBMISSION_CANCEL_SUCCESS
         );
     }
 

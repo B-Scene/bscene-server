@@ -1,10 +1,18 @@
 package com.umc.bscene.domain.session.controller;
 
 import com.umc.bscene.domain.session.dto.recruitment.request.SessionRecruitmentCreateRequest;
+import com.umc.bscene.domain.session.dto.application.request.SessionApplicationSubmitRequest;
+import com.umc.bscene.domain.session.dto.application.response.SessionApplicationSubmitResponse;
+import com.umc.bscene.domain.session.dto.application.response.SubmittedApplicationDetailResponse;
+import com.umc.bscene.domain.session.dto.recruitment.response.InterestedRecruitmentListResponse;
+import com.umc.bscene.domain.session.dto.recruitment.response.RecentRecruitmentListResponse;
+import com.umc.bscene.domain.session.service.SessionRecruitmentInterestService;
 import com.umc.bscene.domain.session.dto.recruitment.request.SessionRecruitmentUpdateRequest;
 import com.umc.bscene.domain.session.dto.recruitment.response.SessionRecruitmentCreateResponse;
 import com.umc.bscene.domain.session.enums.code.SessionSuccessCode;
 import com.umc.bscene.domain.session.service.SessionRecruitmentCommandService;
+import com.umc.bscene.domain.session.service.SessionApplicationCommandService;
+import com.umc.bscene.domain.session.service.SessionApplicationQueryService;
 import com.umc.bscene.global.response.SuccessResponse;
 import com.umc.bscene.global.security.entity.AuthMember;
 import com.umc.bscene.domain.session.dto.recruitment.response.SessionRecruitmentListResponse;
@@ -24,6 +32,9 @@ import com.umc.bscene.domain.session.dto.recruitment.response.SessionRecruitment
 public class SessionRecruitmentController {
 
     private final SessionRecruitmentCommandService sessionRecruitmentCommandService;
+    private final SessionApplicationCommandService sessionApplicationCommandService;
+    private final SessionApplicationQueryService sessionApplicationQueryService;
+    private final SessionRecruitmentInterestService sessionRecruitmentInterestService;
     private final SessionRecruitmentQueryService sessionRecruitmentQueryService;
     @PostMapping
     public SuccessResponse<SessionRecruitmentCreateResponse> createSessionRecruitment(
@@ -38,6 +49,71 @@ public class SessionRecruitmentController {
         return SuccessResponse.of(
                 response,
                 SessionSuccessCode.SESSION_RECRUITMENT_CREATE_SUCCESS
+        );
+    }
+
+    @PostMapping("/{recruitmentId}/applications")
+    public SuccessResponse<SessionApplicationSubmitResponse> submitApplication(
+            @AuthenticationPrincipal AuthMember authMember,
+            @PathVariable Long recruitmentId,
+            @Valid @RequestBody SessionApplicationSubmitRequest request
+    ) {
+        SessionApplicationSubmitResponse response = sessionApplicationCommandService
+                .submitApplication(
+                        authMember.getUser().getId(),
+                        recruitmentId,
+                        request.sessionApplicationId()
+                );
+
+        return SuccessResponse.of(
+                response,
+                SessionSuccessCode.SESSION_APPLICATION_SUBMIT_SUCCESS
+        );
+    }
+
+    @GetMapping("/submissions/{applicationSubmissionId}")
+    public SuccessResponse<SubmittedApplicationDetailResponse> getSubmittedApplication(
+            @AuthenticationPrincipal AuthMember authMember,
+            @PathVariable Long applicationSubmissionId
+    ) {
+        SubmittedApplicationDetailResponse response = sessionApplicationQueryService
+                .getSubmittedApplication(
+                        authMember.getUser().getId(),
+                        applicationSubmissionId
+                );
+        return SuccessResponse.of(
+                response,
+                SessionSuccessCode.SUBMITTED_APPLICATION_DETAIL_SUCCESS
+        );
+    }
+
+    @GetMapping("/interests")
+    public SuccessResponse<InterestedRecruitmentListResponse> getInterestedRecruitments(
+            @AuthenticationPrincipal AuthMember authMember,
+            @RequestParam(required = false) Long cursorId,
+            @RequestParam(defaultValue = "10") Integer size
+    ) {
+        InterestedRecruitmentListResponse response = sessionRecruitmentInterestService
+                .getMyInterests(authMember.getUser().getId(), cursorId, size);
+        return SuccessResponse.of(
+                response,
+                SessionSuccessCode.SESSION_RECRUITMENT_INTEREST_LIST_SUCCESS
+        );
+    }
+
+    @GetMapping("/recently-viewed")
+    public SuccessResponse<RecentRecruitmentListResponse> getRecentRecruitments(
+            @AuthenticationPrincipal AuthMember authMember,
+            @RequestParam(required = false) Long cursorId,
+            @RequestParam(defaultValue = "10") Integer size
+    ) {
+        RecentRecruitmentListResponse response = sessionRecruitmentQueryService
+                .getRecentRecruitments(
+                        authMember.getUser().getId(), cursorId, size
+                );
+        return SuccessResponse.of(
+                response,
+                SessionSuccessCode.SESSION_RECRUITMENT_RECENT_LIST_SUCCESS
         );
     }
     // 세션 모집 공고 목록 조회

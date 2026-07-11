@@ -5,6 +5,10 @@ import com.umc.bscene.domain.session.dto.application.response.SessionApplication
 import com.umc.bscene.domain.session.dto.application.response.SessionApplicationSearchResponse;
 import com.umc.bscene.domain.session.dto.application.response.SessionApplicationDetailResponse;
 import com.umc.bscene.domain.session.dto.application.response.MySessionApplicationSummaryResponse;
+import com.umc.bscene.domain.session.dto.application.response.MyApplicationSubmissionItemResponse;
+import com.umc.bscene.domain.session.dto.application.response.MyApplicationSubmissionListResponse;
+import com.umc.bscene.domain.session.dto.application.response.SubmittedApplicationDetailResponse;
+import com.umc.bscene.domain.session.entity.SessionApplicationSubmission;
 import com.umc.bscene.domain.session.entity.SessionApplication;
 import com.umc.bscene.domain.session.entity.SessionBasicProfile;
 import com.umc.bscene.domain.session.enums.Part;
@@ -81,6 +85,93 @@ public class SessionApplicationQueryServiceImpl implements SessionApplicationQue
                 applicationCount,
                 submissionCount,
                 inProgressCount
+        );
+    }
+
+    @Override
+    public MyApplicationSubmissionListResponse getMyApplicationSubmissions(
+            Long userId,
+            Long cursorId,
+            Integer size
+    ) {
+        int pageSize = size == null ? 10 : Math.max(1, Math.min(size, 50));
+        List<SessionApplicationSubmission> submissions = submissionRepository
+                .findMySubmissions(
+                        userId,
+                        cursorId,
+                        PageRequest.of(0, pageSize + 1)
+                );
+
+        boolean hasNext = submissions.size() > pageSize;
+        List<SessionApplicationSubmission> slicedSubmissions = hasNext
+                ? submissions.subList(0, pageSize)
+                : submissions;
+        List<MyApplicationSubmissionItemResponse> content = slicedSubmissions.stream()
+                .map(MyApplicationSubmissionItemResponse::from)
+                .toList();
+        Long nextCursor = hasNext && !slicedSubmissions.isEmpty()
+                ? slicedSubmissions.get(slicedSubmissions.size() - 1)
+                        .getApplicationSubmissionId()
+                : null;
+
+        return new MyApplicationSubmissionListResponse(
+                content,
+                pageSize,
+                nextCursor,
+                hasNext
+        );
+    }
+
+    @Override
+    @Transactional
+    public SubmittedApplicationDetailResponse getSubmittedApplication(
+            Long ownerId,
+            Long applicationSubmissionId
+    ) {
+        SessionApplicationSubmission submission = submissionRepository
+                .findForRecruitmentOwner(applicationSubmissionId, ownerId)
+                .orElseThrow(() -> new SessionApplicationException(
+                        SessionErrorCode.APPLICATION_SUBMISSION_NOT_FOUND
+                ));
+        submission.markChecked();
+
+        SessionApplication application = submission.getSessionApplication();
+        SessionBasicProfile profile = sessionBasicProfileRepository
+                .findByUser_Id(application.getUserId())
+                .orElse(null);
+        String userName = userRepository.findById(application.getUserId())
+                .map(User::getName)
+                .orElse(application.getNickname());
+        SessionApplicationDetailResponse detail = SessionApplicationDetailResponse.from(
+                application,
+                userName,
+                profile == null ? null : profile.getProfileImageUrl()
+        );
+        return SubmittedApplicationDetailResponse.of(submission, detail);
+    }
+
+    @Override
+    public SessionApplicationDetailResponse getMySubmittedApplication(
+            Long userId,
+            Long applicationSubmissionId
+    ) {
+        SessionApplicationSubmission submission = submissionRepository
+                .findMySubmissionWithApplication(applicationSubmissionId, userId)
+                .orElseThrow(() -> new SessionApplicationException(
+                        SessionErrorCode.APPLICATION_SUBMISSION_NOT_FOUND
+                ));
+        SessionApplication application = submission.getSessionApplication();
+        SessionBasicProfile profile = sessionBasicProfileRepository
+                .findByUser_Id(userId)
+                .orElse(null);
+        String userName = userRepository.findById(userId)
+                .map(User::getName)
+                .orElse(application.getNickname());
+
+        return SessionApplicationDetailResponse.from(
+                application,
+                userName,
+                profile == null ? null : profile.getProfileImageUrl()
         );
     }
 

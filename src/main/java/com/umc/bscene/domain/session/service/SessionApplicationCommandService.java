@@ -4,6 +4,7 @@ import com.umc.bscene.domain.session.dto.application.request.MySessionApplicatio
 import com.umc.bscene.domain.session.dto.application.request.SessionApplicationVisibilityRequest;
 import com.umc.bscene.domain.session.dto.application.response.MySessionApplicationResponse;
 import com.umc.bscene.domain.session.dto.application.response.SessionApplicationVisibilityResponse;
+import com.umc.bscene.domain.session.dto.application.response.SessionApplicationSubmitResponse;
 
 public interface SessionApplicationCommandService {
 
@@ -25,4 +26,12 @@ public interface SessionApplicationCommandService {
             Long sessionApplicationId,
             SessionApplicationVisibilityRequest request
     );
+
+    SessionApplicationSubmitResponse submitApplication(
+            Long userId,
+            Long sessionRecruitmentId,
+            Long sessionApplicationId
+    );
+
+    void cancelSubmission(Long userId, Long applicationSubmissionId);
 }

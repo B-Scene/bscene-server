@@ -1,7 +1,7 @@
 package com.umc.bscene.domain.session.enums;
 
-import com.fasterxml.jackson.annotation.JsonValue;
 import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonValue;
 
 public enum Part {
 
@@ -10,7 +10,7 @@ public enum Part {
     BASS("베이스"),
     KEYBOARD("키보드"),
     DRUM("드럼"),
-    ETC("ETC");
+    ETC("etc");
 
     private final String description;
 
@@ -28,7 +28,6 @@ public enum Part {
         throw new IllegalArgumentException("유효하지 않은 파트입니다: " + value);
     }
 
-    // JSON 응답 시 enum 이름(VOCAL)이 아닌 한글(보컬)로 반환
     @JsonValue
     public String getDescription() {
         return description;

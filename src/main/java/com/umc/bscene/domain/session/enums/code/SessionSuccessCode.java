@@ -104,6 +104,41 @@ public enum SessionSuccessCode implements BaseResponseCode {
             HttpStatus.OK.value(),
             "SESSION_RECRUITMENT_INTEREST_UNSET_SUCCESS",
             "세션 모집 공고 찜 취소에 성공했습니다."
+    ),
+    SESSION_APPLICATION_SUBMIT_SUCCESS(
+            HttpStatus.CREATED.value(),
+            "SESSION_APPLICATION_SUBMIT_SUCCESS",
+            "지원이 완료되었습니다."
+    ),
+    MY_APPLICATION_SUBMISSION_LIST_SUCCESS(
+            HttpStatus.OK.value(),
+            "MY_APPLICATION_SUBMISSION_LIST_SUCCESS",
+            "내 지원 내역 조회에 성공했습니다."
+    ),
+    APPLICATION_SUBMISSION_CANCEL_SUCCESS(
+            HttpStatus.OK.value(),
+            "APPLICATION_SUBMISSION_CANCEL_SUCCESS",
+            "지원이 취소되었습니다."
+    ),
+    SUBMITTED_APPLICATION_DETAIL_SUCCESS(
+            HttpStatus.OK.value(),
+            "SUBMITTED_APPLICATION_DETAIL_SUCCESS",
+            "제출된 지원서 조회에 성공했습니다."
+    ),
+    MY_SUBMITTED_APPLICATION_DETAIL_SUCCESS(
+            HttpStatus.OK.value(),
+            "MY_SUBMITTED_APPLICATION_DETAIL_SUCCESS",
+            "내가 제출한 지원서 조회에 성공했습니다."
+    ),
+    SESSION_RECRUITMENT_INTEREST_LIST_SUCCESS(
+            HttpStatus.OK.value(),
+            "SESSION_RECRUITMENT_INTEREST_LIST_SUCCESS",
+            "관심 공고 조회에 성공했습니다."
+    ),
+    SESSION_RECRUITMENT_RECENT_LIST_SUCCESS(
+            HttpStatus.OK.value(),
+            "SESSION_RECRUITMENT_RECENT_LIST_SUCCESS",
+            "최근 본 공고 조회에 성공했습니다."
     );
 
     private final int status;
