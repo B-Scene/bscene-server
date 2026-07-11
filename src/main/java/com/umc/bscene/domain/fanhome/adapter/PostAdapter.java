@@ -3,7 +3,7 @@ package com.umc.bscene.domain.fanhome.adapter;
 import com.umc.bscene.domain.auth.enums.onboarding.Genre;
 import com.umc.bscene.domain.auth.enums.onboarding.Region;
 import com.umc.bscene.domain.fanhome.dto.response.BandNewsItem;
-import com.umc.bscene.domain.fanhome.port.BandNewsPort;
+import com.umc.bscene.domain.fanhome.port.PostPort;
 import com.umc.bscene.domain.post.enums.PostType;
 
 import java.time.LocalDateTime;
@@ -12,7 +12,7 @@ import java.util.List;
 /**
  * 임시 스텁 (provider = post 도메인).
  */
-public class BandNewsPortAdapter implements BandNewsPort {
+public class PostAdapter implements PostPort {
 
     @Override
     public List<BandNewsItem> findRecentNews(List<Long> bandIds, int limit) {
