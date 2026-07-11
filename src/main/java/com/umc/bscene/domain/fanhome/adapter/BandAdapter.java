@@ -2,8 +2,8 @@ package com.umc.bscene.domain.fanhome.adapter;
 
 import com.umc.bscene.domain.auth.enums.onboarding.Genre;
 import com.umc.bscene.domain.auth.enums.onboarding.Region;
-import com.umc.bscene.domain.fanhome.dto.response.RecommendedBandItem;
-import com.umc.bscene.domain.fanhome.port.BandRecommendPort;
+import com.umc.bscene.domain.fanhome.dto.response.FanHomeResponse.RecommendedBandItem;
+import com.umc.bscene.domain.fanhome.port.BandPort;
 
 import java.util.List;
 
@@ -11,7 +11,7 @@ import java.util.List;
  * 임시 스텁 (provider = band 도메인).
  * band 도메인에 BandRecommendationService가 이미 있어 이를 재사용해 구현 가능
  */
-public class BandRecommendPortAdapter implements BandRecommendPort {
+public class BandAdapter implements BandPort {
 
     @Override
     public List<RecommendedBandItem> recommendTopBands(Long userId, int limit) {

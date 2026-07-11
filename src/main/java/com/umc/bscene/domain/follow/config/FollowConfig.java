@@ -1,7 +1,7 @@
 package com.umc.bscene.domain.follow.config;
 
-import com.umc.bscene.domain.follow.adapter.FollowPortAdapter;
-import com.umc.bscene.domain.follow.adapter.FollowQueryPortAdapter;
+import com.umc.bscene.domain.follow.adapter.FanHomeAdapter;
+import com.umc.bscene.domain.follow.adapter.BandAdapter;
 import com.umc.bscene.domain.follow.repository.FollowRepository;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -10,12 +10,12 @@ import org.springframework.context.annotation.Configuration;
 public class FollowConfig {
 
     @Bean
-    public FollowPortAdapter followPortAdapter(FollowRepository followRepository) {
-        return new FollowPortAdapter(followRepository);
+    public BandAdapter bandFollowAdapter(FollowRepository followRepository) {
+        return new BandAdapter(followRepository);
     }
 
     @Bean
-    public FollowQueryPortAdapter followQueryPortAdapter(FollowRepository followRepository) {
-        return new FollowQueryPortAdapter(followRepository);
+    public FanHomeAdapter fanHomeFollowAdapter(FollowRepository followRepository) {
+        return new FanHomeAdapter(followRepository);
     }
 }
