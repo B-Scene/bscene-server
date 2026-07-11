@@ -151,6 +151,31 @@ public class SessionApplicationQueryServiceImpl implements SessionApplicationQue
     }
 
     @Override
+    public SessionApplicationDetailResponse getMySubmittedApplication(
+            Long userId,
+            Long applicationSubmissionId
+    ) {
+        SessionApplicationSubmission submission = submissionRepository
+                .findMySubmissionWithApplication(applicationSubmissionId, userId)
+                .orElseThrow(() -> new SessionApplicationException(
+                        SessionErrorCode.APPLICATION_SUBMISSION_NOT_FOUND
+                ));
+        SessionApplication application = submission.getSessionApplication();
+        SessionBasicProfile profile = sessionBasicProfileRepository
+                .findByUser_Id(userId)
+                .orElse(null);
+        String userName = userRepository.findById(userId)
+                .map(User::getName)
+                .orElse(application.getNickname());
+
+        return SessionApplicationDetailResponse.from(
+                application,
+                userName,
+                profile == null ? null : profile.getProfileImageUrl()
+        );
+    }
+
+    @Override
     public SessionApplicationDetailResponse getDefaultApplicationDetail(
             Long sessionApplicationId
     ) {

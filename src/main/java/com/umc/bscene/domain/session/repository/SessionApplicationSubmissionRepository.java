@@ -51,6 +51,19 @@ public interface SessionApplicationSubmissionRepository
     @Query("""
         SELECT DISTINCT submission
         FROM SessionApplicationSubmission submission
+        JOIN FETCH submission.sessionApplication application
+        LEFT JOIN FETCH application.portfolioLinks
+        WHERE submission.applicationSubmissionId = :submissionId
+          AND application.userId = :userId
+    """)
+    Optional<SessionApplicationSubmission> findMySubmissionWithApplication(
+            @Param("submissionId") Long submissionId,
+            @Param("userId") Long userId
+    );
+
+    @Query("""
+        SELECT DISTINCT submission
+        FROM SessionApplicationSubmission submission
         JOIN FETCH submission.sessionRecruitment recruitment
         JOIN FETCH recruitment.band band
         JOIN FETCH submission.sessionApplication application

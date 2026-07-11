@@ -71,6 +71,23 @@ public class SessionApplicationController {
         );
     }
 
+    @GetMapping("/submissions/{applicationSubmissionId}/application")
+    public SuccessResponse<SessionApplicationDetailResponse> getMySubmittedApplication(
+            @AuthenticationPrincipal AuthMember authMember,
+            @PathVariable Long applicationSubmissionId
+    ) {
+        SessionApplicationDetailResponse response = sessionApplicationQueryService
+                .getMySubmittedApplication(
+                        authMember.getUser().getId(),
+                        applicationSubmissionId
+                );
+
+        return SuccessResponse.of(
+                response,
+                SessionSuccessCode.MY_SUBMITTED_APPLICATION_DETAIL_SUCCESS
+        );
+    }
+
     @DeleteMapping("/submissions/{applicationSubmissionId}")
     public SuccessResponse<Void> cancelApplicationSubmission(
             @AuthenticationPrincipal AuthMember authMember,
