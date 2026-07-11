@@ -1,6 +1,6 @@
 package com.umc.bscene.domain.fanhome.port;
 
-import com.umc.bscene.domain.fanhome.dto.response.HomePerformanceItem;
+import com.umc.bscene.domain.fanhome.dto.response.FanHomeResponse.HomePerformanceItem;
 
 import java.util.List;
 

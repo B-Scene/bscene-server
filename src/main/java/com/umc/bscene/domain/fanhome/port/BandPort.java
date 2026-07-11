@@ -1,6 +1,6 @@
 package com.umc.bscene.domain.fanhome.port;
 
-import com.umc.bscene.domain.fanhome.dto.response.RecommendedBandItem;
+import com.umc.bscene.domain.fanhome.dto.response.FanHomeResponse.RecommendedBandItem;
 
 import java.util.List;
 

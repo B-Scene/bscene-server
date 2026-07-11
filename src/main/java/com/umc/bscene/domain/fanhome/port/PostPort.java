@@ -1,6 +1,6 @@
 package com.umc.bscene.domain.fanhome.port;
 
-import com.umc.bscene.domain.fanhome.dto.response.BandNewsItem;
+import com.umc.bscene.domain.fanhome.dto.response.FanHomeResponse.BandNewsItem;
 
 import java.util.List;
 

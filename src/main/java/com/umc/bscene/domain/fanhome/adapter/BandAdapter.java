@@ -2,7 +2,7 @@ package com.umc.bscene.domain.fanhome.adapter;
 
 import com.umc.bscene.domain.auth.enums.onboarding.Genre;
 import com.umc.bscene.domain.auth.enums.onboarding.Region;
-import com.umc.bscene.domain.fanhome.dto.response.RecommendedBandItem;
+import com.umc.bscene.domain.fanhome.dto.response.FanHomeResponse.RecommendedBandItem;
 import com.umc.bscene.domain.fanhome.port.BandPort;
 
 import java.util.List;

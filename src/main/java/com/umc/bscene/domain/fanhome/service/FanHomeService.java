@@ -1,9 +1,9 @@
 package com.umc.bscene.domain.fanhome.service;
 
-import com.umc.bscene.domain.fanhome.dto.response.BandNewsItem;
+import com.umc.bscene.domain.fanhome.dto.response.FanHomeResponse.BandNewsItem;
 import com.umc.bscene.domain.fanhome.dto.response.FanHomeResponse;
-import com.umc.bscene.domain.fanhome.dto.response.HomePerformanceItem;
-import com.umc.bscene.domain.fanhome.dto.response.RecommendedBandItem;
+import com.umc.bscene.domain.fanhome.dto.response.FanHomeResponse.HomePerformanceItem;
+import com.umc.bscene.domain.fanhome.dto.response.FanHomeResponse.RecommendedBandItem;
 import com.umc.bscene.domain.fanhome.enums.PerformanceSectionType;
 import com.umc.bscene.domain.fanhome.port.BandPort;
 import com.umc.bscene.domain.fanhome.port.FollowPort;

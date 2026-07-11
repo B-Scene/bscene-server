@@ -1,6 +1,6 @@
 package com.umc.bscene.domain.fanhome.adapter;
 
-import com.umc.bscene.domain.fanhome.dto.response.HomePerformanceItem;
+import com.umc.bscene.domain.fanhome.dto.response.FanHomeResponse.HomePerformanceItem;
 import com.umc.bscene.domain.fanhome.port.PerformancePort;
 
 import java.time.LocalDate;

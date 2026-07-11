@@ -2,7 +2,7 @@ package com.umc.bscene.domain.fanhome.adapter;
 
 import com.umc.bscene.domain.auth.enums.onboarding.Genre;
 import com.umc.bscene.domain.auth.enums.onboarding.Region;
-import com.umc.bscene.domain.fanhome.dto.response.BandNewsItem;
+import com.umc.bscene.domain.fanhome.dto.response.FanHomeResponse.BandNewsItem;
 import com.umc.bscene.domain.fanhome.port.PostPort;
 import com.umc.bscene.domain.post.enums.PostType;
 
