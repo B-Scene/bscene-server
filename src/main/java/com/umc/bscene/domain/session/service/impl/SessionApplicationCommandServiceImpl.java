@@ -199,6 +199,26 @@ public class SessionApplicationCommandServiceImpl implements SessionApplicationC
         return SessionApplicationSubmitResponse.from(submission);
     }
 
+    @Override
+    public void cancelSubmission(Long userId, Long applicationSubmissionId) {
+        SessionApplicationSubmission submission = submissionRepository
+                .findByApplicationSubmissionIdAndSessionApplication_UserId(
+                        applicationSubmissionId,
+                        userId
+                )
+                .orElseThrow(() -> new SessionApplicationException(
+                        SessionErrorCode.APPLICATION_SUBMISSION_NOT_FOUND
+                ));
+
+        if (submission.getStatus() != ApplicationStatus.PENDING) {
+            throw new SessionApplicationException(
+                    SessionErrorCode.APPLICATION_SUBMISSION_CANCEL_NOT_ALLOWED
+            );
+        }
+
+        submission.cancel();
+    }
+
     private void addPortfolioLinks(
             SessionApplication sessionApplication,
             MySessionApplicationUpdateRequest request

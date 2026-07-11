@@ -109,6 +109,21 @@ public enum SessionSuccessCode implements BaseResponseCode {
             HttpStatus.CREATED.value(),
             "SESSION_APPLICATION_SUBMIT_SUCCESS",
             "지원이 완료되었습니다."
+    ),
+    MY_APPLICATION_SUBMISSION_LIST_SUCCESS(
+            HttpStatus.OK.value(),
+            "MY_APPLICATION_SUBMISSION_LIST_SUCCESS",
+            "내 지원 내역 조회에 성공했습니다."
+    ),
+    APPLICATION_SUBMISSION_CANCEL_SUCCESS(
+            HttpStatus.OK.value(),
+            "APPLICATION_SUBMISSION_CANCEL_SUCCESS",
+            "지원이 취소되었습니다."
+    ),
+    SUBMITTED_APPLICATION_DETAIL_SUCCESS(
+            HttpStatus.OK.value(),
+            "SUBMITTED_APPLICATION_DETAIL_SUCCESS",
+            "제출된 지원서 조회에 성공했습니다."
     );
 
     private final int status;

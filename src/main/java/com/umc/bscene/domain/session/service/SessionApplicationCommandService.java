@@ -32,4 +32,6 @@ public interface SessionApplicationCommandService {
             Long sessionRecruitmentId,
             Long sessionApplicationId
     );
+
+    void cancelSubmission(Long userId, Long applicationSubmissionId);
 }
