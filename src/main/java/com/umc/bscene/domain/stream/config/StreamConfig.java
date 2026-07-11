@@ -1,6 +1,7 @@
 package com.umc.bscene.domain.stream.config;
 
 import com.umc.bscene.domain.stream.port.BandMemberPort;
+import com.umc.bscene.domain.stream.port.UserPort;
 import com.umc.bscene.domain.stream.repository.AudioStreamRepository;
 import com.umc.bscene.domain.stream.repository.StreamMemberRepository;
 import com.umc.bscene.domain.stream.scheduler.StreamCleanupScheduler;
@@ -59,6 +60,7 @@ public class StreamConfig {
             JwtUtil jwtUtil,
             AudioStreamRepository audioStreamRepository,
             StreamMemberRepository streamMemberRepository,
+            UserPort userPort,
             StringRedisTemplate stringRedisTemplate,
             BandMemberPort bandMemberPort,
             RestClient mtxRestClient,
@@ -70,6 +72,7 @@ public class StreamConfig {
                 jwtUtil,
                 audioStreamRepository,
                 streamMemberRepository,
+                userPort,
                 stringRedisTemplate,
                 bandMemberPort,
                 mtxRestClient,
