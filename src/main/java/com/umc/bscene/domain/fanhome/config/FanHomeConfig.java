@@ -1,9 +1,8 @@
 package com.umc.bscene.domain.fanhome.config;
 
-import com.umc.bscene.domain.fanhome.adapter.BandNewsPortAdapter;
-import com.umc.bscene.domain.fanhome.adapter.BandRecommendPortAdapter;
-import com.umc.bscene.domain.fanhome.adapter.PerformanceRecommendPortAdapter;
-import com.umc.bscene.domain.fanhome.adapter.UpcomingPerformancePortAdapter;
+import com.umc.bscene.domain.fanhome.adapter.BandAdapter;
+import com.umc.bscene.domain.fanhome.adapter.PerformanceAdapter;
+import com.umc.bscene.domain.fanhome.adapter.PostAdapter;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
@@ -15,22 +14,17 @@ import org.springframework.context.annotation.Configuration;
 public class FanHomeConfig {
 
     @Bean
-    public BandNewsPortAdapter bandNewsPortAdapter() {
-        return new BandNewsPortAdapter();
+    public PostAdapter postFanHomeAdapter() {
+        return new PostAdapter();
     }
 
     @Bean
-    public BandRecommendPortAdapter bandRecommendPortAdapter() {
-        return new BandRecommendPortAdapter();
+    public BandAdapter bandFanHomeAdapter() {
+        return new BandAdapter();
     }
 
     @Bean
-    public PerformanceRecommendPortAdapter performanceRecommendPortAdapter() {
-        return new PerformanceRecommendPortAdapter();
-    }
-
-    @Bean
-    public UpcomingPerformancePortAdapter upcomingPerformancePortAdapter() {
-        return new UpcomingPerformancePortAdapter();
+    public PerformanceAdapter performanceFanHomeAdapter() {
+        return new PerformanceAdapter();
     }
 }
