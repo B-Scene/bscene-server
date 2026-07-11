@@ -10,6 +10,7 @@ public enum StreamErrorCode implements BaseResponseCode {
 
     NO_ACTIVE_BAND_PROFILE("LIVE400_1", 400, "활성화된 밴드 멤버 프로필이 없습니다. 방송에 사용할 밴드 프로필을 먼저 활성화해주세요."),
     ALARM_TARGET_NOT_SCHEDULED("LIVE400_2", 400, "예정된 라이브가 아니어서 알림을 설정할 수 없습니다."),
+    INVALID_CO_HOST("LIVE400_3", 400, "공동 진행자는 생성자가 속한 밴드의 밴드 멤버여야 합니다."),
     FORBIDDEN_REQUEST("LIVE403_1", 403, "해당 리소스에 대한 접근 권한이 없습니다."),
     FAN_MODE_ONLY("LIVE403_2", 403, "팬 모드에서만 이용할 수 있는 기능입니다."),
     AUDIO_STREAM_NOT_FOUND("LIVE404_1", 404, "오디오 송출 세션을 찾을 수 없습니다."),
@@ -20,6 +21,8 @@ public enum StreamErrorCode implements BaseResponseCode {
     DB_CONSTRAINTS_FAILED("LIVE409_2", 409, "서버 내에서 라이브 경로 충돌이 발생했습니다."),
     TOO_MANY_SCHEDULED_LIVES("LIVE409_3", 409, "예약 라이브가 최대 허용 개수를 초과했습니다."),
     STREAM_NOT_CLOSED("LIVE409_4", 409, "아직 방송이 종료되지 않았습니다."),
+    AUDIO_STREAM_NOT_SCHEDULED("LIVE409_5", 409, "예약 상태의 라이브가 아니므로 요청을 처리할 수 없습니다."),
+    CO_HOST_CONFLICT("LIVE409_6", 409, "공동 진행자 변경 요청이 동시에 처리되어 충돌이 발생했습니다."),
     ;
 
     private final String code;

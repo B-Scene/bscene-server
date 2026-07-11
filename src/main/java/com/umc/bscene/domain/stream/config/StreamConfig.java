@@ -2,6 +2,7 @@ package com.umc.bscene.domain.stream.config;
 
 import com.umc.bscene.domain.stream.port.BandMemberPort;
 import com.umc.bscene.domain.stream.port.FollowPort;
+import com.umc.bscene.domain.stream.port.UserPort;
 import com.umc.bscene.domain.stream.port.UserTermsPort;
 import com.umc.bscene.domain.stream.repository.AudioStreamRepository;
 import com.umc.bscene.domain.stream.repository.LiveAlarmRepository;
@@ -66,6 +67,7 @@ public class StreamConfig {
             AudioStreamRepository audioStreamRepository,
             StreamMemberRepository streamMemberRepository,
             LiveAlarmRepository liveAlarmRepository,
+            UserPort userPort,
             StringRedisTemplate stringRedisTemplate,
             BandMemberPort bandMemberPort,
             FollowPort followPort,
@@ -81,6 +83,7 @@ public class StreamConfig {
                 audioStreamRepository,
                 streamMemberRepository,
                 liveAlarmRepository,
+                userPort,
                 stringRedisTemplate,
                 bandMemberPort,
                 followPort,

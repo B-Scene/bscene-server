@@ -1,10 +1,12 @@
 package com.umc.bscene.domain.stream.controller;
 
 import com.umc.bscene.domain.stream.dto.request.ReportUserRequest;
+import com.umc.bscene.domain.stream.dto.request.ReservationPatchRequest;
 import com.umc.bscene.domain.stream.dto.request.StreamCreateRequest;
 import com.umc.bscene.domain.stream.dto.response.LiveAlarmToggleResponse;
 import com.umc.bscene.domain.stream.dto.response.LiveHomeResponse;
 import com.umc.bscene.domain.stream.dto.response.LiveStreamResponse;
+import com.umc.bscene.domain.stream.dto.response.ReservationEditResponse;
 import com.umc.bscene.domain.stream.dto.response.StreamCreateResponse;
 import com.umc.bscene.domain.stream.dto.response.StreamReplayResponse;
 import com.umc.bscene.domain.stream.dto.response.StreamRoomResponse;
@@ -228,6 +230,47 @@ public class StreamController {
         return ResponseEntity
                 .status(HttpStatus.CREATED)
                 .body(SuccessResponse.empty(null));
+    }
+
+    @GetMapping("/{liveId}/reservation")
+    public ResponseEntity<SuccessResponse<ReservationEditResponse>> getReservationForEdit(
+            @AuthenticationPrincipal AuthMember authMember,
+            @PathVariable Long liveId
+    ) {
+        ReservationEditResponse response = streamService.getReservationForEdit(
+                authMember.getUser(), liveId
+        );
+
+        return ResponseEntity
+                .status(HttpStatus.OK)
+                .body(SuccessResponse.of(response, StreamSuccessCode.RESERVATION_EDIT_VIEW_SUCCESS));
+    }
+
+    @PatchMapping("/{liveId}/reservation")
+    public ResponseEntity<SuccessResponse<Void>> updateReservation(
+            @AuthenticationPrincipal AuthMember authMember,
+            @PathVariable Long liveId,
+            @Valid @RequestBody ReservationPatchRequest request
+    ) {
+        streamService.updateReservation(authMember.getUser(), liveId, request);
+        SuccessResponse<Void> body = new SuccessResponse<>(null, StreamSuccessCode.RESERVATION_UPDATE_SUCCESS);
+
+        return ResponseEntity
+                .status(HttpStatus.OK)
+                .body(body);
+    }
+
+    @DeleteMapping("/{liveId}/reservation")
+    public ResponseEntity<SuccessResponse<Void>> cancelReservation(
+            @AuthenticationPrincipal AuthMember authMember,
+            @PathVariable Long liveId
+    ) {
+        streamService.cancelReservation(authMember.getUser(), liveId);
+        SuccessResponse<Void> body = new SuccessResponse<>(null, StreamSuccessCode.RESERVATION_CANCEL_SUCCESS);
+
+        return ResponseEntity
+                .status(HttpStatus.OK)
+                .body(body);
     }
 
     @GetMapping(value = "/{liveId}/viewers", produces = MediaType.TEXT_EVENT_STREAM_VALUE)

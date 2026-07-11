@@ -1,5 +1,6 @@
 package com.umc.bscene.domain.stream.service;
 
+import com.umc.bscene.domain.stream.dto.request.ReservationPatchRequest;
 import com.umc.bscene.domain.stream.dto.request.StreamCreateRequest;
 import com.umc.bscene.domain.stream.dto.response.*;
 import com.umc.bscene.domain.stream.dto.response.StreamSummaryResponse;
@@ -13,6 +14,7 @@ import com.umc.bscene.domain.stream.exception.StreamException;
 import com.umc.bscene.domain.stream.message.LivePushMessage;
 import com.umc.bscene.domain.stream.port.BandMemberPort;
 import com.umc.bscene.domain.stream.port.FollowPort;
+import com.umc.bscene.domain.stream.port.UserPort;
 import com.umc.bscene.domain.stream.port.UserTermsPort;
 import com.umc.bscene.domain.stream.repository.AudioStreamRepository;
 import com.umc.bscene.domain.stream.repository.LiveAlarmRepository;
@@ -75,6 +77,7 @@ public class StreamServiceImpl implements StreamService {
     private final AudioStreamRepository audioStreamRepository;
     private final StreamMemberRepository streamMemberRepository;
     private final LiveAlarmRepository liveAlarmRepository;
+    private final UserPort userPort;
     private final StringRedisTemplate redisTemplate;
     private final BandMemberPort bandMemberPort;
     private final FollowPort followPort;
@@ -662,7 +665,13 @@ public class StreamServiceImpl implements StreamService {
                 if (audioStreamRepository.existsByBroadcasterIdAndStatus(userId, StreamStatus.OPEN))
                     throw new StreamException(StreamErrorCode.ALREADY_LIVE);
 
-                stream.markStarted();
+                // cancel의 SCHEDULED→CANCELED와 경합 시 dirty-write로 CANCELED를 OPEN으로 덮는 문제 방지
+                if (audioStreamRepository.markStartedIfScheduled(liveId, LocalDateTime.now()) == 0)
+                    throw new StreamException(StreamErrorCode.AUDIO_STREAM_NOT_SCHEDULED);
+
+                // clearAutomatically=true로 1차 캐시 초기화됨 → 응답 필드(startedAt 등)를 위해 재조회
+                stream = audioStreamRepository.findById(liveId)
+                        .orElseThrow(() -> new StreamException(StreamErrorCode.AUDIO_STREAM_NOT_FOUND));
 
                 // 방송 시작(SCHEDULED → OPEN) 전환 시 팔로워에게 라이브 시작 알림 1회 발송 (terms 알림 수신 동의자 한정)
                 notifyFollowersAfterCommit(stream, true);
@@ -807,5 +816,153 @@ public class StreamServiceImpl implements StreamService {
     private void requireFanMode(User user) {
         if (user.getCurrentMode() != UserMode.FAN)
             throw new StreamException(StreamErrorCode.FAN_MODE_ONLY);
+    }
+
+    @Override
+    public ReservationEditResponse getReservationForEdit(User user, Long liveId) {
+
+        AudioStream stream = getStream(liveId);
+        validateReservationEditable(user, stream);
+        validateScheduled(stream);
+
+        // 현재 설정된 공동 진행자 (pre-fill 용도, 송출자 본인 제외)
+        List<Long> coHostUserIds = findCoHostRows(stream).stream()
+                .map(sm -> sm.getUser().getId())
+                .toList();
+
+        return new ReservationEditResponse(
+                stream.getId(),
+                stream.getTitle(),
+                stream.getDescription(),
+                stream.getScheduledAt(),
+                coHostUserIds,
+                bandMemberPort.getCoHostCandidatesByBroadcasterId(stream.getBroadcasterId())
+        );
+    }
+
+    @Override
+    @Transactional
+    public void updateReservation(User user, Long liveId, ReservationPatchRequest request) {
+
+        // X-lock 선점으로 동시 PATCH 직렬화 및 cancel↔PATCH insert 경합 방지 (#2/#3)
+        AudioStream stream = audioStreamRepository.findByIdForUpdate(liveId)
+                .orElseThrow(() -> new StreamException(StreamErrorCode.AUDIO_STREAM_NOT_FOUND));
+        validateReservationEditable(user, stream);
+        validateScheduled(stream);
+
+        // 상태 조건부 벌크 UPDATE로 갱신 (null 필드는 coalesce로 기존 값 유지 - PATCH 시맨틱)
+        // 조회-갱신 사이 enterRoom의 SCHEDULED→OPEN 전환을 stale 스냅샷이 덮어쓰는 lost update 방지
+        int updated = audioStreamRepository.updateReservationIfScheduled(
+                liveId, request.title(), request.description(), request.scheduledAt()
+        );
+
+        if (updated == 0)
+            throw new StreamException(StreamErrorCode.AUDIO_STREAM_NOT_SCHEDULED);
+
+        // coHost 필드가 전달된 경우에만 공동 진행 목록을 변경
+        if (request.coHost() != null)
+            replaceCoHosts(stream, request.coHost());
+    }
+
+    @Override
+    @Transactional
+    public void cancelReservation(User user, Long liveId) {
+
+        // X-lock 선점으로 동시 PATCH insert와의 경합 방지 (취소 후 유령 INVITED 행 잔존 방지)
+        AudioStream stream = audioStreamRepository.findByIdForUpdate(liveId)
+                .orElseThrow(() -> new StreamException(StreamErrorCode.AUDIO_STREAM_NOT_FOUND));
+        validateReservationEditable(user, stream);
+        validateScheduled(stream);
+
+        // soft-delete: 상태 조건부 UPDATE로 CANCELED 변경 (enterRoom의 SCHEDULED→OPEN 전환과의 경합 방지)
+        int canceled = audioStreamRepository.cancelReservationIfScheduled(liveId, LocalDateTime.now());
+
+        if (canceled == 0)
+            throw new StreamException(StreamErrorCode.AUDIO_STREAM_NOT_SCHEDULED);
+
+        // 취소된 예약의 공동 진행 초대 레코드 정리 (유령 INVITED 행 방지)
+        streamMemberRepository.deleteAll(findCoHostRows(stream));
+    }
+
+    private AudioStream getStream(Long liveId) {
+        return audioStreamRepository.findById(liveId)
+                .orElseThrow(() -> new StreamException(StreamErrorCode.AUDIO_STREAM_NOT_FOUND));
+    }
+
+    // 상태(409) 검사는 권한(403) 검사 이후에 수행해, 권한 없는 유저가 예약 상태를 열거하지 못하게 함
+    private void validateScheduled(AudioStream stream) {
+        if (stream.getStatus() != StreamStatus.SCHEDULED)
+            throw new StreamException(StreamErrorCode.AUDIO_STREAM_NOT_SCHEDULED);
+    }
+
+    // 편집 권한: 생성자 본인이거나, 생성자가 속한 밴드의 정회원(밴드 멤버). 팬 모드 요청은 차단
+    private void validateReservationEditable(User user, AudioStream stream) {
+        blockFanMode(user);
+
+        if (!stream.getBroadcasterId().equals(user.getId())
+                && !bandMemberPort.isRegularMemberOfBroadcasterBand(stream.getBroadcasterId(), user.getId()))
+            throw new StreamException(StreamErrorCode.FORBIDDEN_REQUEST);
+    }
+
+    // 해당 스트림의 공동 진행자 레코드 조회 (송출자 본인 레코드 제외)
+    private List<StreamMember> findCoHostRows(AudioStream stream) {
+        return streamMemberRepository.findAllByAudioStream_Id(stream.getId()).stream()
+                .filter(sm -> !sm.getUser().getId().equals(stream.getBroadcasterId()))
+                .toList();
+    }
+
+    private void replaceCoHosts(AudioStream stream, List<Long> coHostUserIds) {
+
+        Set<Long> requested = new HashSet<>(coHostUserIds);
+        List<StreamMember> currentRows = findCoHostRows(stream);
+        Set<Long> currentIds = currentRows.stream()
+                .map(sm -> sm.getUser().getId())
+                .collect(Collectors.toSet());
+
+        // 새로 추가되는 멤버만 후보(생성자 밴드 멤버) 검증.
+        // 기존 공동 진행자는 밴드 탈퇴로 후보에서 빠졌더라도 pre-fill 재제출이 막히지 않도록 유지 허용
+        Set<Long> toAdd = requested.stream()
+                .filter(id -> !currentIds.contains(id))
+                .collect(Collectors.toSet());
+
+        if (!toAdd.isEmpty()) {
+            Set<Long> candidateIds = bandMemberPort.getCoHostCandidatesByBroadcasterId(stream.getBroadcasterId()).stream()
+                    .map(CoHostCandidateResponse::userId)
+                    .collect(Collectors.toSet());
+
+            if (!candidateIds.containsAll(toAdd))
+                throw new StreamException(StreamErrorCode.INVALID_CO_HOST);
+        }
+
+        // 요청에서 빠진 기존 공동 진행자만 삭제. 유지되는 멤버는 재생성하지 않아 수락 상태(ACCEPTED)가 리셋되지 않음
+        List<StreamMember> toDelete = currentRows.stream()
+                .filter(sm -> !requested.contains(sm.getUser().getId()))
+                .toList();
+        streamMemberRepository.deleteAll(toDelete);
+
+        if (toAdd.isEmpty())
+            return;
+
+        // getReferenceById 대신 실조회로 존재를 검증 (검증 - 삽입 사이 유저 삭제 시 FK 예외로 500 방지)
+        List<User> coHostUsers = userPort.findAllByIds(toAdd);
+
+        if (coHostUsers.size() != toAdd.size())
+            throw new StreamException(StreamErrorCode.INVALID_CO_HOST);
+
+        List<StreamMember> newRows = coHostUsers.stream()
+                .map(coHost -> StreamMember.builder()
+                        .user(coHost)
+                        .audioStream(stream)
+                        .status(StreamMemberStatus.INVITED)     // 공동 진행자는 초대 상태로 생성
+                        .build())
+                .toList();
+
+        try {
+            streamMemberRepository.saveAll(newRows);
+            streamMemberRepository.flush();     // unique 제약 위반을 커밋 전에 감지
+        } catch (DataIntegrityViolationException e) {
+            // 동시 PATCH가 같은 공동 진행자를 먼저 삽입한 경우 (uk_stream_member_user_stream)
+            throw new StreamException(StreamErrorCode.CO_HOST_CONFLICT);
+        }
     }
 }

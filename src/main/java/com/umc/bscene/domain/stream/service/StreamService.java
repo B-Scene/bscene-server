@@ -1,9 +1,11 @@
 package com.umc.bscene.domain.stream.service;
 
+import com.umc.bscene.domain.stream.dto.request.ReservationPatchRequest;
 import com.umc.bscene.domain.stream.dto.request.StreamCreateRequest;
 import com.umc.bscene.domain.stream.dto.response.LiveAlarmToggleResponse;
 import com.umc.bscene.domain.stream.dto.response.LiveHomeResponse;
 import com.umc.bscene.domain.stream.dto.response.LiveStreamResponse;
+import com.umc.bscene.domain.stream.dto.response.ReservationEditResponse;
 import com.umc.bscene.domain.stream.dto.response.StreamCreateResponse;
 import com.umc.bscene.domain.stream.dto.response.StreamRoomResponse;
 import com.umc.bscene.domain.stream.dto.response.StreamSummaryResponse;
@@ -50,4 +52,11 @@ public interface StreamService {
 
     // 예정된 라이브 알림 설정 토글
     LiveAlarmToggleResponse toggleLiveAlarm(User user, Long liveId);
+
+    // 라이브 예약 편집 화면 조회, 수정, 취소
+    ReservationEditResponse getReservationForEdit(User user, Long liveId);
+
+    void updateReservation(User user, Long liveId, ReservationPatchRequest request);
+
+    void cancelReservation(User user, Long liveId);
 }
