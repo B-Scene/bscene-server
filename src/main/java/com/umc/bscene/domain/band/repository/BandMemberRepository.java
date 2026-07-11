@@ -3,7 +3,10 @@ package com.umc.bscene.domain.band.repository;
 import com.umc.bscene.domain.band.entity.BandMember;
 import com.umc.bscene.domain.band.enums.BandMemberStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
@@ -37,5 +40,19 @@ public interface BandMemberRepository extends JpaRepository<BandMember, Long> {
             Long bandId,
             Long userId,
             BandMemberStatus status
+    );
+
+    // 송출자(userId) 목록에 대응하는 밴드 소속 정보를 밴드까지 한 번에 조회 (사용자당 가장 먼저 가입한 밴드 하나만 필요)
+    @Query("""
+        SELECT bm
+        FROM BandMember bm
+        JOIN FETCH bm.band
+        WHERE bm.user.id IN :userIds
+          AND bm.status = :status
+        ORDER BY bm.id ASC
+    """)
+    List<BandMember> findWithBandByUser_IdInAndStatus(
+            @Param("userIds") Collection<Long> userIds,
+            @Param("status") BandMemberStatus status
     );
 }

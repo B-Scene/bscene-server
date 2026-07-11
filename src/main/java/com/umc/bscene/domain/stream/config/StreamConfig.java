@@ -1,6 +1,5 @@
 package com.umc.bscene.domain.stream.config;
 
-import com.umc.bscene.domain.stream.dto.response.BandInfoForGetLiveResponse;
 import com.umc.bscene.domain.stream.port.BandMemberPort;
 import com.umc.bscene.domain.stream.repository.AudioStreamRepository;
 import com.umc.bscene.domain.stream.repository.StreamMemberRepository;
@@ -17,9 +16,6 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.scheduling.annotation.EnableScheduling;
 import org.springframework.web.client.RestClient;
-
-import java.util.List;
-import java.util.Set;
 
 @EnableScheduling
 @Configuration
@@ -38,17 +34,6 @@ public class StreamConfig {
             StreamService streamService
     ) {
         return new MediaMtxLivePoller(mtxRestClient, streamService);
-    }
-
-    // FIXME: BandMemberPort를 빈으로 등록하기 위한 Dummy 익명 클래스 작성
-    @Bean
-    public BandMemberPort bandMemberPort() {
-        return new BandMemberPort() {
-            @Override
-            public List<BandInfoForGetLiveResponse> getBandNameWithBandProfileByBroadcasterId(Set<Long> broadcasterIds) {
-                return List.of();
-            }
-        };
     }
 
     @Bean
