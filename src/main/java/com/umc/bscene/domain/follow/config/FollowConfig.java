@@ -2,6 +2,7 @@ package com.umc.bscene.domain.follow.config;
 
 import com.umc.bscene.domain.follow.adapter.FanHomeAdapter;
 import com.umc.bscene.domain.follow.adapter.BandAdapter;
+import com.umc.bscene.domain.follow.adapter.UserAdapter;
 import com.umc.bscene.domain.follow.repository.FollowRepository;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -17,5 +18,11 @@ public class FollowConfig {
     @Bean
     public FanHomeAdapter fanHomeFollowAdapter(FollowRepository followRepository) {
         return new FanHomeAdapter(followRepository);
+    }
+
+    // 마이페이지 FollowPort 구현 어댑터 (팔로우한 밴드 수)
+    @Bean
+    public UserAdapter userFollowAdapter(FollowRepository followRepository) {
+        return new UserAdapter(followRepository);
     }
 }
