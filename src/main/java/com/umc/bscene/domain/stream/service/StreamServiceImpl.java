@@ -2,6 +2,7 @@ package com.umc.bscene.domain.stream.service;
 
 import com.umc.bscene.domain.stream.dto.request.StreamCreateRequest;
 import com.umc.bscene.domain.stream.dto.response.*;
+import com.umc.bscene.domain.stream.dto.response.StreamSummaryResponse;
 import com.umc.bscene.domain.stream.entity.AudioStream;
 import com.umc.bscene.domain.stream.entity.mapper.StreamMember;
 import com.umc.bscene.domain.stream.enums.StreamMemberStatus;
@@ -145,8 +146,8 @@ public class StreamServiceImpl implements StreamService {
             throw new StreamException(StreamErrorCode.FORBIDDEN_REQUEST);
 
         String path = audioStream.getPath();
-        audioStream.close();                                                 // 종료 상태로 변경
-        redisTemplate.delete(LIVE_KEY_PREFIX + path);  // Redis도 정리
+        audioStream.close(viewerCountOf(audioStream.getId()));  // 종료 + 시청자 수 스냅샷
+        redisTemplate.delete(LIVE_KEY_PREFIX + path);           // Redis도 정리
 
         TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
             @Override
@@ -259,7 +260,7 @@ public class StreamServiceImpl implements StreamService {
                 redisTemplate.delete(LIVE_KEY_PREFIX + path);
 
                 // FE에서 마이크 온오프는 따로. 오프 시 무음 송출
-                audioStreamRepository.findByPath(path).ifPresent(AudioStream::close);
+                audioStreamRepository.findByPath(path).ifPresent(s -> s.close(viewerCountOf(s.getId())));
             }
         }
     }
@@ -360,6 +361,28 @@ public class StreamServiceImpl implements StreamService {
     public SseEmitter subscribeViewerCount(Long userId, Long liveId) {
         // 시청자 수 SSE 전담 컴포넌트에 위임(프레젠스·하트비트·유령 정리 포함)
         return viewerSsePresence.subscribe(userId, liveId);
+    }
+
+    @Override
+    public StreamSummaryResponse getStreamSummary(Long userId, Long liveId) {
+        AudioStream audioStream = audioStreamRepository.findById(liveId)
+                .orElseThrow(() -> new StreamException(StreamErrorCode.AUDIO_STREAM_NOT_FOUND));
+
+        if (!audioStream.getBroadcasterId().equals(userId))
+            throw new StreamException(StreamErrorCode.FORBIDDEN_REQUEST);
+
+        if (audioStream.getStatus() != StreamStatus.CLOSED)
+            throw new StreamException(StreamErrorCode.STREAM_NOT_CLOSED);
+
+        int durationSec = 0;
+        if (audioStream.getStartedAt() != null && audioStream.getClosedAt() != null)
+            durationSec = (int) Duration.between(audioStream.getStartedAt(), audioStream.getClosedAt()).getSeconds();
+
+        return new StreamSummaryResponse(
+                audioStream.getTitle(),
+                durationSec,
+                audioStream.getClosedViewerCount() != null ? audioStream.getClosedViewerCount() : 0
+        );
     }
 
     private void kickPublisher(String path) {
