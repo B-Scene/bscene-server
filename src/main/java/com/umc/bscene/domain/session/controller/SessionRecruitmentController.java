@@ -4,6 +4,8 @@ import com.umc.bscene.domain.session.dto.recruitment.request.SessionRecruitmentC
 import com.umc.bscene.domain.session.dto.application.request.SessionApplicationSubmitRequest;
 import com.umc.bscene.domain.session.dto.application.response.SessionApplicationSubmitResponse;
 import com.umc.bscene.domain.session.dto.application.response.SubmittedApplicationDetailResponse;
+import com.umc.bscene.domain.session.dto.recruitment.response.InterestedRecruitmentListResponse;
+import com.umc.bscene.domain.session.service.SessionRecruitmentInterestService;
 import com.umc.bscene.domain.session.dto.recruitment.request.SessionRecruitmentUpdateRequest;
 import com.umc.bscene.domain.session.dto.recruitment.response.SessionRecruitmentCreateResponse;
 import com.umc.bscene.domain.session.enums.code.SessionSuccessCode;
@@ -31,6 +33,7 @@ public class SessionRecruitmentController {
     private final SessionRecruitmentCommandService sessionRecruitmentCommandService;
     private final SessionApplicationCommandService sessionApplicationCommandService;
     private final SessionApplicationQueryService sessionApplicationQueryService;
+    private final SessionRecruitmentInterestService sessionRecruitmentInterestService;
     private final SessionRecruitmentQueryService sessionRecruitmentQueryService;
     @PostMapping
     public SuccessResponse<SessionRecruitmentCreateResponse> createSessionRecruitment(
@@ -80,6 +83,20 @@ public class SessionRecruitmentController {
         return SuccessResponse.of(
                 response,
                 SessionSuccessCode.SUBMITTED_APPLICATION_DETAIL_SUCCESS
+        );
+    }
+
+    @GetMapping("/interests")
+    public SuccessResponse<InterestedRecruitmentListResponse> getInterestedRecruitments(
+            @AuthenticationPrincipal AuthMember authMember,
+            @RequestParam(required = false) Long cursorId,
+            @RequestParam(defaultValue = "10") Integer size
+    ) {
+        InterestedRecruitmentListResponse response = sessionRecruitmentInterestService
+                .getMyInterests(authMember.getUser().getId(), cursorId, size);
+        return SuccessResponse.of(
+                response,
+                SessionSuccessCode.SESSION_RECRUITMENT_INTEREST_LIST_SUCCESS
         );
     }
     // 세션 모집 공고 목록 조회

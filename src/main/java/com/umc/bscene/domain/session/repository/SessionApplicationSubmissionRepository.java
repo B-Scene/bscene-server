@@ -9,6 +9,7 @@ import org.springframework.data.repository.query.Param;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.Collection;
 
 public interface SessionApplicationSubmissionRepository
         extends JpaRepository<SessionApplicationSubmission, Long> {
@@ -74,5 +75,20 @@ public interface SessionApplicationSubmissionRepository
     Optional<SessionApplicationSubmission> findForRecruitmentOwner(
             @Param("submissionId") Long submissionId,
             @Param("ownerId") Long ownerId
+    );
+
+    @Query("""
+        SELECT submission
+        FROM SessionApplicationSubmission submission
+        JOIN FETCH submission.sessionRecruitment recruitment
+        JOIN FETCH submission.sessionApplication application
+        WHERE application.userId = :userId
+          AND recruitment.sessionRecruitmentId IN :recruitmentIds
+          AND submission.status <> com.umc.bscene.domain.session.enums.ApplicationStatus.CANCELED
+        ORDER BY submission.applicationSubmissionId DESC
+    """)
+    List<SessionApplicationSubmission> findActiveSubmissionsForRecruitments(
+            @Param("userId") Long userId,
+            @Param("recruitmentIds") Collection<Long> recruitmentIds
     );
 }

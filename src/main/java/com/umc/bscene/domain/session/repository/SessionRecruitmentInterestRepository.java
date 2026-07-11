@@ -7,6 +7,8 @@ import org.springframework.data.repository.query.Param;
 
 import java.util.Collection;
 import java.util.Set;
+import java.util.List;
+import org.springframework.data.domain.Pageable;
 
 public interface SessionRecruitmentInterestRepository
         extends JpaRepository<SessionRecruitmentInterest, Long> {
@@ -30,5 +32,21 @@ public interface SessionRecruitmentInterestRepository
     Set<Long> findInterestedRecruitmentIds(
             @Param("userId") Long userId,
             @Param("recruitmentIds") Collection<Long> recruitmentIds
+    );
+
+    @Query("""
+        SELECT interest
+        FROM SessionRecruitmentInterest interest
+        JOIN FETCH interest.sessionRecruitment recruitment
+        JOIN FETCH recruitment.band
+        WHERE interest.user.id = :userId
+          AND recruitment.deletedAt IS NULL
+          AND (:cursorId IS NULL OR interest.sessionRecruitmentInterestId < :cursorId)
+        ORDER BY interest.sessionRecruitmentInterestId DESC
+    """)
+    List<SessionRecruitmentInterest> findMyInterests(
+            @Param("userId") Long userId,
+            @Param("cursorId") Long cursorId,
+            Pageable pageable
     );
 }
