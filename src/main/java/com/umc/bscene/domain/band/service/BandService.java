@@ -8,19 +8,17 @@ import com.umc.bscene.domain.band.dto.request.MusicLinkSaveRequest;
 import com.umc.bscene.domain.band.dto.response.*;
 import com.umc.bscene.domain.band.entity.Band;
 import com.umc.bscene.domain.band.entity.BandMember;
+import com.umc.bscene.domain.band.entity.BandMemberProfile;
 import com.umc.bscene.domain.band.entity.MusicLink;
 import com.umc.bscene.domain.band.enums.BandMemberStatus;
 import com.umc.bscene.domain.band.exception.BandException;
 import com.umc.bscene.domain.band.port.FollowPort;
 import com.umc.bscene.domain.band.port.PerformancePort;
+import com.umc.bscene.domain.band.repository.BandMemberProfileRepository;
 import com.umc.bscene.domain.band.repository.BandMemberRepository;
 import com.umc.bscene.domain.band.repository.BandRepository;
 import com.umc.bscene.domain.band.repository.MusicLinkRepository;
 import com.umc.bscene.domain.band.response.code.BandErrorCode;
-import com.umc.bscene.domain.session.entity.SessionApplication;
-import com.umc.bscene.domain.session.enums.code.SessionErrorCode;
-import com.umc.bscene.domain.session.exception.SessionApplicationException;
-import com.umc.bscene.domain.session.repository.SessionApplicationRepository;
 import com.umc.bscene.domain.user.entity.User;
 import com.umc.bscene.domain.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
@@ -36,20 +34,20 @@ public class BandService {
 
     private final BandRepository bandRepository;
     private final BandMemberRepository bandMemberRepository;
+    private final BandMemberProfileRepository bandMemberProfileRepository;
     private final MusicLinkRepository musicLinkRepository;
     private final UserRepository userRepository;
-    private final SessionApplicationRepository sessionApplicationRepository;
     private final FollowPort followPort;
     private final PerformancePort performancePort;
 
-    // 밴드 개설 (요청자가 오너가 됨, 이 밴드에서 사용할 세션 프로필 선택)
+    // 밴드 개설 (요청자가 오너가 됨, 이 밴드에서 사용할 멤버 프로필 선택)
     @Transactional
     public BandResponse createBand(Long ownerId, BandCreateRequest request) {
         if (bandRepository.existsByName(request.name())) {
             throw new BandException(BandErrorCode.DUPLICATE_BAND_NAME);
         }
 
-        SessionApplication sessionApplication = getOwnSessionApplication(request.sessionApplicationId(), ownerId);
+        BandMemberProfile bandMemberProfile = getOwnBandMemberProfile(request.bandMemberProfileId(), ownerId);
 
         Band band = Band.builder()
                 .owner(userRepository.getReferenceById(ownerId))
@@ -64,7 +62,7 @@ public class BandService {
         BandMember ownerMembership = BandMember.builder()
                 .band(savedBand)
                 .user(userRepository.getReferenceById(ownerId))
-                .sessionApplication(sessionApplication)
+                .bandMemberProfile(bandMemberProfile)
                 .status(BandMemberStatus.ACCEPTED)
                 .build();
         bandMemberRepository.save(ownerMembership);
@@ -141,7 +139,7 @@ public class BandService {
         return BandMemberResponse.from(bandMemberRepository.save(bandMember));
     }
 
-    // 초대 수락 (이 밴드에서 사용할 세션 프로필 선택)
+    // 초대 수락 (이 밴드에서 사용할 멤버 프로필 선택)
     @Transactional
     public BandMemberAcceptResponse acceptInvite(Long userId, Long bandId, BandMemberAcceptRequest request) {
         getBand(bandId);
@@ -151,9 +149,9 @@ public class BandService {
             throw new BandException(BandErrorCode.INVITE_ALREADY_PROCESSED);
         }
 
-        SessionApplication sessionApplication = getOwnSessionApplication(request.sessionApplicationId(), userId);
+        BandMemberProfile bandMemberProfile = getOwnBandMemberProfile(request.bandMemberProfileId(), userId);
 
-        bandMember.acceptWithSessionApplication(sessionApplication);
+        bandMember.acceptWithProfile(bandMemberProfile);
 
         return BandMemberAcceptResponse.from(bandMember);
     }
@@ -266,15 +264,15 @@ public class BandService {
         }
     }
 
-    private SessionApplication getOwnSessionApplication(Long sessionApplicationId, Long userId) {
-        SessionApplication sessionApplication = sessionApplicationRepository.findById(sessionApplicationId)
-                .orElseThrow(() -> new SessionApplicationException(SessionErrorCode.SESSION_APPLICATION_NOT_FOUND));
+    private BandMemberProfile getOwnBandMemberProfile(Long bandMemberProfileId, Long userId) {
+        BandMemberProfile bandMemberProfile = bandMemberProfileRepository.findById(bandMemberProfileId)
+                .orElseThrow(() -> new BandException(BandErrorCode.BAND_MEMBER_PROFILE_NOT_FOUND));
 
-        if (!sessionApplication.getUserId().equals(userId)) {
-            throw new BandException(BandErrorCode.NOT_OWN_SESSION_APPLICATION);
+        if (!bandMemberProfile.getUser().getId().equals(userId)) {
+            throw new BandException(BandErrorCode.NOT_OWN_BAND_MEMBER_PROFILE);
         }
 
-        return sessionApplication;
+        return bandMemberProfile;
     }
 
     private void validateBandMember(Band band, Long userId) {

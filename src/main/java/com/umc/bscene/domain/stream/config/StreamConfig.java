@@ -1,8 +1,10 @@
 package com.umc.bscene.domain.stream.config;
 
-import com.umc.bscene.domain.stream.dto.response.BandInfoForGetLiveResponse;
 import com.umc.bscene.domain.stream.port.BandMemberPort;
+import com.umc.bscene.domain.stream.port.FollowPort;
+import com.umc.bscene.domain.stream.port.UserTermsPort;
 import com.umc.bscene.domain.stream.repository.AudioStreamRepository;
+import com.umc.bscene.domain.stream.repository.LiveAlarmRepository;
 import com.umc.bscene.domain.stream.repository.StreamMemberRepository;
 import com.umc.bscene.domain.stream.scheduler.StreamCleanupScheduler;
 import com.umc.bscene.domain.stream.service.MediaMtxLivePoller;
@@ -10,6 +12,7 @@ import com.umc.bscene.domain.stream.service.StreamService;
 import com.umc.bscene.domain.stream.service.StreamServiceImpl;
 import com.umc.bscene.domain.stream.sse.ViewerSsePresence;
 import com.umc.bscene.domain.stream.sse.ViewerSseRegistry;
+import com.umc.bscene.global.notification.port.NotificationPort;
 import com.umc.bscene.global.security.util.JwtUtil;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
@@ -17,9 +20,6 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.scheduling.annotation.EnableScheduling;
 import org.springframework.web.client.RestClient;
-
-import java.util.List;
-import java.util.Set;
 
 @EnableScheduling
 @Configuration
@@ -38,17 +38,6 @@ public class StreamConfig {
             StreamService streamService
     ) {
         return new MediaMtxLivePoller(mtxRestClient, streamService);
-    }
-
-    // FIXME: BandMemberPort를 빈으로 등록하기 위한 Dummy 익명 클래스 작성
-    @Bean
-    public BandMemberPort bandMemberPort() {
-        return new BandMemberPort() {
-            @Override
-            public List<BandInfoForGetLiveResponse> getBandNameWithBandProfileByBroadcasterId(Set<Long> broadcasterIds) {
-                return List.of();
-            }
-        };
     }
 
     @Bean
@@ -74,8 +63,12 @@ public class StreamConfig {
             JwtUtil jwtUtil,
             AudioStreamRepository audioStreamRepository,
             StreamMemberRepository streamMemberRepository,
+            LiveAlarmRepository liveAlarmRepository,
             StringRedisTemplate stringRedisTemplate,
             BandMemberPort bandMemberPort,
+            FollowPort followPort,
+            UserTermsPort userTermsPort,
+            NotificationPort notificationPort,
             RestClient mtxRestClient,
             ViewerSsePresence viewerSsePresence,
             @Value("${mediamtx.hls-url}") String hlsUrl,
@@ -85,8 +78,12 @@ public class StreamConfig {
                 jwtUtil,
                 audioStreamRepository,
                 streamMemberRepository,
+                liveAlarmRepository,
                 stringRedisTemplate,
                 bandMemberPort,
+                followPort,
+                userTermsPort,
+                notificationPort,
                 mtxRestClient,
                 viewerSsePresence,
                 hlsUrl,

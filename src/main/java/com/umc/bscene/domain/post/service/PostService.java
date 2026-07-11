@@ -15,10 +15,12 @@ import com.umc.bscene.domain.post.dto.response.PostSummaryResponse;
 import com.umc.bscene.domain.post.dto.response.PostUpdateResponse;
 import com.umc.bscene.domain.post.entity.Post;
 import com.umc.bscene.domain.post.enums.PostType;
+import com.umc.bscene.domain.post.event.PostVideoThumbnailRequestedEvent;
 import com.umc.bscene.domain.post.exception.PostException;
 import com.umc.bscene.domain.post.repository.PostRepository;
 import com.umc.bscene.domain.post.response.code.PostErrorCode;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -37,6 +39,7 @@ public class PostService {
     private final PostRepository postRepository;
     private final BandRepository bandRepository;
     private final BandMemberRepository bandMemberRepository;
+    private final ApplicationEventPublisher eventPublisher;
 
     // 콘텐츠 등록 (밴드 멤버만 가능) 등록시 팔로워에게 알림
     @Transactional
@@ -51,12 +54,30 @@ public class PostService {
                 .type(request.type())
                 .title(request.title())
                 .description(request.description())
+                .thumbnailUrl(request.thumbnailUrl())
                 .build();
 
         addMediaList(post, request.mediaUrls());
         addTagList(post, request.tags());
 
-        return PostCreateResponse.from(postRepository.save(post));
+        Post savedPost = postRepository.save(post);
+
+        // 영상인데 썸네일이 없으면, 커밋 이후 첫 프레임을 추출해 자동으로 채움
+        if (request.type() == PostType.VIDEO && (request.thumbnailUrl() == null || request.thumbnailUrl().isBlank())) {
+            eventPublisher.publishEvent(new PostVideoThumbnailRequestedEvent(savedPost.getId(), request.mediaUrls().get(0)));
+        }
+
+        return PostCreateResponse.from(savedPost);
+    }
+
+    // 영상 첫 프레임 자동 추출 결과를 반영 (직접 지정한 썸네일이 없을 때만)
+    @Transactional
+    public void applyGeneratedThumbnail(Long postId, String thumbnailUrl) {
+        postRepository.findById(postId).ifPresent(post -> {
+            if (post.getThumbnailUrl() == null) {
+                post.update(null, null, thumbnailUrl);
+            }
+        });
     }
 
     // 콘텐츠 목록 조회 (커서 페이지네이션, type 필터링 가능)
@@ -95,7 +116,7 @@ public class PostService {
         validateBandMember(post.getBand(), userId);
         validateTagCount(request.tags());
 
-        post.update(request.title(), request.description());
+        post.update(request.title(), request.description(), request.thumbnailUrl());
 
         if (request.mediaUrls() != null) {
             validateMediaUrls(post.getType(), request.mediaUrls());

@@ -19,7 +19,7 @@ public record BandCreateRequest(
         Region region,
 
         @NotNull
-        Long sessionApplicationId,
+        Long bandMemberProfileId,
 
         String profileImageUrl,
 

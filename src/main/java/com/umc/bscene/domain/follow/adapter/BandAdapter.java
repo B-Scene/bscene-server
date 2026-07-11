@@ -5,7 +5,7 @@ import com.umc.bscene.domain.follow.repository.FollowRepository;
 import lombok.RequiredArgsConstructor;
 
 @RequiredArgsConstructor
-public class FollowPortAdapter implements FollowPort {
+public class BandAdapter implements FollowPort {
 
     private final FollowRepository followRepository;
 
