@@ -28,4 +28,9 @@ public class BandMemberProfile extends BaseEntity {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "userId", nullable = false)
     private User user;
+
+    public void update(String nickname, Part part) {
+        if (nickname != null) this.nickname = nickname;
+        if (part != null) this.part = part;
+    }
 }

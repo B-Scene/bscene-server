@@ -42,6 +42,9 @@ public interface BandMemberRepository extends JpaRepository<BandMember, Long> {
             BandMemberStatus status
     );
 
+    // 멤버 프로필 삭제 전, 이미 밴드에서 사용 중인지 확인
+    boolean existsByBandMemberProfile_Id(Long bandMemberProfileId);
+
     // 송출자(userId) 목록에 대응하는 밴드 소속 정보를 밴드까지 한 번에 조회 (사용자당 가장 먼저 가입한 밴드 하나만 필요)
     @Query("""
         SELECT bm
