@@ -8,12 +8,14 @@ import com.umc.bscene.domain.stream.port.UserTermsPort;
 import com.umc.bscene.domain.stream.repository.AudioStreamRepository;
 import com.umc.bscene.domain.stream.repository.LiveAlarmRepository;
 import com.umc.bscene.domain.stream.repository.StreamMemberRepository;
+import com.umc.bscene.domain.stream.repository.StreamReplayRepository;
 import com.umc.bscene.domain.stream.scheduler.StreamCleanupScheduler;
 import com.umc.bscene.domain.stream.service.MediaMtxLivePoller;
 import com.umc.bscene.domain.stream.service.StreamService;
 import com.umc.bscene.domain.stream.service.StreamServiceImpl;
 import com.umc.bscene.domain.stream.sse.ViewerSsePresence;
 import com.umc.bscene.domain.stream.sse.ViewerSseRegistry;
+import com.umc.bscene.domain.user.entity.User;
 import com.umc.bscene.global.notification.message.PushMessage;
 import com.umc.bscene.global.security.util.JwtUtil;
 import org.springframework.beans.factory.annotation.Value;
@@ -24,6 +26,7 @@ import org.springframework.scheduling.annotation.EnableAsync;
 import org.springframework.scheduling.annotation.EnableScheduling;
 import org.springframework.web.client.RestClient;
 
+import java.util.Collection;
 import java.util.List;
 
 @EnableAsync
@@ -41,6 +44,43 @@ public class StreamConfig {
             }
         };
     }
+
+    @Bean
+    public UserPort userPort() {
+        return new UserPort() {
+            @Override
+            public List<User> findAllByIds(Collection<Long> userIds) {
+                return List.of();
+            }
+        };
+    }
+
+    @Bean
+    public FollowPort followPort() {
+        return new FollowPort() {
+            @Override
+            public List<Long> getFollowingBandIds(Long userId) {
+                return List.of();
+            }
+
+            @Override
+            public List<Long> getFollowerUserIdsByBandId(Long bandId) {
+                return List.of();
+            }
+        };
+    }
+
+    @Bean
+    public UserTermsPort userTermsPort() {
+        return new UserTermsPort() {
+            @Override
+            public List<Long> filterNotificationAgreedUserIds(Collection<Long> userIds) {
+                return List.of();
+            }
+        };
+    }
+
+    //  =-=-=-=  이 위는 담당 개발자가 Adapter 구현 이후 지워주세요 =-=-=-=
 
     @Bean
     public RestClient mtxRestClient(
@@ -81,6 +121,7 @@ public class StreamConfig {
             AudioStreamRepository audioStreamRepository,
             StreamMemberRepository streamMemberRepository,
             LiveAlarmRepository liveAlarmRepository,
+            StreamReplayRepository streamReplayRepository,
             UserPort userPort,
             StringRedisTemplate stringRedisTemplate,
             BandMemberPort bandMemberPort,
@@ -97,6 +138,7 @@ public class StreamConfig {
                 audioStreamRepository,
                 streamMemberRepository,
                 liveAlarmRepository,
+                streamReplayRepository,
                 userPort,
                 stringRedisTemplate,
                 bandMemberPort,
