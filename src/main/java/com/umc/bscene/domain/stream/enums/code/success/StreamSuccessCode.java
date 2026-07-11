@@ -19,7 +19,10 @@ public enum StreamSuccessCode implements BaseResponseCode {
     FOLLOWING_LIVE_SUCCESS("LIVE200_6", OK, "팔로우한 밴드의 라이브 중인 목록을 조회하는데 성공했습니다."),
     SCHEDULED_LIVE_SUCCESS("LIVE200_7", OK, "예정된 라이브 목록을 조회하는데 성공했습니다."),
     LIVE_ALARM_TOGGLE_SUCCESS("LIVE200_8", OK, "라이브 알림 설정 변경에 성공했습니다."),
+    REPLAY_WATCH_SUCCESS("LIVE200_9", OK, "다시보기 재생에 성공했습니다."),
+    LIVE_SUMMARY_SUCCESS("LIVE200_10", OK, "라이브 종료 화면 조회에 성공했습니다."),
     LIVE_CREATE_SUCCESS("LIVE201_1", CREATED, "라이브 생성에 성공했습니다."),
+    REPLAY_SAVE_REQUEST_SUCCESS("LIVE202_1", 202, "다시보기 저장 요청이 접수되었습니다."),
     ;
 
     private final String code;

@@ -42,7 +42,10 @@ public class StreamCleanupScheduler {
 
         for (AudioStream audioStream : candidates) {
             boolean live = Boolean.TRUE.equals(redisTemplate.hasKey(LIVE_KEY_PREFIX + audioStream.getPath()));
-            if(!live) audioStream.close();
+            if (!live) {
+                Long count = redisTemplate.opsForZSet().zCard("viewer:" + audioStream.getId());
+                audioStream.close(count != null ? count.intValue() : 0);
+            }
         }
     }
 }
