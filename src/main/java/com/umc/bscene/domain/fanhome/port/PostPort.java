@@ -7,7 +7,7 @@ import java.util.List;
 /**
  * 팬홈이 팔로우한 밴드들의 소식을 조회하기 위한 포트 (adapter는 post 도메인이 구현).
  */
-public interface BandNewsPort {
+public interface PostPort {
     /**
      * 주어진 밴드들의 최근 소식을 최신순으로 조회합니다.
      *
