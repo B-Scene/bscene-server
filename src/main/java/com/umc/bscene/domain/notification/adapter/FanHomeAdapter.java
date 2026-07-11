@@ -15,6 +15,6 @@ public class FanHomeAdapter implements NotificationPort {
 
     @Override
     public boolean hasUnread(Long userId) {
-        return notificationRepository.existsUnreadByUserId(userId);
+        return notificationRepository.existsByUser_IdAndIsReadFalse(userId);
     }
 }
