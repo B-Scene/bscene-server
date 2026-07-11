@@ -15,6 +15,9 @@ public enum StreamSuccessCode implements BaseResponseCode {
     LIVE_ROOM_LEAVE_SUCCESS("LIVE200_2", OK, "라이브 방에서 나갔습니다."),
     ALL_LIVE_SUCCESS("LIVE200_3", OK, "현재 라이브 중인 목록을 조회하는데 성공했습니다."),
     LIVE_CLOSE_SUCCESS("LIVE200_4", OK, "라이브 종료에 성공했습니다."),
+    RESERVATION_EDIT_VIEW_SUCCESS("LIVE200_5", OK, "라이브 예약 편집 화면 조회에 성공했습니다."),
+    RESERVATION_UPDATE_SUCCESS("LIVE200_6", OK, "라이브 예약 수정에 성공했습니다."),
+    RESERVATION_CANCEL_SUCCESS("LIVE200_7", OK, "라이브 예약 취소에 성공했습니다."),
     LIVE_CREATE_SUCCESS("LIVE201_1", CREATED, "라이브 생성에 성공했습니다."),
     ;
 
