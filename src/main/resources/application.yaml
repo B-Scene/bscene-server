@@ -103,3 +103,5 @@ notification:
   fcm:
     enabled: ${FCM_ENABLED:false}
     credentials-base64: ${FCM_CREDENTIALS_BASE64:}
+  terms:
+    live-id: ${NOTIFICATION_TERMS_LIVE_ID:4}
