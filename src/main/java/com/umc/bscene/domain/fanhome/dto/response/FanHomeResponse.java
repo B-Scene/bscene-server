@@ -12,6 +12,7 @@ import java.util.List;
 
 public record FanHomeResponse(
         boolean hasFollowingBands,
+        boolean hasUnreadNotification,             // 안읽은 알림 존재 여부 (알림 뱃지 노출용)
         PerformanceSectionType performanceType,   // UPCOMING | RECOMMENDED
 
         // 섹션 1: 팔로우한 밴드 소식
@@ -25,6 +26,7 @@ public record FanHomeResponse(
 ) {
     public static FanHomeResponse of(
             boolean hasFollowingBands,
+            boolean hasUnreadNotification,
             PerformanceSectionType performanceType,
             List<BandNewsItem> followingBandNews,
             List<RecommendedBandItem> recommendedBands,
@@ -32,6 +34,7 @@ public record FanHomeResponse(
     ) {
         return new FanHomeResponse(
                 hasFollowingBands,
+                hasUnreadNotification,
                 performanceType,
                 followingBandNews,
                 recommendedBands,

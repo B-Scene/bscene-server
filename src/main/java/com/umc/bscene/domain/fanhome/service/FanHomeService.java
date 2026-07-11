@@ -7,6 +7,7 @@ import com.umc.bscene.domain.fanhome.dto.response.FanHomeResponse.RecommendedBan
 import com.umc.bscene.domain.fanhome.enums.PerformanceSectionType;
 import com.umc.bscene.domain.fanhome.port.BandPort;
 import com.umc.bscene.domain.fanhome.port.FollowPort;
+import com.umc.bscene.domain.fanhome.port.NotificationPort;
 import com.umc.bscene.domain.fanhome.port.PerformancePort;
 import com.umc.bscene.domain.fanhome.port.PostPort;
 import lombok.RequiredArgsConstructor;
@@ -28,12 +29,16 @@ public class FanHomeService {
     private final PostPort postPort;
     private final BandPort bandPort;
     private final PerformancePort performancePort;
+    private final NotificationPort notificationPort;
 
     // 팬모드 홈 통합 조회
     public FanHomeResponse getFanHome(Long userId) {
         // 팔로우한 밴드 조회
         List<Long> followingBandIds = followPort.findFollowingBandIds(userId);
         boolean hasFollowingBands = !followingBandIds.isEmpty();
+
+        // 안읽은 알림 존재 여부 (알림 뱃지 노출용)
+        boolean hasUnreadNotification = notificationPort.hasUnread(userId);
 
         // 팔로우한 밴드 소식 (팔로우 없으면 빈 리스트 → 프론트가 "아직 팔로우한 밴드가 없어요")
         List<BandNewsItem> followingBandNews = hasFollowingBands
@@ -63,6 +68,7 @@ public class FanHomeService {
 
         return FanHomeResponse.of(
                 hasFollowingBands,
+                hasUnreadNotification,
                 performanceType,
                 followingBandNews,
                 recommendedBands,
