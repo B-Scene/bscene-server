@@ -74,6 +74,11 @@ public enum SessionErrorCode implements BaseResponseCode {
             HttpStatus.BAD_REQUEST.value(),
             "SESSION_RECRUITMENT_APPLICATION_CLOSED",
             "지원이 마감된 공고입니다."
+    ),
+    SELF_RECRUITMENT_APPLICATION_NOT_ALLOWED(
+            HttpStatus.FORBIDDEN.value(),
+            "SELF_RECRUITMENT_APPLICATION_NOT_ALLOWED",
+            "본인이 만든 공고에는 지원할 수 없습니다."
     );
 
     private final int status;

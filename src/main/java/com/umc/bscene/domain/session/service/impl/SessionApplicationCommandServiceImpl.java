@@ -163,6 +163,12 @@ public class SessionApplicationCommandServiceImpl implements SessionApplicationC
             );
         }
 
+        if (recruitment.getBand().getOwner().getId().equals(userId)) {
+            throw new SessionApplicationException(
+                    SessionErrorCode.SELF_RECRUITMENT_APPLICATION_NOT_ALLOWED
+            );
+        }
+
         SessionApplication application = sessionApplicationRepository
                 .findBySessionApplicationIdAndUserIdAndDeletedAtIsNull(
                         sessionApplicationId,
