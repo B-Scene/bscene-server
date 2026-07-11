@@ -1,6 +1,5 @@
 package com.umc.bscene.domain.fanhome.config;
 
-import com.umc.bscene.domain.fanhome.adapter.PerformanceAdapter;
 import com.umc.bscene.domain.fanhome.adapter.PostAdapter;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -15,10 +14,5 @@ public class FanHomeConfig {
     @Bean
     public PostAdapter postFanHomeAdapter() {
         return new PostAdapter();
-    }
-
-    @Bean
-    public PerformanceAdapter performanceFanHomeAdapter() {
-        return new PerformanceAdapter();
     }
 }

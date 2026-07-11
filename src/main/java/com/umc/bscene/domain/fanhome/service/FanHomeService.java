@@ -55,7 +55,7 @@ public class FanHomeService {
         List<HomePerformanceItem> performances;
         if (upcomingPerformances.isEmpty()) {
             performanceType = PerformanceSectionType.RECOMMENDED;
-            performances = performancePort.recommendPerformances(userId, PERFORMANCE_LIMIT);
+            performances = performancePort.recommendPerformances(PERFORMANCE_LIMIT);
         } else {
             performanceType = PerformanceSectionType.UPCOMING;
             performances = upcomingPerformances;
