@@ -6,6 +6,7 @@ public record PostUpdateRequest(
         String title,
         String description,
         List<String> mediaUrls,
+        String thumbnailUrl,
         List<String> tags
 ) {
 }

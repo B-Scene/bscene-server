@@ -75,6 +75,10 @@ class SessionProfileMigrationTest {
             assertThat(columnExists(connection,
                     "session_applications", "purpose")).isTrue();
             assertThat(columnExists(connection,
+                    "session_applications", "profile_image_url")).isTrue();
+            assertThat(columnExists(connection,
+                    "session_applications", "is_public")).isTrue();
+            assertThat(columnExists(connection,
                     "session_application_links", "session_application_id")).isTrue();
             assertThat(columnExists(connection,
                     "BandMember", "session_application_id")).isTrue();
@@ -205,6 +209,37 @@ class SessionProfileMigrationTest {
                                 ("session_recruitment_id", "user_id")
                             VALUES (1, 1)
                             """));
+        }
+    }
+
+    @Test
+    void createSessionBasicProfileTable() throws Exception {
+        String url = "jdbc:h2:mem:session-basic-profile-migration;MODE=MySQL;DB_CLOSE_DELAY=-1";
+
+        try (Connection connection = DriverManager.getConnection(url, "sa", "");
+             Statement statement = connection.createStatement()) {
+            statement.execute("""
+                    CREATE TABLE "User" (
+                        id BIGINT PRIMARY KEY
+                    )
+                    """);
+        }
+
+        Flyway.configure()
+                .dataSource(url, "sa", "")
+                .baselineOnMigrate(true)
+                .baselineVersion("8")
+                .load()
+                .migrate();
+
+        try (Connection connection = DriverManager.getConnection(url, "sa", "")) {
+            assertThat(tableExists(connection, "session_basic_profiles")).isTrue();
+            assertThat(columnExists(connection,
+                    "session_basic_profiles", "profile_image_url")).isTrue();
+            assertThat(columnExists(connection,
+                    "session_basic_profiles", "name")).isFalse();
+            assertThat(columnExists(connection,
+                    "session_basic_profiles", "phone")).isFalse();
         }
     }
 

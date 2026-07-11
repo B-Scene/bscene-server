@@ -54,9 +54,10 @@ public class PerformanceController {
     // 공연 상세 조회 API
     @GetMapping("/performances/{performanceId}")
     public ResponseEntity<SuccessResponse<PerformanceResponse>> getPerformanceDetail(
+            @AuthenticationPrincipal AuthMember authMember,
             @PathVariable Long performanceId
     ) {
-        PerformanceResponse response = performanceService.getPerformanceDetail(performanceId);
+        PerformanceResponse response = performanceService.getPerformanceDetail(authMember.getUser().getId(), performanceId);
         SuccessResponse<PerformanceResponse> successResponse = SuccessResponse.of(
                 response,
                 PerformanceSuccessCode.PERFORMANCE_DETAIL_GET_SUCCESS

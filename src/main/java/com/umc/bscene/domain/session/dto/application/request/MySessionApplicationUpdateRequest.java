@@ -26,6 +26,10 @@ public class MySessionApplicationUpdateRequest {
     @Size(max = 20, message = "지원서 용도는 20자 이하여야 합니다.")
     private String purpose;
 
+    @URL(message = "프로필 이미지는 올바른 URL 형식이어야 합니다.")
+    @Size(max = 500, message = "프로필 이미지 URL은 500자 이하여야 합니다.")
+    private String profileImageUrl;
+
     @NotNull(message = "세션 파트는 필수입니다.")
     private Part part;
 

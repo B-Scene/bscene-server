@@ -9,6 +9,12 @@ import org.springframework.http.HttpStatus;
 @RequiredArgsConstructor
 public enum SessionErrorCode implements BaseResponseCode {
 
+    INVALID_SESSION_BASIC_PROFILE_REQUEST(
+            HttpStatus.BAD_REQUEST.value(),
+            "INVALID_SESSION_BASIC_PROFILE_REQUEST",
+            "세션 기본 정보 입력값을 확인해주세요."
+    ),
+
     SESSION_APPLICATION_NOT_FOUND(
             HttpStatus.NOT_FOUND.value(),
             "SESSION_APPLICATION_NOT_FOUND",
@@ -24,6 +30,11 @@ public enum SessionErrorCode implements BaseResponseCode {
             HttpStatus.BAD_REQUEST.value(),
             "INVALID_SESSION_APPLICATION_REQUEST",
             "지원서 필수 입력값을 확인해주세요."
+    ),
+    SESSION_APPLICATION_VISIBILITY_NOT_ALLOWED(
+            HttpStatus.BAD_REQUEST.value(),
+            "SESSION_APPLICATION_VISIBILITY_NOT_ALLOWED",
+            "기본 지원서만 공개 여부를 변경할 수 있습니다."
     ),
 
     INVALID_SESSION_RECRUITMENT_REQUEST(

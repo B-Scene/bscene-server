@@ -98,6 +98,10 @@ public class StreamServiceImpl implements StreamService {
 
         Long userId = user.getId();
 
+        // 활성화된 밴드 멤버 프로필이 없으면 오류
+        if (bandMemberPort.getBandNameWithBandProfileByBroadcasterId(Set.of(userId)).isEmpty())
+            throw new StreamException(StreamErrorCode.NO_ACTIVE_BAND_PROFILE);
+
         AudioStream createdAudioStream = AudioStream.builder()
                     .broadcasterId(userId)
                     .path(UUID.randomUUID().toString())

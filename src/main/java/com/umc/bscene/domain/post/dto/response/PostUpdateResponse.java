@@ -14,6 +14,7 @@ public record PostUpdateResponse(
         String title,
         String description,
         List<String> mediaUrls,
+        String thumbnailUrl,
         List<String> tags,
         LocalDateTime updatedAt
 ) {
@@ -24,6 +25,7 @@ public record PostUpdateResponse(
                 post.getTitle(),
                 post.getDescription(),
                 post.getMediaList().stream().map(PostMedia::getMediaUrl).toList(),
+                post.getThumbnailUrl(),
                 post.getTagList().stream().map(PostTag::getTagName).toList(),
                 post.getUpdatedAt()
         );

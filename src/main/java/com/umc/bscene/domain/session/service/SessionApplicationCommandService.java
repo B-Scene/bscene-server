@@ -1,7 +1,9 @@
 package com.umc.bscene.domain.session.service;
 
 import com.umc.bscene.domain.session.dto.application.request.MySessionApplicationUpdateRequest;
+import com.umc.bscene.domain.session.dto.application.request.SessionApplicationVisibilityRequest;
 import com.umc.bscene.domain.session.dto.application.response.MySessionApplicationResponse;
+import com.umc.bscene.domain.session.dto.application.response.SessionApplicationVisibilityResponse;
 
 public interface SessionApplicationCommandService {
 
@@ -14,5 +16,13 @@ public interface SessionApplicationCommandService {
             Long userId,
             Long sessionApplicationId,
             MySessionApplicationUpdateRequest request
+    );
+
+    void deleteSessionApplication(Long userId, Long sessionApplicationId);
+
+    SessionApplicationVisibilityResponse updateVisibility(
+            Long userId,
+            Long sessionApplicationId,
+            SessionApplicationVisibilityRequest request
     );
 }

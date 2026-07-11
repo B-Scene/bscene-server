@@ -5,7 +5,7 @@ import java.util.List;
 /**
  * 팬홈이 팔로우 정보를 조회하기 위한 포트 (adapter는 follow 도메인이 구현).
  */
-public interface FollowQueryPort {
+public interface FollowPort {
     /**
      * 사용자가 팔로우한 밴드 ID 목록을 조회합니다.
      *

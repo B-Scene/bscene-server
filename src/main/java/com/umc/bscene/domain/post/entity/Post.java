@@ -37,6 +37,10 @@ public class Post extends BaseEntity {
     @Column(length = 1000)
     private String description;
 
+    // 영상 콘텐츠의 이미지 썸네일 (사진/글 콘텐츠는 사용하지 않음)
+    @Column(length = 500)
+    private String thumbnailUrl;
+
     @Builder.Default
     @OneToMany(mappedBy = "post", cascade = CascadeType.ALL, orphanRemoval = true)
     @OrderBy("sortOrder asc")
@@ -47,9 +51,10 @@ public class Post extends BaseEntity {
     private List<PostTag> tagList = new ArrayList<>();
 
     // 수정 API에서 전달된 값만 부분 반영
-    public void update(String title, String description) {
+    public void update(String title, String description, String thumbnailUrl) {
         if (title != null) this.title = title;
         if (description != null) this.description = description;
+        if (thumbnailUrl != null) this.thumbnailUrl = thumbnailUrl;
     }
 
     public void clearMedia() {
