@@ -8,6 +8,7 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public enum StreamErrorCode implements BaseResponseCode {
 
+    NO_ACTIVE_BAND_PROFILE("LIVE400_1", 400, "활성화된 밴드 멤버 프로필이 없습니다. 방송에 사용할 밴드 프로필을 먼저 활성화해주세요."),
     FORBIDDEN_REQUEST("LIVE403_1", 403, "해당 리소스에 대한 접근 권한이 없습니다."),
     AUDIO_STREAM_NOT_FOUND("LIVE404_1", 404, "오디오 송출 세션을 찾을 수 없습니다."),
     AUDIO_STREAM_NOT_LIVE("LIVE404_2", 404, "현재 방송 중인 라이브가 아닙니다."),
