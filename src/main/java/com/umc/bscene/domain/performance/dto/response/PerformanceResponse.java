@@ -1,6 +1,7 @@
 package com.umc.bscene.domain.performance.dto.response;
 
 import com.umc.bscene.domain.auth.enums.onboarding.Genre;
+import com.umc.bscene.domain.auth.enums.onboarding.Region;
 import com.umc.bscene.domain.performance.entity.Performance;
 
 import java.time.LocalDate;
@@ -12,7 +13,7 @@ public record PerformanceResponse(
         Genre genre,
         LocalDate performanceDate,
         LocalTime startTime,
-        String region,
+        Region region,
         String venue,
         String description,
         Integer ticketPrice,
