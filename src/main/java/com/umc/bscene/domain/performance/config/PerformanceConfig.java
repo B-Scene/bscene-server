@@ -2,6 +2,9 @@ package com.umc.bscene.domain.performance.config;
 
 import com.umc.bscene.domain.performance.adapter.FanHomeAdapter;
 import com.umc.bscene.domain.performance.adapter.BandAdapter;
+import com.umc.bscene.domain.performance.adapter.UserAdapter;
+import com.umc.bscene.domain.performance.repository.PerformanceAlarmRepository;
+import com.umc.bscene.domain.performance.repository.PerformanceInterestRepository;
 import com.umc.bscene.domain.performance.repository.PerformanceRepository;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -22,5 +25,14 @@ public class PerformanceConfig {
             PerformanceRepository performanceRepository
     ) {
         return new FanHomeAdapter(performanceRepository);
+    }
+
+    // 마이페이지 PerformancePort 구현 어댑터 (관심 공연 수 / 참여 공연 수)
+    @Bean
+    public UserAdapter userPerformanceAdapter(
+            PerformanceInterestRepository performanceInterestRepository,
+            PerformanceAlarmRepository performanceAlarmRepository
+    ) {
+        return new UserAdapter(performanceInterestRepository, performanceAlarmRepository);
     }
 }
