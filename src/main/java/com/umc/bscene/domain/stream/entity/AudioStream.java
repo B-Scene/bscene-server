@@ -22,6 +22,10 @@ public class AudioStream extends BaseEntity {
     @Column(name = "broadcaster_id", nullable = false)
     private Long broadcasterId;
 
+    // 라이브의 주체인 밴드를 생성 시점에 직접 연결한다.
+    @Column(name = "band_id", nullable = false)
+    private Long bandId;
+
     @Column(nullable = false, unique = true)
     private String path;
 
