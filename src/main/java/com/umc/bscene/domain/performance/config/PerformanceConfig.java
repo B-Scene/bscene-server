@@ -1,19 +1,19 @@
 package com.umc.bscene.domain.performance.config;
 
 import com.umc.bscene.domain.performance.adapter.FanHomeAdapter;
-import com.umc.bscene.domain.performance.adapter.PerformanceAdapter;
+import com.umc.bscene.domain.performance.adapter.BandAdapter;
 import com.umc.bscene.domain.performance.repository.PerformanceRepository;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
 @Configuration
-public class PerformancePortConfig {
+public class PerformanceConfig {
 
     @Bean
-    public PerformanceAdapter PerformanceAdapter(
+    public BandAdapter bandPerformanceAdapter(
             PerformanceRepository performanceRepository
     ) {
-        return new PerformanceAdapter(performanceRepository);
+        return new BandAdapter(performanceRepository);
     }
 
     // 팬홈 PerformancePort 구현 어댑터 (다가오는 공연 / 관심수 기반 추천 공연)
