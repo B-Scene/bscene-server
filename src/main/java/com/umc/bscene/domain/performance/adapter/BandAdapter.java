@@ -6,7 +6,7 @@ import com.umc.bscene.domain.performance.repository.PerformanceRepository;
 import lombok.RequiredArgsConstructor;
 
 @RequiredArgsConstructor
-public class PerformanceAdapter implements PerformancePort {
+public class BandAdapter implements PerformancePort {
 
     private final PerformanceRepository performanceRepository;
 
