@@ -1,7 +1,10 @@
 package com.umc.bscene.domain.stream.config;
 
 import com.umc.bscene.domain.stream.port.BandMemberPort;
+import com.umc.bscene.domain.stream.port.FollowPort;
+import com.umc.bscene.domain.stream.port.UserTermsPort;
 import com.umc.bscene.domain.stream.repository.AudioStreamRepository;
+import com.umc.bscene.domain.stream.repository.LiveAlarmRepository;
 import com.umc.bscene.domain.stream.repository.StreamMemberRepository;
 import com.umc.bscene.domain.stream.scheduler.StreamCleanupScheduler;
 import com.umc.bscene.domain.stream.service.MediaMtxLivePoller;
@@ -9,6 +12,7 @@ import com.umc.bscene.domain.stream.service.StreamService;
 import com.umc.bscene.domain.stream.service.StreamServiceImpl;
 import com.umc.bscene.domain.stream.sse.ViewerSsePresence;
 import com.umc.bscene.domain.stream.sse.ViewerSseRegistry;
+import com.umc.bscene.global.notification.port.NotificationPort;
 import com.umc.bscene.global.security.util.JwtUtil;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
@@ -59,8 +63,12 @@ public class StreamConfig {
             JwtUtil jwtUtil,
             AudioStreamRepository audioStreamRepository,
             StreamMemberRepository streamMemberRepository,
+            LiveAlarmRepository liveAlarmRepository,
             StringRedisTemplate stringRedisTemplate,
             BandMemberPort bandMemberPort,
+            FollowPort followPort,
+            UserTermsPort userTermsPort,
+            NotificationPort notificationPort,
             RestClient mtxRestClient,
             ViewerSsePresence viewerSsePresence,
             @Value("${mediamtx.hls-url}") String hlsUrl,
@@ -70,8 +78,12 @@ public class StreamConfig {
                 jwtUtil,
                 audioStreamRepository,
                 streamMemberRepository,
+                liveAlarmRepository,
                 stringRedisTemplate,
                 bandMemberPort,
+                followPort,
+                userTermsPort,
+                notificationPort,
                 mtxRestClient,
                 viewerSsePresence,
                 hlsUrl,
