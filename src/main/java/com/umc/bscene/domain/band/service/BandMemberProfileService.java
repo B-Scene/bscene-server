@@ -51,6 +51,14 @@ public class BandMemberProfileService {
         return BandMemberProfileResponse.from(getOwnProfile(userId, profileId));
     }
 
+    // 내 활성 프로필 조회
+    public BandMemberProfileResponse getActiveProfile(Long userId) {
+        BandMemberProfile profile = bandMemberProfileRepository.findByUser_IdAndActiveTrue(userId)
+                .orElseThrow(() -> new BandException(BandErrorCode.BAND_MEMBER_PROFILE_NOT_FOUND));
+
+        return BandMemberProfileResponse.from(profile);
+    }
+
     // 멤버 프로필 수정
     @Transactional
     public BandMemberProfileResponse updateProfile(Long userId, Long profileId, BandMemberProfileUpdateRequest request) {

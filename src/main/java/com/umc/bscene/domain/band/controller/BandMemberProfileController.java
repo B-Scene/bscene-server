@@ -55,6 +55,22 @@ public class BandMemberProfileController {
         return ResponseEntity.status(successResponse.getStatus()).body(successResponse);
     }
 
+    // 내 활성 프로필 조회 API
+    @GetMapping("/active")
+    public ResponseEntity<SuccessResponse<BandMemberProfileResponse>> getActiveProfile(
+            @AuthenticationPrincipal AuthMember authMember
+    ) {
+        BandMemberProfileResponse response = bandMemberProfileService.getActiveProfile(
+                authMember.getUser().getId()
+        );
+        SuccessResponse<BandMemberProfileResponse> successResponse = SuccessResponse.of(
+                response,
+                BandSuccessCode.BAND_MEMBER_PROFILE_ACTIVE_GET_SUCCESS
+        );
+
+        return ResponseEntity.status(successResponse.getStatus()).body(successResponse);
+    }
+
     // 내 멤버 프로필 단건 조회 API
     @GetMapping("/{profileId}")
     public ResponseEntity<SuccessResponse<BandMemberProfileResponse>> getProfile(

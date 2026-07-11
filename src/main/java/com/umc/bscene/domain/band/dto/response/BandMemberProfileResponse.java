@@ -9,6 +9,7 @@ public record BandMemberProfileResponse(
         Long id,
         String nickname,
         Part part,
+        Boolean active,
         LocalDateTime createdAt
 ) {
     public static BandMemberProfileResponse from(BandMemberProfile profile) {
@@ -16,6 +17,7 @@ public record BandMemberProfileResponse(
                 profile.getId(),
                 profile.getNickname(),
                 profile.getPart(),
+                profile.getActive(),
                 profile.getCreatedAt()
         );
     }
