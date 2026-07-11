@@ -8,6 +8,7 @@ import java.sql.DatabaseMetaData;
 import java.sql.DriverManager;
 import java.sql.ResultSet;
 import java.sql.Statement;
+import java.sql.SQLException;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -74,6 +75,10 @@ class SessionProfileMigrationTest {
             assertThat(columnExists(connection,
                     "session_applications", "purpose")).isTrue();
             assertThat(columnExists(connection,
+                    "session_applications", "profile_image_url")).isTrue();
+            assertThat(columnExists(connection,
+                    "session_applications", "is_public")).isTrue();
+            assertThat(columnExists(connection,
                     "session_application_links", "session_application_id")).isTrue();
             assertThat(columnExists(connection,
                     "BandMember", "session_application_id")).isTrue();
@@ -124,6 +129,117 @@ class SessionProfileMigrationTest {
                      "SELECT purpose FROM session_applications WHERE session_application_id = 1")) {
             assertThat(row.next()).isTrue();
             assertThat(row.getString(1)).isEqualTo("기본");
+        }
+    }
+
+    @Test
+    void removeLegacyProfileColumnLeftInRecruitmentTable() throws Exception {
+        String url = "jdbc:h2:mem:legacy-recruitment-column;MODE=MySQL;DB_CLOSE_DELAY=-1";
+
+        try (Connection connection = DriverManager.getConnection(url, "sa", "");
+             Statement statement = connection.createStatement()) {
+            statement.execute("""
+                    CREATE TABLE session_applications (
+                        session_application_id BIGINT PRIMARY KEY
+                    )
+                    """);
+            statement.execute("""
+                    CREATE TABLE session_recruitment (
+                        session_recruitment_id BIGINT PRIMARY KEY,
+                        session_profile_id BIGINT NOT NULL,
+                        CONSTRAINT fk_recruitment_legacy_profile
+                            FOREIGN KEY (session_profile_id)
+                            REFERENCES session_applications(session_application_id)
+                    )
+                    """);
+        }
+
+        Flyway.configure()
+                .dataSource(url, "sa", "")
+                .baselineOnMigrate(true)
+                .baselineVersion("4")
+                .load()
+                .migrate();
+
+        try (Connection connection = DriverManager.getConnection(url, "sa", "")) {
+            assertThat(columnExists(connection,
+                    "session_recruitment", "session_profile_id")).isFalse();
+        }
+    }
+
+    @Test
+    void createSessionRecruitmentInterestTableWithUniqueUserRecruitmentPair() throws Exception {
+        String url = "jdbc:h2:mem:recruitment-interest-migration;MODE=MySQL;DB_CLOSE_DELAY=-1";
+
+        try (Connection connection = DriverManager.getConnection(url, "sa", "");
+             Statement statement = connection.createStatement()) {
+            statement.execute("""
+                    CREATE TABLE session_recruitment (
+                        session_recruitment_id BIGINT PRIMARY KEY
+                    )
+                    """);
+            statement.execute("""
+                    CREATE TABLE "User" (
+                        id BIGINT PRIMARY KEY
+                    )
+                    """);
+            statement.execute("INSERT INTO session_recruitment VALUES (1)");
+            statement.execute("INSERT INTO \"User\" VALUES (1)");
+        }
+
+        Flyway.configure()
+                .dataSource(url, "sa", "")
+                .baselineOnMigrate(true)
+                .baselineVersion("5")
+                .load()
+                .migrate();
+
+        try (Connection connection = DriverManager.getConnection(url, "sa", "");
+             Statement statement = connection.createStatement()) {
+            assertThat(tableExists(connection, "session_recruitment_interest")).isTrue();
+            statement.execute("""
+                    INSERT INTO "session_recruitment_interest"
+                        ("session_recruitment_id", "user_id")
+                    VALUES (1, 1)
+                    """);
+
+            org.junit.jupiter.api.Assertions.assertThrows(SQLException.class, () ->
+                    statement.execute("""
+                            INSERT INTO "session_recruitment_interest"
+                                ("session_recruitment_id", "user_id")
+                            VALUES (1, 1)
+                            """));
+        }
+    }
+
+    @Test
+    void createSessionBasicProfileTable() throws Exception {
+        String url = "jdbc:h2:mem:session-basic-profile-migration;MODE=MySQL;DB_CLOSE_DELAY=-1";
+
+        try (Connection connection = DriverManager.getConnection(url, "sa", "");
+             Statement statement = connection.createStatement()) {
+            statement.execute("""
+                    CREATE TABLE "User" (
+                        id BIGINT PRIMARY KEY
+                    )
+                    """);
+        }
+
+        Flyway.configure()
+                .dataSource(url, "sa", "")
+                .baselineOnMigrate(true)
+                .baselineVersion("8")
+                .load()
+                .migrate();
+
+        try (Connection connection = DriverManager.getConnection(url, "sa", "")) {
+            assertThat(tableExists(connection, "session_basic_profiles")).isTrue();
+            assertThat(columnExists(connection,
+                    "session_basic_profiles", "profile_image_url")).isTrue();
+            assertThat(columnExists(connection,
+                    "session_basic_profiles", "name")).isFalse();
+            assertThat(columnExists(connection,
+                    "session_basic_profiles", "phone")).isFalse();
         }
     }
 

@@ -7,9 +7,11 @@ import com.umc.bscene.domain.session.entity.SessionRecruitment;
 import com.umc.bscene.domain.session.enums.Part;
 import com.umc.bscene.domain.session.enums.SessionGenre;
 import com.umc.bscene.domain.session.enums.SessionRegion;
+import com.umc.bscene.domain.session.enums.SkillLevel;
 import com.umc.bscene.domain.session.enums.code.SessionErrorCode;
 import com.umc.bscene.domain.session.exception.SessionException;
 import com.umc.bscene.domain.session.repository.SessionRecruitmentRepository;
+import com.umc.bscene.domain.session.repository.SessionRecruitmentInterestRepository;
 import com.umc.bscene.domain.session.service.SessionRecruitmentQueryService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.PageRequest;
@@ -20,6 +22,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
+import java.util.Set;
 
 @Service
 @RequiredArgsConstructor
@@ -27,10 +30,13 @@ import java.util.List;
 public class SessionRecruitmentQueryServiceImpl implements SessionRecruitmentQueryService {
 
     private final SessionRecruitmentRepository sessionRecruitmentRepository;
+    private final SessionRecruitmentInterestRepository interestRepository;
 
     @Override
     public SessionRecruitmentListResponse getSessionRecruitments(
+            Long userId,
             Part part,
+            SkillLevel skillLevel,
             SessionGenre genre,
             SessionRegion region,
             String keyword,
@@ -41,14 +47,19 @@ public class SessionRecruitmentQueryServiceImpl implements SessionRecruitmentQue
         PageRequest pageRequest = PageRequest.of(0, pageSize + 1);
         LocalDateTime now = LocalDateTime.now();
 
-        List<SessionRecruitment> recruitments = findRecruitments(
+        String normalizedKeyword = keyword == null || keyword.isBlank()
+                ? null
+                : keyword.trim();
+
+        List<SessionRecruitment> recruitments = sessionRecruitmentRepository.findRecruitments(
+                now,
                 part,
+                skillLevel,
                 genre,
                 region,
-                keyword,
+                normalizedKeyword,
                 cursorId,
-                pageRequest,
-                now
+                pageRequest
         );
 
         boolean hasNext = recruitments.size() > pageSize;
@@ -57,8 +68,15 @@ public class SessionRecruitmentQueryServiceImpl implements SessionRecruitmentQue
                 ? recruitments.subList(0, pageSize)
                 : recruitments;
 
+        List<Long> recruitmentIds = slicedRecruitments.stream()
+                .map(SessionRecruitment::getSessionRecruitmentId)
+                .toList();
+        Set<Long> interestedIds = recruitmentIds.isEmpty()
+                ? Set.of()
+                : interestRepository.findInterestedRecruitmentIds(userId, recruitmentIds);
+
         List<SessionRecruitmentListItemResponse> content = slicedRecruitments.stream()
-                .map(this::toListItemResponse)
+                .map(recruitment -> toListItemResponse(recruitment, now, interestedIds))
                 .toList();
 
         Long nextCursor = hasNext && !slicedRecruitments.isEmpty()
@@ -75,9 +93,13 @@ public class SessionRecruitmentQueryServiceImpl implements SessionRecruitmentQue
 
     // 세션 모집 공고 상세 조회
     @Override
-    public SessionRecruitmentDetailResponse getSessionRecruitmentDetail(Long recruitmentId) {
+    public SessionRecruitmentDetailResponse getSessionRecruitmentDetail(
+            Long userId,
+            Long recruitmentId
+    ) {
 
-        SessionRecruitment recruitment = sessionRecruitmentRepository.findById(recruitmentId)
+        SessionRecruitment recruitment = sessionRecruitmentRepository
+                .findBySessionRecruitmentIdAndDeletedAtIsNull(recruitmentId)
                 .orElseThrow(() -> new SessionException(SessionErrorCode.SESSION_RECRUITMENT_NOT_FOUND));
 
         return SessionRecruitmentDetailResponse.builder()
@@ -87,8 +109,12 @@ public class SessionRecruitmentQueryServiceImpl implements SessionRecruitmentQue
                 .dDay(calculateDDay(recruitment.getDeadlineAt().toLocalDate()))
 
                 // createdAt 기준 3일 이내면 true
-                .isNew(recruitment.getCreatedAt() != null
-                        && recruitment.getCreatedAt().toLocalDate().isAfter(LocalDate.now().minusDays(3)))
+                .isNew(isNewRecruitment(recruitment.getCreatedAt(), LocalDateTime.now()))
+                .isInterested(interestRepository
+                        .existsBySessionRecruitment_SessionRecruitmentIdAndUser_Id(
+                                recruitmentId,
+                                userId
+                        ))
 
                 // 밴드 프로필 정보
                 .bandId(recruitment.getBand().getId())
@@ -109,89 +135,31 @@ public class SessionRecruitmentQueryServiceImpl implements SessionRecruitmentQue
                 .build();
     }
 
-    private List<SessionRecruitment> findRecruitments(
-            Part part,
-            SessionGenre genre,
-            SessionRegion region,
-            String keyword,
-            Long cursorId,
-            PageRequest pageRequest,
-            LocalDateTime now
+    private SessionRecruitmentListItemResponse toListItemResponse(
+            SessionRecruitment recruitment,
+            LocalDateTime now,
+            Set<Long> interestedIds
     ) {
-        boolean hasFilter = part != null && genre != null && region != null;
-        boolean hasKeyword = keyword != null && !keyword.isBlank();
-        boolean hasCursor = cursorId != null;
-
-        if (hasFilter) {
-            if (hasCursor) {
-                return sessionRecruitmentRepository
-                        .findByDeletedAtIsNullAndDeadlineAtAfterAndPartAndGenreAndRegionAndSessionRecruitmentIdLessThanOrderBySessionRecruitmentIdDesc(
-                                now,
-                                part,
-                                genre,
-                                region,
-                                cursorId,
-                                pageRequest
-                        );
-            }
-
-            return sessionRecruitmentRepository
-                    .findByDeletedAtIsNullAndDeadlineAtAfterAndPartAndGenreAndRegionOrderBySessionRecruitmentIdDesc(
-                            now,
-                            part,
-                            genre,
-                            region,
-                            pageRequest
-                    );
-        }
-
-        if (hasKeyword) {
-            if (hasCursor) {
-                return sessionRecruitmentRepository
-                        .findByDeletedAtIsNullAndDeadlineAtAfterAndRecruitmentTitleContainingAndSessionRecruitmentIdLessThanOrderBySessionRecruitmentIdDesc(
-                                now,
-                                keyword,
-                                cursorId,
-                                pageRequest
-                        );
-            }
-
-            return sessionRecruitmentRepository
-                    .findByDeletedAtIsNullAndDeadlineAtAfterAndRecruitmentTitleContainingOrderBySessionRecruitmentIdDesc(
-                            now,
-                            keyword,
-                            pageRequest
-                    );
-        }
-
-        if (hasCursor) {
-            return sessionRecruitmentRepository
-                    .findByDeletedAtIsNullAndDeadlineAtAfterAndSessionRecruitmentIdLessThanOrderBySessionRecruitmentIdDesc(
-                            now,
-                            cursorId,
-                            pageRequest
-                    );
-        }
-
-        return sessionRecruitmentRepository
-                .findByDeletedAtIsNullAndDeadlineAtAfterOrderBySessionRecruitmentIdDesc(
-                        now,
-                        pageRequest
-                );
-    }
-
-    private SessionRecruitmentListItemResponse toListItemResponse(SessionRecruitment recruitment) {
         return SessionRecruitmentListItemResponse.builder()
                 .sessionRecruitmentId(recruitment.getSessionRecruitmentId())
                 .bandId(recruitment.getBand().getId())
                 .recruitmentTitle(recruitment.getRecruitmentTitle())
                 .bandName(recruitment.getBand().getName())
+                .bandGenre(recruitment.getBand().getGenre().getName())
+                .bandRegion(recruitment.getBand().getRegion().getName())
+                .content(recruitment.getContent())
                 .part(recruitment.getPart())
-                .genre(recruitment.getGenre())
-                .region(recruitment.getRegion())
+                .skillLevel(recruitment.getSkillLevel())
+                .practiceSchedule(recruitment.getPracticeSchedule())
                 .deadlineAt(recruitment.getDeadlineAt())
                 .dDay(calculateDDay(recruitment.getDeadlineAt().toLocalDate()))
+                .isNew(isNewRecruitment(recruitment.getCreatedAt(), now))
+                .isInterested(interestedIds.contains(recruitment.getSessionRecruitmentId()))
                 .build();
+    }
+
+    static boolean isNewRecruitment(LocalDateTime createdAt, LocalDateTime now) {
+        return createdAt != null && now.isBefore(createdAt.plusDays(3));
     }
 
     private Long calculateDDay(LocalDate deadlineDate) {

@@ -20,6 +20,8 @@ import java.util.List;
         "nickname",
         "title",
         "purpose",
+        "profileImageUrl",
+        "isPublic",
         "part",
         "skillLevel",
         "genre",
@@ -36,6 +38,8 @@ public class MySessionApplicationResponse {
     private String nickname;
     private String title;
     private String purpose;
+    private String profileImageUrl;
+    private Boolean isPublic;
 
     private Part part;
     private SkillLevel skillLevel;
@@ -54,6 +58,8 @@ public class MySessionApplicationResponse {
                 .nickname(null)
                 .title(null)
                 .purpose(null)
+                .profileImageUrl(null)
+                .isPublic(null)
                 .part(null)
                 .skillLevel(null)
                 .genre(null)
@@ -71,6 +77,8 @@ public class MySessionApplicationResponse {
                 .nickname(sessionApplication.getNickname())
                 .title(sessionApplication.getTitle())
                 .purpose(sessionApplication.getPurpose())
+                .profileImageUrl(sessionApplication.getProfileImageUrl())
+                .isPublic(sessionApplication.getIsPublic())
                 .part(sessionApplication.getPart())
                 .skillLevel(sessionApplication.getSkillLevel())
                 .genre(sessionApplication.getGenre())

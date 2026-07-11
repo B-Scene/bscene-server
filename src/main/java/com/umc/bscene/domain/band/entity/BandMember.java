@@ -61,4 +61,8 @@ public class BandMember extends BaseEntity {
         this.bandMemberProfile = bandMemberProfile;
         accept();
     }
+
+    public void clearSessionApplication() {
+        this.sessionApplication = null;
+    }
 }

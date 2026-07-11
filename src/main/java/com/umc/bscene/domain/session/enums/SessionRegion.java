@@ -1,6 +1,7 @@
 package com.umc.bscene.domain.session.enums;
 
 import com.fasterxml.jackson.annotation.JsonValue;
+import com.fasterxml.jackson.annotation.JsonCreator;
 
 public enum SessionRegion {
 
@@ -26,6 +27,16 @@ public enum SessionRegion {
 
     SessionRegion(String description) {
         this.description = description;
+    }
+
+    @JsonCreator
+    public static SessionRegion fromValue(String value) {
+        for (SessionRegion region : values()) {
+            if (region.name().equalsIgnoreCase(value) || region.description.equals(value)) {
+                return region;
+            }
+        }
+        throw new IllegalArgumentException("유효하지 않은 활동 지역입니다: " + value);
     }
 
     // JSON 응답 시 enum 이름(SEOUL)이 아닌 한글(서울)로 반환

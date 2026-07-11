@@ -9,6 +9,17 @@ import org.springframework.http.HttpStatus;
 @RequiredArgsConstructor
 public enum SessionSuccessCode implements BaseResponseCode {
 
+    SESSION_BASIC_PROFILE_GET_SUCCESS(
+            HttpStatus.OK.value(),
+            "SESSION_BASIC_PROFILE_GET_SUCCESS",
+            "세션 기본 정보 조회에 성공했습니다."
+    ),
+    SESSION_BASIC_PROFILE_UPDATE_SUCCESS(
+            HttpStatus.OK.value(),
+            "SESSION_BASIC_PROFILE_UPDATE_SUCCESS",
+            "세션 기본 정보 수정에 성공했습니다."
+    ),
+
     MY_SESSION_APPLICATION_GET_SUCCESS(
             HttpStatus.OK.value(),
             "MY_SESSION_APPLICATION_GET_SUCCESS",
@@ -26,11 +37,36 @@ public enum SessionSuccessCode implements BaseResponseCode {
             "MY_SESSION_APPLICATION_UPDATE_SUCCESS",
             "내 지원서 저장에 성공했습니다."
     ),
+    MY_SESSION_APPLICATION_DELETE_SUCCESS(
+            HttpStatus.OK.value(),
+            "MY_SESSION_APPLICATION_DELETE_SUCCESS",
+            "내 지원서 삭제에 성공했습니다."
+    ),
+    MY_SESSION_APPLICATION_VISIBILITY_UPDATE_SUCCESS(
+            HttpStatus.OK.value(),
+            "MY_SESSION_APPLICATION_VISIBILITY_UPDATE_SUCCESS",
+            "기본 지원서 공개 설정 변경에 성공했습니다."
+    ),
 
     MY_SESSION_APPLICATION_CREATE_SUCCESS(
             HttpStatus.CREATED.value(),
             "MY_SESSION_APPLICATION_CREATE_SUCCESS",
             "지원서 생성에 성공했습니다."
+    ),
+    MY_SESSION_APPLICATION_SUMMARY_SUCCESS(
+            HttpStatus.OK.value(),
+            "MY_SESSION_APPLICATION_SUMMARY_SUCCESS",
+            "내 세션 지원서 요약 조회에 성공했습니다."
+    ),
+    SESSION_APPLICATION_SEARCH_SUCCESS(
+            HttpStatus.OK.value(),
+            "SESSION_APPLICATION_SEARCH_SUCCESS",
+            "세션 찾기 조회에 성공했습니다."
+    ),
+    SESSION_APPLICATION_DETAIL_SUCCESS(
+            HttpStatus.OK.value(),
+            "SESSION_APPLICATION_DETAIL_SUCCESS",
+            "세션 지원서 상세 조회에 성공했습니다."
     ),
 
     SESSION_RECRUITMENT_CREATE_SUCCESS(
@@ -58,7 +94,17 @@ public enum SessionSuccessCode implements BaseResponseCode {
             HttpStatus.OK.value(),
         "SESSION_RECRUITMENT_DETAIL_SUCCESS",
                 "세션 모집 공고 상세 조회에 성공했습니다."
-                );
+    ),
+    SESSION_RECRUITMENT_INTEREST_SET_SUCCESS(
+            HttpStatus.OK.value(),
+            "SESSION_RECRUITMENT_INTEREST_SET_SUCCESS",
+            "세션 모집 공고 찜에 성공했습니다."
+    ),
+    SESSION_RECRUITMENT_INTEREST_UNSET_SUCCESS(
+            HttpStatus.OK.value(),
+            "SESSION_RECRUITMENT_INTEREST_UNSET_SUCCESS",
+            "세션 모집 공고 찜 취소에 성공했습니다."
+    );
 
     private final int status;
     private final String code;

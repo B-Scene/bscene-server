@@ -14,6 +14,7 @@ import java.time.LocalDateTime;
         "deadlineAt",
         "dDay",
         "isNew",
+        "isInterested",
 
         "bandId",
         "bandName",
@@ -38,6 +39,7 @@ public class SessionRecruitmentDetailResponse {
     private LocalDateTime deadlineAt;
     private Long dDay;
     private Boolean isNew;
+    private Boolean isInterested;
 
     private Long bandId;
     private String bandName;

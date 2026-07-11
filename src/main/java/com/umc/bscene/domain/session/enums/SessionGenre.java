@@ -1,6 +1,7 @@
 package com.umc.bscene.domain.session.enums;
 
 import com.fasterxml.jackson.annotation.JsonValue;
+import com.fasterxml.jackson.annotation.JsonCreator;
 
 public enum SessionGenre {
 
@@ -18,6 +19,16 @@ public enum SessionGenre {
 
     SessionGenre(String description) {
         this.description = description;
+    }
+
+    @JsonCreator
+    public static SessionGenre fromValue(String value) {
+        for (SessionGenre genre : values()) {
+            if (genre.name().equalsIgnoreCase(value) || genre.description.equals(value)) {
+                return genre;
+            }
+        }
+        throw new IllegalArgumentException("유효하지 않은 장르입니다: " + value);
     }
 
     // JSON 응답 시 enum 이름(ROCK)이 아닌 한글(록)로 반환
