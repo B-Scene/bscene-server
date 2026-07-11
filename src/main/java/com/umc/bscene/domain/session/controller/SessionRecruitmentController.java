@@ -5,6 +5,7 @@ import com.umc.bscene.domain.session.dto.application.request.SessionApplicationS
 import com.umc.bscene.domain.session.dto.application.response.SessionApplicationSubmitResponse;
 import com.umc.bscene.domain.session.dto.application.response.SubmittedApplicationDetailResponse;
 import com.umc.bscene.domain.session.dto.recruitment.response.InterestedRecruitmentListResponse;
+import com.umc.bscene.domain.session.dto.recruitment.response.RecentRecruitmentListResponse;
 import com.umc.bscene.domain.session.service.SessionRecruitmentInterestService;
 import com.umc.bscene.domain.session.dto.recruitment.request.SessionRecruitmentUpdateRequest;
 import com.umc.bscene.domain.session.dto.recruitment.response.SessionRecruitmentCreateResponse;
@@ -97,6 +98,22 @@ public class SessionRecruitmentController {
         return SuccessResponse.of(
                 response,
                 SessionSuccessCode.SESSION_RECRUITMENT_INTEREST_LIST_SUCCESS
+        );
+    }
+
+    @GetMapping("/recently-viewed")
+    public SuccessResponse<RecentRecruitmentListResponse> getRecentRecruitments(
+            @AuthenticationPrincipal AuthMember authMember,
+            @RequestParam(required = false) Long cursorId,
+            @RequestParam(defaultValue = "10") Integer size
+    ) {
+        RecentRecruitmentListResponse response = sessionRecruitmentQueryService
+                .getRecentRecruitments(
+                        authMember.getUser().getId(), cursorId, size
+                );
+        return SuccessResponse.of(
+                response,
+                SessionSuccessCode.SESSION_RECRUITMENT_RECENT_LIST_SUCCESS
         );
     }
     // 세션 모집 공고 목록 조회
