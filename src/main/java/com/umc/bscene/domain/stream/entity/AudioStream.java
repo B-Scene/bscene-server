@@ -44,9 +44,13 @@ public class AudioStream extends BaseEntity {
 
     private LocalDateTime closedAt;
 
-    public void close() {
+    // 방송 종료 시점의 시청자 수 스냅샷. 종료 전에는 null
+    private Integer closedViewerCount;
+
+    public void close(int closedViewerCount) {
         this.status = StreamStatus.CLOSED;
         this.closedAt = LocalDateTime.now();
+        this.closedViewerCount = closedViewerCount;
     }
 
     public void markStarted() {
