@@ -11,9 +11,10 @@ import com.umc.bscene.domain.stream.enums.StreamMemberStatus;
 import com.umc.bscene.domain.stream.enums.StreamStatus;
 import com.umc.bscene.domain.stream.enums.code.error.StreamErrorCode;
 import com.umc.bscene.domain.stream.exception.StreamException;
-import com.umc.bscene.domain.stream.message.LivePushMessage;
+import com.umc.bscene.domain.stream.dto.StreamPushMessage;
 import com.umc.bscene.domain.stream.port.BandMemberPort;
 import com.umc.bscene.domain.stream.port.FollowPort;
+import com.umc.bscene.domain.stream.port.NotifyPort;
 import com.umc.bscene.domain.stream.port.UserPort;
 import com.umc.bscene.domain.stream.port.UserTermsPort;
 import com.umc.bscene.domain.stream.repository.AudioStreamRepository;
@@ -23,7 +24,6 @@ import com.umc.bscene.domain.stream.sse.ViewerSsePresence;
 import com.umc.bscene.domain.user.entity.User;
 import com.umc.bscene.domain.user.enums.UserMode;
 import com.umc.bscene.global.config.CacheConfig;
-import com.umc.bscene.global.notification.port.NotificationPort;
 import com.umc.bscene.global.response.CursorPage;
 import com.umc.bscene.global.security.util.JwtUtil;
 import lombok.RequiredArgsConstructor;
@@ -47,7 +47,6 @@ import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
-import java.util.concurrent.Semaphore;
 import java.util.stream.Collectors;
 
 @Slf4j
@@ -82,15 +81,12 @@ public class StreamServiceImpl implements StreamService {
     private final BandMemberPort bandMemberPort;
     private final FollowPort followPort;
     private final UserTermsPort userTermsPort;
-    private final NotificationPort notificationPort;
+    private final NotifyPort notifyPort;
     private final RestClient mtxRestClient;
     private final ViewerSsePresence viewerSsePresence;
 
     private final String hlsUrl;
     private final String webrtcUrl;
-
-    // 동시 팬아웃 가상 스레드 수 상한 (인스턴스당 20개)
-    private final Semaphore notificationSemaphore = new Semaphore(20);
 
     // 방송 가능을 알리는 티켓 발급
     @Override
@@ -571,41 +567,15 @@ public class StreamServiceImpl implements StreamService {
         if(receiverIds.isEmpty())
             return;
 
-        LivePushMessage message = started
-                ? LivePushMessage.started(band.bandName(), stream.getTitle(), stream.getId())
-                : LivePushMessage.scheduled(band.bandName(), stream.getTitle(), formatScheduledAt(stream.getScheduledAt()), stream.getId());
+        StreamPushMessage message = started
+                ? StreamPushMessage.started(band.bandName(), stream.getTitle(), stream.getId())
+                : StreamPushMessage.scheduled(band.bandName(), stream.getTitle(), formatScheduledAt(stream.getScheduledAt()), stream.getId());
 
+        // 실제 발송(팬아웃, 재시도, 실패 처리)은 어댑터 책임
         TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
             @Override
             public void afterCommit() {
-                // 세마포어로 동시 팬아웃 가상 스레드 수 상한 (tryAcquire = 슬롯 없으면 skip)
-                if (!notificationSemaphore.tryAcquire()) {
-                    log.warn("라이브 푸시 알림 슬롯 포화 - 스킵 liveId={}", stream.getId());
-                    return;
-                }
-                // 팔로워 수에 비례하는 발송 시간이 요청 스레드를 붙잡지 않도록 가상 스레드로 분리
-                Thread.startVirtualThread(() -> {
-                    try {
-                        int failedCount = 0;
-
-                        for(Long receiverId : receiverIds) {
-                            try {
-                                notificationPort.send(receiverId, message);
-                            } catch (Exception e) {
-                                // 일부 수신자 발송 실패가 전체 발송을 막지 않도록 개별 처리
-                                failedCount++;
-                                log.warn("라이브 푸시 알림 발송 실패 receiverId={} liveId={}", receiverId, stream.getId(), e);
-                            }
-                        }
-
-                        // 푸시 제공자 장애 등 전체 실패 상황을 개별 로그 없이도 파악할 수 있게 요약 로그
-                        if(failedCount > 0)
-                            log.warn("라이브 푸시 알림 발송 요약 liveId={} 대상={}명 실패={}건",
-                                    stream.getId(), receiverIds.size(), failedCount);
-                    } finally {
-                        notificationSemaphore.release();
-                    }
-                });
+                notifyPort.notify(receiverIds, message);
             }
         });
     }
