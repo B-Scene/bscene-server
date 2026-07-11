@@ -15,4 +15,9 @@ public interface SessionApplicationSubmissionRepository
     );
 
     void deleteAllBySessionApplication_SessionApplicationId(Long sessionApplicationId);
+
+    boolean existsBySessionRecruitment_SessionRecruitmentIdAndSessionApplication_SessionApplicationId(
+            Long sessionRecruitmentId,
+            Long sessionApplicationId
+    );
 }
