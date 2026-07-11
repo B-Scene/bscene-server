@@ -13,4 +13,10 @@ public interface BandMemberProfileRepository extends JpaRepository<BandMemberPro
 
     // 본인 소유의 멤버 프로필만 단건 조회 (조회/수정/삭제 시 소유권 검증)
     Optional<BandMemberProfile> findByIdAndUser_Id(Long id, Long userId);
+
+    // 유저의 현재 활성 프로필 조회
+    Optional<BandMemberProfile> findByUser_IdAndActiveTrue(Long userId);
+
+    // 활성 프로필 보유 여부 (신규 생성 시 최초 자동 활성화 판단용)
+    boolean existsByUser_IdAndActiveTrue(Long userId);
 }

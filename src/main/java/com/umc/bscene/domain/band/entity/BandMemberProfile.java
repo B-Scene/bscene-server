@@ -29,8 +29,21 @@ public class BandMemberProfile extends BaseEntity {
     @JoinColumn(name = "userId", nullable = false)
     private User user;
 
+    // 여러 프로필 중 "지금 이걸로 활동 중"임을 나타내는 대표 프로필 여부 (유저당 최대 1개)
+    @Column(nullable = false)
+    @Builder.Default
+    private Boolean active = false;
+
     public void update(String nickname, Part part) {
         if (nickname != null) this.nickname = nickname;
         if (part != null) this.part = part;
+    }
+
+    public void activate() {
+        this.active = true;
+    }
+
+    public void deactivate() {
+        this.active = false;
     }
 }

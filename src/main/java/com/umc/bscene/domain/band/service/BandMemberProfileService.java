@@ -24,13 +24,16 @@ public class BandMemberProfileService {
     private final BandMemberRepository bandMemberRepository;
     private final UserRepository userRepository;
 
-    // 멤버 프로필 생성
+    // 멤버 프로필 생성 (첫 프로필이면 자동으로 활성화)
     @Transactional
     public BandMemberProfileResponse createProfile(Long userId, BandMemberProfileCreateRequest request) {
+        boolean isFirstProfile = !bandMemberProfileRepository.existsByUser_IdAndActiveTrue(userId);
+
         BandMemberProfile profile = BandMemberProfile.builder()
                 .user(userRepository.getReferenceById(userId))
                 .nickname(request.nickname())
                 .part(request.part())
+                .active(isFirstProfile)
                 .build();
 
         return BandMemberProfileResponse.from(bandMemberProfileRepository.save(profile));
@@ -67,6 +70,20 @@ public class BandMemberProfileService {
         }
 
         bandMemberProfileRepository.delete(profile);
+    }
+
+    // 활성 프로필 전환
+    @Transactional
+    public BandMemberProfileResponse activateProfile(Long userId, Long profileId) {
+        BandMemberProfile target = getOwnProfile(userId, profileId);
+
+        bandMemberProfileRepository.findByUser_IdAndActiveTrue(userId)
+                .filter(current -> !current.getId().equals(target.getId()))
+                .ifPresent(BandMemberProfile::deactivate);
+
+        target.activate();
+
+        return BandMemberProfileResponse.from(target);
     }
 
     private BandMemberProfile getOwnProfile(Long userId, Long profileId) {

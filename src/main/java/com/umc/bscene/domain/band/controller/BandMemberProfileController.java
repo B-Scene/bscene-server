@@ -104,4 +104,21 @@ public class BandMemberProfileController {
 
         return ResponseEntity.status(successResponse.getStatus()).body(successResponse);
     }
+
+    // 활성 프로필 전환 API
+    @PatchMapping("/{profileId}/activate")
+    public ResponseEntity<SuccessResponse<BandMemberProfileResponse>> activateProfile(
+            @AuthenticationPrincipal AuthMember authMember,
+            @PathVariable Long profileId
+    ) {
+        BandMemberProfileResponse response = bandMemberProfileService.activateProfile(
+                authMember.getUser().getId(), profileId
+        );
+        SuccessResponse<BandMemberProfileResponse> successResponse = SuccessResponse.of(
+                response,
+                BandSuccessCode.BAND_MEMBER_PROFILE_ACTIVATE_SUCCESS
+        );
+
+        return ResponseEntity.status(successResponse.getStatus()).body(successResponse);
+    }
 }
