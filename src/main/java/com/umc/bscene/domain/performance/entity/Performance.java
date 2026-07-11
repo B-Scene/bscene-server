@@ -1,6 +1,7 @@
 package com.umc.bscene.domain.performance.entity;
 
 import com.umc.bscene.domain.auth.enums.onboarding.Genre;
+import com.umc.bscene.domain.auth.enums.onboarding.Region;
 import com.umc.bscene.domain.band.entity.Band;
 import com.umc.bscene.domain.performance.enums.PerformanceStatus;
 import com.umc.bscene.global.entity.BaseEntity;
@@ -37,17 +38,20 @@ public class Performance extends BaseEntity {
     @Column(nullable = false)
     private LocalDate performanceDate;
 
+    @Column(nullable = false)
     private LocalTime startTime;
 
-    @Column(length = 50)
-    private String region;
+    @Column(nullable = false)
+    @Enumerated(EnumType.STRING)
+    private Region region;
 
-    @Column(length = 200)
+    @Column(length = 200, nullable = false)
     private String venue;
 
-    @Column(length = 1000)
+    @Column(length = 1000, nullable = false)
     private String description;
 
+    @Column(nullable = false)
     private Integer ticketPrice;
 
     @Column(length = 500)
