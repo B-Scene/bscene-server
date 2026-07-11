@@ -3,8 +3,11 @@ package com.umc.bscene.domain.stream.controller;
 import com.umc.bscene.domain.stream.dto.request.StreamCreateRequest;
 import com.umc.bscene.domain.stream.dto.response.LiveStreamResponse;
 import com.umc.bscene.domain.stream.dto.response.StreamCreateResponse;
+import com.umc.bscene.domain.stream.dto.response.StreamReplayResponse;
 import com.umc.bscene.domain.stream.dto.response.StreamRoomResponse;
+import com.umc.bscene.domain.stream.dto.response.StreamSummaryResponse;
 import com.umc.bscene.domain.stream.enums.code.success.StreamSuccessCode;
+import com.umc.bscene.domain.stream.service.StreamReplayService;
 import com.umc.bscene.domain.stream.service.StreamService;
 import com.umc.bscene.global.response.CursorPage;
 import com.umc.bscene.global.response.SuccessResponse;
@@ -29,6 +32,7 @@ import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 public class StreamController {
 
     private final StreamService streamService;
+    private final StreamReplayService streamReplayService;
 
     @PostMapping("/{liveId}")
     public ResponseEntity<SuccessResponse<StreamRoomResponse>> enter(
@@ -58,6 +62,40 @@ public class StreamController {
         return ResponseEntity
                 .status(HttpStatus.OK)
                 .body(body);
+    }
+
+    @GetMapping("/{liveId}/summary")
+    public ResponseEntity<SuccessResponse<StreamSummaryResponse>> getStreamSummary(
+            @AuthenticationPrincipal AuthMember authMember,
+            @PathVariable Long liveId
+    ) {
+        StreamSummaryResponse response = streamService.getStreamSummary(authMember.getUser().getId(), liveId);
+        return ResponseEntity
+                .status(HttpStatus.OK)
+                .body(SuccessResponse.of(response, StreamSuccessCode.LIVE_SUMMARY_SUCCESS));
+    }
+
+    @PostMapping("/{liveId}/replay")
+    public ResponseEntity<SuccessResponse<Void>> requestReplayUpload(
+            @AuthenticationPrincipal AuthMember authMember,
+            @PathVariable Long liveId
+    ) {
+        streamReplayService.requestReplayUpload(authMember.getUser().getId(), liveId);
+        return ResponseEntity
+                .status(HttpStatus.ACCEPTED)
+                .body(new SuccessResponse<>(null, StreamSuccessCode.REPLAY_SAVE_REQUEST_SUCCESS));
+    }
+
+    @GetMapping("/{liveId}/replay")
+    public ResponseEntity<SuccessResponse<StreamReplayResponse>> watchReplay(
+            @AuthenticationPrincipal AuthMember authMember,
+            @PathVariable Long liveId
+    ) {
+        StreamReplayResponse response = streamReplayService.watchReplay(liveId);
+
+        return ResponseEntity
+                .status(HttpStatus.OK)
+                .body(SuccessResponse.of(response, StreamSuccessCode.REPLAY_WATCH_SUCCESS));
     }
 
     @GetMapping("/live-now/all")
