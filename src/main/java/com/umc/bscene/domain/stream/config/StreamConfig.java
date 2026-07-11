@@ -2,6 +2,7 @@ package com.umc.bscene.domain.stream.config;
 
 import com.umc.bscene.domain.stream.port.BandMemberPort;
 import com.umc.bscene.domain.stream.port.FollowPort;
+import com.umc.bscene.domain.stream.port.NotifyPort;
 import com.umc.bscene.domain.stream.port.UserPort;
 import com.umc.bscene.domain.stream.port.UserTermsPort;
 import com.umc.bscene.domain.stream.repository.AudioStreamRepository;
@@ -13,7 +14,7 @@ import com.umc.bscene.domain.stream.service.StreamService;
 import com.umc.bscene.domain.stream.service.StreamServiceImpl;
 import com.umc.bscene.domain.stream.sse.ViewerSsePresence;
 import com.umc.bscene.domain.stream.sse.ViewerSseRegistry;
-import com.umc.bscene.global.notification.port.NotificationPort;
+import com.umc.bscene.global.notification.message.PushMessage;
 import com.umc.bscene.global.security.util.JwtUtil;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
@@ -23,10 +24,23 @@ import org.springframework.scheduling.annotation.EnableAsync;
 import org.springframework.scheduling.annotation.EnableScheduling;
 import org.springframework.web.client.RestClient;
 
+import java.util.List;
+
 @EnableAsync
 @EnableScheduling
 @Configuration
 public class StreamConfig {
+
+    // FIXME: FCM 어댑터 구현 전 임시 익명 빈 (no-op). 알림 담당자가 실제 발송 어댑터로 교체 예정
+    @Bean
+    public NotifyPort notifyPort() {
+        return new NotifyPort() {
+            @Override
+            public void notify(List<Long> receiverIds, PushMessage message) {
+                // no-op
+            }
+        };
+    }
 
     @Bean
     public RestClient mtxRestClient(
@@ -72,7 +86,7 @@ public class StreamConfig {
             BandMemberPort bandMemberPort,
             FollowPort followPort,
             UserTermsPort userTermsPort,
-            NotificationPort notificationPort,
+            NotifyPort notifyPort,
             RestClient mtxRestClient,
             ViewerSsePresence viewerSsePresence,
             @Value("${mediamtx.hls-url}") String hlsUrl,
@@ -88,7 +102,7 @@ public class StreamConfig {
                 bandMemberPort,
                 followPort,
                 userTermsPort,
-                notificationPort,
+                notifyPort,
                 mtxRestClient,
                 viewerSsePresence,
                 hlsUrl,
