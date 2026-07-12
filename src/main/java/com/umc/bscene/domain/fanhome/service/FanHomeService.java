@@ -5,7 +5,9 @@ import com.umc.bscene.domain.fanhome.dto.response.FanHomeResponse;
 import com.umc.bscene.domain.fanhome.dto.response.FanHomeResponse.HomePerformanceItem;
 import com.umc.bscene.domain.fanhome.dto.response.FanHomeResponse.RecommendedBandItem;
 import com.umc.bscene.domain.fanhome.dto.response.FollowingBandNewsResponse;
+import com.umc.bscene.domain.fanhome.dto.response.UpcomingPerformanceResponse;
 import com.umc.bscene.domain.fanhome.enums.PerformanceSectionType;
+import com.umc.bscene.domain.fanhome.enums.UpcomingSortType;
 import com.umc.bscene.domain.fanhome.port.BandPort;
 import com.umc.bscene.domain.fanhome.port.FollowPort;
 import com.umc.bscene.domain.fanhome.port.NotificationPort;
@@ -26,6 +28,7 @@ public class FanHomeService {
     private static final int RECOMMENDED_BAND_LIMIT = 5;  // 이런 밴드는 어때요? 최대 5개
     private static final int PERFORMANCE_LIMIT = 3;       // 공연 섹션 최대 3개
     private static final int MAX_NEWS_PAGE_SIZE = 30;     // 소식 전체조회 페이지 크기 상한
+    private static final int MAX_PERFORMANCE_PAGE_SIZE = 30; // 다가오는 공연 목록 페이지 크기 상한
 
     private final FollowPort followPort;
     private final PostPort postPort;
@@ -83,5 +86,13 @@ public class FanHomeService {
         int pageSize = Math.min(Math.max(size, 1), MAX_NEWS_PAGE_SIZE);
         List<Long> followingBandIds = followPort.findFollowingBandIds(userId);
         return postPort.findFollowingBandNews(followingBandIds, cursor, pageSize);
+    }
+
+    // 다가오는 공연 전체 목록 (offset 기반 무한스크롤, 임박/최신/인기순)
+    public UpcomingPerformanceResponse getUpcomingPerformances(Long userId, UpcomingSortType sort, int page, int size) {
+        int pageNumber = Math.max(page, 0);
+        int pageSize = Math.min(Math.max(size, 1), MAX_PERFORMANCE_PAGE_SIZE);
+        List<Long> followingBandIds = followPort.findFollowingBandIds(userId);
+        return performancePort.findUpcoming(followingBandIds, sort, pageNumber, pageSize);
     }
 }
