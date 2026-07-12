@@ -18,7 +18,7 @@ public class CacheConfig {
     // 현재 라이브 중인 전체 밴드 목록 캐시. 라이브 상태 변동이 잦으므로 TTL을 짧게 유지
     public static final String LIVE_NOW_ALL = "liveNowAll";
 
-    // TODO: 다시보기 전체 탭 캐시. 다시보기 기능 구현 시 사용
+    // 다시보기 전체 탭 1페이지 캐시 (StreamReplayService.getReplays 참고)
     public static final String REPLAY_ALL = "replayAll";
 
     @Bean
