@@ -3,8 +3,13 @@ package com.umc.bscene.domain.performance.repository;
 import com.umc.bscene.domain.performance.entity.PerformanceParticipation;
 import com.umc.bscene.domain.performance.enums.ParticipationStatus;
 import com.umc.bscene.domain.performance.enums.PerformanceStatus;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Slice;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
+import java.time.LocalDate;
 import java.util.Optional;
 
 public interface PerformanceParticipationRepository extends JpaRepository<PerformanceParticipation, Long> {
@@ -21,4 +26,22 @@ public interface PerformanceParticipationRepository extends JpaRepository<Perfor
     // 마이페이지 참여 공연 수 : 참여 완료(COMPLETED) 상태 공연 수 (삭제된 공연 제외)
     long countByUser_IdAndStatusAndPerformance_Status(
             Long userId, ParticipationStatus status, PerformanceStatus performanceStatus);
+
+    // 공연 참여 기록 목록 : 참여 완료 공연을 날짜/시간 빠른 순(같으면 제목순)으로 조회 (삭제된 공연 제외, 연도 필터)
+    @Query("SELECT pp FROM PerformanceParticipation pp " +
+            "JOIN FETCH pp.performance p " +
+            "WHERE pp.user.id = :userId " +
+            "AND pp.status = :status " +
+            "AND p.status = :performanceStatus " +
+            "AND (:startDate IS NULL OR p.performanceDate >= :startDate) " +
+            "AND (:endDate IS NULL OR p.performanceDate <= :endDate) " +
+            "ORDER BY p.performanceDate ASC, p.startTime ASC, p.title ASC, p.id ASC")
+    Slice<PerformanceParticipation> findCompletedHistory(
+            @Param("userId") Long userId,
+            @Param("status") ParticipationStatus status,
+            @Param("performanceStatus") PerformanceStatus performanceStatus,
+            @Param("startDate") LocalDate startDate,
+            @Param("endDate") LocalDate endDate,
+            Pageable pageable
+    );
 }
