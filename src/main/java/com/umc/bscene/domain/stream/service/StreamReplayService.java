@@ -1,20 +1,29 @@
 package com.umc.bscene.domain.stream.service;
 
 import com.umc.bscene.domain.stream.dto.response.BandInfoForGetLiveResponse;
+import com.umc.bscene.domain.stream.dto.response.ReplayResponse;
 import com.umc.bscene.domain.stream.dto.response.StreamReplayResponse;
 import com.umc.bscene.domain.stream.entity.AudioStream;
 import com.umc.bscene.domain.stream.entity.StreamReplay;
+import com.umc.bscene.domain.stream.enums.ReplaySort;
 import com.umc.bscene.domain.stream.enums.StreamStatus;
 import com.umc.bscene.domain.stream.enums.code.error.StreamErrorCode;
 import com.umc.bscene.domain.stream.exception.StreamException;
 import com.umc.bscene.domain.stream.port.BandMemberPort;
+import com.umc.bscene.domain.stream.port.FollowPort;
 import com.umc.bscene.domain.stream.repository.AudioStreamRepository;
 import com.umc.bscene.domain.stream.repository.StreamReplayRepository;
+import com.umc.bscene.global.config.CacheConfig;
+import com.umc.bscene.global.response.CursorPage;
 
 import java.nio.file.Path;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.cache.annotation.Cacheable;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import software.amazon.awssdk.services.s3.model.GetObjectRequest;
@@ -28,13 +37,14 @@ import java.util.Set;
 @RequiredArgsConstructor
 public class StreamReplayService {
 
-    // 다시보기 재생 URL이 오래 열려있지 않도록 짧게 제한
-    private static final Duration PLAYBACK_URL_EXPIRATION = Duration.ofMinutes(10);
+    // presigned URL 만료 여유분. 실제 만료는 총 재생 길이 + 이 값 (뒷 세그먼트 재생 도중 만료 방지)
+    private static final Duration PLAYBACK_URL_EXPIRATION_MARGIN = Duration.ofMinutes(10);
 
     private final StreamReplayRepository streamReplayRepository;
     private final AudioStreamRepository audioStreamRepository;
     private final RecordingUploadService recordingUploadService;
     private final BandMemberPort bandMemberPort;
+    private final FollowPort followPort;
     private final S3Presigner s3Presigner;
 
     @Value("${aws.s3.bucket}")
@@ -73,11 +83,14 @@ public class StreamReplayService {
     @Transactional
     public StreamReplayResponse watchReplay(Long liveId) {
 
-        // 라이브의 첫(대표) 세그먼트 조회
-        StreamReplay replay = streamReplayRepository.findFirstByAudioStream_IdOrderByCreatedAtAsc(liveId)
-                .orElseThrow(() -> new StreamException(StreamErrorCode.REPLAY_NOT_FOUND));
+        // 라이브의 전체 세그먼트 (재생 순서). 조회수는 대표(첫) 세그먼트 행에 몰아준다
+        List<StreamReplay> segments = streamReplayRepository.findAllByAudioStream_IdOrderByS3KeyAsc(liveId);
+        if (segments.isEmpty())
+            throw new StreamException(StreamErrorCode.REPLAY_NOT_FOUND);
 
-        // S3에 접속(재생)하면 +1. 원자적 증가로 lost update 방지
+        StreamReplay replay = segments.getFirst();
+
+        // 재생 진입 시 +1. 원자적 증가로 lost update 방지
         streamReplayRepository.increaseViewCount(replay.getId());
 
         AudioStream audioStream = replay.getAudioStream();
@@ -88,24 +101,144 @@ public class StreamReplayService {
                 .map(BandInfoForGetLiveResponse::bandInfo)
                 .orElse(null);
 
-        // s3Key에 대한 presigned GET URL 발급
-        String playbackUrl = s3Presigner.presignGetObject(GetObjectPresignRequest.builder()
-                        .signatureDuration(PLAYBACK_URL_EXPIRATION)
-                        .getObjectRequest(GetObjectRequest.builder()
-                                .bucket(bucket)
-                                .key(replay.getS3Key())
-                                .build())
-                        .build())
-                .url()
-                .toString();
+        // 재생 URL은 HLS 매니페스트 엔드포인트. 세그먼트가 여러 개여도 플레이어가 이어 재생한다
+        int totalDurationSec = segments.stream().mapToInt(StreamReplay::getDurationSec).sum();
 
         return new StreamReplayResponse(
                 audioStream.getTitle(),
                 band != null ? band.bandName() : "",
                 band != null ? band.bandProfileImageUrl() : "",
                 replay.getViewCount() + 1,   // 방금 증가시킨 값을 응답에 반영
-                replay.getDurationSec(),
-                playbackUrl
+                totalDurationSec,
+                "/lives/" + liveId + "/replay/playlist"
+        );
+    }
+
+    /*
+     * 다시보기 HLS 매니페스트(m3u8) 생성.
+     * 세그먼트별 독립 mp4 파일들을 플레이어가 순서대로 이어 재생하도록 presigned URL을 나열한다.
+     * 각 세그먼트가 자체 초기화 파일(init+데이터가 한 파일)이라 세그먼트마다 EXT-X-MAP으로 자기 자신을 지정하고,
+     * 파일 간 타임스탬프 불연속을 플레이어에 알리기 위해 EXT-X-DISCONTINUITY로 구분한다.
+     */
+    @Transactional(readOnly = true)
+    public String buildReplayPlaylist(Long liveId) {
+
+        List<StreamReplay> segments = streamReplayRepository.findAllByAudioStream_IdOrderByS3KeyAsc(liveId);
+        if (segments.isEmpty())
+            throw new StreamException(StreamErrorCode.REPLAY_NOT_FOUND);
+
+        // 뒷 세그먼트는 앞 세그먼트를 다 재생한 뒤에야 요청되므로, 총 재생 길이 + 여유만큼 서명 유지
+        int totalDurationSec = segments.stream().mapToInt(StreamReplay::getDurationSec).sum();
+        Duration expiration = PLAYBACK_URL_EXPIRATION_MARGIN.plusSeconds(totalDurationSec);
+
+        int targetDuration = Math.max(
+                segments.stream().mapToInt(StreamReplay::getDurationSec).max().orElse(1), 1);
+
+        StringBuilder playlist = new StringBuilder();
+        playlist.append("#EXTM3U\n")
+                .append("#EXT-X-VERSION:7\n")
+                .append("#EXT-X-TARGETDURATION:").append(targetDuration).append('\n')
+                .append("#EXT-X-PLAYLIST-TYPE:VOD\n");
+
+        for (int i = 0; i < segments.size(); i++) {
+            StreamReplay segment = segments.get(i);
+            String url = presignGetUrl(segment.getS3Key(), expiration);
+
+            if (i > 0)
+                playlist.append("#EXT-X-DISCONTINUITY\n");
+
+            playlist.append("#EXT-X-MAP:URI=\"").append(url).append("\"\n")
+                    .append("#EXTINF:").append(segment.getDurationSec()).append(".0,\n")
+                    .append(url).append('\n');
+        }
+
+        playlist.append("#EXT-X-ENDLIST\n");
+        return playlist.toString();
+    }
+
+    private String presignGetUrl(String s3Key, Duration expiration) {
+        return s3Presigner.presignGetObject(GetObjectPresignRequest.builder()
+                        .signatureDuration(expiration)
+                        .getObjectRequest(GetObjectRequest.builder()
+                                .bucket(bucket)
+                                .key(s3Key)
+                                .build())
+                        .build())
+                .url()
+                .toString();
+    }
+
+    /*
+     * 다시보기 목록 조회 (전체/팔로우 탭, 최신순/인기순, 커서 페이징)
+     * 전체 탭 1페이지만 캐싱: 커서 페이지까지 캐싱하면 Redis 키가 무한히 늘어나고,
+     * 팔로우 탭은 유저별 응답이라 캐싱하지 않음 (TTL은 CacheConfig 참고)
+     */
+    @Transactional(readOnly = true)
+    @Cacheable(cacheNames = CacheConfig.REPLAY_ALL, key = "'HEAD:' + #sort + ':' + #size",
+            condition = "#cursor == null && !#following")
+    public CursorPage<ReplayResponse> getReplays(Long userId, boolean following, Long cursor, int size, ReplaySort sort) {
+
+        // 인기순은 (viewCount, id) 복합 keyset이 필요해 커서 행의 viewCount를 조회
+        // 커서 다시보기가 삭제된 경우 빈 페이지로 종료 (중복 페이지 방지, getUpcomingLives와 동일 정책)
+        Long cursorViewCount = null;
+        if (cursor != null && sort == ReplaySort.POPULAR) {
+            cursorViewCount = streamReplayRepository.findById(cursor)
+                    .map(StreamReplay::getViewCount)
+                    .orElse(null);
+
+            if (cursorViewCount == null)
+                return CursorPage.empty();
+        }
+
+        List<Long> bandIds = null;
+        if (following) {
+            bandIds = followPort.getFollowingBandIds(userId);
+
+            if (bandIds.isEmpty())
+                return CursorPage.empty();
+        }
+
+        List<StreamReplay> rows = switch (sort) {
+            case LATEST -> following
+                    ? streamReplayRepository.findReplayPageLatestByBandIds(bandIds, cursor, PageRequest.ofSize(size + 1))
+                    : streamReplayRepository.findReplayPageLatest(cursor, PageRequest.ofSize(size + 1));
+            case POPULAR -> following
+                    ? streamReplayRepository.findReplayPagePopularByBandIds(bandIds, cursorViewCount, cursor, PageRequest.ofSize(size + 1))
+                    : streamReplayRepository.findReplayPagePopular(cursorViewCount, cursor, PageRequest.ofSize(size + 1));
+        };
+
+        boolean hasNext = rows.size() > size;
+        List<StreamReplay> page = hasNext ? rows.subList(0, size) : rows;
+        Long nextCursor = hasNext ? page.getLast().getId() : null;
+
+        // 송출자 ID를 key로 밴드 정보 매핑
+        Set<Long> broadcasterIds = page.stream()
+                .map(r -> r.getAudioStream().getBroadcasterId())
+                .collect(Collectors.toSet());
+
+        Map<Long, BandInfoForGetLiveResponse.BandInfo> bandInfoMap = broadcasterIds.isEmpty()
+                ? Map.of()
+                : bandMemberPort.getBandNameWithBandProfileByBroadcasterId(broadcasterIds).stream()
+                        .collect(Collectors.toMap(
+                                BandInfoForGetLiveResponse::broadcasterId,
+                                BandInfoForGetLiveResponse::bandInfo,
+                                (a, b) -> a
+                        ));
+
+        return CursorPage.of(
+                page.stream()
+                        .map(r -> {
+                            BandInfoForGetLiveResponse.BandInfo band = bandInfoMap.get(r.getAudioStream().getBroadcasterId());
+
+                            return new ReplayResponse(
+                                    r.getId(),
+                                    r.getAudioStream().getTitle(),
+                                    band != null ? band.bandName() : "",
+                                    r.getViewCount()
+                            );
+                        })
+                        .toList(),
+                nextCursor, hasNext
         );
     }
 }

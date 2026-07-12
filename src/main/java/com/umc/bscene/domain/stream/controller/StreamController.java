@@ -6,12 +6,14 @@ import com.umc.bscene.domain.stream.dto.request.StreamCreateRequest;
 import com.umc.bscene.domain.stream.dto.response.LiveAlarmToggleResponse;
 import com.umc.bscene.domain.stream.dto.response.LiveHomeResponse;
 import com.umc.bscene.domain.stream.dto.response.LiveStreamResponse;
+import com.umc.bscene.domain.stream.dto.response.ReplayResponse;
 import com.umc.bscene.domain.stream.dto.response.ReservationEditResponse;
 import com.umc.bscene.domain.stream.dto.response.StreamCreateResponse;
 import com.umc.bscene.domain.stream.dto.response.StreamReplayResponse;
 import com.umc.bscene.domain.stream.dto.response.StreamRoomResponse;
 import com.umc.bscene.domain.stream.dto.response.StreamSummaryResponse;
 import com.umc.bscene.domain.stream.dto.response.UpcomingLiveResponse;
+import com.umc.bscene.domain.stream.enums.ReplaySort;
 import com.umc.bscene.domain.stream.enums.code.success.StreamSuccessCode;
 import com.umc.bscene.domain.stream.service.StreamReplayService;
 import com.umc.bscene.domain.stream.service.StreamService;
@@ -116,6 +118,18 @@ public class StreamController {
                 .body(SuccessResponse.of(response, StreamSuccessCode.REPLAY_WATCH_SUCCESS));
     }
 
+    /*
+     * 다시보기 HLS 매니페스트. watchReplay 응답의 playbackUrl이 이 엔드포인트를 가리킨다.
+     * 플레이어(hls.js 등)가 직접 파싱하는 리소스라 SuccessResponse로 감싸지 않는다.
+     */
+    @GetMapping(value = "/{liveId}/replay/playlist", produces = "application/vnd.apple.mpegurl")
+    public String getReplayPlaylist(
+            @AuthenticationPrincipal AuthMember authMember,
+            @PathVariable Long liveId
+    ) {
+        return streamReplayService.buildReplayPlaylist(liveId);
+    }
+
     // 현재 라이브 중인 전체 목록 (모든 유저 동일 응답 → 서비스 계층에서 @Cacheable 캐싱)
     @GetMapping("/live-now/all")
     public ResponseEntity<SuccessResponse<CursorPage<LiveStreamResponse>>> getInLiveStreams(
@@ -175,20 +189,23 @@ public class StreamController {
                 .body(SuccessResponse.of(response, StreamSuccessCode.LIVE_ALARM_TOGGLE_SUCCESS));
     }
 
-    /*
-     * TODO: [다시보기 조회 API - 구현 보류]
-     * 다시보기 테이블이 아직 없음. 원본 브랜치(feat/#86-audio-streaming-additional-crud)에서
-     * 라이브 종료 후 재개 가능한 업로드로 다시보기를 생성하는 로직이 완성되기 전까지
-     * 아래 단계만 기록해두고 구현하지 않는다.
-     *
-     * 1. Replay 엔티티/테이블 생성: 밴드 테이블 PK(band_id)를 FK로 참조
-     *    (replay_id PK, band_id FK, title, playbackUrl, viewCount, duration 등)
-     * 2. GET /lives/replays?following={bool}&cursor={id}&size={1~15}&sort={LATEST|POPULAR}
-     *    - 팔로우 탭(following=true): userId → FollowPort로 팔로우 밴드 ID 조회 → band_id in (...)
-     *      커서 페이징(size 최소 1 / 기본 10 / 최대 15), 정렬 최신순(id desc) / 인기순(다시보기 조회수 내림차순)
-     *    - 전체 탭(following=false): 밴드 필터 없이 동일 쿼리, @Cacheable(CacheConfig.REPLAY_ALL) 캐싱
-     * 3. 팬모드 홈(/lives/home)의 다시보기 섹션: 최신 다시보기 8개 노출
-     */
+    // 다시보기 목록 조회 (전체/팔로우 탭, 최신순/인기순)
+    @GetMapping("/replays")
+    public ResponseEntity<SuccessResponse<CursorPage<ReplayResponse>>> getReplays(
+            @AuthenticationPrincipal AuthMember authMember,
+            @RequestParam(defaultValue = "false") boolean following,
+            @RequestParam(required = false) Long cursor,
+            @RequestParam(defaultValue = "10") @Min(1) @Max(15) int size,
+            @RequestParam(defaultValue = "LATEST") ReplaySort sort
+    ) {
+        CursorPage<ReplayResponse> page = streamReplayService.getReplays(
+                authMember.getUser().getId(), following, cursor, size, sort
+        );
+
+        return ResponseEntity
+                .status(HttpStatus.OK)
+                .body(SuccessResponse.of(page, StreamSuccessCode.REPLAY_LIST_SUCCESS));
+    }
 
     @PostMapping
     public ResponseEntity<SuccessResponse<StreamCreateResponse>> createAudioStream(
@@ -273,14 +290,16 @@ public class StreamController {
                 .body(body);
     }
 
+    // watchOnly=true: 홈 화면 등 방 밖에서 카운트 수신 전용 구독 (시청자 수에 미포함)
     @GetMapping(value = "/{liveId}/viewers", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
     public SseEmitter subscribeViewer(
             @AuthenticationPrincipal AuthMember authMember,
             @PathVariable Long liveId,
+            @RequestParam(defaultValue = "false") boolean watchOnly,
             HttpServletResponse response
     ) {
         // 리버스 프록시(nginx 등)가 이 SSE 응답만 버퍼링하지 않도록(실시간 전송)
         response.setHeader("X-Accel-Buffering", "no");
-        return streamService.subscribeViewerCount(authMember.getUser().getId(), liveId);
+        return streamService.subscribeViewerCount(authMember.getUser().getId(), liveId, watchOnly);
     }
 }
