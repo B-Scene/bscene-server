@@ -10,7 +10,8 @@ import static com.umc.bscene.global.constant.StaticValue.OK;
 @RequiredArgsConstructor
 public enum FanHomeSuccessCode implements BaseResponseCode {
 
-    FAN_HOME_GET_SUCCESS(OK, "HOME200_1", "팬 홈을 조회했습니다.");
+    FAN_HOME_GET_SUCCESS(OK, "HOME200_1", "팬 홈을 조회했습니다."),
+    FOLLOWING_BAND_NEWS_GET_SUCCESS(OK, "HOME200_2", "팔로우한 밴드 소식을 조회했습니다.");
 
     private final int status;
     private final String code;

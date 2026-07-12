@@ -2,6 +2,8 @@ package com.umc.bscene.domain.post.adapter;
 
 import com.umc.bscene.domain.band.entity.Band;
 import com.umc.bscene.domain.fanhome.dto.response.FanHomeResponse.BandNewsItem;
+import com.umc.bscene.domain.fanhome.dto.response.FollowingBandNewsResponse;
+import com.umc.bscene.domain.fanhome.dto.response.FollowingBandNewsResponse.NewsItem;
 import com.umc.bscene.domain.fanhome.port.PostPort;
 import com.umc.bscene.domain.post.entity.Post;
 import com.umc.bscene.domain.post.entity.PostMedia;
@@ -35,8 +37,8 @@ public class FanHomeAdapter implements PostPort {
             return List.of();
         }
 
-        // 1) 밴드 소식(Post + Band) 최신순 조회
-        List<Post> posts = postRepository.findRecentByBandIds(bandIds, PageRequest.of(0, limit));
+        // 1) 밴드 소식(Post + Band) 최신순 조회 (커서 없이 상위부터 → MAX_VALUE 전달)
+        List<Post> posts = postRepository.findNewsByBandIds(bandIds, Long.MAX_VALUE, PageRequest.of(0, limit));
         if (posts.isEmpty()) {
             return List.of();
         }
@@ -87,6 +89,72 @@ public class FanHomeAdapter implements PostPort {
             case PHOTO -> media.isEmpty() ? null : media.get(0).getMediaUrl();
             case VIDEO -> post.getThumbnailUrl();
             case TEXT -> null;
+        };
+    }
+
+    @Override
+    public FollowingBandNewsResponse findFollowingBandNews(List<Long> bandIds, Long cursor, int size) {
+        if (bandIds.isEmpty()) {
+            return new FollowingBandNewsResponse(List.of(), null, false);
+        }
+
+        // 첫 페이지(cursor 없음)는 MAX_VALUE로 상위부터, size + 1 조회로 다음 페이지 존재 여부 판별
+        Long effectiveCursor = (cursor == null) ? Long.MAX_VALUE : cursor;
+        List<Post> fetched = postRepository.findNewsByBandIds(bandIds, effectiveCursor, PageRequest.of(0, size + 1));
+        boolean hasNext = fetched.size() > size;
+        List<Post> posts = hasNext ? fetched.subList(0, size) : fetched;
+
+        if (posts.isEmpty()) {
+            return new FollowingBandNewsResponse(List.of(), null, false);
+        }
+        List<Long> postIds = posts.stream().map(Post::getId).toList();
+
+        // 미디어/태그 일괄 조회 후 postId 기준 그룹핑
+        Map<Long, List<PostMedia>> mediaByPostId = postRepository.findMediaByPostIds(postIds).stream()
+                .collect(Collectors.groupingBy(m -> m.getPost().getId()));
+        Map<Long, List<String>> tagsByPostId = postRepository.findTagsByPostIds(postIds).stream()
+                .collect(Collectors.groupingBy(
+                        t -> t.getPost().getId(),
+                        Collectors.mapping(PostTag::getTagName, Collectors.toList())
+                ));
+
+        List<NewsItem> items = posts.stream()
+                .map(post -> toNewsItem(post, mediaByPostId, tagsByPostId))
+                .toList();
+
+        // 다음 페이지가 있을 때만 마지막 소식의 id를 커서로 반환
+        Long nextCursor = hasNext ? posts.get(posts.size() - 1).getId() : null;
+        return new FollowingBandNewsResponse(items, nextCursor, hasNext);
+    }
+
+    private NewsItem toNewsItem(
+            Post post,
+            Map<Long, List<PostMedia>> mediaByPostId,
+            Map<Long, List<String>> tagsByPostId
+    ) {
+        Band band = post.getBand();
+        return new NewsItem(
+                band.getId(),
+                band.getName(),
+                band.getProfileImageUrl(),
+                band.getGenre(),
+                band.getRegion(),
+                post.getId(),
+                post.getType(),
+                mediaUrls(post, mediaByPostId.getOrDefault(post.getId(), List.of())),
+                post.getTitle(),
+                post.getDescription(),
+                tagsByPostId.getOrDefault(post.getId(), List.of()),
+                post.getCreatedAt()
+        );
+    }
+
+    // 미디어 URL 배열: PHOTO=사진 전부(sortOrder순), VIDEO=썸네일, TEXT=빈 배열
+    private List<String> mediaUrls(Post post, List<PostMedia> media) {
+        return switch (post.getType()) {
+            case PHOTO -> media.stream().map(PostMedia::getMediaUrl).toList();
+            case VIDEO -> post.getThumbnailUrl() == null ? List.of() : List.of(post.getThumbnailUrl());
+            case TEXT -> List.of();
         };
     }
 }
