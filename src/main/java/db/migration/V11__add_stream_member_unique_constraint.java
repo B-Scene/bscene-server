@@ -8,7 +8,7 @@ import java.sql.DatabaseMetaData;
 import java.sql.ResultSet;
 import java.sql.Statement;
 
-public class V7__add_stream_member_unique_constraint extends BaseJavaMigration {
+public class V11__add_stream_member_unique_constraint extends BaseJavaMigration {
 
     private static final String CONSTRAINT_NAME = "uk_stream_member_user_stream";
 
