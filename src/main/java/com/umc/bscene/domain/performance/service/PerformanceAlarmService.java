@@ -1,6 +1,7 @@
 package com.umc.bscene.domain.performance.service;
 
 import com.umc.bscene.domain.performance.dto.response.PerformanceAlarmResponse;
+import com.umc.bscene.domain.performance.dto.response.PerformanceParticipationResponse;
 import com.umc.bscene.domain.performance.entity.Performance;
 import com.umc.bscene.domain.performance.entity.PerformanceParticipation;
 import com.umc.bscene.domain.performance.enums.ParticipationStatus;
@@ -61,6 +62,24 @@ public class PerformanceAlarmService {
                 performanceId, userId, ParticipationStatus.SCHEDULED);
 
         return PerformanceAlarmResponse.of(performanceId, false);
+    }
+
+    // 사용자가 공연 참여를 완료 처리 → 참여 예정(SCHEDULED) 기록을 참여 완료(COMPLETED)로 전이
+    // 알림을 설정한 공연(참여 기록 존재)만 완료 가능. 없으면 404. (이미 완료 상태면 멱등)
+    @Transactional
+    public PerformanceParticipationResponse completeParticipation(Long userId, Long performanceId) {
+        PerformanceParticipation participation = performanceParticipationRepository
+                .findByPerformance_IdAndUser_Id(performanceId, userId)
+                .orElseThrow(() -> new PerformanceException(PerformanceErrorCode.PARTICIPATION_NOT_FOUND));
+
+        // 삭제된 공연은 참여완료 처리 불가 (카운트·기록조회가 ACTIVE만 집계하므로 일관성 유지)
+        if (participation.getPerformance().getStatus() != PerformanceStatus.ACTIVE) {
+            throw new PerformanceException(PerformanceErrorCode.PERFORMANCE_NOT_FOUND);
+        }
+
+        participation.complete();
+
+        return PerformanceParticipationResponse.of(performanceId, participation.getStatus());
     }
 
     // TODO : PerformanceService와 중복되는 로직. 통합 고려

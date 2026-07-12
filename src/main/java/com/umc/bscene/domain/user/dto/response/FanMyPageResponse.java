@@ -13,7 +13,7 @@ public record FanMyPageResponse(
         UserMode currentMode,                 // 현재 모드 (FAN | BAND)
         long followingCount,                  // 팔로우한 밴드 수
         long interestedPerformanceCount,      // 관심 등록한 공연 수
-        long participatedPerformanceCount     // 참여 공연 수 (알림 신청 + 공연 시작 시각 경과)
+        long participatedPerformanceCount     // 참여 공연 수 (참여 완료 처리한 공연)
 ) {
     public static FanMyPageResponse of(
             String nickname,

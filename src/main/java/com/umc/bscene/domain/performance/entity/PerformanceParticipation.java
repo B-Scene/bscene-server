@@ -38,4 +38,9 @@ public class PerformanceParticipation extends BaseEntity {
     @Builder.Default
     private ParticipationStatus status = ParticipationStatus.SCHEDULED;
 
+    // 참여 완료 처리 : 참여 예정(SCHEDULED) → 참여 완료(COMPLETED). 이미 완료 상태면 그대로 유지(멱등)
+    public void complete() {
+        this.status = ParticipationStatus.COMPLETED;
+    }
+
 }

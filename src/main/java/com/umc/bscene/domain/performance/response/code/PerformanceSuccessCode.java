@@ -20,7 +20,8 @@ public enum PerformanceSuccessCode implements BaseResponseCode {
     PERFORMANCE_UPDATE_SUCCESS(OK, "SHOW200_3", "공연 정보가 수정됐어요."),
     PERFORMANCE_DELETE_SUCCESS(OK, "SHOW200_4", "공연이 삭제됐어요."),
     PERFORMANCE_ALARM_UNSET_SUCCESS(OK, "SHOW200_5", "공연 알림을 해제했어요."),
-    PERFORMANCE_INTEREST_UNSET_SUCCESS(OK, "SHOW200_6", "관심 공연을 해제했어요.");
+    PERFORMANCE_INTEREST_UNSET_SUCCESS(OK, "SHOW200_6", "관심 공연을 해제했어요."),
+    PERFORMANCE_PARTICIPATION_COMPLETE_SUCCESS(OK, "SHOW200_7", "공연 참여를 완료했어요.");
 
     private final int status;
     private final String code;
