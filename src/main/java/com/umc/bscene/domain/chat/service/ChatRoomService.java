@@ -2,6 +2,11 @@ package com.umc.bscene.domain.chat.service;
 
 import com.umc.bscene.domain.chat.dto.request.ChatRoomCreateRequest;
 import com.umc.bscene.domain.chat.dto.response.ChatRoomCreateResponse;
+import com.umc.bscene.domain.chat.dto.response.ChatRoomListItemResponse;
+import com.umc.bscene.domain.chat.dto.response.ChatRoomListResponse;
+import com.umc.bscene.domain.chat.entity.ChatMessage;
+import com.umc.bscene.domain.chat.enums.ChatRoomFilter;
+import com.umc.bscene.domain.chat.repository.ChatMessageRepository;
 import com.umc.bscene.domain.chat.entity.ChatRoom;
 import com.umc.bscene.domain.chat.enums.ChatContextType;
 import com.umc.bscene.domain.chat.exception.ChatException;
@@ -11,11 +16,20 @@ import com.umc.bscene.domain.session.entity.SessionApplication;
 import com.umc.bscene.domain.session.entity.SessionRecruitment;
 import com.umc.bscene.domain.session.repository.SessionApplicationRepository;
 import com.umc.bscene.domain.session.repository.SessionRecruitmentRepository;
+import com.umc.bscene.domain.session.repository.SessionApplicationSubmissionRepository;
+import com.umc.bscene.domain.session.repository.SessionBasicProfileRepository;
+import com.umc.bscene.domain.session.enums.ApplicationStatus;
 import com.umc.bscene.domain.user.entity.User;
 import com.umc.bscene.domain.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.data.domain.PageRequest;
+
+import java.util.List;
+import java.util.Map;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -27,6 +41,84 @@ public class ChatRoomService {
     private final SessionRecruitmentRepository recruitmentRepository;
     private final SessionApplicationRepository applicationRepository;
     private final UserRepository userRepository;
+    private final ChatMessageRepository chatMessageRepository;
+    private final SessionApplicationSubmissionRepository submissionRepository;
+    private final SessionBasicProfileRepository sessionBasicProfileRepository;
+
+    @Transactional(readOnly = true)
+    public ChatRoomListResponse getMyRooms(Long userId, ChatRoomFilter filter,
+                                           Long cursorId, Integer size) {
+        int pageSize = size == null ? 20 : Math.max(1, Math.min(size, 50));
+        boolean unreadOnly = filter == ChatRoomFilter.UNREAD;
+        List<ChatRoom> rooms = chatRoomRepository.findMyRooms(
+                userId, cursorId, unreadOnly, PageRequest.of(0, pageSize + 1));
+        boolean hasNext = rooms.size() > pageSize;
+        List<ChatRoom> sliced = hasNext ? rooms.subList(0, pageSize) : rooms;
+        List<Long> roomIds = sliced.stream().map(ChatRoom::getChatRoomId).toList();
+        List<ChatMessage> messages = roomIds.isEmpty()
+                ? List.of() : chatMessageRepository.findMessagesForRooms(roomIds);
+        Map<Long, ChatMessage> latestMessages = messages.stream().collect(Collectors.toMap(
+                message -> message.getChatRoom().getChatRoomId(), Function.identity(),
+                (latest, ignored) -> latest));
+        Map<Long, Long> unreadCounts = messages.stream()
+                .filter(message -> !message.getSender().getId().equals(userId))
+                .filter(message -> message.getReadAt() == null)
+                .collect(Collectors.groupingBy(
+                        message -> message.getChatRoom().getChatRoomId(), Collectors.counting()));
+        List<ChatRoomListItemResponse> content = sliced.stream()
+                .map(room -> ChatRoomListItemResponse.of(
+                        room, userId, latestMessages.get(room.getChatRoomId()),
+                        unreadCounts.getOrDefault(room.getChatRoomId(), 0L), canSend(room),
+                        resolveCounterpartApplication(room, userId),
+                        resolveCounterpartProfileImageUrl(room, userId)))
+                .toList();
+        Long nextCursor = hasNext && !sliced.isEmpty()
+                ? sliced.get(sliced.size() - 1).getChatRoomId() : null;
+        return new ChatRoomListResponse(content, pageSize, nextCursor, hasNext);
+    }
+
+    private boolean canSend(ChatRoom room) {
+        if (room.getContextType() != ChatContextType.RECRUITMENT) return true;
+        return submissionRepository
+                .findFirstBySessionRecruitment_SessionRecruitmentIdAndSessionApplication_UserIdOrderByApplicationSubmissionIdDesc(
+                        room.getSessionRecruitment().getSessionRecruitmentId(), room.getSender().getId())
+                .map(submission -> submission.getStatus() != ApplicationStatus.REJECTED)
+                .orElse(true);
+    }
+
+    private SessionApplication resolveCounterpartApplication(ChatRoom room, Long viewerId) {
+        if (room.getContextType() == ChatContextType.RECRUITMENT) {
+            if (room.getSender().getId().equals(viewerId)) return null;
+            return submissionRepository
+                    .findFirstBySessionRecruitment_SessionRecruitmentIdAndSessionApplication_UserIdOrderByApplicationSubmissionIdDesc(
+                            room.getSessionRecruitment().getSessionRecruitmentId(),
+                            room.getSender().getId())
+                    .map(submission -> submission.getSessionApplication())
+                    .orElseGet(() -> applicationRepository
+                            .findFirstByUserIdAndPurposeAndDeletedAtIsNullOrderBySessionApplicationIdDesc(
+                                    room.getSender().getId(), DEFAULT_PURPOSE)
+                            .orElseThrow(() -> new ChatException(
+                                    ChatErrorCode.CHAT_TARGET_NOT_FOUND)));
+        }
+        if (room.getSender().getId().equals(viewerId)) {
+            return room.getSessionApplication();
+        }
+        return applicationRepository
+                .findFirstByUserIdAndPurposeAndDeletedAtIsNullOrderBySessionApplicationIdDesc(
+                        room.getSender().getId(), DEFAULT_PURPOSE)
+                .orElseThrow(() -> new ChatException(ChatErrorCode.CHAT_TARGET_NOT_FOUND));
+    }
+
+    private String resolveCounterpartProfileImageUrl(ChatRoom room, Long viewerId) {
+        if (room.getContextType() == ChatContextType.RECRUITMENT
+                && room.getSender().getId().equals(viewerId)) return null;
+        Long counterpartUserId = room.getSender().getId().equals(viewerId)
+                ? room.getRecipient().getId()
+                : room.getSender().getId();
+        return sessionBasicProfileRepository.findByUser_Id(counterpartUserId)
+                .map(profile -> profile.getProfileImageUrl())
+                .orElse(null);
+    }
 
     public ChatRoomCreateResponse createOrGet(Long senderId, ChatRoomCreateRequest request) {
         if (request.contextType() == ChatContextType.RECRUITMENT) {

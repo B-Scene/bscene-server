@@ -1,6 +1,5 @@
 package com.umc.bscene.domain.session.dto.recruitment.response;
 
-import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 import com.umc.bscene.domain.session.entity.SessionRecruitment;
 import com.umc.bscene.domain.session.entity.SessionRecruitmentInterest;
@@ -27,7 +26,7 @@ public record InterestedRecruitmentItemResponse(
         String bandName,
         SessionRegion region,
         long postedAgo,
-        @JsonInclude(JsonInclude.Include.NON_NULL) String applicationTitle
+        String applicationTitle
 ) {
     public static InterestedRecruitmentItemResponse of(
             SessionRecruitmentInterest interest,

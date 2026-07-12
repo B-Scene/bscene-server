@@ -91,4 +91,8 @@ public interface SessionApplicationSubmissionRepository
             @Param("userId") Long userId,
             @Param("recruitmentIds") Collection<Long> recruitmentIds
     );
+
+    Optional<SessionApplicationSubmission>
+    findFirstBySessionRecruitment_SessionRecruitmentIdAndSessionApplication_UserIdOrderByApplicationSubmissionIdDesc(
+            Long recruitmentId, Long userId);
 }
