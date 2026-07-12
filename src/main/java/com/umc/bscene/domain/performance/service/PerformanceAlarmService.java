@@ -22,6 +22,7 @@ public class PerformanceAlarmService {
     private final PerformanceAlarmRepository performanceAlarmRepository;
     private final PerformanceRepository performanceRepository;
     private final UserRepository userRepository;
+    private final PerformanceInterestService performanceInterestService;
 
     // 사용자가 공연 알림을 설정
     @Transactional
@@ -43,6 +44,9 @@ public class PerformanceAlarmService {
             // 동시 요청으로 위 중복 체크를 둘 다 통과한 경우, 유니크 제약이 최종 방어 → 409로 변환
             throw new PerformanceException(PerformanceErrorCode.ALREADY_ALARM_SET);
         }
+
+        // 알림을 설정하면 관심 공연으로도 함께 등록한다. (이미 관심 등록돼 있으면 멱등하게 통과)
+        performanceInterestService.ensureInterest(userId, performance);
 
         return PerformanceAlarmResponse.of(performanceId, true);
     }

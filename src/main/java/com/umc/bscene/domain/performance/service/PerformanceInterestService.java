@@ -47,6 +47,20 @@ public class PerformanceInterestService {
         return PerformanceInterestResponse.of(performanceId, true);
     }
 
+    // 관심 등록이 없으면 등록하고, 이미 있으면 그대로 둔다(멱등).
+    // 공연 알림 설정 시 함께 관심 공연으로 등록하기 위해 호출된다. (이미 관심 등록된 경우 예외 없이 통과)
+    @Transactional
+    public void ensureInterest(Long userId, Performance performance) {
+        if (performanceInterestRepository.existsByPerformance_IdAndUser_Id(performance.getId(), userId)) {
+            return;
+        }
+
+        performanceInterestRepository.save(PerformanceInterest.builder()
+                .performance(performance)
+                .user(userRepository.getReferenceById(userId))
+                .build());
+    }
+
     // 사용자가 공연 관심 등록을 해제
     @Transactional
     public PerformanceInterestResponse unsetInterest(Long userId, Long performanceId) {
