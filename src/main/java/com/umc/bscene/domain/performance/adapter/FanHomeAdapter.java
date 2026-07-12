@@ -1,16 +1,25 @@
 package com.umc.bscene.domain.performance.adapter;
 
+import com.umc.bscene.domain.fanhome.dto.response.DatePerformanceResponse;
 import com.umc.bscene.domain.fanhome.dto.response.FanHomeResponse.HomePerformanceItem;
+import com.umc.bscene.domain.fanhome.dto.response.PerformanceCalendarResponse;
+import com.umc.bscene.domain.fanhome.dto.response.PerformanceListItem;
+import com.umc.bscene.domain.fanhome.dto.response.UpcomingPerformanceResponse;
+import com.umc.bscene.domain.fanhome.enums.UpcomingSortType;
 import com.umc.bscene.domain.fanhome.port.PerformancePort;
 import com.umc.bscene.domain.performance.entity.Performance;
 import com.umc.bscene.domain.performance.enums.PerformanceStatus;
+import com.umc.bscene.domain.performance.repository.PerformanceInterestRepository;
 import com.umc.bscene.domain.performance.repository.PerformanceRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Slice;
 
 import java.time.LocalDate;
 import java.time.LocalTime;
+import java.time.YearMonth;
 import java.util.List;
+import java.util.Set;
 
 /**
  * 팬홈의 PerformancePort를 performance 도메인이 구현하는 어댑터.
@@ -21,6 +30,7 @@ import java.util.List;
 public class FanHomeAdapter implements PerformancePort {
 
     private final PerformanceRepository performanceRepository;
+    private final PerformanceInterestRepository performanceInterestRepository;
 
     @Override
     public List<HomePerformanceItem> findUpcomingByBandIds(List<Long> bandIds, int limit) {
@@ -48,6 +58,74 @@ public class FanHomeAdapter implements PerformancePort {
                 ).stream()
                 .map(this::toItem)
                 .toList();
+    }
+
+    @Override
+    public UpcomingPerformanceResponse findUpcoming(Long userId, List<Long> bandIds, UpcomingSortType sort, int page, int size) {
+        if (bandIds.isEmpty()) {
+            return new UpcomingPerformanceResponse(sort, List.of(), page, false);
+        }
+
+        PageRequest pageable = PageRequest.of(page, size);
+        LocalDate today = LocalDate.now();
+        LocalTime now = LocalTime.now();
+
+        Slice<Performance> slice = switch (sort) {
+            case IMMINENT -> performanceRepository.findUpcomingImminent(bandIds, PerformanceStatus.ACTIVE, today, now, pageable);
+            case LATEST -> performanceRepository.findUpcomingLatest(bandIds, PerformanceStatus.ACTIVE, today, now, pageable);
+            case POPULAR -> performanceRepository.findUpcomingPopular(bandIds, PerformanceStatus.ACTIVE, today, now, pageable);
+        };
+
+        List<PerformanceListItem> items = toListItems(userId, slice.getContent());
+        return new UpcomingPerformanceResponse(sort, items, page, slice.hasNext());
+    }
+
+    @Override
+    public PerformanceCalendarResponse findPerformanceDates(List<Long> bandIds, int year, int month) {
+        LocalDate today = LocalDate.now();
+        if (bandIds.isEmpty()) {
+            return new PerformanceCalendarResponse(year, month, today, List.of());
+        }
+        YearMonth yearMonth = YearMonth.of(year, month);
+        List<LocalDate> dates = performanceRepository.findPerformanceDatesByBandIds(
+                bandIds, PerformanceStatus.ACTIVE, yearMonth.atDay(1), yearMonth.atEndOfMonth());
+        return new PerformanceCalendarResponse(year, month, today, dates);
+    }
+
+    @Override
+    public DatePerformanceResponse findByDate(Long userId, List<Long> bandIds, LocalDate date, int page, int size) {
+        if (bandIds.isEmpty()) {
+            return new DatePerformanceResponse(date, List.of(), page, false);
+        }
+        Slice<Performance> slice = performanceRepository.findPerformancesByDate(
+                bandIds, PerformanceStatus.ACTIVE, date, PageRequest.of(page, size));
+        List<PerformanceListItem> items = toListItems(userId, slice.getContent());
+        return new DatePerformanceResponse(date, items, page, slice.hasNext());
+    }
+
+    // 공연 목록 → 로그인 유저의 관심 등록 여부를 일괄 조회해 아이템으로 변환
+    private List<PerformanceListItem> toListItems(Long userId, List<Performance> performances) {
+        if (performances.isEmpty()) {
+            return List.of();
+        }
+        List<Long> performanceIds = performances.stream().map(Performance::getId).toList();
+        Set<Long> interestedIds = Set.copyOf(
+                performanceInterestRepository.findInterestedPerformanceIds(userId, performanceIds));
+        return performances.stream()
+                .map(p -> toListItem(p, interestedIds.contains(p.getId())))
+                .toList();
+    }
+
+    private PerformanceListItem toListItem(Performance p, boolean isInterested) {
+        return new PerformanceListItem(
+                p.getId(),
+                p.getTitle(),
+                p.getVenue(),
+                p.getPerformanceDate(),
+                p.getStartTime(),
+                p.getPosterImageUrl(),
+                isInterested
+        );
     }
 
     private HomePerformanceItem toItem(Performance p) {

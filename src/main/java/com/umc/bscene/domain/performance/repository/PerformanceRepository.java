@@ -3,6 +3,7 @@ package com.umc.bscene.domain.performance.repository;
 import com.umc.bscene.domain.performance.entity.Performance;
 import com.umc.bscene.domain.performance.enums.PerformanceStatus;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Slice;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -52,6 +53,73 @@ public interface PerformanceRepository extends JpaRepository<Performance, Long> 
             @Param("status") PerformanceStatus status,
             @Param("today") LocalDate today,
             @Param("now") LocalTime now,
+            Pageable pageable
+    );
+
+    // 다가오는 공연 목록(임박순) : 팔로우 밴드의 아직 시작 안 한 ACTIVE 공연을 날짜·시각 가까운 순으로
+    @Query("SELECT p FROM Performance p " +
+            "WHERE p.band.id IN :bandIds AND p.status = :status " +
+            "AND (p.performanceDate > :today " +
+            "     OR (p.performanceDate = :today AND (p.startTime IS NULL OR p.startTime >= :now))) " +
+            "ORDER BY p.performanceDate ASC, p.startTime ASC, p.id ASC")
+    Slice<Performance> findUpcomingImminent(
+            @Param("bandIds") List<Long> bandIds,
+            @Param("status") PerformanceStatus status,
+            @Param("today") LocalDate today,
+            @Param("now") LocalTime now,
+            Pageable pageable
+    );
+
+    // 다가오는 공연 목록(최신순) : 최근 등록된 순
+    @Query("SELECT p FROM Performance p " +
+            "WHERE p.band.id IN :bandIds AND p.status = :status " +
+            "AND (p.performanceDate > :today " +
+            "     OR (p.performanceDate = :today AND (p.startTime IS NULL OR p.startTime >= :now))) " +
+            "ORDER BY p.createdAt DESC, p.id DESC")
+    Slice<Performance> findUpcomingLatest(
+            @Param("bandIds") List<Long> bandIds,
+            @Param("status") PerformanceStatus status,
+            @Param("today") LocalDate today,
+            @Param("now") LocalTime now,
+            Pageable pageable
+    );
+
+    // 다가오는 공연 목록(인기순) : 관심 등록 수 많은 순
+    @Query("SELECT p FROM Performance p " +
+            "LEFT JOIN PerformanceInterest pi ON pi.performance = p " +
+            "WHERE p.band.id IN :bandIds AND p.status = :status " +
+            "AND (p.performanceDate > :today " +
+            "     OR (p.performanceDate = :today AND (p.startTime IS NULL OR p.startTime >= :now))) " +
+            "GROUP BY p " +
+            "ORDER BY COUNT(pi) DESC, p.id DESC")
+    Slice<Performance> findUpcomingPopular(
+            @Param("bandIds") List<Long> bandIds,
+            @Param("status") PerformanceStatus status,
+            @Param("today") LocalDate today,
+            @Param("now") LocalTime now,
+            Pageable pageable
+    );
+
+    // 공연 달력 : 팔로우 밴드의 해당 월(기간) ACTIVE 공연이 있는 날짜(distinct, 지난 공연 포함)
+    @Query("SELECT DISTINCT p.performanceDate FROM Performance p " +
+            "WHERE p.band.id IN :bandIds AND p.status = :status " +
+            "AND p.performanceDate BETWEEN :startDate AND :endDate " +
+            "ORDER BY p.performanceDate ASC")
+    List<LocalDate> findPerformanceDatesByBandIds(
+            @Param("bandIds") List<Long> bandIds,
+            @Param("status") PerformanceStatus status,
+            @Param("startDate") LocalDate startDate,
+            @Param("endDate") LocalDate endDate
+    );
+
+    // 특정 날짜 공연 목록 : 시간 빠른 순, 시간이 같으면 제목 가나다순
+    @Query("SELECT p FROM Performance p " +
+            "WHERE p.band.id IN :bandIds AND p.status = :status AND p.performanceDate = :date " +
+            "ORDER BY p.startTime ASC, p.title ASC, p.id ASC")
+    Slice<Performance> findPerformancesByDate(
+            @Param("bandIds") List<Long> bandIds,
+            @Param("status") PerformanceStatus status,
+            @Param("date") LocalDate date,
             Pageable pageable
     );
 }
