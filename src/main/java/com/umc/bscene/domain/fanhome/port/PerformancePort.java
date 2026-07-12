@@ -1,9 +1,12 @@
 package com.umc.bscene.domain.fanhome.port;
 
+import com.umc.bscene.domain.fanhome.dto.response.DatePerformanceResponse;
 import com.umc.bscene.domain.fanhome.dto.response.FanHomeResponse.HomePerformanceItem;
+import com.umc.bscene.domain.fanhome.dto.response.PerformanceCalendarResponse;
 import com.umc.bscene.domain.fanhome.dto.response.UpcomingPerformanceResponse;
 import com.umc.bscene.domain.fanhome.enums.UpcomingSortType;
 
+import java.time.LocalDate;
 import java.util.List;
 
 // 팬홈이 공연을 조회하기 위한 계약 (adapter는 performance 도메인이 구현)
@@ -31,4 +34,16 @@ public interface PerformancePort {
      * @param size    페이지 크기
      */
     UpcomingPerformanceResponse findUpcoming(Long userId, List<Long> bandIds, UpcomingSortType sort, int page, int size);
+
+    /**
+     * 팔로우한 밴드들의 해당 년월 ACTIVE 공연이 있는 날짜 목록을 조회합니다. (달력 점 표시용, 지난 공연 포함)
+     */
+    PerformanceCalendarResponse findPerformanceDates(List<Long> bandIds, int year, int month);
+
+    /**
+     * 팔로우한 밴드들의 특정 날짜 ACTIVE 공연을 시간 빠른 순(같으면 제목순)으로 페이지 단위 조회합니다.
+     *
+     * @param userId 관심 등록 여부 판별 대상 사용자 ID
+     */
+    DatePerformanceResponse findByDate(Long userId, List<Long> bandIds, LocalDate date, int page, int size);
 }

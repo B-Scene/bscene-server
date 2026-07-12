@@ -99,4 +99,27 @@ public interface PerformanceRepository extends JpaRepository<Performance, Long> 
             @Param("now") LocalTime now,
             Pageable pageable
     );
+
+    // 공연 달력 : 팔로우 밴드의 해당 월(기간) ACTIVE 공연이 있는 날짜(distinct, 지난 공연 포함)
+    @Query("SELECT DISTINCT p.performanceDate FROM Performance p " +
+            "WHERE p.band.id IN :bandIds AND p.status = :status " +
+            "AND p.performanceDate BETWEEN :startDate AND :endDate " +
+            "ORDER BY p.performanceDate ASC")
+    List<LocalDate> findPerformanceDatesByBandIds(
+            @Param("bandIds") List<Long> bandIds,
+            @Param("status") PerformanceStatus status,
+            @Param("startDate") LocalDate startDate,
+            @Param("endDate") LocalDate endDate
+    );
+
+    // 특정 날짜 공연 목록 : 시간 빠른 순, 시간이 같으면 제목 가나다순
+    @Query("SELECT p FROM Performance p " +
+            "WHERE p.band.id IN :bandIds AND p.status = :status AND p.performanceDate = :date " +
+            "ORDER BY p.startTime ASC, p.title ASC, p.id ASC")
+    Slice<Performance> findPerformancesByDate(
+            @Param("bandIds") List<Long> bandIds,
+            @Param("status") PerformanceStatus status,
+            @Param("date") LocalDate date,
+            Pageable pageable
+    );
 }
