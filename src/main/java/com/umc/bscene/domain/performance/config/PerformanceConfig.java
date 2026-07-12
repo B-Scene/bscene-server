@@ -3,8 +3,8 @@ package com.umc.bscene.domain.performance.config;
 import com.umc.bscene.domain.performance.adapter.FanHomeAdapter;
 import com.umc.bscene.domain.performance.adapter.BandAdapter;
 import com.umc.bscene.domain.performance.adapter.UserAdapter;
-import com.umc.bscene.domain.performance.repository.PerformanceAlarmRepository;
 import com.umc.bscene.domain.performance.repository.PerformanceInterestRepository;
+import com.umc.bscene.domain.performance.repository.PerformanceParticipationRepository;
 import com.umc.bscene.domain.performance.repository.PerformanceRepository;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -32,8 +32,8 @@ public class PerformanceConfig {
     @Bean
     public UserAdapter userPerformanceAdapter(
             PerformanceInterestRepository performanceInterestRepository,
-            PerformanceAlarmRepository performanceAlarmRepository
+            PerformanceParticipationRepository performanceParticipationRepository
     ) {
-        return new UserAdapter(performanceInterestRepository, performanceAlarmRepository);
+        return new UserAdapter(performanceInterestRepository, performanceParticipationRepository);
     }
 }

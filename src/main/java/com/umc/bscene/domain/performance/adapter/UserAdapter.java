@@ -1,8 +1,8 @@
 package com.umc.bscene.domain.performance.adapter;
 
 import com.umc.bscene.domain.performance.enums.PerformanceStatus;
-import com.umc.bscene.domain.performance.repository.PerformanceAlarmRepository;
 import com.umc.bscene.domain.performance.repository.PerformanceInterestRepository;
+import com.umc.bscene.domain.performance.repository.PerformanceParticipationRepository;
 import com.umc.bscene.domain.user.port.PerformancePort;
 import lombok.RequiredArgsConstructor;
 
@@ -18,7 +18,7 @@ import java.time.LocalTime;
 public class UserAdapter implements PerformancePort {
 
     private final PerformanceInterestRepository performanceInterestRepository;
-    private final PerformanceAlarmRepository performanceAlarmRepository;
+    private final PerformanceParticipationRepository performanceParticipationRepository;
 
     @Override
     public long countInterested(Long userId) {
@@ -27,7 +27,7 @@ public class UserAdapter implements PerformancePort {
 
     @Override
     public long countParticipated(Long userId) {
-        return performanceAlarmRepository.countParticipatedByUserId(
+        return performanceParticipationRepository.countParticipatedByUserId(
                 userId, PerformanceStatus.ACTIVE, LocalDate.now(), LocalTime.now());
     }
 }
