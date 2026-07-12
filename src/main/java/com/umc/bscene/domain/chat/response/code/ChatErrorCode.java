@@ -1,0 +1,17 @@
+package com.umc.bscene.domain.chat.response.code;
+
+import com.umc.bscene.global.response.code.BaseResponseCode;
+import lombok.Getter;
+import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
+
+@Getter @RequiredArgsConstructor
+public enum ChatErrorCode implements BaseResponseCode {
+    INVALID_CHAT_CONTEXT(HttpStatus.BAD_REQUEST.value(), "INVALID_CHAT_CONTEXT", "채팅 시작 정보를 확인해주세요."),
+    CHAT_TARGET_NOT_FOUND(HttpStatus.NOT_FOUND.value(), "CHAT_TARGET_NOT_FOUND", "쪽지를 보낼 대상을 찾을 수 없습니다."),
+    SELF_CHAT_NOT_ALLOWED(HttpStatus.BAD_REQUEST.value(), "SELF_CHAT_NOT_ALLOWED", "본인에게 쪽지를 보낼 수 없습니다."),
+    PUBLIC_SESSION_PROFILE_REQUIRED(HttpStatus.CONFLICT.value(), "PUBLIC_SESSION_PROFILE_REQUIRED", "공개 상태의 기본 지원서를 먼저 생성해주세요.");
+    private final int status;
+    private final String code;
+    private final String message;
+}
