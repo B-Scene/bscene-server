@@ -39,7 +39,8 @@ public interface StreamService {
 
     void leaveRoom(Long userId, Long liveId);
 
-    SseEmitter subscribeViewerCount(Long userId, Long liveId);
+    // 시청자 수 SSE 구독. watchOnly=true면 카운트 수신만 (홈 화면 등 방 밖 구독용, 시청자 수 미포함)
+    SseEmitter subscribeViewerCount(Long userId, Long liveId, boolean watchOnly);
 
     // 라이브 홈 통합 조회 (currentMode에 따라 팬/밴드 분기)
     LiveHomeResponse getLiveHome(User user);

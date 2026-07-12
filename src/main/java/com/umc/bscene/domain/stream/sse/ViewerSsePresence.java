@@ -33,12 +33,19 @@ public class ViewerSsePresence {
     // 반드시 하트비트 주기(15s)보다 넉넉히 커야 한다. 비트 사이에 살아있는 시청자가 잘리는 것을 방지(3비트 허용).
     private static final long STALE_SECONDS = 45L;
 
-    /** 시청자 수 SSE 구독. OPEN 방만 허용한다. */
-    public SseEmitter subscribe(Long userId, Long liveId) {
+    /** 시청자 수 SSE 구독. OPEN 방만 허용한다. watchOnly=true면 카운트 수신만 하고 시청자 수에는 포함되지 않는다. */
+    public SseEmitter subscribe(Long userId, Long liveId, boolean watchOnly) {
         AudioStream stream = audioStreamRepository.findById(liveId)
                 .orElseThrow(() -> new StreamException(StreamErrorCode.AUDIO_STREAM_NOT_FOUND));
         if (stream.getStatus() != StreamStatus.OPEN)
             throw new StreamException(StreamErrorCode.AUDIO_STREAM_NOT_LIVE);
+
+        // 보기 전용(홈 화면 등 방 밖 구독): 프레젠스 미등록, 유저당 1연결 제한 미적용
+        if (watchOnly) {
+            SseEmitter emitter = registry.registerWatchOnly(liveId);
+            broadcastCount(liveId); // 구독 직후 현재 카운트 전송
+            return emitter;
+        }
 
         // 송출자는 시청자 수에 포함하지 않는다(카운트 업데이트는 수신하되 본인은 프레젠스 미포함)
         boolean counted = !stream.getBroadcasterId().equals(userId);
