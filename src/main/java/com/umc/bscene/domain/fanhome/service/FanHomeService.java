@@ -4,6 +4,7 @@ import com.umc.bscene.domain.fanhome.dto.response.FanHomeResponse.BandNewsItem;
 import com.umc.bscene.domain.fanhome.dto.response.FanHomeResponse;
 import com.umc.bscene.domain.fanhome.dto.response.FanHomeResponse.HomePerformanceItem;
 import com.umc.bscene.domain.fanhome.dto.response.FanHomeResponse.RecommendedBandItem;
+import com.umc.bscene.domain.fanhome.dto.response.FollowingBandNewsResponse;
 import com.umc.bscene.domain.fanhome.enums.PerformanceSectionType;
 import com.umc.bscene.domain.fanhome.port.BandPort;
 import com.umc.bscene.domain.fanhome.port.FollowPort;
@@ -21,9 +22,10 @@ import java.util.List;
 @Transactional(readOnly = true)
 public class FanHomeService {
 
-    private static final int BAND_NEWS_LIMIT = 2;         // 팔로우한 밴드 소식 최대 2개
+    private static final int BAND_NEWS_LIMIT = 5;         // 팔로우한 밴드 소식 최대 5개
     private static final int RECOMMENDED_BAND_LIMIT = 5;  // 이런 밴드는 어때요? 최대 5개
     private static final int PERFORMANCE_LIMIT = 3;       // 공연 섹션 최대 3개
+    private static final int MAX_NEWS_PAGE_SIZE = 30;     // 소식 전체조회 페이지 크기 상한
 
     private final FollowPort followPort;
     private final PostPort postPort;
@@ -74,5 +76,12 @@ public class FanHomeService {
                 recommendedBands,
                 performances
         );
+    }
+
+    // 팔로우한 밴드 소식 전체 조회 (id 커서 기반 무한스크롤)
+    public FollowingBandNewsResponse getFollowingBandNews(Long userId, Long cursor, int size) {
+        int pageSize = Math.min(Math.max(size, 1), MAX_NEWS_PAGE_SIZE);
+        List<Long> followingBandIds = followPort.findFollowingBandIds(userId);
+        return postPort.findFollowingBandNews(followingBandIds, cursor, pageSize);
     }
 }
