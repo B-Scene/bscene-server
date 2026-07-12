@@ -1,12 +1,15 @@
 package com.umc.bscene.domain.performance.adapter;
 
 import com.umc.bscene.domain.fanhome.dto.response.FanHomeResponse.HomePerformanceItem;
+import com.umc.bscene.domain.fanhome.dto.response.UpcomingPerformanceResponse;
+import com.umc.bscene.domain.fanhome.enums.UpcomingSortType;
 import com.umc.bscene.domain.fanhome.port.PerformancePort;
 import com.umc.bscene.domain.performance.entity.Performance;
 import com.umc.bscene.domain.performance.enums.PerformanceStatus;
 import com.umc.bscene.domain.performance.repository.PerformanceRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Slice;
 
 import java.time.LocalDate;
 import java.time.LocalTime;
@@ -48,6 +51,28 @@ public class FanHomeAdapter implements PerformancePort {
                 ).stream()
                 .map(this::toItem)
                 .toList();
+    }
+
+    @Override
+    public UpcomingPerformanceResponse findUpcoming(List<Long> bandIds, UpcomingSortType sort, int page, int size) {
+        if (bandIds.isEmpty()) {
+            return new UpcomingPerformanceResponse(List.of(), page, false);
+        }
+
+        PageRequest pageable = PageRequest.of(page, size);
+        LocalDate today = LocalDate.now();
+        LocalTime now = LocalTime.now();
+
+        Slice<Performance> slice = switch (sort) {
+            case IMMINENT -> performanceRepository.findUpcomingImminent(bandIds, PerformanceStatus.ACTIVE, today, now, pageable);
+            case LATEST -> performanceRepository.findUpcomingLatest(bandIds, PerformanceStatus.ACTIVE, today, now, pageable);
+            case POPULAR -> performanceRepository.findUpcomingPopular(bandIds, PerformanceStatus.ACTIVE, today, now, pageable);
+        };
+
+        List<HomePerformanceItem> items = slice.getContent().stream()
+                .map(this::toItem)
+                .toList();
+        return new UpcomingPerformanceResponse(items, page, slice.hasNext());
     }
 
     private HomePerformanceItem toItem(Performance p) {
