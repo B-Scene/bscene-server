@@ -1,7 +1,9 @@
 package com.umc.bscene.domain.fanhome.controller;
 
+import com.umc.bscene.domain.fanhome.dto.response.DatePerformanceResponse;
 import com.umc.bscene.domain.fanhome.dto.response.FanHomeResponse;
 import com.umc.bscene.domain.fanhome.dto.response.FollowingBandNewsResponse;
+import com.umc.bscene.domain.fanhome.dto.response.PerformanceCalendarResponse;
 import com.umc.bscene.domain.fanhome.dto.response.UpcomingPerformanceResponse;
 import com.umc.bscene.domain.fanhome.enums.UpcomingSortType;
 import com.umc.bscene.domain.fanhome.response.code.FanHomeSuccessCode;
@@ -10,10 +12,13 @@ import com.umc.bscene.global.response.SuccessResponse;
 import com.umc.bscene.global.security.entity.AuthMember;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+
+import java.time.LocalDate;
 
 @RestController
 @RequiredArgsConstructor
@@ -65,6 +70,41 @@ public class FanHomeController {
         SuccessResponse<UpcomingPerformanceResponse> successResponse = SuccessResponse.of(
                 response,
                 FanHomeSuccessCode.UPCOMING_PERFORMANCE_GET_SUCCESS
+        );
+
+        return ResponseEntity.status(successResponse.getStatus()).body(successResponse);
+    }
+
+    // 공연 달력 조회 API (year/month 없으면 서버 기준 이번 달)
+    @GetMapping("/performances/calendar")
+    public ResponseEntity<SuccessResponse<PerformanceCalendarResponse>> getPerformanceCalendar(
+            @AuthenticationPrincipal AuthMember authMember,
+            @RequestParam(required = false) Integer year,
+            @RequestParam(required = false) Integer month
+    ) {
+        PerformanceCalendarResponse response = fanHomeService.getPerformanceCalendar(
+                authMember.getUser().getId(), year, month);
+        SuccessResponse<PerformanceCalendarResponse> successResponse = SuccessResponse.of(
+                response,
+                FanHomeSuccessCode.PERFORMANCE_CALENDAR_GET_SUCCESS
+        );
+
+        return ResponseEntity.status(successResponse.getStatus()).body(successResponse);
+    }
+
+    // 특정 날짜 공연 목록 조회 API (date 없으면 서버 기준 오늘, offset 기반 무한스크롤, 시간 빠른 순)
+    @GetMapping("/performances/by-date")
+    public ResponseEntity<SuccessResponse<DatePerformanceResponse>> getPerformancesByDate(
+            @AuthenticationPrincipal AuthMember authMember,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size
+    ) {
+        DatePerformanceResponse response = fanHomeService.getPerformancesByDate(
+                authMember.getUser().getId(), date, page, size);
+        SuccessResponse<DatePerformanceResponse> successResponse = SuccessResponse.of(
+                response,
+                FanHomeSuccessCode.DATE_PERFORMANCE_GET_SUCCESS
         );
 
         return ResponseEntity.status(successResponse.getStatus()).body(successResponse);

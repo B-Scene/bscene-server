@@ -4,7 +4,9 @@ import com.umc.bscene.domain.fanhome.dto.response.FanHomeResponse.BandNewsItem;
 import com.umc.bscene.domain.fanhome.dto.response.FanHomeResponse;
 import com.umc.bscene.domain.fanhome.dto.response.FanHomeResponse.HomePerformanceItem;
 import com.umc.bscene.domain.fanhome.dto.response.FanHomeResponse.RecommendedBandItem;
+import com.umc.bscene.domain.fanhome.dto.response.DatePerformanceResponse;
 import com.umc.bscene.domain.fanhome.dto.response.FollowingBandNewsResponse;
+import com.umc.bscene.domain.fanhome.dto.response.PerformanceCalendarResponse;
 import com.umc.bscene.domain.fanhome.dto.response.UpcomingPerformanceResponse;
 import com.umc.bscene.domain.fanhome.enums.PerformanceSectionType;
 import com.umc.bscene.domain.fanhome.enums.UpcomingSortType;
@@ -13,10 +15,14 @@ import com.umc.bscene.domain.fanhome.port.FollowPort;
 import com.umc.bscene.domain.fanhome.port.NotificationPort;
 import com.umc.bscene.domain.fanhome.port.PerformancePort;
 import com.umc.bscene.domain.fanhome.port.PostPort;
+import com.umc.bscene.global.exception.BaseException;
+import com.umc.bscene.global.response.code.GeneralErrorCode;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
+import java.time.YearMonth;
 import java.util.List;
 
 @Service
@@ -94,5 +100,29 @@ public class FanHomeService {
         int pageSize = Math.min(Math.max(size, 1), MAX_PERFORMANCE_PAGE_SIZE);
         List<Long> followingBandIds = followPort.findFollowingBandIds(userId);
         return performancePort.findUpcoming(userId, followingBandIds, sort, pageNumber, pageSize);
+    }
+
+    // 공연 달력 : 해당 년월에 팔로우 밴드 공연이 있는 날짜 목록 (year/month 없으면 서버 기준 이번 달)
+    public PerformanceCalendarResponse getPerformanceCalendar(Long userId, Integer year, Integer month) {
+        YearMonth target;
+        if (year == null || month == null) {
+            target = YearMonth.now();
+        } else {
+            if (month < 1 || month > 12) {
+                throw new BaseException(GeneralErrorCode.INVALID_HTTP_MESSAGE_PARAMETER);
+            }
+            target = YearMonth.of(year, month);
+        }
+        List<Long> followingBandIds = followPort.findFollowingBandIds(userId);
+        return performancePort.findPerformanceDates(followingBandIds, target.getYear(), target.getMonthValue());
+    }
+
+    // 특정 날짜 공연 목록 (offset 기반 무한스크롤, 시간 빠른 순, date 없으면 서버 기준 오늘)
+    public DatePerformanceResponse getPerformancesByDate(Long userId, LocalDate date, int page, int size) {
+        LocalDate targetDate = (date == null) ? LocalDate.now() : date;
+        int pageNumber = Math.max(page, 0);
+        int pageSize = Math.min(Math.max(size, 1), MAX_PERFORMANCE_PAGE_SIZE);
+        List<Long> followingBandIds = followPort.findFollowingBandIds(userId);
+        return performancePort.findByDate(userId, followingBandIds, targetDate, pageNumber, pageSize);
     }
 }
