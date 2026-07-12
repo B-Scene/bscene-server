@@ -93,6 +93,6 @@ public class FanHomeService {
         int pageNumber = Math.max(page, 0);
         int pageSize = Math.min(Math.max(size, 1), MAX_PERFORMANCE_PAGE_SIZE);
         List<Long> followingBandIds = followPort.findFollowingBandIds(userId);
-        return performancePort.findUpcoming(followingBandIds, sort, pageNumber, pageSize);
+        return performancePort.findUpcoming(userId, followingBandIds, sort, pageNumber, pageSize);
     }
 }

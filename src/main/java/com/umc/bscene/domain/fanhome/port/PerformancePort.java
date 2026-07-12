@@ -24,10 +24,11 @@ public interface PerformancePort {
     /**
      * 팔로우한 밴드들의 아직 시작하지 않은 ACTIVE 공연을 정렬 기준에 따라 페이지 단위로 조회합니다. (다가오는 공연 전체 목록)
      *
+     * @param userId  관심 등록 여부 판별 대상 사용자 ID
      * @param bandIds 공연을 조회할 밴드 ID 목록
      * @param sort    정렬 기준 (임박순/최신순/인기순)
      * @param page    페이지 번호 (0-base)
      * @param size    페이지 크기
      */
-    UpcomingPerformanceResponse findUpcoming(List<Long> bandIds, UpcomingSortType sort, int page, int size);
+    UpcomingPerformanceResponse findUpcoming(Long userId, List<Long> bandIds, UpcomingSortType sort, int page, int size);
 }

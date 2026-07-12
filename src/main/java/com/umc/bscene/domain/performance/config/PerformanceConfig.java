@@ -22,9 +22,10 @@ public class PerformanceConfig {
     // 팬홈 PerformancePort 구현 어댑터 (다가오는 공연 / 관심수 기반 추천 공연)
     @Bean
     public FanHomeAdapter fanHomePerformanceAdapter(
-            PerformanceRepository performanceRepository
+            PerformanceRepository performanceRepository,
+            PerformanceInterestRepository performanceInterestRepository
     ) {
-        return new FanHomeAdapter(performanceRepository);
+        return new FanHomeAdapter(performanceRepository, performanceInterestRepository);
     }
 
     // 마이페이지 PerformancePort 구현 어댑터 (관심 공연 수 / 참여 공연 수)
