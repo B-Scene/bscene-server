@@ -189,18 +189,31 @@ public class StreamController {
                 .body(SuccessResponse.of(response, StreamSuccessCode.LIVE_ALARM_TOGGLE_SUCCESS));
     }
 
-    // 다시보기 목록 조회 (전체/팔로우 탭, 최신순/인기순)
-    @GetMapping("/replays")
-    public ResponseEntity<SuccessResponse<CursorPage<ReplayResponse>>> getReplays(
+    // 다시보기 목록 조회 (팔로우 탭, 최신순/인기순)
+    @GetMapping("/replays/following")
+    public ResponseEntity<SuccessResponse<CursorPage<ReplayResponse>>> getFollowingReplays(
             @AuthenticationPrincipal AuthMember authMember,
-            @RequestParam(defaultValue = "false") boolean following,
             @RequestParam(required = false) Long cursor,
             @RequestParam(defaultValue = "10") @Min(1) @Max(15) int size,
             @RequestParam(defaultValue = "LATEST") ReplaySort sort
     ) {
-        CursorPage<ReplayResponse> page = streamReplayService.getReplays(
-                authMember.getUser().getId(), following, cursor, size, sort
+        CursorPage<ReplayResponse> page = streamReplayService.getFollowingReplays(
+                authMember.getUser().getId(), cursor, size, sort
         );
+
+        return ResponseEntity
+                .status(HttpStatus.OK)
+                .body(SuccessResponse.of(page, StreamSuccessCode.REPLAY_LIST_SUCCESS));
+    }
+
+    // 다시보기 목록 조회 (전체 탭, 최신순/인기순)
+    @GetMapping("/replays/all")
+    public ResponseEntity<SuccessResponse<CursorPage<ReplayResponse>>> getAllReplays(
+            @RequestParam(required = false) Long cursor,
+            @RequestParam(defaultValue = "10") @Min(1) @Max(15) int size,
+            @RequestParam(defaultValue = "LATEST") ReplaySort sort
+    ) {
+        CursorPage<ReplayResponse> page = streamReplayService.getAllReplays(cursor, size, sort);
 
         return ResponseEntity
                 .status(HttpStatus.OK)
