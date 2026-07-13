@@ -3,6 +3,7 @@ package com.umc.bscene.domain.chat.websocket;
 import com.umc.bscene.domain.chat.service.ChatWebSocketTicketService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.server.ServerHttpRequest;
 import org.springframework.http.server.ServerHttpResponse;
 import org.springframework.http.server.ServletServerHttpRequest;
@@ -29,12 +30,21 @@ public class ChatWebSocketHandshakeInterceptor implements HandshakeInterceptor {
             WebSocketHandler wsHandler,
             Map<String, Object> attributes
     ) {
-        if (!(request instanceof ServletServerHttpRequest servletRequest)) return false;
-        if (!supportsDmSubprotocol(request.getHeaders())) return false;
+        if (!(request instanceof ServletServerHttpRequest servletRequest)) {
+            response.setStatusCode(HttpStatus.BAD_REQUEST);
+            return false;
+        }
+        if (!supportsDmSubprotocol(request.getHeaders())) {
+            response.setStatusCode(HttpStatus.BAD_REQUEST);
+            return false;
+        }
 
         String ticket = servletRequest.getServletRequest().getParameter("ticket");
         Long userId = ticketService.consume(ticket);
-        if (userId == null) return false;
+        if (userId == null) {
+            response.setStatusCode(HttpStatus.UNAUTHORIZED);
+            return false;
+        }
 
         attributes.put(USER_ID_ATTRIBUTE, userId);
         return true;
