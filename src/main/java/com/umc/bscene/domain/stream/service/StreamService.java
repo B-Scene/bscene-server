@@ -1,5 +1,6 @@
 package com.umc.bscene.domain.stream.service;
 
+import com.umc.bscene.domain.stream.dto.request.ReportUserRequest;
 import com.umc.bscene.domain.stream.dto.request.ReservationPatchRequest;
 import com.umc.bscene.domain.stream.dto.request.StreamCreateRequest;
 import com.umc.bscene.domain.stream.dto.response.LiveAlarmToggleResponse;
@@ -64,4 +65,7 @@ public interface StreamService {
     void updateReservation(User user, Long liveId, ReservationPatchRequest request);
 
     void cancelReservation(User user, Long liveId);
+
+    // 라이브 내 유저 신고 접수 (신고 이력 저장 + 모니터링 파이프라인 감지용 로그 기록)
+    void reportUser(User reporter, Long liveId, ReportUserRequest request);
 }
