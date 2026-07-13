@@ -24,6 +24,7 @@ public enum PermitAllUri {
 
     GENRES("/genres"),
     REGIONS("/regions"),
+    CHAT_WEBSOCKET("/ws/chat"),
 
     // MediaMTX 관련 API 개방
     INTERNAL_MEDIAMTX("/internal/mediamtx/**"),;

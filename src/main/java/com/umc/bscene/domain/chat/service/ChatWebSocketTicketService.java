@@ -27,6 +27,19 @@ public class ChatWebSocketTicketService {
             return 1
             """, Long.class);
 
+    private static final DefaultRedisScript<String> CONSUME_TICKET_SCRIPT = new DefaultRedisScript<>("""
+            local userId = redis.call('GET', KEYS[1])
+            if not userId then
+                return nil
+            end
+            redis.call('DEL', KEYS[1])
+            local userTicketKey = ARGV[1] .. userId
+            if redis.call('GET', userTicketKey) == KEYS[1] then
+                redis.call('DEL', userTicketKey)
+            end
+            return userId
+            """, String.class);
+
     private final StringRedisTemplate redisTemplate;
     private final SecureRandom secureRandom = new SecureRandom();
 
@@ -47,6 +60,23 @@ public class ChatWebSocketTicketService {
         );
 
         return new ChatWebSocketTicketResponse(ticket, SUBPROTOCOL, TICKET_TTL_SECONDS);
+    }
+
+    public Long consume(String ticket) {
+        if (ticket == null || ticket.isBlank()) return null;
+
+        String userId = redisTemplate.execute(
+                CONSUME_TICKET_SCRIPT,
+                List.of(TICKET_KEY_PREFIX + ticket),
+                USER_TICKET_KEY_PREFIX
+        );
+        if (userId == null) return null;
+
+        try {
+            return Long.valueOf(userId);
+        } catch (NumberFormatException ignored) {
+            return null;
+        }
     }
 
     private String generateTicket() {
