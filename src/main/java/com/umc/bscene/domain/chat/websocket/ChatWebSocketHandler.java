@@ -207,4 +207,18 @@ public class ChatWebSocketHandler extends TextWebSocketHandler implements SubPro
         log.debug("Chat WebSocket closed: userId={}, sessionId={}, status={}",
                 userId, session.getId(), status);
     }
+
+    @Override
+    public void handleTransportError(WebSocketSession session, Throwable exception)
+            throws Exception {
+        Long userId = (Long) session.getAttributes()
+                .get(ChatWebSocketHandshakeInterceptor.USER_ID_ATTRIBUTE);
+        sessionRegistry.unregister(userId, session.getId());
+        log.warn("Chat WebSocket transport error: userId={}, sessionId={}",
+                userId, session.getId(), exception);
+
+        if (session.isOpen()) {
+            session.close(CloseStatus.SERVER_ERROR);
+        }
+    }
 }

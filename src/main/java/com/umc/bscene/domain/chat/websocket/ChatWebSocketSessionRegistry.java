@@ -40,6 +40,12 @@ public class ChatWebSocketSessionRegistry {
         Map<String, WebSocketSession> sessions = sessionsByUser.get(userId);
         if (sessions == null) return List.of();
 
+        sessions.values().stream()
+                .filter(session -> !session.isOpen())
+                .map(WebSocketSession::getId)
+                .toList()
+                .forEach(sessionId -> unregister(userId, sessionId));
+
         return sessions.values().stream()
                 .filter(WebSocketSession::isOpen)
                 .toList();
