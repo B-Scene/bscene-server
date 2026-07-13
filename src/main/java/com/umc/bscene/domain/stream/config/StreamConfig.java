@@ -7,6 +7,7 @@ import com.umc.bscene.domain.stream.port.UserPort;
 import com.umc.bscene.domain.stream.port.UserTermsPort;
 import com.umc.bscene.domain.stream.repository.AudioStreamRepository;
 import com.umc.bscene.domain.stream.repository.LiveAlarmRepository;
+import com.umc.bscene.domain.stream.repository.ReportHistoryRepository;
 import com.umc.bscene.domain.stream.repository.StreamMemberRepository;
 import com.umc.bscene.domain.stream.repository.StreamReplayRepository;
 import com.umc.bscene.domain.stream.scheduler.StreamCleanupScheduler;
@@ -122,6 +123,7 @@ public class StreamConfig {
             StreamMemberRepository streamMemberRepository,
             LiveAlarmRepository liveAlarmRepository,
             StreamReplayRepository streamReplayRepository,
+            ReportHistoryRepository reportHistoryRepository,
             UserPort userPort,
             StringRedisTemplate stringRedisTemplate,
             BandMemberPort bandMemberPort,
@@ -139,6 +141,7 @@ public class StreamConfig {
                 streamMemberRepository,
                 liveAlarmRepository,
                 streamReplayRepository,
+                reportHistoryRepository,
                 userPort,
                 stringRedisTemplate,
                 bandMemberPort,
