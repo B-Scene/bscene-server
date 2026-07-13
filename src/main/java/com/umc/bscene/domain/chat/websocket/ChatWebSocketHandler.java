@@ -2,7 +2,9 @@ package com.umc.bscene.domain.chat.websocket;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.umc.bscene.domain.chat.dto.request.ChatMessageSendRequest;
+import com.umc.bscene.domain.chat.dto.request.ChatMessageReadRequest;
 import com.umc.bscene.domain.chat.dto.request.ChatWebSocketFrame;
+import com.umc.bscene.domain.chat.dto.response.ChatMessageReadResult;
 import com.umc.bscene.domain.chat.dto.response.ChatMessageSendResult;
 import com.umc.bscene.domain.chat.dto.response.ChatWebSocketPushFrame;
 import com.umc.bscene.domain.chat.exception.ChatException;
@@ -50,16 +52,25 @@ public class ChatWebSocketHandler extends TextWebSocketHandler implements SubPro
     protected void handleTextMessage(WebSocketSession session, TextMessage message) throws Exception {
         ChatWebSocketFrame frame = objectMapper.readValue(
                 message.getPayload(), ChatWebSocketFrame.class);
-        if (!"dm.send".equals(frame.type())
-                || frame.data() == null
-                || !isUuid(frame.clientMsgId())) {
+        if (frame.type() == null || frame.data() == null) {
             throw new ChatException(ChatWebSocketErrorCode.INVALID_FRAME);
         }
 
-        ChatMessageSendRequest request = objectMapper.treeToValue(
-                frame.data(), ChatMessageSendRequest.class);
         Long userId = (Long) session.getAttributes()
                 .get(ChatWebSocketHandshakeInterceptor.USER_ID_ATTRIBUTE);
+        switch (frame.type()) {
+            case "dm.send" -> handleSend(userId, frame);
+            case "dm.read" -> handleRead(userId, frame);
+            default -> throw new ChatException(ChatWebSocketErrorCode.INVALID_FRAME);
+        }
+    }
+
+    private void handleSend(Long userId, ChatWebSocketFrame frame) throws Exception {
+        if (!isUuid(frame.clientMsgId())) {
+            throw new ChatException(ChatWebSocketErrorCode.INVALID_FRAME);
+        }
+        ChatMessageSendRequest request = objectMapper.treeToValue(
+                frame.data(), ChatMessageSendRequest.class);
         ChatMessageSendResult result = chatMessageService.send(userId, request);
         String timestamp = LocalDateTime.now().format(DATE_TIME_FORMATTER);
 
@@ -82,6 +93,28 @@ public class ChatWebSocketHandler extends TextWebSocketHandler implements SubPro
                 objectMapper.writeValueAsString(senderFrame)));
         sessionRegistry.sendToUser(result.recipientId(), new TextMessage(
                 objectMapper.writeValueAsString(recipientFrame)));
+    }
+
+    private void handleRead(Long userId, ChatWebSocketFrame frame) throws Exception {
+        if (frame.clientMsgId() != null) {
+            throw new ChatException(ChatWebSocketErrorCode.INVALID_FRAME);
+        }
+
+        ChatMessageReadRequest request = objectMapper.treeToValue(
+                frame.data(), ChatMessageReadRequest.class);
+        ChatMessageReadResult result = chatMessageService.markRead(userId, request);
+        String timestamp = LocalDateTime.now().format(DATE_TIME_FORMATTER);
+        ChatWebSocketPushFrame pushFrame = new ChatWebSocketPushFrame(
+                "dm.read",
+                null,
+                result.read(),
+                null,
+                timestamp
+        );
+        TextMessage pushMessage = new TextMessage(objectMapper.writeValueAsString(pushFrame));
+
+        sessionRegistry.sendToUser(userId, pushMessage);
+        sessionRegistry.sendToUser(result.counterpartId(), pushMessage);
     }
 
     private boolean isUuid(String value) {

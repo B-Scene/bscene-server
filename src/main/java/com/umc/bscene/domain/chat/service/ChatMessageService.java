@@ -1,6 +1,9 @@
 package com.umc.bscene.domain.chat.service;
 
 import com.umc.bscene.domain.chat.dto.request.ChatMessageSendRequest;
+import com.umc.bscene.domain.chat.dto.request.ChatMessageReadRequest;
+import com.umc.bscene.domain.chat.dto.response.ChatMessageReadPushData;
+import com.umc.bscene.domain.chat.dto.response.ChatMessageReadResult;
 import com.umc.bscene.domain.chat.dto.response.ChatMessagePushData;
 import com.umc.bscene.domain.chat.dto.response.ChatMessageSendResult;
 import com.umc.bscene.domain.chat.entity.ChatMessage;
@@ -20,6 +23,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.format.DateTimeFormatter;
+import java.time.LocalDateTime;
 
 @Service
 @RequiredArgsConstructor
@@ -75,6 +79,43 @@ public class ChatMessageService {
                         message.getContent(),
                         null,
                         message.getCreatedAt().format(DATE_TIME_FORMATTER)
+                )
+        );
+    }
+
+    @Transactional
+    public ChatMessageReadResult markRead(Long userId, ChatMessageReadRequest request) {
+        if (request == null
+                || request.chatRoomId() == null
+                || request.lastReadMessageId() == null) {
+            throw new ChatException(ChatWebSocketErrorCode.INVALID_FRAME);
+        }
+
+        ChatRoom room = chatRoomRepository.findDetail(request.chatRoomId())
+                .orElseThrow(() -> new ChatException(ChatErrorCode.CHAT_ROOM_NOT_FOUND));
+        resolveParticipant(room, userId);
+        if (room.hasLeft(userId)) {
+            throw new ChatException(ChatErrorCode.CHAT_ROOM_NOT_FOUND);
+        }
+        if (!chatMessageRepository.existsByChatMessageIdAndChatRoom_ChatRoomId(
+                request.lastReadMessageId(), request.chatRoomId())) {
+            throw new ChatException(ChatWebSocketErrorCode.READ_MESSAGE_NOT_FOUND);
+        }
+
+        LocalDateTime readAt = LocalDateTime.now();
+        chatMessageRepository.markReadThrough(
+                request.chatRoomId(), userId, request.lastReadMessageId(), readAt);
+
+        Long counterpartId = room.getSender().getId().equals(userId)
+                ? room.getRecipient().getId()
+                : room.getSender().getId();
+        return new ChatMessageReadResult(
+                counterpartId,
+                new ChatMessageReadPushData(
+                        request.chatRoomId(),
+                        userId,
+                        request.lastReadMessageId(),
+                        readAt.format(DATE_TIME_FORMATTER)
                 )
         );
     }
