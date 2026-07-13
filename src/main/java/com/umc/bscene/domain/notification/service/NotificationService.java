@@ -15,6 +15,7 @@ import com.umc.bscene.domain.user.repository.UserRepository;
 import com.umc.bscene.global.notification.message.PushMessage;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.HashMap;
@@ -66,7 +67,7 @@ public class NotificationService {
     }
 
     // 푸시 알림
-    @Transactional
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void send(Long receiverId, PushMessage message) {
         User receiver = userRepository.findById(receiverId)
                 .orElseThrow(() -> new NotificationException(NotificationErrorCode.RECEIVER_NOT_FOUND));
