@@ -151,7 +151,7 @@ public class StreamServiceImpl implements StreamService {
                     .path(UUID.randomUUID().toString())
                     .title(request.title())
                     .description(request.description())
-                    .thumbnailImageUrl("")                  // FIXME: S3 관련 업데이트 시 작성 필요
+                    .thumbnailImageUrl(request.thumbnailImageUrl())     // presigned URL 업로드 완료 후 클라이언트가 전달한 S3 fileUrl
                     .status(StreamStatus.SCHEDULED)         // 방 생성 이후 방 진입이 방송 시작의 트리거이므로 일단 SCHEDULED로 고정
                     .scheduledAt(request.scheduledAt())
                     .startedAt(null)                        // 방 생성 이후 방 진입이 방송 시작의 트리거이므로 일단 null로 고정
