@@ -8,7 +8,6 @@ import com.umc.bscene.domain.stream.service.StreamService;
 import com.umc.bscene.domain.stream.service.StreamServiceImpl;
 import com.umc.bscene.domain.stream.sse.ViewerSsePresence;
 import com.umc.bscene.domain.stream.sse.ViewerSseRegistry;
-import com.umc.bscene.domain.user.entity.User;
 import com.umc.bscene.global.security.util.JwtUtil;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
@@ -25,16 +24,6 @@ import java.util.List;
 @EnableScheduling
 @Configuration
 public class StreamConfig {
-
-    @Bean
-    public UserPort userPort() {
-        return new UserPort() {
-            @Override
-            public List<User> findAllByIds(Collection<Long> userIds) {
-                return List.of();
-            }
-        };
-    }
 
     @Bean
     public UserTermsPort userTermsPort() {
