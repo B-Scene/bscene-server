@@ -1,21 +1,23 @@
 package com.umc.bscene.domain.session.service.impl;
 
+import com.umc.bscene.domain.band.repository.BandMemberRepository;
+import com.umc.bscene.domain.session.dto.SessionPushMessage;
 import com.umc.bscene.domain.session.dto.application.request.MySessionApplicationUpdateRequest;
 import com.umc.bscene.domain.session.dto.application.request.SessionApplicationVisibilityRequest;
 import com.umc.bscene.domain.session.dto.application.response.MySessionApplicationResponse;
-import com.umc.bscene.domain.session.dto.application.response.SessionApplicationVisibilityResponse;
 import com.umc.bscene.domain.session.dto.application.response.SessionApplicationSubmitResponse;
+import com.umc.bscene.domain.session.dto.application.response.SessionApplicationVisibilityResponse;
 import com.umc.bscene.domain.session.entity.SessionApplication;
+import com.umc.bscene.domain.session.entity.SessionApplicationLink;
 import com.umc.bscene.domain.session.entity.SessionApplicationSubmission;
 import com.umc.bscene.domain.session.entity.SessionRecruitment;
 import com.umc.bscene.domain.session.enums.ApplicationStatus;
-import com.umc.bscene.domain.session.entity.SessionApplicationLink;
 import com.umc.bscene.domain.session.enums.code.SessionErrorCode;
 import com.umc.bscene.domain.session.exception.SessionApplicationException;
+import com.umc.bscene.domain.session.port.NotifyPort;
 import com.umc.bscene.domain.session.repository.SessionApplicationRepository;
 import com.umc.bscene.domain.session.repository.SessionApplicationSubmissionRepository;
 import com.umc.bscene.domain.session.repository.SessionRecruitmentRepository;
-import com.umc.bscene.domain.band.repository.BandMemberRepository;
 import com.umc.bscene.domain.session.service.SessionApplicationCommandService;
 import com.umc.bscene.domain.user.entity.User;
 import com.umc.bscene.domain.user.repository.UserRepository;
@@ -24,6 +26,8 @@ import com.umc.bscene.global.response.code.GeneralErrorCode;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.time.LocalDateTime;
 
@@ -37,6 +41,8 @@ public class SessionApplicationCommandServiceImpl implements SessionApplicationC
     private final SessionRecruitmentRepository sessionRecruitmentRepository;
     private final BandMemberRepository bandMemberRepository;
     private final UserRepository userRepository;
+
+    private final NotifyPort notifyPort;
 
     @Override
     public MySessionApplicationResponse createSessionApplication(
@@ -196,6 +202,9 @@ public class SessionApplicationCommandServiceImpl implements SessionApplicationC
                         .build()
         );
 
+        // 지원서 저장 후 Owner에게 알림 발송
+        notifyRecruitmentOwnerAfterCommit(submission);
+
         return SessionApplicationSubmitResponse.from(submission);
     }
 
@@ -238,5 +247,27 @@ public class SessionApplicationCommandServiceImpl implements SessionApplicationC
                                         .build()
                         )
                 );
+    }
+
+    private void notifyRecruitmentOwnerAfterCommit(
+            SessionApplicationSubmission submission
+    ) {
+        SessionRecruitment recruitment = submission.getSessionRecruitment();
+        Long receiverId = recruitment.getBand().getOwner().getId();
+
+        SessionPushMessage message = SessionPushMessage.applicationSubmitted(
+                submission.getApplicationSubmissionId(),
+                submission.getSessionApplication().getNickname(),
+                recruitment.getRecruitmentTitle()
+        );
+
+        TransactionSynchronizationManager.registerSynchronization(
+                new TransactionSynchronization() {
+                    @Override
+                    public void afterCommit() {
+                        notifyPort.notify(receiverId, message);
+                    }
+                }
+        );
     }
 }
