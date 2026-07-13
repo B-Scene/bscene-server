@@ -10,7 +10,8 @@ import static com.umc.bscene.global.constant.StaticValue.OK;
 @RequiredArgsConstructor
 public enum UserSuccessCode implements BaseResponseCode {
 
-    FAN_MYPAGE_GET_SUCCESS(OK, "USER200_1", "팬 모드 마이페이지에 성공했습니다.");
+    FAN_MYPAGE_GET_SUCCESS(OK, "USER200_1", "팬 모드 마이페이지에 성공했습니다."),
+    FAN_PERFORMANCE_HISTORY_GET_SUCCESS(OK, "USER200_2", "공연 참여 기록을 조회했습니다.");
 
     private final int status;
     private final String code;
