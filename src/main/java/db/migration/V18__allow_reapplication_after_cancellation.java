@@ -12,6 +12,12 @@ public class V18__allow_reapplication_after_cancellation extends BaseJavaMigrati
     private static final String TABLE = "application_submissions";
     private static final String CONSTRAINT =
             "uk_application_submission_recruitment_application";
+    private static final String RECRUITMENT_COLUMN = "session_recruitment_id";
+    private static final String APPLICATION_COLUMN = "session_application_id";
+    private static final String RECRUITMENT_INDEX =
+            "idx_application_submissions_recruitment";
+    private static final String APPLICATION_INDEX =
+            "idx_application_submissions_application";
 
     @Override
     public void migrate(Context context) throws Exception {
@@ -24,12 +30,34 @@ public class V18__allow_reapplication_after_cancellation extends BaseJavaMigrati
 
         boolean mysql = connection.getMetaData().getDatabaseProductName()
                 .toLowerCase().contains("mysql");
+        createIndexIfAbsent(
+                connection, tableName, RECRUITMENT_INDEX, RECRUITMENT_COLUMN, mysql);
+        createIndexIfAbsent(
+                connection, tableName, APPLICATION_INDEX, APPLICATION_COLUMN, mysql);
+
         String sql = mysql
                 ? "ALTER TABLE " + quote(tableName, true)
                     + " DROP INDEX " + quote(constraintName, true)
                 : "ALTER TABLE " + quote(tableName, false)
                     + " DROP CONSTRAINT " + quote(constraintName, false);
 
+        try (Statement statement = connection.createStatement()) {
+            statement.execute(sql);
+        }
+    }
+
+    private void createIndexIfAbsent(
+            Connection connection,
+            String tableName,
+            String indexName,
+            String columnName,
+            boolean mysql
+    ) throws Exception {
+        if (findIndex(connection, tableName, indexName) != null) return;
+
+        String sql = "CREATE INDEX " + quote(indexName, mysql)
+                + " ON " + quote(tableName, mysql)
+                + " (" + quote(columnName, mysql) + ")";
         try (Statement statement = connection.createStatement()) {
             statement.execute(sql);
         }
@@ -55,6 +83,22 @@ public class V18__allow_reapplication_after_cancellation extends BaseJavaMigrati
         DatabaseMetaData metadata = connection.getMetaData();
         try (ResultSet indexes = metadata.getIndexInfo(
                 connection.getCatalog(), connection.getSchema(), tableName, true, false)) {
+            while (indexes.next()) {
+                String name = indexes.getString("INDEX_NAME");
+                if (name != null && expected.equalsIgnoreCase(name)) return name;
+            }
+        }
+        return null;
+    }
+
+    private String findIndex(
+            Connection connection,
+            String tableName,
+            String expected
+    ) throws Exception {
+        DatabaseMetaData metadata = connection.getMetaData();
+        try (ResultSet indexes = metadata.getIndexInfo(
+                connection.getCatalog(), connection.getSchema(), tableName, false, false)) {
             while (indexes.next()) {
                 String name = indexes.getString("INDEX_NAME");
                 if (name != null && expected.equalsIgnoreCase(name)) return name;
