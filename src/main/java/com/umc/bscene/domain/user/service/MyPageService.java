@@ -3,6 +3,7 @@ package com.umc.bscene.domain.user.service;
 import com.umc.bscene.domain.auth.enums.onboarding.Genre;
 import com.umc.bscene.domain.auth.enums.onboarding.Region;
 import com.umc.bscene.domain.user.dto.response.FanMyPageResponse;
+import com.umc.bscene.domain.user.dto.response.InterestedPerformanceResponse;
 import com.umc.bscene.domain.user.dto.response.ParticipationHistoryResponse;
 import com.umc.bscene.domain.user.enums.HistoryYearFilter;
 import com.umc.bscene.domain.user.entity.FanProfile;
@@ -28,7 +29,7 @@ import java.util.List;
 @Transactional(readOnly = true)
 public class MyPageService {
 
-    private static final int MAX_HISTORY_PAGE_SIZE = 30;   // 참여 기록 페이지 크기 상한
+    private static final int MAX_PAGE_SIZE = 30;   // 목록 조회(참여 기록·관심 공연) 페이지 크기 상한
 
     private final FanProfileRepository fanProfileRepository;
     private final UserGenresRepository userGenresRepository;
@@ -91,8 +92,15 @@ public class MyPageService {
         }
 
         int pageNumber = Math.max(page, 0);
-        int pageSize = Math.min(Math.max(size, 1), MAX_HISTORY_PAGE_SIZE);
+        int pageSize = Math.min(Math.max(size, 1), MAX_PAGE_SIZE);
         return performancePort.findParticipationHistory(
                 userId, appliedFilter, baseYear, startDate, endDate, pageNumber, pageSize);
+    }
+
+    // 관심 공연 목록 조회 (알림/참여 상태 포함, offset 무한스크롤)
+    public InterestedPerformanceResponse getInterestedPerformances(Long userId, int page, int size) {
+        int pageNumber = Math.max(page, 0);
+        int pageSize = Math.min(Math.max(size, 1), MAX_PAGE_SIZE);
+        return performancePort.findInterestedPerformances(userId, pageNumber, pageSize);
     }
 }
