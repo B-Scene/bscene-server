@@ -3,6 +3,7 @@ package com.umc.bscene.domain.chat.controller;
 import com.umc.bscene.domain.chat.dto.request.ChatRoomCreateRequest;
 import com.umc.bscene.domain.chat.dto.response.ChatRoomCreateResponse;
 import com.umc.bscene.domain.chat.dto.response.ChatRoomListResponse;
+import com.umc.bscene.domain.chat.dto.response.ChatRoomDetailResponse;
 import com.umc.bscene.domain.chat.enums.ChatRoomFilter;
 import com.umc.bscene.domain.chat.response.code.ChatSuccessCode;
 import com.umc.bscene.domain.chat.service.ChatRoomService;
@@ -42,5 +43,26 @@ public class ChatRoomController {
                         authMember.getUser().getId(), filter, cursorId, size),
                 ChatSuccessCode.CHAT_ROOM_LIST_SUCCESS
         );
+    }
+
+    @GetMapping("/{chatRoomId}")
+    public SuccessResponse<ChatRoomDetailResponse> getChatRoomDetail(
+            @AuthenticationPrincipal AuthMember authMember,
+            @PathVariable Long chatRoomId
+    ) {
+        return SuccessResponse.of(
+                chatRoomService.getRoomDetail(
+                        authMember.getUser().getId(), chatRoomId),
+                ChatSuccessCode.CHAT_ROOM_DETAIL_SUCCESS
+        );
+    }
+
+    @DeleteMapping("/{chatRoomId}")
+    public SuccessResponse<Void> leaveChatRoom(
+            @AuthenticationPrincipal AuthMember authMember,
+            @PathVariable Long chatRoomId
+    ) {
+        chatRoomService.leaveRoom(authMember.getUser().getId(), chatRoomId);
+        return new SuccessResponse<>(null, ChatSuccessCode.CHAT_ROOM_LEAVE_SUCCESS);
     }
 }

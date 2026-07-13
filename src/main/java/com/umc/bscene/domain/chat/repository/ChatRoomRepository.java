@@ -22,6 +22,8 @@ public interface ChatRoomRepository extends JpaRepository<ChatRoom, Long> {
         LEFT JOIN FETCH recruitment.band
         LEFT JOIN FETCH room.sessionApplication
         WHERE (room.sender.id = :userId OR room.recipient.id = :userId)
+          AND ((room.sender.id = :userId AND room.senderLeftAt IS NULL)
+            OR (room.recipient.id = :userId AND room.recipientLeftAt IS NULL))
           AND (:cursorId IS NULL OR room.chatRoomId < :cursorId)
           AND (:unreadOnly = false OR EXISTS (
               SELECT message.chatMessageId FROM ChatMessage message
@@ -35,4 +37,15 @@ public interface ChatRoomRepository extends JpaRepository<ChatRoom, Long> {
                                @Param("cursorId") Long cursorId,
                                @Param("unreadOnly") boolean unreadOnly,
                                Pageable pageable);
+
+    @Query("""
+        SELECT room FROM ChatRoom room
+        JOIN FETCH room.sender
+        JOIN FETCH room.recipient
+        LEFT JOIN FETCH room.sessionRecruitment recruitment
+        LEFT JOIN FETCH recruitment.band
+        LEFT JOIN FETCH room.sessionApplication
+        WHERE room.chatRoomId = :roomId
+    """)
+    Optional<ChatRoom> findDetail(@Param("roomId") Long roomId);
 }

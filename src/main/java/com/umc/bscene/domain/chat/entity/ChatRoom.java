@@ -11,6 +11,8 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
+import java.time.LocalDateTime;
+
 @Entity
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
@@ -34,6 +36,12 @@ public class ChatRoom extends BaseEntity {
     @ManyToOne(fetch = FetchType.LAZY) @JoinColumn(name = "session_application_id")
     private SessionApplication sessionApplication;
 
+    @Column(name = "sender_left_at")
+    private LocalDateTime senderLeftAt;
+
+    @Column(name = "recipient_left_at")
+    private LocalDateTime recipientLeftAt;
+
     @Builder
     private ChatRoom(ChatContextType contextType, User sender, User recipient,
                      SessionRecruitment sessionRecruitment, SessionApplication sessionApplication) {
@@ -42,5 +50,21 @@ public class ChatRoom extends BaseEntity {
         this.recipient = recipient;
         this.sessionRecruitment = sessionRecruitment;
         this.sessionApplication = sessionApplication;
+    }
+
+    public boolean hasLeft(Long userId) {
+        if (sender.getId().equals(userId)) return senderLeftAt != null;
+        if (recipient.getId().equals(userId)) return recipientLeftAt != null;
+        return false;
+    }
+
+    public void leave(Long userId) {
+        if (sender.getId().equals(userId)) senderLeftAt = LocalDateTime.now();
+        else if (recipient.getId().equals(userId)) recipientLeftAt = LocalDateTime.now();
+    }
+
+    public void rejoin(Long userId) {
+        if (sender.getId().equals(userId)) senderLeftAt = null;
+        else if (recipient.getId().equals(userId)) recipientLeftAt = null;
     }
 }

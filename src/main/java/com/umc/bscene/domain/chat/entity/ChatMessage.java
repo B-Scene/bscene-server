@@ -32,4 +32,8 @@ public class ChatMessage extends BaseEntity {
         this.sender = sender;
         this.content = content;
     }
+
+    public void markRead() {
+        if (this.readAt == null) this.readAt = LocalDateTime.now();
+    }
 }
