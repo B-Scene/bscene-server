@@ -3,6 +3,8 @@ package com.umc.bscene.domain.chat.websocket;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.umc.bscene.domain.chat.dto.request.ChatMessageSendRequest;
 import com.umc.bscene.domain.chat.dto.request.ChatWebSocketFrame;
+import com.umc.bscene.domain.chat.dto.response.ChatMessageSendResult;
+import com.umc.bscene.domain.chat.dto.response.ChatWebSocketPushFrame;
 import com.umc.bscene.domain.chat.exception.ChatException;
 import com.umc.bscene.domain.chat.response.code.ChatWebSocketErrorCode;
 import com.umc.bscene.domain.chat.service.ChatMessageService;
@@ -17,11 +19,16 @@ import org.springframework.web.socket.handler.TextWebSocketHandler;
 
 import java.util.List;
 import java.util.UUID;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 
 @Slf4j
 @Component
 @RequiredArgsConstructor
 public class ChatWebSocketHandler extends TextWebSocketHandler implements SubProtocolCapable {
+    private static final DateTimeFormatter DATE_TIME_FORMATTER =
+            DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+
     private final ChatWebSocketSessionRegistry sessionRegistry;
     private final ChatMessageService chatMessageService;
     private final ObjectMapper objectMapper = new ObjectMapper();
@@ -53,7 +60,28 @@ public class ChatWebSocketHandler extends TextWebSocketHandler implements SubPro
                 frame.data(), ChatMessageSendRequest.class);
         Long userId = (Long) session.getAttributes()
                 .get(ChatWebSocketHandshakeInterceptor.USER_ID_ATTRIBUTE);
-        chatMessageService.send(userId, request);
+        ChatMessageSendResult result = chatMessageService.send(userId, request);
+        String timestamp = LocalDateTime.now().format(DATE_TIME_FORMATTER);
+
+        ChatWebSocketPushFrame senderFrame = new ChatWebSocketPushFrame(
+                "dm.message",
+                result.message().chatMessageId(),
+                result.message(),
+                frame.clientMsgId(),
+                timestamp
+        );
+        ChatWebSocketPushFrame recipientFrame = new ChatWebSocketPushFrame(
+                "dm.message",
+                result.message().chatMessageId(),
+                result.message(),
+                null,
+                timestamp
+        );
+
+        sessionRegistry.sendToUser(userId, new TextMessage(
+                objectMapper.writeValueAsString(senderFrame)));
+        sessionRegistry.sendToUser(result.recipientId(), new TextMessage(
+                objectMapper.writeValueAsString(recipientFrame)));
     }
 
     private boolean isUuid(String value) {

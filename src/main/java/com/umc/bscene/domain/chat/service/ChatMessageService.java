@@ -1,6 +1,8 @@
 package com.umc.bscene.domain.chat.service;
 
 import com.umc.bscene.domain.chat.dto.request.ChatMessageSendRequest;
+import com.umc.bscene.domain.chat.dto.response.ChatMessagePushData;
+import com.umc.bscene.domain.chat.dto.response.ChatMessageSendResult;
 import com.umc.bscene.domain.chat.entity.ChatMessage;
 import com.umc.bscene.domain.chat.entity.ChatRoom;
 import com.umc.bscene.domain.chat.enums.ChatContextType;
@@ -11,22 +13,28 @@ import com.umc.bscene.domain.chat.response.code.ChatErrorCode;
 import com.umc.bscene.domain.chat.response.code.ChatWebSocketErrorCode;
 import com.umc.bscene.domain.session.enums.ApplicationStatus;
 import com.umc.bscene.domain.session.repository.SessionApplicationSubmissionRepository;
+import com.umc.bscene.domain.session.repository.SessionBasicProfileRepository;
 import com.umc.bscene.domain.user.entity.User;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.format.DateTimeFormatter;
+
 @Service
 @RequiredArgsConstructor
 public class ChatMessageService {
     private static final int MAX_CONTENT_LENGTH = 2_000;
+    private static final DateTimeFormatter DATE_TIME_FORMATTER =
+            DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
     private final ChatRoomRepository chatRoomRepository;
     private final ChatMessageRepository chatMessageRepository;
     private final SessionApplicationSubmissionRepository submissionRepository;
+    private final SessionBasicProfileRepository sessionBasicProfileRepository;
 
     @Transactional
-    public ChatMessage send(Long userId, ChatMessageSendRequest request) {
+    public ChatMessageSendResult send(Long userId, ChatMessageSendRequest request) {
         if (request == null || request.chatRoomId() == null) {
             throw new ChatException(ChatWebSocketErrorCode.INVALID_FRAME);
         }
@@ -43,11 +51,32 @@ public class ChatMessageService {
             throw new ChatException(ChatWebSocketErrorCode.SEND_NOT_ALLOWED);
         }
 
-        return chatMessageRepository.save(ChatMessage.builder()
+        ChatMessage message = chatMessageRepository.saveAndFlush(ChatMessage.builder()
                 .chatRoom(room)
                 .sender(sender)
                 .content(content)
                 .build());
+
+        Long recipientId = room.getSender().getId().equals(userId)
+                ? room.getRecipient().getId()
+                : room.getSender().getId();
+        String profileImageUrl = sessionBasicProfileRepository.findByUser_Id(userId)
+                .map(profile -> profile.getProfileImageUrl())
+                .orElse(null);
+
+        return new ChatMessageSendResult(
+                recipientId,
+                new ChatMessagePushData(
+                        message.getChatMessageId(),
+                        room.getChatRoomId(),
+                        userId,
+                        sender.getName(),
+                        profileImageUrl,
+                        message.getContent(),
+                        null,
+                        message.getCreatedAt().format(DATE_TIME_FORMATTER)
+                )
+        );
     }
 
     private String normalizeContent(String content) {

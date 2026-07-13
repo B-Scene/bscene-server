@@ -1,6 +1,8 @@
 package com.umc.bscene.domain.chat.websocket;
 
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
+import org.springframework.web.socket.TextMessage;
 import org.springframework.web.socket.WebSocketSession;
 import org.springframework.web.socket.handler.ConcurrentWebSocketSessionDecorator;
 
@@ -8,6 +10,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
+@Slf4j
 @Component
 public class ChatWebSocketSessionRegistry {
     private static final int SEND_TIME_LIMIT_MILLIS = 10_000;
@@ -44,5 +47,17 @@ public class ChatWebSocketSessionRegistry {
 
     public boolean isOnline(Long userId) {
         return !getOpenSessions(userId).isEmpty();
+    }
+
+    public void sendToUser(Long userId, TextMessage message) {
+        for (WebSocketSession session : getOpenSessions(userId)) {
+            try {
+                session.sendMessage(message);
+            } catch (Exception exception) {
+                unregister(userId, session.getId());
+                log.warn("Chat WebSocket push failed: userId={}, sessionId={}",
+                        userId, session.getId(), exception);
+            }
+        }
     }
 }
