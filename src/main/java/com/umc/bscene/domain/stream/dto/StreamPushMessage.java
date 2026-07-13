@@ -16,11 +16,23 @@ public record StreamPushMessage(
 
     // 라이브 예약 생성 알림
     public static StreamPushMessage scheduled(String bandName, String liveTitle, String scheduledAtText, Long liveId) {
-        return new StreamPushMessage(NotificationType.LIVE, "", "", null, liveId);
+        return new StreamPushMessage(
+                NotificationType.LIVE,
+                bandName + " 라이브가 예약됐어요",
+                scheduledAtText + "에 '" + liveTitle + "' 라이브가 시작될 예정이에요.",
+                "/lives/" + liveId,
+                liveId
+        );
     }
 
     // 라이브 시작 알림
     public static StreamPushMessage started(String bandName, String liveTitle, Long liveId) {
-        return new StreamPushMessage(NotificationType.LIVE, "", "", null, liveId);
+        return new StreamPushMessage(
+                NotificationType.LIVE,
+                bandName + " 라이브가 시작됐어요",
+                "'" + liveTitle + "' 라이브에 지금 참여해보세요.",
+                "/lives/" + liveId,
+                liveId
+        );
     }
 }
