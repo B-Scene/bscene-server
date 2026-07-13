@@ -105,7 +105,7 @@ public class ChatMessageService {
         }
 
         LocalDateTime readAt = LocalDateTime.now();
-        chatMessageRepository.markReadThrough(
+        int updatedMessages = chatMessageRepository.markReadThrough(
                 request.chatRoomId(), userId, request.lastReadMessageId(), readAt);
 
         Long counterpartId = room.getSender().getId().equals(userId)
@@ -118,7 +118,8 @@ public class ChatMessageService {
                         userId,
                         request.lastReadMessageId(),
                         readAt.format(DATE_TIME_FORMATTER)
-                )
+                ),
+                updatedMessages > 0
         );
     }
 

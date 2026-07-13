@@ -173,6 +173,8 @@ public class ChatWebSocketHandler extends TextWebSocketHandler implements SubPro
         ChatMessageReadRequest request = objectMapper.treeToValue(
                 frame.data(), ChatMessageReadRequest.class);
         ChatMessageReadResult result = chatMessageService.markRead(userId, request);
+        if (!result.updated()) return;
+
         String timestamp = LocalDateTime.now().format(DATE_TIME_FORMATTER);
         ChatWebSocketPushFrame pushFrame = new ChatWebSocketPushFrame(
                 "dm.read",
