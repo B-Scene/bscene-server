@@ -1,11 +1,13 @@
 package com.umc.bscene.domain.stream.service;
 
+import com.umc.bscene.domain.stream.dto.request.ReportUserRequest;
 import com.umc.bscene.domain.stream.dto.request.ReservationPatchRequest;
 import com.umc.bscene.domain.stream.dto.request.StreamCreateRequest;
 import com.umc.bscene.domain.stream.dto.response.*;
 import com.umc.bscene.domain.stream.dto.response.StreamSummaryResponse;
 import com.umc.bscene.domain.stream.entity.AudioStream;
 import com.umc.bscene.domain.stream.entity.LiveAlarm;
+import com.umc.bscene.domain.stream.entity.ReportHistory;
 import com.umc.bscene.domain.stream.entity.StreamReplay;
 import com.umc.bscene.domain.stream.entity.mapper.StreamMember;
 import com.umc.bscene.domain.stream.enums.StreamMemberStatus;
@@ -20,6 +22,7 @@ import com.umc.bscene.domain.stream.port.UserPort;
 import com.umc.bscene.domain.stream.port.UserTermsPort;
 import com.umc.bscene.domain.stream.repository.AudioStreamRepository;
 import com.umc.bscene.domain.stream.repository.LiveAlarmRepository;
+import com.umc.bscene.domain.stream.repository.ReportHistoryRepository;
 import com.umc.bscene.domain.stream.repository.StreamMemberRepository;
 import com.umc.bscene.domain.stream.repository.StreamReplayRepository;
 import com.umc.bscene.domain.stream.sse.ViewerSsePresence;
@@ -80,6 +83,7 @@ public class StreamServiceImpl implements StreamService {
     private final StreamMemberRepository streamMemberRepository;
     private final LiveAlarmRepository liveAlarmRepository;
     private final StreamReplayRepository streamReplayRepository;
+    private final ReportHistoryRepository reportHistoryRepository;
     private final UserPort userPort;
     private final StringRedisTemplate redisTemplate;
     private final BandMemberPort bandMemberPort;
@@ -922,6 +926,48 @@ public class StreamServiceImpl implements StreamService {
         return new LiveMembersResponse(
                 bandMemberPort.getLiveMemberProfiles(stream.getBandId(), memberUserIds)
         );
+    }
+
+    @Override
+    @Transactional
+    public void reportUser(User reporter, Long liveId, ReportUserRequest request) {
+
+        AudioStream stream = getStream(liveId);
+
+        if (reporter.getId().equals(request.targetUserId()))
+            throw new StreamException(StreamErrorCode.SELF_REPORT_NOT_ALLOWED);
+
+        // getReferenceById 대신 실조회로 신고 대상 유저의 존재를 검증 (FK 예외로 인한 500 방지)
+        User targetUser = userPort.findAllByIds(Set.of(request.targetUserId())).stream()
+                .findFirst()
+                .orElseThrow(() -> new StreamException(StreamErrorCode.REPORT_TARGET_NOT_FOUND));
+
+        ReportHistory report = reportHistoryRepository.save(
+                ReportHistory.builder()
+                        .targetUser(targetUser)
+                        .audioStream(stream)
+                        .reporterId(reporter.getId())
+                        .reportType(request.reportType())
+                        .chatMessage(request.chatMessage())
+                        .comment(request.comment())
+                        .build()
+        );
+
+        // 모니터링 파이프라인(Loki -> 디스코드 신고 채널) 감지용 로그.
+        // 롤백된 신고가 알림으로 새지 않도록 커밋 이후에 기록 (마커: [USER_REPORT])
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override
+            public void afterCommit() {
+                log.warn("[USER_REPORT] reportId={} liveId={} reporterId={} targetUserId={} reportType={} chatMessage=\"{}\"",
+                        report.getId(),
+                        stream.getId(),
+                        reporter.getId(),
+                        request.targetUserId(),
+                        request.reportType(),
+                        request.chatMessage()
+                );
+            }
+        });
     }
 
     private AudioStream getStream(Long liveId) {
