@@ -63,7 +63,7 @@ public class ChatWebSocketHandler extends TextWebSocketHandler implements SubPro
             ChatWebSocketFrame frame = objectMapper.readValue(
                     message.getPayload(), ChatWebSocketFrame.class);
             clientMsgId = frame.clientMsgId();
-            handleFrame(userId, frame);
+            handleFrame(session, userId, frame);
         } catch (BaseException exception) {
             sendError(session, userId, clientMsgId, exception.getBaseResponseCode());
         } catch (JsonProcessingException | IllegalArgumentException exception) {
@@ -75,7 +75,11 @@ public class ChatWebSocketHandler extends TextWebSocketHandler implements SubPro
         }
     }
 
-    private void handleFrame(Long userId, ChatWebSocketFrame frame) throws Exception {
+    private void handleFrame(
+            WebSocketSession session,
+            Long userId,
+            ChatWebSocketFrame frame
+    ) throws Exception {
         if (frame.type() == null || frame.data() == null) {
             throw new ChatException(ChatWebSocketErrorCode.INVALID_FRAME);
         }
@@ -83,8 +87,29 @@ public class ChatWebSocketHandler extends TextWebSocketHandler implements SubPro
         switch (frame.type()) {
             case "dm.send" -> handleSend(userId, frame);
             case "dm.read" -> handleRead(userId, frame);
+            case "ping" -> handlePing(session, userId, frame);
             default -> throw new ChatException(ChatWebSocketSystemErrorCode.UNSUPPORTED_TYPE);
         }
+    }
+
+    private void handlePing(
+            WebSocketSession session,
+            Long userId,
+            ChatWebSocketFrame frame
+    ) throws Exception {
+        if (frame.clientMsgId() != null || !frame.data().isObject()) {
+            throw new ChatException(ChatWebSocketErrorCode.INVALID_FRAME);
+        }
+
+        ChatWebSocketPushFrame pongFrame = new ChatWebSocketPushFrame(
+                "pong",
+                null,
+                objectMapper.createObjectNode(),
+                null,
+                LocalDateTime.now().format(DATE_TIME_FORMATTER)
+        );
+        sessionRegistry.sendToSession(userId, session.getId(), new TextMessage(
+                objectMapper.writeValueAsString(pongFrame)));
     }
 
     private void sendError(
