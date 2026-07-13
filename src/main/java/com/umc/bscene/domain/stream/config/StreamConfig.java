@@ -17,25 +17,10 @@ import org.springframework.scheduling.annotation.EnableAsync;
 import org.springframework.scheduling.annotation.EnableScheduling;
 import org.springframework.web.client.RestClient;
 
-import java.util.Collection;
-import java.util.List;
-
 @EnableAsync
 @EnableScheduling
 @Configuration
 public class StreamConfig {
-
-    @Bean
-    public UserTermsPort userTermsPort() {
-        return new UserTermsPort() {
-            @Override
-            public List<Long> filterNotificationAgreedUserIds(Collection<Long> userIds) {
-                return List.of();
-            }
-        };
-    }
-
-    //  =-=-=-=  이 위는 담당 개발자가 Adapter 구현 이후 지워주세요 =-=-=-=
 
     @Bean
     public RestClient mtxRestClient(
