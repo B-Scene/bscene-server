@@ -35,7 +35,7 @@ import java.util.Set;
 
 @Service
 @RequiredArgsConstructor
-public class StreamReplayService {
+public class StreamReplayServiceImpl implements StreamReplayService {
 
     // presigned URL 만료 여유분. 실제 만료는 총 재생 길이 + 이 값 (뒷 세그먼트 재생 도중 만료 방지)
     private static final Duration PLAYBACK_URL_EXPIRATION_MARGIN = Duration.ofMinutes(10);
@@ -58,6 +58,7 @@ public class StreamReplayService {
      * 검증(권한·상태·녹화 파일 존재) 후 세그먼트별 비동기 업로드를 트리거하고 202를 반환.
      * 실패한 업로드는 RecordingUploadSweeper가 pending 키 기반으로 재시도.
      */
+    @Override
     @Transactional(readOnly = true)
     public void requestReplayUpload(Long userId, Long liveId) {
         AudioStream audioStream = audioStreamRepository.findById(liveId)
@@ -80,6 +81,7 @@ public class StreamReplayService {
             recordingUploadService.uploadAsync(audioStream.getPath(), segment.toString());
     }
 
+    @Override
     @Transactional
     public StreamReplayResponse watchReplay(Long liveId) {
 
@@ -169,14 +171,12 @@ public class StreamReplayService {
     }
 
     /*
-     * 다시보기 목록 조회 (전체/팔로우 탭, 최신순/인기순, 커서 페이징)
-     * 전체 탭 1페이지만 캐싱: 커서 페이지까지 캐싱하면 Redis 키가 무한히 늘어나고,
-     * 팔로우 탭은 유저별 응답이라 캐싱하지 않음 (TTL은 CacheConfig 참고)
+     * 팔로우 밴드 다시보기 목록 조회 (최신순/인기순, 커서 페이징)
+     * 유저별 응답이라 캐싱하지 않음
      */
+    @Override
     @Transactional(readOnly = true)
-    @Cacheable(cacheNames = CacheConfig.REPLAY_ALL, key = "'HEAD:' + #sort + ':' + #size",
-            condition = "#cursor == null && !#following")
-    public CursorPage<ReplayResponse> getReplays(Long userId, boolean following, Long cursor, int size, ReplaySort sort) {
+    public CursorPage<ReplayResponse> getFollowingReplays(Long userId, Long cursor, int size, ReplaySort sort) {
 
         // 인기순은 (viewCount, id) 복합 keyset이 필요해 커서 행의 viewCount를 조회
         // 커서 다시보기가 삭제된 경우 빈 페이지로 종료 (중복 페이지 방지, getUpcomingLives와 동일 정책)
@@ -190,23 +190,20 @@ public class StreamReplayService {
                 return CursorPage.empty();
         }
 
-        List<Long> bandIds = null;
-        if (following) {
-            bandIds = followPort.getFollowingBandIds(userId);
-
-            if (bandIds.isEmpty())
-                return CursorPage.empty();
-        }
+        List<Long> bandIds = followPort.getFollowingBandIds(userId);
+        if (bandIds.isEmpty())
+            return CursorPage.empty();
 
         List<StreamReplay> rows = switch (sort) {
-            case LATEST -> following
-                    ? streamReplayRepository.findReplayPageLatestByBandIds(bandIds, cursor, PageRequest.ofSize(size + 1))
-                    : streamReplayRepository.findReplayPageLatest(cursor, PageRequest.ofSize(size + 1));
-            case POPULAR -> following
-                    ? streamReplayRepository.findReplayPagePopularByBandIds(bandIds, cursorViewCount, cursor, PageRequest.ofSize(size + 1))
-                    : streamReplayRepository.findReplayPagePopular(cursorViewCount, cursor, PageRequest.ofSize(size + 1));
+            case LATEST -> streamReplayRepository.findReplayPageLatestByBandIds(bandIds, cursor, PageRequest.ofSize(size + 1));
+            case POPULAR -> streamReplayRepository.findReplayPagePopularByBandIds(bandIds, cursorViewCount, cursor, PageRequest.ofSize(size + 1));
         };
 
+        return assemblePage(rows, size);
+    }
+
+    // size+1로 조회한 rows를 hasNext 판정·슬라이싱하고 밴드 정보를 붙여 응답으로 조립 (전체/팔로우 탭 공통)
+    private CursorPage<ReplayResponse> assemblePage(List<StreamReplay> rows, int size) {
         boolean hasNext = rows.size() > size;
         List<StreamReplay> page = hasNext ? rows.subList(0, size) : rows;
         Long nextCursor = hasNext ? page.getLast().getId() : null;
@@ -240,5 +237,35 @@ public class StreamReplayService {
                         .toList(),
                 nextCursor, hasNext
         );
+    }
+
+    /*
+     * 전체 밴드 다시보기 목록 조회 (최신순/인기순, 커서 페이징)
+     * 1페이지만 캐싱: 커서 페이지까지 캐싱하면 Redis 키가 무한히 늘어남 (TTL은 CacheConfig 참고)
+     */
+    @Override
+    @Transactional(readOnly = true)
+    @Cacheable(cacheNames = CacheConfig.REPLAY_ALL, key = "'HEAD:' + #sort + ':' + #size",
+            condition = "#cursor == null")
+    public CursorPage<ReplayResponse> getAllReplays(Long cursor, int size, ReplaySort sort) {
+
+        // 인기순은 (viewCount, id) 복합 keyset이 필요해 커서 행의 viewCount를 조회
+        // 커서 다시보기가 삭제된 경우 빈 페이지로 종료 (중복 페이지 방지, getUpcomingLives와 동일 정책)
+        Long cursorViewCount = null;
+        if (cursor != null && sort == ReplaySort.POPULAR) {
+            cursorViewCount = streamReplayRepository.findById(cursor)
+                    .map(StreamReplay::getViewCount)
+                    .orElse(null);
+
+            if (cursorViewCount == null)
+                return CursorPage.empty();
+        }
+
+        List<StreamReplay> rows = switch (sort) {
+            case LATEST -> streamReplayRepository.findReplayPageLatest(cursor, PageRequest.ofSize(size + 1));
+            case POPULAR -> streamReplayRepository.findReplayPagePopular(cursorViewCount, cursor, PageRequest.ofSize(size + 1));
+        };
+
+        return assemblePage(rows, size);
     }
 }
