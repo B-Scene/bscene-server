@@ -60,4 +60,20 @@ public class ChatWebSocketSessionRegistry {
             }
         }
     }
+
+    public void sendToSession(Long userId, String sessionId, TextMessage message) {
+        Map<String, WebSocketSession> sessions = sessionsByUser.get(userId);
+        if (sessions == null) return;
+
+        WebSocketSession session = sessions.get(sessionId);
+        if (session == null || !session.isOpen()) return;
+
+        try {
+            session.sendMessage(message);
+        } catch (Exception exception) {
+            unregister(userId, sessionId);
+            log.warn("Chat WebSocket push failed: userId={}, sessionId={}",
+                    userId, sessionId, exception);
+        }
+    }
 }

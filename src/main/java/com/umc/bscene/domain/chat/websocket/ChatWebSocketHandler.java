@@ -1,5 +1,6 @@
 package com.umc.bscene.domain.chat.websocket;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.umc.bscene.domain.chat.dto.request.ChatMessageSendRequest;
 import com.umc.bscene.domain.chat.dto.request.ChatMessageReadRequest;
@@ -7,9 +8,13 @@ import com.umc.bscene.domain.chat.dto.request.ChatWebSocketFrame;
 import com.umc.bscene.domain.chat.dto.response.ChatMessageReadResult;
 import com.umc.bscene.domain.chat.dto.response.ChatMessageSendResult;
 import com.umc.bscene.domain.chat.dto.response.ChatWebSocketPushFrame;
+import com.umc.bscene.domain.chat.dto.response.ChatWebSocketErrorData;
 import com.umc.bscene.domain.chat.exception.ChatException;
 import com.umc.bscene.domain.chat.response.code.ChatWebSocketErrorCode;
+import com.umc.bscene.domain.chat.response.code.ChatWebSocketSystemErrorCode;
 import com.umc.bscene.domain.chat.service.ChatMessageService;
+import com.umc.bscene.global.exception.BaseException;
+import com.umc.bscene.global.response.code.BaseResponseCode;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
@@ -49,19 +54,59 @@ public class ChatWebSocketHandler extends TextWebSocketHandler implements SubPro
     }
 
     @Override
-    protected void handleTextMessage(WebSocketSession session, TextMessage message) throws Exception {
-        ChatWebSocketFrame frame = objectMapper.readValue(
-                message.getPayload(), ChatWebSocketFrame.class);
+    protected void handleTextMessage(WebSocketSession session, TextMessage message) {
+        Long userId = (Long) session.getAttributes()
+                .get(ChatWebSocketHandshakeInterceptor.USER_ID_ATTRIBUTE);
+        String clientMsgId = null;
+
+        try {
+            ChatWebSocketFrame frame = objectMapper.readValue(
+                    message.getPayload(), ChatWebSocketFrame.class);
+            clientMsgId = frame.clientMsgId();
+            handleFrame(userId, frame);
+        } catch (BaseException exception) {
+            sendError(session, userId, clientMsgId, exception.getBaseResponseCode());
+        } catch (JsonProcessingException | IllegalArgumentException exception) {
+            sendError(session, userId, clientMsgId, ChatWebSocketErrorCode.INVALID_FRAME);
+        } catch (Exception exception) {
+            log.error("Chat WebSocket message handling failed: userId={}, sessionId={}",
+                    userId, session.getId(), exception);
+            sendError(session, userId, clientMsgId, ChatWebSocketSystemErrorCode.INTERNAL_ERROR);
+        }
+    }
+
+    private void handleFrame(Long userId, ChatWebSocketFrame frame) throws Exception {
         if (frame.type() == null || frame.data() == null) {
             throw new ChatException(ChatWebSocketErrorCode.INVALID_FRAME);
         }
 
-        Long userId = (Long) session.getAttributes()
-                .get(ChatWebSocketHandshakeInterceptor.USER_ID_ATTRIBUTE);
         switch (frame.type()) {
             case "dm.send" -> handleSend(userId, frame);
             case "dm.read" -> handleRead(userId, frame);
-            default -> throw new ChatException(ChatWebSocketErrorCode.INVALID_FRAME);
+            default -> throw new ChatException(ChatWebSocketSystemErrorCode.UNSUPPORTED_TYPE);
+        }
+    }
+
+    private void sendError(
+            WebSocketSession session,
+            Long userId,
+            String clientMsgId,
+            BaseResponseCode errorCode
+    ) {
+        ChatWebSocketPushFrame errorFrame = new ChatWebSocketPushFrame(
+                "system.error",
+                null,
+                new ChatWebSocketErrorData(errorCode.getCode(), errorCode.getMessage()),
+                clientMsgId,
+                LocalDateTime.now().format(DATE_TIME_FORMATTER)
+        );
+
+        try {
+            sessionRegistry.sendToSession(userId, session.getId(), new TextMessage(
+                    objectMapper.writeValueAsString(errorFrame)));
+        } catch (JsonProcessingException exception) {
+            log.error("Chat WebSocket error frame serialization failed: userId={}, sessionId={}",
+                    userId, session.getId(), exception);
         }
     }
 
