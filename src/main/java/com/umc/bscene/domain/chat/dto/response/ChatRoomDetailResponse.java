@@ -1,0 +1,20 @@
+package com.umc.bscene.domain.chat.dto.response;
+
+import com.umc.bscene.domain.chat.enums.ChatContextType;
+import java.util.List;
+
+public record ChatRoomDetailResponse(
+        Long chatRoomId,
+        ChatContextType contextType,
+        Long sessionApplicationId,
+        Long sessionRecruitmentId,
+        Long applicationSubmissionId,
+        Long opponentUserId,
+        String opponentName,
+        String opponentProfileImageUrl,
+        String part,
+        String genre,
+        String region,
+        boolean canSend,
+        List<ChatMessageDetailResponse> messages
+) {}

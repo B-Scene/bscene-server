@@ -1,6 +1,5 @@
 package com.umc.bscene.domain.session.dto.recruitment.response;
 
-import com.fasterxml.jackson.annotation.JsonInclude;
 import com.umc.bscene.domain.session.entity.SessionRecruitment;
 import com.umc.bscene.domain.session.entity.SessionRecruitmentView;
 import com.umc.bscene.domain.session.enums.Part;
@@ -21,7 +20,7 @@ public record RecentRecruitmentItemResponse(
         String bandName,
         SessionRegion region,
         long viewedAgo,
-        @JsonInclude(JsonInclude.Include.NON_NULL) String applicationTitle
+        String applicationTitle
 ) {
     public static RecentRecruitmentItemResponse of(
             SessionRecruitmentView view,

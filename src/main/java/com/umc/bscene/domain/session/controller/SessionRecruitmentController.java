@@ -52,16 +52,16 @@ public class SessionRecruitmentController {
         );
     }
 
-    @PostMapping("/{recruitmentId}/applications")
+    @PostMapping("/{sessionRecruitmentId}/applications")
     public SuccessResponse<SessionApplicationSubmitResponse> submitApplication(
             @AuthenticationPrincipal AuthMember authMember,
-            @PathVariable Long recruitmentId,
+            @PathVariable Long sessionRecruitmentId,
             @Valid @RequestBody SessionApplicationSubmitRequest request
     ) {
         SessionApplicationSubmitResponse response = sessionApplicationCommandService
                 .submitApplication(
                         authMember.getUser().getId(),
-                        recruitmentId,
+                        sessionRecruitmentId,
                         request.sessionApplicationId()
                 );
 
@@ -183,16 +183,16 @@ public class SessionRecruitmentController {
         );
     }
     // 세션 모집 공고 상세 조회
-    @GetMapping("/{recruitmentId}")
+    @GetMapping("/{sessionRecruitmentId}")
     public SuccessResponse<SessionRecruitmentDetailResponse> getSessionRecruitmentDetail(
             @AuthenticationPrincipal AuthMember authMember,
-            @PathVariable Long recruitmentId
+            @PathVariable Long sessionRecruitmentId
     ) {
 
         SessionRecruitmentDetailResponse response =
                 sessionRecruitmentQueryService.getSessionRecruitmentDetail(
                         authMember.getUser().getId(),
-                        recruitmentId
+                        sessionRecruitmentId
                 );
 
         return SuccessResponse.of(
