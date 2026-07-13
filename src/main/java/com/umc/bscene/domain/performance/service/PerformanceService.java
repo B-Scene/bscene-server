@@ -6,6 +6,7 @@ import com.umc.bscene.domain.band.exception.BandException;
 import com.umc.bscene.domain.band.repository.BandMemberRepository;
 import com.umc.bscene.domain.band.repository.BandRepository;
 import com.umc.bscene.domain.band.response.code.BandErrorCode;
+import com.umc.bscene.domain.performance.dto.PerformancePushMessage;
 import com.umc.bscene.domain.performance.dto.request.PerformanceCreateRequest;
 import com.umc.bscene.domain.performance.dto.request.PerformanceUpdateRequest;
 import com.umc.bscene.domain.performance.dto.response.PerformanceListResponse;
@@ -14,12 +15,16 @@ import com.umc.bscene.domain.performance.dto.response.PerformanceSummaryResponse
 import com.umc.bscene.domain.performance.entity.Performance;
 import com.umc.bscene.domain.performance.enums.PerformanceStatus;
 import com.umc.bscene.domain.performance.exception.PerformanceException;
+import com.umc.bscene.domain.performance.port.FollowPort;
+import com.umc.bscene.domain.performance.port.NotifyPort;
 import com.umc.bscene.domain.performance.repository.PerformanceInterestRepository;
 import com.umc.bscene.domain.performance.repository.PerformanceRepository;
 import com.umc.bscene.domain.performance.response.code.PerformanceErrorCode;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -33,6 +38,8 @@ public class PerformanceService {
     private final PerformanceInterestRepository performanceInterestRepository;
     private final BandRepository bandRepository;
     private final BandMemberRepository bandMemberRepository;
+    private final FollowPort followPort;
+    private final NotifyPort notifyPort;
 
     // 공연 등록 (밴드 멤버만 가능, 지난 날짜 등록 불가)
     @Transactional
@@ -55,7 +62,37 @@ public class PerformanceService {
                 .posterImageUrl(request.posterImageUrl())
                 .build();
 
-        return PerformanceSummaryResponse.from(performanceRepository.save(performance));
+        Performance savedPerformance = performanceRepository.save(performance);
+
+        notifyFollowersAfterCommit(savedPerformance);
+
+        return PerformanceSummaryResponse.from(savedPerformance);
+    }
+
+    // 공연 등록 트랜잭션이 완료된 후 밴드 팔로워에게 알림을 발송
+    private void notifyFollowersAfterCommit(Performance performance) {
+        List<Long> receiverIds = followPort.getFollowerUserIdsByBandId(
+                performance.getBand().getId()
+        );
+
+        if (receiverIds.isEmpty()) {
+            return;
+        }
+
+        PerformancePushMessage message = PerformancePushMessage.created(
+                performance.getBand().getName(),
+                performance.getTitle(),
+                performance.getId()
+        );
+
+        TransactionSynchronizationManager.registerSynchronization(
+                new TransactionSynchronization() {
+                    @Override
+                    public void afterCommit() {
+                        notifyPort.notify(receiverIds, message);
+                    }
+                }
+        );
     }
 
     // 밴드의 공연 목록 조회

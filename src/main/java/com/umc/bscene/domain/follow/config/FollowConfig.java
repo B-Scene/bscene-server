@@ -1,7 +1,8 @@
 package com.umc.bscene.domain.follow.config;
 
-import com.umc.bscene.domain.follow.adapter.FanHomeAdapter;
 import com.umc.bscene.domain.follow.adapter.BandAdapter;
+import com.umc.bscene.domain.follow.adapter.FanHomeAdapter;
+import com.umc.bscene.domain.follow.adapter.PerformanceAdapter;
 import com.umc.bscene.domain.follow.adapter.StreamAdapter;
 import com.umc.bscene.domain.follow.adapter.UserAdapter;
 import com.umc.bscene.domain.follow.repository.FollowRepository;
@@ -31,5 +32,11 @@ public class FollowConfig {
     @Bean
     public StreamAdapter streamFollowAdapter(FollowRepository followRepository) {
         return new StreamAdapter(followRepository);
+    }
+
+    // Performance 도메인 FollowPort 구현 어댑터
+    @Bean
+    public PerformanceAdapter performanceFollowAdapter(FollowRepository followRepository) {
+        return new PerformanceAdapter(followRepository);
     }
 }
