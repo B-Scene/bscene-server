@@ -908,6 +908,22 @@ public class StreamServiceImpl implements StreamService {
         streamMemberRepository.deleteAll(streamMemberRepository.findAllByAudioStream_Id(stream.getId()));
     }
 
+    @Override
+    public LiveMembersResponse getLiveMembers(Long liveId) {
+
+        AudioStream stream = getStream(liveId);
+
+        // 송출자 포함 전체 진행자 조회. 아직 수락 전(INVITED)인 공동 진행자도 노출 대상이므로 상태 구분 없이 조회
+        List<Long> memberUserIds = streamMemberRepository.findAllByAudioStream_Id(stream.getId()).stream()
+                .map(sm -> sm.getUser().getId())
+                .toList();
+
+        // 유저의 활성 프로필이 아니라, 라이브가 생성 시점에 확정한 밴드 기준의 멤버 프로필로 조회 (밴드마다 예명이 다를 수 있음)
+        return new LiveMembersResponse(
+                bandMemberPort.getLiveMemberProfiles(stream.getBandId(), memberUserIds)
+        );
+    }
+
     private AudioStream getStream(Long liveId) {
         return audioStreamRepository.findById(liveId)
                 .orElseThrow(() -> new StreamException(StreamErrorCode.AUDIO_STREAM_NOT_FOUND));
