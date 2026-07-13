@@ -185,9 +185,10 @@ public class SessionApplicationCommandServiceImpl implements SessionApplicationC
                 ));
 
         if (submissionRepository
-                .existsBySessionRecruitment_SessionRecruitmentIdAndSessionApplication_SessionApplicationId(
+                .existsBySessionRecruitment_SessionRecruitmentIdAndSessionApplication_SessionApplicationIdAndStatusNot(
                         sessionRecruitmentId,
-                        sessionApplicationId
+                        sessionApplicationId,
+                        ApplicationStatus.CANCELED
                 )) {
             throw new SessionApplicationException(
                     SessionErrorCode.SESSION_APPLICATION_ALREADY_SUBMITTED

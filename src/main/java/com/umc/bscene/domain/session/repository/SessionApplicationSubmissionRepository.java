@@ -23,9 +23,10 @@ public interface SessionApplicationSubmissionRepository
 
     void deleteAllBySessionApplication_SessionApplicationId(Long sessionApplicationId);
 
-    boolean existsBySessionRecruitment_SessionRecruitmentIdAndSessionApplication_SessionApplicationId(
+    boolean existsBySessionRecruitment_SessionRecruitmentIdAndSessionApplication_SessionApplicationIdAndStatusNot(
             Long sessionRecruitmentId,
-            Long sessionApplicationId
+            Long sessionApplicationId,
+            ApplicationStatus status
     );
 
     @Query("""
