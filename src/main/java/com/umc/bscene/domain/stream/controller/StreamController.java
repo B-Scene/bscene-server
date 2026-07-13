@@ -262,18 +262,16 @@ public class StreamController {
     }
 
     @PostMapping("/{liveId}/reports")
-    public ResponseEntity<SuccessResponse<?>> reportUser(
+    public ResponseEntity<SuccessResponse<Void>> reportUser(
             @AuthenticationPrincipal AuthMember authMember,
             @PathVariable Long liveId,
             @Valid @RequestBody ReportUserRequest request
     ) {
+        streamService.reportUser(authMember.getUser(), liveId, request);
 
-        // Business Logic
-
-        // FIXME: 비즈니스 로직 완성 시 업데이트
         return ResponseEntity
                 .status(HttpStatus.CREATED)
-                .body(SuccessResponse.empty(null));
+                .body(new SuccessResponse<>(null, StreamSuccessCode.LIVE_REPORT_SUCCESS));
     }
 
     @GetMapping("/{liveId}/reservation")
