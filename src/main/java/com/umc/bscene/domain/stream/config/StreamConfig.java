@@ -57,21 +57,6 @@ public class StreamConfig {
     }
 
     @Bean
-    public FollowPort followPort() {
-        return new FollowPort() {
-            @Override
-            public List<Long> getFollowingBandIds(Long userId) {
-                return List.of();
-            }
-
-            @Override
-            public List<Long> getFollowerUserIdsByBandId(Long bandId) {
-                return List.of();
-            }
-        };
-    }
-
-    @Bean
     public UserTermsPort userTermsPort() {
         return new UserTermsPort() {
             @Override

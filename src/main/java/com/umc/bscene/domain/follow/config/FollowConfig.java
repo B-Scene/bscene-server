@@ -2,6 +2,7 @@ package com.umc.bscene.domain.follow.config;
 
 import com.umc.bscene.domain.follow.adapter.FanHomeAdapter;
 import com.umc.bscene.domain.follow.adapter.BandAdapter;
+import com.umc.bscene.domain.follow.adapter.StreamAdapter;
 import com.umc.bscene.domain.follow.adapter.UserAdapter;
 import com.umc.bscene.domain.follow.repository.FollowRepository;
 import org.springframework.context.annotation.Bean;
@@ -24,5 +25,11 @@ public class FollowConfig {
     @Bean
     public UserAdapter userFollowAdapter(FollowRepository followRepository) {
         return new UserAdapter(followRepository);
+    }
+
+    // 스트림 FollowPort 구현 어댑터 (팔로우한 밴드 목록·밴드 팔로워 목록)
+    @Bean
+    public StreamAdapter streamFollowAdapter(FollowRepository followRepository) {
+        return new StreamAdapter(followRepository);
     }
 }

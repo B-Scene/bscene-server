@@ -1,6 +1,7 @@
 package com.umc.bscene.domain.follow.repository;
 
 import com.umc.bscene.domain.follow.entity.Follow;
+import com.umc.bscene.domain.user.enums.UserStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -24,4 +25,12 @@ public interface FollowRepository extends JpaRepository<Follow, Long> {
     // 특정 사용자가 팔로우하는 밴드 ID 목록을 반환
     @Query("SELECT f.band.id FROM Follow f WHERE f.user.id = :userId")
     List<Long> findBandIdsByUserId(@Param("userId") Long userId);
+
+    // 특정 밴드를 팔로우하는 사용자 ID 목록을 반환 (라이브 푸시 알림 발송 대상 조회용, 활성 사용자만)
+    @Query("SELECT f.user.id FROM Follow f " +
+            "WHERE f.band.id = :bandId AND f.user.status = :userStatus")
+    List<Long> findUserIdsByBandId(
+            @Param("bandId") Long bandId,
+            @Param("userStatus") UserStatus userStatus
+    );
 }
