@@ -25,6 +25,7 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.mockito.Mockito.lenient;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 
@@ -136,6 +137,48 @@ class ChatWebSocketHandlerTest {
         assertEquals("dm.read", readerFrame.get("type").asText());
         assertEquals(10L, readerFrame.get("data").get("lastReadMessageId").asLong());
         assertEquals(readerFrame.get("data"), counterpartFrame.get("data"));
+    }
+
+    @Test
+    void respondsWithSystemErrorForMalformedJson() throws Exception {
+        handler.handleTextMessage(session, new TextMessage("""
+                {"type":"dm.send","data":{"chatRoomId":2
+                """));
+
+        JsonNode frame = captureSentFrame();
+        assertEquals("system.error", frame.get("type").asText());
+        assertEquals("DM_INVALID_FRAME", frame.get("data").get("code").asText());
+        assertNull(frame.get("clientMsgId").textValue());
+        verifyNoInteractions(chatMessageService);
+    }
+
+    @Test
+    void rejectsSendFrameWithInvalidClientMessageId() throws Exception {
+        handler.handleTextMessage(session, new TextMessage("""
+                {"type":"dm.send","data":{"chatRoomId":2,"content":"hello"},
+                 "clientMsgId":"invalid-uuid"}
+                """));
+
+        JsonNode frame = captureSentFrame();
+        assertEquals("system.error", frame.get("type").asText());
+        assertEquals("DM_INVALID_FRAME", frame.get("data").get("code").asText());
+        assertEquals("invalid-uuid", frame.get("clientMsgId").asText());
+        verifyNoInteractions(chatMessageService);
+    }
+
+    @Test
+    void doesNotPushReadStateWhenNothingWasUpdated() throws Exception {
+        ChatMessageReadPushData readData = new ChatMessageReadPushData(
+                2L, USER_ID, 10L, "2026-07-14 03:01:00");
+        when(chatMessageService.markRead(eq(USER_ID), any(ChatMessageReadRequest.class)))
+                .thenReturn(new ChatMessageReadResult(2L, readData, false));
+
+        handler.handleTextMessage(session, new TextMessage("""
+                {"type":"dm.read","data":{"chatRoomId":2,"lastReadMessageId":10},
+                 "clientMsgId":null}
+                """));
+
+        verifyNoInteractions(sessionRegistry);
     }
 
     private JsonNode captureSentFrame() throws Exception {
