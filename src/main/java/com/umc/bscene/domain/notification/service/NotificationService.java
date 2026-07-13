@@ -3,6 +3,7 @@ package com.umc.bscene.domain.notification.service;
 import com.umc.bscene.domain.notification.dto.request.PushTestSendRequest;
 import com.umc.bscene.domain.notification.dto.request.PushTokenDeleteRequest;
 import com.umc.bscene.domain.notification.dto.request.PushTokenSaveRequest;
+import com.umc.bscene.domain.notification.dto.response.PushSendResult;
 import com.umc.bscene.domain.notification.entity.Notification;
 import com.umc.bscene.domain.notification.entity.PushToken;
 import com.umc.bscene.domain.notification.exception.NotificationException;
@@ -14,6 +15,7 @@ import com.umc.bscene.domain.user.entity.User;
 import com.umc.bscene.domain.user.repository.UserRepository;
 import com.umc.bscene.global.notification.message.PushMessage;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
@@ -22,6 +24,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class NotificationService {
@@ -55,15 +58,29 @@ public class NotificationService {
     }
 
     // 푸시 알림 테스트
-    @Transactional(readOnly = true)
+    @Transactional(noRollbackFor = NotificationException.class)
     public void sendTestPush(Long userId, PushTestSendRequest request) {
-        pushTokenRepository.findAllByUser_Id(userId)
-                .forEach(pushToken -> pushPort.send(
-                        pushToken.getToken(),
-                        request.title(),
-                        request.body(),
-                        Map.of()
-                ));
+        List<PushToken> pushTokens =
+                pushTokenRepository.findAllByUser_Id(userId);
+
+        int successCount = 0;
+        boolean hasFailure = false;
+
+        for (PushToken pushToken : pushTokens) {
+            PushSendResult result = sendPush(pushToken, request.title(), request.body(), Map.of());
+
+            if (result.isSuccess()) {
+                successCount++;
+            }
+
+            if (result.isInvalidToken() || result.isFailed()) {
+                hasFailure = true;
+            }
+        }
+
+        if (successCount == 0 && hasFailure) {
+            throw new NotificationException(NotificationErrorCode.FCM_SEND_FAILED);
+        }
     }
 
     // 푸시 알림
@@ -79,12 +96,7 @@ public class NotificationService {
         Map<String, String> data = createPushData(message);
 
         for (PushToken pushToken : pushTokens) {
-            pushPort.send(
-                    pushToken.getToken(),
-                    message.title(),
-                    message.body(),
-                    data
-            );
+            sendPush(pushToken, message.title(), message.body(), data);
         }
     }
 
@@ -102,5 +114,31 @@ public class NotificationService {
         }
 
         return data;
+    }
+
+    private PushSendResult sendPush(
+            PushToken pushToken,
+            String title,
+            String body,
+            Map<String, String> data
+    ) {
+        PushSendResult result = pushPort.send(
+                pushToken.getToken(),
+                title,
+                body,
+                data
+        );
+
+        if (result.isInvalidToken()) {
+            pushTokenRepository.delete(pushToken);
+        } else if (result.isFailed()) {
+            log.warn(
+                    "FCM 발송 실패: tokenId={}, userId={}",
+                    pushToken.getId(),
+                    pushToken.getUser().getId()
+            );
+        }
+
+        return result;
     }
 }
