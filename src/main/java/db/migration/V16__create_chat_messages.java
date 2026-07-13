@@ -4,7 +4,7 @@ import org.flywaydb.core.api.migration.BaseJavaMigration;
 import org.flywaydb.core.api.migration.Context;
 import java.sql.*;
 
-public class V14__create_chat_messages extends BaseJavaMigration {
+public class V16__create_chat_messages extends BaseJavaMigration {
     @Override public void migrate(Context context) throws Exception {
         Connection c = context.getConnection();
         if (table(c, "chat_messages") != null) return;

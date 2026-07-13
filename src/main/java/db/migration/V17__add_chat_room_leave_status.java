@@ -5,7 +5,7 @@ import org.flywaydb.core.api.migration.Context;
 
 import java.sql.*;
 
-public class V15__add_chat_room_leave_status extends BaseJavaMigration {
+public class V17__add_chat_room_leave_status extends BaseJavaMigration {
     @Override public void migrate(Context context) throws Exception {
         Connection connection = context.getConnection();
         String table = findTable(connection, "chat_rooms");
