@@ -162,13 +162,14 @@ public class StreamServiceImpl implements StreamService {
         try {
             AudioStream save = audioStreamRepository.save(createdAudioStream);
 
-            if(save.getScheduledAt() == null)
-                streamMemberRepository.save(
-                        StreamMember.builder()
-                                .user(user)
-                                .audioStream(save)
-                                .status(StreamMemberStatus.ACCEPTED)
-                                .build()
+            // StreamMember는 진행자 매핑: 송출자는 즉시/예약 무관하게 생성 시점에 ACCEPTED로 등록
+            // (공동 진행자는 replaceCoHosts에서 INVITED로 추가됨)
+            streamMemberRepository.save(
+                    StreamMember.builder()
+                            .user(user)
+                            .audioStream(save)
+                            .status(StreamMemberStatus.ACCEPTED)
+                            .build()
             );
 
             // 예약 라이브 생성 시 팔로워에게 예약 알림 1회 발송 (terms 알림 수신 동의자 한정)
@@ -903,8 +904,8 @@ public class StreamServiceImpl implements StreamService {
         if (canceled == 0)
             throw new StreamException(StreamErrorCode.AUDIO_STREAM_NOT_SCHEDULED);
 
-        // 취소된 예약의 공동 진행 초대 레코드 정리 (유령 INVITED 행 방지)
-        streamMemberRepository.deleteAll(findCoHostRows(stream));
+        // 취소된 예약의 진행자 레코드 전체 정리 (송출자 ACCEPTED 행 + 공동 진행 INVITED 행의 유령 잔존 방지)
+        streamMemberRepository.deleteAll(streamMemberRepository.findAllByAudioStream_Id(stream.getId()));
     }
 
     private AudioStream getStream(Long liveId) {
