@@ -1,11 +1,7 @@
 package com.umc.bscene.domain.notification.config;
 
 import com.google.firebase.messaging.FirebaseMessaging;
-import com.umc.bscene.domain.notification.adapter.FanHomeAdapter;
-import com.umc.bscene.domain.notification.adapter.FirebasePushAdapter;
-import com.umc.bscene.domain.notification.adapter.NoopPushAdapter;
-import com.umc.bscene.domain.notification.adapter.NotificationAdapter;
-import com.umc.bscene.domain.notification.adapter.SessionAdapter;
+import com.umc.bscene.domain.notification.adapter.*;
 import com.umc.bscene.domain.notification.port.PushPort;
 import com.umc.bscene.domain.notification.repository.NotificationRepository;
 import com.umc.bscene.domain.notification.service.NotificationService;
@@ -45,5 +41,11 @@ public class NotificationConfig {
     @Bean
     public SessionAdapter sessionNotificationAdapter(NotificationPort notificationPort) {
         return new SessionAdapter(notificationPort);
+    }
+
+    // Stream 도메인 NotifyPort 구현 어댑터
+    @Bean
+    public StreamAdapter streamNotificationAdapter(NotificationPort notificationPort) {
+        return new StreamAdapter(notificationPort);
     }
 }
