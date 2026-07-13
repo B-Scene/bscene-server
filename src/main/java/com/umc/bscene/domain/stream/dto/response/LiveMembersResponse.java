@@ -10,7 +10,7 @@ import java.util.List;
  * 라이브가 생성 시점에 확정한 밴드에 연결된 밴드 멤버 프로필 기준입니다.
  */
 public record LiveMembersResponse(
-        List<LiveMembersResponse> members
+        List<LiveMemberProfileResponse> members
 ) {
     public record LiveMemberProfileResponse(
             String bandProfileImageUrl,

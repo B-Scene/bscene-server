@@ -3,7 +3,7 @@ package com.umc.bscene.domain.stream.port;
 import com.umc.bscene.domain.stream.dto.response.BandInfoForGetLiveResponse;
 import com.umc.bscene.domain.stream.dto.response.BandSummaryResponse;
 import com.umc.bscene.domain.stream.dto.response.CoHostCandidateResponse;
-import com.umc.bscene.domain.stream.dto.response.LiveMemberProfileResponse;
+import com.umc.bscene.domain.stream.dto.response.LiveMembersResponse.LiveMemberProfileResponse;
 
 import java.util.List;
 import java.util.Optional;
