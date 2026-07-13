@@ -1,10 +1,12 @@
+server:
+  servlet:
+    context-path: /api
+
 spring:
   profiles:
     active: dev
 
   mvc:
-    servlet:
-      path: /api
     async:
       request-timeout:
 
@@ -103,3 +105,5 @@ notification:
   fcm:
     enabled: ${FCM_ENABLED:false}
     credentials-base64: ${FCM_CREDENTIALS_BASE64:}
+  terms:
+    live-id: ${NOTIFICATION_TERMS_LIVE_ID:4}

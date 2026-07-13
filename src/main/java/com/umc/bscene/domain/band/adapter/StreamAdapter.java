@@ -5,10 +5,14 @@ import com.umc.bscene.domain.band.entity.BandMember;
 import com.umc.bscene.domain.band.enums.BandMemberStatus;
 import com.umc.bscene.domain.band.repository.BandMemberRepository;
 import com.umc.bscene.domain.stream.dto.response.BandInfoForGetLiveResponse;
+import com.umc.bscene.domain.stream.dto.response.BandSummaryResponse;
+import com.umc.bscene.domain.stream.dto.response.CoHostCandidateResponse;
+import com.umc.bscene.domain.stream.dto.response.LiveMembersResponse;
 import com.umc.bscene.domain.stream.port.BandMemberPort;
 import lombok.RequiredArgsConstructor;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -40,5 +44,30 @@ public class StreamAdapter implements BandMemberPort {
                     );
                 })
                 .toList();
+    }
+
+    @Override
+    public Optional<BandSummaryResponse> getBandSummaryByBroadcasterId(Long broadcasterId) {
+        return Optional.empty();
+    }
+
+    @Override
+    public Optional<BandSummaryResponse> getBandSummaryByBandId(Long bandId) {
+        return Optional.empty();
+    }
+
+    @Override
+    public List<CoHostCandidateResponse> getCoHostCandidatesByBroadcasterId(Long broadcasterId) {
+        return List.of();
+    }
+
+    @Override
+    public boolean isRegularMemberOfBroadcasterBand(Long broadcasterId, Long userId) {
+        return false;
+    }
+
+    @Override
+    public List<LiveMembersResponse.LiveMemberProfileResponse> getLiveMemberProfiles(Long bandId, List<Long> userIds) {
+        return List.of();
     }
 }

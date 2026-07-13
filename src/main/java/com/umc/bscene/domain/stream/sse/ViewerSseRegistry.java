@@ -21,6 +21,9 @@ public class ViewerSseRegistry {
     // (방 구조와 별개로, 다른 방으로 이동하거나 다중 탭으로 재접속할 때 이전 연결을 끊기 위함)
     private final Map<Long, SseEmitter> userLatest = new ConcurrentHashMap<>();
 
+    // 보기 전용(watch-only) 연결: liveId -> emitters. 시청자 수·프레젠스에 포함되지 않고 브로드캐스트만 수신
+    private final Map<Long, Set<SseEmitter>> watchers = new ConcurrentHashMap<>();
+
     /** 한 유저의 SSE 연결들과, 그 유저를 시청자 수에 포함할지 여부(counted). */
     private static final class Presence {
         final Set<SseEmitter> emitters = ConcurrentHashMap.newKeySet();
@@ -59,6 +62,30 @@ public class ViewerSseRegistry {
         return emitter;
     }
 
+    /**
+     * 보기 전용 구독: 카운트 브로드캐스트만 수신하고 시청자 수·프레젠스에는 포함되지 않는다.
+     * 홈 화면처럼 방 밖에서 여러 라이브의 카운트를 동시에 봐야 하므로 유저당 1연결 제한(userLatest)도 적용하지 않는다.
+     */
+    public SseEmitter registerWatchOnly(Long liveId) {
+        SseEmitter emitter = new SseEmitter(0L);
+
+        Set<SseEmitter> emitters = watchers.computeIfAbsent(liveId, k -> ConcurrentHashMap.newKeySet());
+        emitters.add(emitter);
+
+        Runnable cleanup = () -> {
+            Set<SseEmitter> set = watchers.get(liveId);
+            if (set != null) {
+                set.remove(emitter);
+                if (set.isEmpty()) watchers.remove(liveId, set);
+            }
+        };
+        emitter.onCompletion(cleanup);
+        emitter.onTimeout(() -> { emitter.complete(); cleanup.run(); });
+        emitter.onError(e -> cleanup.run());
+
+        return emitter;
+    }
+
     private void removeEmitter(Long liveId, Long userId, SseEmitter emitter, Runnable onLastGone) {
         // 이 emitter가 현재 유효 연결일 때만 전역 인덱스에서 제거한다.
         // (이미 새 연결이 replace 했다면 map의 값이 다르므로 지우지 않는다.)
@@ -77,18 +104,24 @@ public class ViewerSseRegistry {
         }
     }
 
-    /** liveId 방의 모든 연결(송출자 포함)에 현재 카운트를 전송한다. */
+    /** liveId 방의 모든 연결(송출자·보기 전용 포함)에 현재 카운트를 전송한다. */
     public void broadcast(Long liveId, long count) {
         Map<Long, Presence> users = rooms.get(liveId);
-        if (users == null) return;
-        users.forEach((userId, presence) -> presence.emitters.forEach(emitter -> {
-            try { emitter.send(SseEmitter.event().name("viewerCount").data(count)); }
-            catch (IOException | IllegalStateException e) {
-                // 죽은 emitter에 completeWithError가 다시 예외를 던지면 브로드캐스트 순회 전체가 중단되므로 삼킨다.
-                // (정리는 emitter 콜백/sweep이 담당) // → onError → cleanup
-                try { emitter.completeWithError(e); } catch (Exception ignored) { }
-            }
-        }));
+        if (users != null)
+            users.forEach((userId, presence) -> presence.emitters.forEach(emitter -> sendCount(emitter, count)));
+
+        Set<SseEmitter> watching = watchers.get(liveId);
+        if (watching != null)
+            watching.forEach(emitter -> sendCount(emitter, count));
+    }
+
+    private void sendCount(SseEmitter emitter, long count) {
+        try { emitter.send(SseEmitter.event().name("viewerCount").data(count)); }
+        catch (IOException | IllegalStateException e) {
+            // 죽은 emitter에 completeWithError가 다시 예외를 던지면 브로드캐스트 순회 전체가 중단되므로 삼킨다.
+            // (정리는 emitter 콜백/sweep이 담당) // → onError → cleanup
+            try { emitter.completeWithError(e); } catch (Exception ignored) { }
+        }
     }
 
     /**
@@ -108,6 +141,14 @@ public class ViewerSseRegistry {
                 }
             }
             if (alive && presence.counted) onAlive.accept(liveId, userId);
+        }));
+
+        // 보기 전용 연결도 ping으로 keep-alive (죽은 연결은 onError → cleanup으로 정리, 프레젠스 갱신은 없음)
+        watchers.forEach((liveId, emitters) -> emitters.forEach(emitter -> {
+            try { emitter.send(SseEmitter.event().comment("ping")); }
+            catch (IOException | IllegalStateException e) {
+                try { emitter.completeWithError(e); } catch (Exception ignored) { }
+            }
         }));
     }
 }

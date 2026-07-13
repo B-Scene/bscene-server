@@ -1,5 +1,7 @@
 package com.umc.bscene.global.response;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Getter;
 
 import java.util.Collections;
@@ -11,7 +13,12 @@ public class CursorPage<T> {
     private List<T> items;
     private PageInfo pageInfo;
 
-    private CursorPage(List<T> items, PageInfo pageInfo) {
+    // Redis 캐시(JSON) 역직렬화에 사용할 생성자 지정
+    @JsonCreator
+    private CursorPage(
+            @JsonProperty("items") List<T> items,
+            @JsonProperty("pageInfo") PageInfo pageInfo
+    ) {
         this.items = items;
         this.pageInfo = pageInfo;
     }

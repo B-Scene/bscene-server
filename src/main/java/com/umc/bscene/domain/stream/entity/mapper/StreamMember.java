@@ -12,6 +12,12 @@ import lombok.*;
 @Builder
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @AllArgsConstructor(access = AccessLevel.PRIVATE)
+@Table(
+        uniqueConstraints = {
+                // 동시 공동 진행자 교체 요청이 같은 (user, stream) 조합을 중복 삽입하지 못하도록 방지
+                @UniqueConstraint(name = "uk_stream_member_user_stream", columnNames = {"user_id", "audio_stream_id"})
+        }
+)
 public class StreamMember extends BaseEntity {
 
     @Id @GeneratedValue(strategy = GenerationType.IDENTITY)

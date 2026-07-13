@@ -22,6 +22,10 @@ public class AudioStream extends BaseEntity {
     @Column(name = "broadcaster_id", nullable = false)
     private Long broadcasterId;
 
+    // 라이브의 주체인 밴드를 생성 시점에 직접 연결한다.
+    @Column(name = "band_id", nullable = false)
+    private Long bandId;
+
     @Column(nullable = false, unique = true)
     private String path;
 
@@ -44,9 +48,13 @@ public class AudioStream extends BaseEntity {
 
     private LocalDateTime closedAt;
 
-    public void close() {
+    // 방송 종료 시점의 시청자 수 스냅샷. 종료 전에는 null
+    private Integer closedViewerCount;
+
+    public void close(int closedViewerCount) {
         this.status = StreamStatus.CLOSED;
         this.closedAt = LocalDateTime.now();
+        this.closedViewerCount = closedViewerCount;
     }
 
     public void markStarted() {

@@ -5,8 +5,12 @@ services:
     container_name: spring
     restart: always
     env_file: ./.env
+    environment:
+      - TZ=Asia/Seoul  # 로그·S3 key 타임스탬프를 KST로 통일
     expose:
       - "8080"
+    volumes:
+      - recordings:/recordings  # mediamtx 녹화본 S3 업로드용 공유 볼륨
     depends_on:
       - redis
     networks:
@@ -16,6 +20,8 @@ services:
     image: redis:7.4-alpine
     container_name: redis
     restart: always
+    environment:
+      - TZ=Asia/Seoul
     expose:
       - "6379"
     volumes:
@@ -51,6 +57,7 @@ services:
       - "80:80"
       - "443:443"
     environment:
+      - TZ=Asia/Seoul
       - SERVER_NAME=${SERVER_NAME}
     volumes:
       - ./nginx/conf.d/default.conf:/etc/nginx/templates/default.conf.template:ro
@@ -69,11 +76,12 @@ services:
       && exec nginx -g 'daemon off;'"
 
   mediamtx:
-    image: bluenviron/mediamtx:1.19.2
+    image: bluenviron/mediamtx:1.19.2-ffmpeg  # runOnRecordSegmentComplete 훅 실행에 쉘 필요 (기본 이미지는 scratch 기반)
     container_name: mediamtx
     restart: always
     environment:
       - MTX_WEBRTCADDITIONALHOSTS=${SERVER_HOST}
+      - TZ=Asia/Seoul
     ports:
       - "8189:8189/udp"
       - "8889"
@@ -83,6 +91,7 @@ services:
       - "9997"  # spring 접근
     volumes:
       - ./mediamtx/mediamtx.yml:/mediamtx.yml:ro
+      - recordings:/recordings
     deploy:
       resources:
         limits:
@@ -99,3 +108,4 @@ networks:
 
 volumes:
   redis-data:
+  recordings:
