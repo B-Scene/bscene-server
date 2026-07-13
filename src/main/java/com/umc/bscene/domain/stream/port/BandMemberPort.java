@@ -3,6 +3,7 @@ package com.umc.bscene.domain.stream.port;
 import com.umc.bscene.domain.stream.dto.response.BandInfoForGetLiveResponse;
 import com.umc.bscene.domain.stream.dto.response.BandSummaryResponse;
 import com.umc.bscene.domain.stream.dto.response.CoHostCandidateResponse;
+import com.umc.bscene.domain.stream.dto.response.LiveMemberProfileResponse;
 
 import java.util.List;
 import java.util.Optional;
@@ -43,4 +44,20 @@ public interface BandMemberPort {
      * @return 정회원 여부를 반환해주세요.
      */
     boolean isRegularMemberOfBroadcasterBand(Long broadcasterId, Long userId);
+
+    /**
+     * 라이브 방 멤버(송출자 + 공동 진행자) 프로필 요약 조회를 위한 메소드입니다.
+     * 유저-밴드가 다대다 관계라 밴드마다 다른 예명을 쓸 수 있으므로, 유저의 활성(active) 프로필이 아니라
+     * 라이브가 생성 시점에 확정한 밴드(bandId)의 BandMember에 연결된 밴드 멤버 프로필(BandMember.bandMemberProfile)을 기준으로 조회해주세요.
+     * @param bandId 라이브가 생성 시점에 확정한 밴드의 ID를 전달합니다.
+     * @param userIds 라이브에 StreamMember로 등록된 유저 ID 리스트를 전달합니다. (송출자 포함)
+     * @return LiveMemberProfileResponse 리스트를 userIds 순서대로 반환해주세요.
+     *         - bandProfileImageUrl: 밴드 프로필 이미지 URL (Band.profileImageUrl)
+     *         - nickname: 해당 밴드에서 사용하는 멤버 프로필의 예명
+     *         - bandName: 밴드 이름
+     *         - part: 해당 밴드 멤버 프로필의 파트 (현재는 프로필당 단일 파트이므로 1개짜리 리스트)
+     *         - isLeader: 밴드 리더(Band.owner) 여부
+     *         해당 밴드의 멤버 프로필이 없는 유저는 결과에서 제외해주세요.
+     */
+    List<LiveMemberProfileResponse> getLiveMemberProfiles(Long bandId, List<Long> userIds);
 }
