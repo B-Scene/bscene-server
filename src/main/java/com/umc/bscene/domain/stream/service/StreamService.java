@@ -4,6 +4,7 @@ import com.umc.bscene.domain.stream.dto.request.ReservationPatchRequest;
 import com.umc.bscene.domain.stream.dto.request.StreamCreateRequest;
 import com.umc.bscene.domain.stream.dto.response.LiveAlarmToggleResponse;
 import com.umc.bscene.domain.stream.dto.response.LiveHomeResponse;
+import com.umc.bscene.domain.stream.dto.response.LiveMembersResponse;
 import com.umc.bscene.domain.stream.dto.response.LiveStreamResponse;
 import com.umc.bscene.domain.stream.dto.response.ReservationEditResponse;
 import com.umc.bscene.domain.stream.dto.response.StreamCreateResponse;
@@ -38,6 +39,9 @@ public interface StreamService {
     StreamRoomResponse enterRoom(Long userId, Long liveId);
 
     void leaveRoom(Long userId, Long liveId);
+
+    // 라이브 방 멤버(송출자 + 공동 진행자) 프로필 요약 목록 조회
+    LiveMembersResponse getLiveMembers(Long liveId);
 
     // 시청자 수 SSE 구독. watchOnly=true면 카운트 수신만 (홈 화면 등 방 밖 구독용, 시청자 수 미포함)
     SseEmitter subscribeViewerCount(Long userId, Long liveId, boolean watchOnly);
