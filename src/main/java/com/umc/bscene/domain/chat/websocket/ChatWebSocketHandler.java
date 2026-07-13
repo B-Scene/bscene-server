@@ -9,6 +9,7 @@ import com.umc.bscene.domain.chat.dto.response.ChatMessageReadResult;
 import com.umc.bscene.domain.chat.dto.response.ChatMessageSendResult;
 import com.umc.bscene.domain.chat.dto.response.ChatWebSocketPushFrame;
 import com.umc.bscene.domain.chat.dto.response.ChatWebSocketErrorData;
+import com.umc.bscene.domain.chat.dto.response.ChatWebSocketSystemEventData;
 import com.umc.bscene.domain.chat.exception.ChatException;
 import com.umc.bscene.domain.chat.response.code.ChatWebSocketErrorCode;
 import com.umc.bscene.domain.chat.response.code.ChatWebSocketSystemErrorCode;
@@ -46,10 +47,19 @@ public class ChatWebSocketHandler extends TextWebSocketHandler implements SubPro
     }
 
     @Override
-    public void afterConnectionEstablished(WebSocketSession session) {
+    public void afterConnectionEstablished(WebSocketSession session) throws Exception {
         Long userId = (Long) session.getAttributes()
                 .get(ChatWebSocketHandshakeInterceptor.USER_ID_ATTRIBUTE);
         sessionRegistry.register(userId, session);
+        ChatWebSocketPushFrame readyFrame = new ChatWebSocketPushFrame(
+                "system.event",
+                null,
+                new ChatWebSocketSystemEventData("connected"),
+                null,
+                LocalDateTime.now().format(DATE_TIME_FORMATTER)
+        );
+        sessionRegistry.sendToSession(userId, session.getId(), new TextMessage(
+                objectMapper.writeValueAsString(readyFrame)));
         log.debug("Chat WebSocket connected: userId={}, sessionId={}", userId, session.getId());
     }
 
