@@ -16,6 +16,10 @@ public record StreamCreateRequest(
         @Size(max = 100, message = "description 필드는 100자를 초과할 수 없습니다.")
         String description,
 
+        // presigned URL 발급(/media/presigned-url) 후 클라이언트가 S3 업로드를 마치고 돌려받은 fileUrl
+        @Size(max = 255, message = "thumbnailImageUrl 필드는 255자를 초과할 수 없습니다.")
+        String thumbnailImageUrl,
+
         @Future(message = "현재 시각과 일치하거나, 과거인 시간은 예약 시각으로 설정할 수 없습니다.")
         LocalDateTime scheduledAt,
         List<Long> coHost
