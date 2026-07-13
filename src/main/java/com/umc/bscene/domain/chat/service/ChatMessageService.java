@@ -55,15 +55,17 @@ public class ChatMessageService {
             throw new ChatException(ChatWebSocketErrorCode.SEND_NOT_ALLOWED);
         }
 
+        Long recipientId = room.getSender().getId().equals(userId)
+                ? room.getRecipient().getId()
+                : room.getSender().getId();
+        room.rejoin(recipientId);
+
         ChatMessage message = chatMessageRepository.saveAndFlush(ChatMessage.builder()
                 .chatRoom(room)
                 .sender(sender)
                 .content(content)
                 .build());
 
-        Long recipientId = room.getSender().getId().equals(userId)
-                ? room.getRecipient().getId()
-                : room.getSender().getId();
         String profileImageUrl = sessionBasicProfileRepository.findByUser_Id(userId)
                 .map(profile -> profile.getProfileImageUrl())
                 .orElse(null);
