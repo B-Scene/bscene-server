@@ -1,6 +1,7 @@
 package com.umc.bscene.domain.user.controller;
 
 import com.umc.bscene.domain.user.dto.response.FanMyPageResponse;
+import com.umc.bscene.domain.user.dto.response.InterestedPerformanceResponse;
 import com.umc.bscene.domain.user.dto.response.ParticipationHistoryResponse;
 import com.umc.bscene.domain.user.enums.HistoryYearFilter;
 import com.umc.bscene.domain.user.response.code.UserSuccessCode;
@@ -47,6 +48,23 @@ public class MyPageController {
         SuccessResponse<ParticipationHistoryResponse> successResponse = SuccessResponse.of(
                 response,
                 UserSuccessCode.FAN_PERFORMANCE_HISTORY_GET_SUCCESS
+        );
+
+        return ResponseEntity.status(successResponse.getStatus()).body(successResponse);
+    }
+
+    // 관심 공연 목록 조회 API (알림/참여 상태 포함, offset 무한스크롤)
+    @GetMapping("/users/me/performance/interest")
+    public ResponseEntity<SuccessResponse<InterestedPerformanceResponse>> getInterestedPerformances(
+            @AuthenticationPrincipal AuthMember authMember,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size
+    ) {
+        InterestedPerformanceResponse response = myPageService.getInterestedPerformances(
+                authMember.getUser().getId(), page, size);
+        SuccessResponse<InterestedPerformanceResponse> successResponse = SuccessResponse.of(
+                response,
+                UserSuccessCode.FAN_PERFORMANCE_INTEREST_GET_SUCCESS
         );
 
         return ResponseEntity.status(successResponse.getStatus()).body(successResponse);

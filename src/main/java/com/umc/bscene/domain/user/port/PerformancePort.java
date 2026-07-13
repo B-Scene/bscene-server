@@ -1,5 +1,6 @@
 package com.umc.bscene.domain.user.port;
 
+import com.umc.bscene.domain.user.dto.response.InterestedPerformanceResponse;
 import com.umc.bscene.domain.user.dto.response.ParticipationHistoryResponse;
 import com.umc.bscene.domain.user.enums.HistoryYearFilter;
 
@@ -21,4 +22,8 @@ public interface PerformancePort {
     ParticipationHistoryResponse findParticipationHistory(
             Long userId, HistoryYearFilter appliedFilter, int baseYear,
             LocalDate startDate, LocalDate endDate, int page, int size);
+
+    // 관심 공연 목록 (날짜/시간 빠른 순, offset 무한스크롤)
+    // 아이템마다 알림/참여 상태(participationStatus)를 함께 내려줌 (null: 알림 미설정)
+    InterestedPerformanceResponse findInterestedPerformances(Long userId, int page, int size);
 }

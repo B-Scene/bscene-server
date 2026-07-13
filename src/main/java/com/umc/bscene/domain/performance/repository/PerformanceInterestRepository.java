@@ -2,6 +2,8 @@ package com.umc.bscene.domain.performance.repository;
 
 import com.umc.bscene.domain.performance.entity.PerformanceInterest;
 import com.umc.bscene.domain.performance.enums.PerformanceStatus;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Slice;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -30,6 +32,18 @@ public interface PerformanceInterestRepository extends JpaRepository<Performance
     List<Long> findInterestedPerformanceIds(
             @Param("userId") Long userId,
             @Param("performanceIds") List<Long> performanceIds
+    );
+
+    // 관심 공연 목록 : 날짜/시간 빠른 순(같으면 제목순)으로 조회 (삭제된 공연 제외)
+    @Query("SELECT pi FROM PerformanceInterest pi " +
+            "JOIN FETCH pi.performance p " +
+            "WHERE pi.user.id = :userId " +
+            "AND p.status = :performanceStatus " +
+            "ORDER BY p.performanceDate ASC, p.startTime ASC, p.title ASC, p.id ASC")
+    Slice<PerformanceInterest> findInterestList(
+            @Param("userId") Long userId,
+            @Param("performanceStatus") PerformanceStatus performanceStatus,
+            Pageable pageable
     );
 
     // 사용자와 공연 사이의 관심 등록을 삭제

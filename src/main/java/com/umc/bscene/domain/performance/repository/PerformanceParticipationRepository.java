@@ -10,6 +10,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import java.time.LocalDate;
+import java.util.List;
 import java.util.Optional;
 
 public interface PerformanceParticipationRepository extends JpaRepository<PerformanceParticipation, Long> {
@@ -22,6 +23,9 @@ public interface PerformanceParticipationRepository extends JpaRepository<Perfor
 
     // 사용자와 공연 사이의 특정 상태 참여 기록을 삭제 (알림 해제는 SCHEDULED만 삭제 → 참여완료 이력 보존)
     void deleteByPerformance_IdAndUser_IdAndStatus(Long performanceId, Long userId, ParticipationStatus status);
+
+    // 공연 id 목록에 대한 사용자의 참여 기록을 일괄 조회 (관심 공연 목록의 참여 상태 표시용, N+1 방지)
+    List<PerformanceParticipation> findAllByUser_IdAndPerformance_IdIn(Long userId, List<Long> performanceIds);
 
     // 마이페이지 참여 공연 수 : 참여 완료(COMPLETED) 상태 공연 수 (삭제된 공연 제외)
     long countByUser_IdAndStatusAndPerformance_Status(
