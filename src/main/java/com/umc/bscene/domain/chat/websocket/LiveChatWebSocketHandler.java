@@ -13,6 +13,8 @@ import com.umc.bscene.domain.chat.response.code.LiveChatWebSocketErrorCode;
 import com.umc.bscene.domain.user.entity.User;
 import com.umc.bscene.domain.user.repository.UserRepository;
 import com.umc.bscene.domain.user.repository.UserBlockRepository;
+import com.umc.bscene.domain.user.repository.FanProfileRepository;
+import com.umc.bscene.domain.user.entity.FanProfile;
 import com.umc.bscene.domain.stream.repository.ReportHistoryRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -41,6 +43,7 @@ public class LiveChatWebSocketHandler extends TextWebSocketHandler implements Su
     private final UserRepository userRepository;
     private final UserBlockRepository userBlockRepository;
     private final ReportHistoryRepository reportHistoryRepository;
+    private final FanProfileRepository fanProfileRepository;
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     @Override
@@ -97,9 +100,12 @@ public class LiveChatWebSocketHandler extends TextWebSocketHandler implements Su
         Long userId = userId(session);
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new ChatException(LiveChatWebSocketErrorCode.INVALID_FRAME));
+        String senderName = fanProfileRepository.findByUser(user)
+                .map(FanProfile::getNickname)
+                .orElse(user.getName());
         String messageId = UUID.randomUUID().toString();
         LiveChatMessageData data = new LiveChatMessageData(
-                messageId, liveId(session), userId, user.getName(), content, now());
+                messageId, liveId(session), userId, senderName, content, now());
         ChatWebSocketPushFrame push = new ChatWebSocketPushFrame(
                 "live-chat.message", null, data, frame.clientMsgId(), now());
         Set<Long> excludedUserIds = new HashSet<>(
