@@ -6,6 +6,7 @@ import com.umc.bscene.domain.band.exception.BandException;
 import com.umc.bscene.domain.band.repository.BandMemberRepository;
 import com.umc.bscene.domain.band.repository.BandRepository;
 import com.umc.bscene.domain.band.response.code.BandErrorCode;
+import com.umc.bscene.domain.post.dto.PostPushMessage;
 import com.umc.bscene.domain.post.dto.request.PostCreateRequest;
 import com.umc.bscene.domain.post.dto.request.PostUpdateRequest;
 import com.umc.bscene.domain.post.dto.response.PostCreateResponse;
@@ -17,6 +18,8 @@ import com.umc.bscene.domain.post.entity.Post;
 import com.umc.bscene.domain.post.enums.PostType;
 import com.umc.bscene.domain.post.event.PostVideoThumbnailRequestedEvent;
 import com.umc.bscene.domain.post.exception.PostException;
+import com.umc.bscene.domain.post.port.FollowPort;
+import com.umc.bscene.domain.post.port.NotifyPort;
 import com.umc.bscene.domain.post.repository.PostRepository;
 import com.umc.bscene.domain.post.response.code.PostErrorCode;
 import lombok.RequiredArgsConstructor;
@@ -25,6 +28,8 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.util.List;
 
@@ -40,6 +45,8 @@ public class PostService {
     private final BandRepository bandRepository;
     private final BandMemberRepository bandMemberRepository;
     private final ApplicationEventPublisher eventPublisher;
+    private final FollowPort followPort;
+    private final NotifyPort notifyPort;
 
     // 콘텐츠 등록 (밴드 멤버만 가능) 등록시 팔로워에게 알림
     @Transactional
@@ -66,6 +73,8 @@ public class PostService {
         if (request.type() == PostType.VIDEO && (request.thumbnailUrl() == null || request.thumbnailUrl().isBlank())) {
             eventPublisher.publishEvent(new PostVideoThumbnailRequestedEvent(savedPost.getId(), request.mediaUrls().get(0)));
         }
+
+        notifyFollowersAfterCommit(savedPost);
 
         return PostCreateResponse.from(savedPost);
     }
@@ -195,5 +204,31 @@ public class PostService {
                 }
             }
         }
+    }
+
+    // 게시물 등록 트랜잭션이 완료된 후 밴드 팔로워에게 알림을 발송
+    private void notifyFollowersAfterCommit(Post post) {
+        List<Long> receiverIds = followPort.getFollowerUserIdsByBandId(
+                post.getBand().getId()
+        );
+
+        if (receiverIds.isEmpty()) {
+            return;
+        }
+
+        PostPushMessage message = PostPushMessage.created(
+                post.getBand().getName(),
+                post.getTitle(),
+                post.getId()
+        );
+
+        TransactionSynchronizationManager.registerSynchronization(
+                new TransactionSynchronization() {
+                    @Override
+                    public void afterCommit() {
+                        notifyPort.notify(receiverIds, message);
+                    }
+                }
+        );
     }
 }
