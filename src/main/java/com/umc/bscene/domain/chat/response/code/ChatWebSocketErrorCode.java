@@ -8,6 +8,7 @@ import org.springframework.http.HttpStatus;
 @Getter
 @RequiredArgsConstructor
 public enum ChatWebSocketErrorCode implements BaseResponseCode {
+    USER_BLOCKED(HttpStatus.FORBIDDEN.value(), "DM_USER_BLOCKED", "차단 관계인 사용자에게는 쪽지를 보낼 수 없습니다."),
     INVALID_FRAME(HttpStatus.BAD_REQUEST.value(), "DM_INVALID_FRAME", "쪽지 요청 형식이 올바르지 않습니다."),
     EMPTY_CONTENT(HttpStatus.BAD_REQUEST.value(), "DM_CONTENT_EMPTY", "쪽지 내용을 입력해주세요."),
     CONTENT_TOO_LONG(HttpStatus.BAD_REQUEST.value(), "DM_CONTENT_TOO_LONG", "쪽지는 최대 2,000자까지 입력할 수 있습니다."),

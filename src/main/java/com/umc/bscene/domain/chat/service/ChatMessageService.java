@@ -20,6 +20,7 @@ import com.umc.bscene.domain.session.enums.ApplicationStatus;
 import com.umc.bscene.domain.session.repository.SessionApplicationSubmissionRepository;
 import com.umc.bscene.domain.session.repository.SessionBasicProfileRepository;
 import com.umc.bscene.domain.user.entity.User;
+import com.umc.bscene.domain.user.repository.UserBlockRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -41,6 +42,7 @@ public class ChatMessageService {
     private final SessionApplicationSubmissionRepository submissionRepository;
     private final SessionBasicProfileRepository sessionBasicProfileRepository;
     private final NotifyPort notifyPort;
+    private final UserBlockRepository userBlockRepository;
 
     @Transactional
     public ChatMessageSendResult send(Long userId, ChatMessageSendRequest request) {
@@ -63,6 +65,9 @@ public class ChatMessageService {
         Long recipientId = room.getSender().getId().equals(userId)
                 ? room.getRecipient().getId()
                 : room.getSender().getId();
+        if (userBlockRepository.existsBetween(userId, recipientId)) {
+            throw new ChatException(ChatWebSocketErrorCode.USER_BLOCKED);
+        }
         room.rejoin(recipientId);
 
         ChatMessage message = chatMessageRepository.saveAndFlush(ChatMessage.builder()
