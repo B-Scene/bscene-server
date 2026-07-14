@@ -97,6 +97,123 @@ class SessionProfileMigrationTest {
     }
 
     @Test
+    void migrateLegacyProfileLinksToApplicationLinksBeforeDroppingLegacyTable() throws Exception {
+        String url = "jdbc:h2:mem:legacy-profile-link-removal;MODE=MySQL;DB_CLOSE_DELAY=-1";
+
+        try (Connection connection = DriverManager.getConnection(url, "sa", "");
+             Statement statement = connection.createStatement()) {
+            statement.execute("""
+                    CREATE TABLE session_applications (
+                        session_application_id BIGINT PRIMARY KEY
+                    )
+                    """);
+            statement.execute("""
+                    CREATE TABLE session_application_links (
+                        session_application_link_id BIGINT AUTO_INCREMENT PRIMARY KEY,
+                        created_at TIMESTAMP NOT NULL,
+                        updated_at TIMESTAMP NOT NULL,
+                        deleted_at TIMESTAMP NULL,
+                        url VARCHAR(500) NOT NULL,
+                        session_application_id BIGINT NOT NULL
+                    )
+                    """);
+            statement.execute("""
+                    CREATE TABLE session_profile_links (
+                        session_profile_link_id BIGINT PRIMARY KEY,
+                        created_at TIMESTAMP NOT NULL,
+                        updated_at TIMESTAMP NOT NULL,
+                        deleted_at TIMESTAMP NULL,
+                        url VARCHAR(500) NOT NULL,
+                        session_profile_id BIGINT NOT NULL
+                    )
+                    """);
+            statement.execute("INSERT INTO session_applications VALUES (1)");
+            statement.execute("""
+                    INSERT INTO session_profile_links
+                        (session_profile_link_id, created_at, updated_at, deleted_at,
+                         url, session_profile_id)
+                    VALUES (1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, NULL,
+                            'https://example.com/portfolio', 1)
+                    """);
+        }
+
+        Flyway.configure()
+                .dataSource(url, "sa", "")
+                .baselineOnMigrate(true)
+                .baselineVersion("21")
+                .load()
+                .migrate();
+
+        try (Connection connection = DriverManager.getConnection(url, "sa", "");
+             Statement statement = connection.createStatement()) {
+            assertThat(tableExists(connection, "session_profile_links")).isFalse();
+            try (ResultSet rows = statement.executeQuery("""
+                    SELECT url, session_application_id
+                    FROM session_application_links
+                    """)) {
+                assertThat(rows.next()).isTrue();
+                assertThat(rows.getString("url"))
+                        .isEqualTo("https://example.com/portfolio");
+                assertThat(rows.getLong("session_application_id")).isEqualTo(1L);
+                assertThat(rows.next()).isFalse();
+            }
+        }
+    }
+
+    @Test
+    void migrateBandMemberReferenceBeforeDroppingLegacyProfileTable() throws Exception {
+        String url = "jdbc:h2:mem:legacy-profile-removal;MODE=MySQL;DB_CLOSE_DELAY=-1";
+
+        try (Connection connection = DriverManager.getConnection(url, "sa", "");
+             Statement statement = connection.createStatement()) {
+            statement.execute("""
+                    CREATE TABLE session_applications (
+                        session_application_id BIGINT PRIMARY KEY
+                    )
+                    """);
+            statement.execute("""
+                    CREATE TABLE session_profiles (
+                        session_profile_id BIGINT PRIMARY KEY
+                    )
+                    """);
+            statement.execute("""
+                    CREATE TABLE band_member (
+                        id BIGINT PRIMARY KEY,
+                        session_profile_id BIGINT,
+                        session_application_id BIGINT,
+                        CONSTRAINT fk_legacy_band_member_profile
+                            FOREIGN KEY (session_profile_id)
+                            REFERENCES session_profiles(session_profile_id)
+                    )
+                    """);
+            statement.execute("INSERT INTO session_applications VALUES (1)");
+            statement.execute("INSERT INTO session_profiles VALUES (1)");
+            statement.execute("INSERT INTO band_member VALUES (1, 1, NULL)");
+        }
+
+        Flyway.configure()
+                .dataSource(url, "sa", "")
+                .baselineOnMigrate(true)
+                .baselineVersion("22")
+                .load()
+                .migrate();
+
+        try (Connection connection = DriverManager.getConnection(url, "sa", "");
+             Statement statement = connection.createStatement()) {
+            assertThat(tableExists(connection, "session_profiles")).isFalse();
+            assertThat(columnExists(connection, "band_member", "session_profile_id")).isFalse();
+            try (ResultSet row = statement.executeQuery("""
+                    SELECT session_application_id
+                    FROM band_member
+                    WHERE id = 1
+                    """)) {
+                assertThat(row.next()).isTrue();
+                assertThat(row.getLong("session_application_id")).isEqualTo(1L);
+            }
+        }
+    }
+
+    @Test
     void backfillBlankPurposeFromExistingApplicationTable() throws Exception {
         String url = "jdbc:h2:mem:blank-purpose-migration;MODE=MySQL;DB_CLOSE_DELAY=-1";
 
