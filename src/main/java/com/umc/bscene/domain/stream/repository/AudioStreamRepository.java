@@ -25,6 +25,8 @@ public interface AudioStreamRepository extends JpaRepository<AudioStream, Long> 
 
     Boolean existsByBroadcasterIdAndStatus(Long userId, StreamStatus status);
 
+    boolean existsByIdAndStatus(Long id, StreamStatus status);
+
     long countByBroadcasterIdAndStatus(Long broadcasterId, StreamStatus status);
 
     List<AudioStream> findAllByPathIn(List<String> paths);
