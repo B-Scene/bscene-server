@@ -30,7 +30,10 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.data.domain.PageRequest;
 
 import java.util.List;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Map;
+import java.time.LocalDateTime;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -81,7 +84,8 @@ public class ChatRoomService {
         return new ChatRoomListResponse(content, pageSize, nextCursor, hasNext);
     }
 
-    public ChatRoomDetailResponse getRoomDetail(Long userId, Long roomId) {
+    public ChatRoomDetailResponse getRoomDetail(
+            Long userId, Long roomId, Long cursorId, Integer size) {
         ChatRoom room = chatRoomRepository.findDetail(roomId)
                 .orElseThrow(() -> new ChatException(ChatErrorCode.CHAT_ROOM_NOT_FOUND));
         boolean viewerIsSender = room.getSender().getId().equals(userId);
@@ -93,10 +97,18 @@ public class ChatRoomService {
             throw new ChatException(ChatErrorCode.CHAT_ROOM_NOT_FOUND);
         }
 
-        List<ChatMessage> messages = chatMessageRepository.findRoomMessages(roomId);
-        messages.stream()
-                .filter(message -> !message.getSender().getId().equals(userId))
-                .forEach(ChatMessage::markRead);
+        int pageSize = size == null ? 20 : Math.max(1, Math.min(size, 50));
+        chatMessageRepository.markAllUnreadAsRead(roomId, userId, LocalDateTime.now());
+        List<ChatMessage> fetchedMessages = chatMessageRepository.findRoomMessages(
+                roomId, cursorId, PageRequest.of(0, pageSize + 1));
+        boolean hasNext = fetchedMessages.size() > pageSize;
+        List<ChatMessage> messages = new ArrayList<>(hasNext
+                ? fetchedMessages.subList(0, pageSize)
+                : fetchedMessages);
+        Collections.reverse(messages);
+        Long nextCursor = hasNext && !messages.isEmpty()
+                ? messages.get(0).getChatMessageId()
+                : null;
 
         SessionApplication counterpartApplication = resolveCounterpartApplication(room, userId);
         String profileImageUrl = room.getContextType() == ChatContextType.RECRUITMENT
@@ -149,7 +161,8 @@ public class ChatRoomService {
                 opponentId, opponentName, profileImageUrl, part, genre, region, canSend(room),
                 messages.stream()
                         .map(message -> ChatMessageDetailResponse.from(message, userId))
-                        .toList()
+                        .toList(),
+                pageSize, nextCursor, hasNext
         );
     }
 

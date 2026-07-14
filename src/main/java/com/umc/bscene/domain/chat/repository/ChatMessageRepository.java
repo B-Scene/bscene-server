@@ -5,6 +5,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.repository.query.Param;
+import org.springframework.data.domain.Pageable;
 
 import java.util.Collection;
 import java.util.List;
@@ -23,9 +24,28 @@ public interface ChatMessageRepository extends JpaRepository<ChatMessage, Long> 
         SELECT message FROM ChatMessage message
         JOIN FETCH message.sender
         WHERE message.chatRoom.chatRoomId = :roomId
-        ORDER BY message.chatMessageId ASC
+          AND (:cursorId IS NULL OR message.chatMessageId < :cursorId)
+        ORDER BY message.chatMessageId DESC
     """)
-    List<ChatMessage> findRoomMessages(@Param("roomId") Long roomId);
+    List<ChatMessage> findRoomMessages(
+            @Param("roomId") Long roomId,
+            @Param("cursorId") Long cursorId,
+            Pageable pageable
+    );
+
+    @Modifying
+    @Query("""
+        UPDATE ChatMessage message
+        SET message.readAt = :readAt
+        WHERE message.chatRoom.chatRoomId = :roomId
+          AND message.sender.id <> :readerId
+          AND message.readAt IS NULL
+    """)
+    int markAllUnreadAsRead(
+            @Param("roomId") Long roomId,
+            @Param("readerId") Long readerId,
+            @Param("readAt") LocalDateTime readAt
+    );
 
     boolean existsByChatMessageIdAndChatRoom_ChatRoomId(
             Long chatMessageId,

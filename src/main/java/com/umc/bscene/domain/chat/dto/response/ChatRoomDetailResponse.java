@@ -16,5 +16,8 @@ public record ChatRoomDetailResponse(
         String genre,
         String region,
         boolean canSend,
-        List<ChatMessageDetailResponse> messages
+        List<ChatMessageDetailResponse> messages,
+        int size,
+        Long nextCursor,
+        boolean hasNext
 ) {}
