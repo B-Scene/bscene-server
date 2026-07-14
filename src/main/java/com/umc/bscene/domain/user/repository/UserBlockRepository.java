@@ -3,6 +3,9 @@ package com.umc.bscene.domain.user.repository;
 import com.umc.bscene.domain.user.entity.UserBlock;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
+
+import java.util.Set;
 
 public interface UserBlockRepository extends JpaRepository<UserBlock, Long> {
     boolean existsByBlocker_IdAndBlocked_Id(Long blockerId, Long blockedId);
@@ -11,4 +14,11 @@ public interface UserBlockRepository extends JpaRepository<UserBlock, Long> {
             + "(b.blocker.id = :firstUserId and b.blocked.id = :secondUserId) or "
             + "(b.blocker.id = :secondUserId and b.blocked.id = :firstUserId)")
     boolean existsBetween(Long firstUserId, Long secondUserId);
+
+    @Query("""
+            select case when b.blocker.id = :userId then b.blocked.id else b.blocker.id end
+            from UserBlock b
+            where b.blocker.id = :userId or b.blocked.id = :userId
+            """)
+    Set<Long> findBlockedUserIdsRelatedTo(@Param("userId") Long userId);
 }
