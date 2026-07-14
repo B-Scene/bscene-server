@@ -4,6 +4,8 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.umc.bscene.domain.user.entity.User;
 import com.umc.bscene.domain.user.repository.UserRepository;
+import com.umc.bscene.domain.user.repository.UserBlockRepository;
+import com.umc.bscene.domain.stream.repository.ReportHistoryRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -15,6 +17,7 @@ import org.springframework.web.socket.WebSocketSession;
 
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.eq;
@@ -30,6 +33,8 @@ class LiveChatWebSocketHandlerTest {
 
     @Mock LiveChatWebSocketSessionRegistry sessionRegistry;
     @Mock UserRepository userRepository;
+    @Mock UserBlockRepository userBlockRepository;
+    @Mock ReportHistoryRepository reportHistoryRepository;
     @Mock WebSocketSession session;
     @Mock User user;
 
@@ -39,7 +44,8 @@ class LiveChatWebSocketHandlerTest {
     @BeforeEach
     void setUp() {
         objectMapper = new ObjectMapper();
-        handler = new LiveChatWebSocketHandler(sessionRegistry, userRepository);
+        handler = new LiveChatWebSocketHandler(
+                sessionRegistry, userRepository, userBlockRepository, reportHistoryRepository);
         when(session.getAttributes()).thenReturn(Map.of(
                 LiveChatWebSocketHandshakeInterceptor.USER_ID_ATTRIBUTE, USER_ID,
                 LiveChatWebSocketHandshakeInterceptor.LIVE_ID_ATTRIBUTE, LIVE_ID));
@@ -50,7 +56,7 @@ class LiveChatWebSocketHandlerTest {
     void registersRoomSessionAndSendsConnectedEvent() throws Exception {
         handler.afterConnectionEstablished(session);
 
-        verify(sessionRegistry).register(LIVE_ID, session);
+        verify(sessionRegistry).register(LIVE_ID, USER_ID, session);
         JsonNode frame = captureSessionFrame();
         assertEquals("system.event", frame.get("type").asText());
         assertEquals("connected", frame.get("data").get("event").asText());
@@ -60,6 +66,9 @@ class LiveChatWebSocketHandlerTest {
     void broadcastsMessageToLiveRoom() throws Exception {
         when(userRepository.findById(USER_ID)).thenReturn(Optional.of(user));
         when(user.getName()).thenReturn("최준우");
+        when(userBlockRepository.findBlockedUserIdsRelatedTo(USER_ID)).thenReturn(Set.of(2L));
+        when(reportHistoryRepository.findReporterIdsByLiveIdAndTargetUserId(LIVE_ID, USER_ID))
+                .thenReturn(Set.of(3L));
 
         handler.handleTextMessage(session, new TextMessage("""
                 {"type":"live-chat.send","data":{"content":"라이브 자주 해주세요!"},
@@ -67,7 +76,7 @@ class LiveChatWebSocketHandlerTest {
                 """));
 
         ArgumentCaptor<TextMessage> captor = ArgumentCaptor.forClass(TextMessage.class);
-        verify(sessionRegistry).broadcast(eq(LIVE_ID), captor.capture());
+        verify(sessionRegistry).broadcastExcept(eq(LIVE_ID), eq(Set.of(2L, 3L)), captor.capture());
         JsonNode frame = objectMapper.readTree(captor.getValue().getPayload());
         assertEquals("live-chat.message", frame.get("type").asText());
         assertEquals("최준우", frame.get("data").get("senderName").asText());
