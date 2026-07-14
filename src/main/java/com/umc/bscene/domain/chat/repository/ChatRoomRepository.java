@@ -24,14 +24,35 @@ public interface ChatRoomRepository extends JpaRepository<ChatRoom, Long> {
         WHERE (room.sender.id = :userId OR room.recipient.id = :userId)
           AND ((room.sender.id = :userId AND room.senderLeftAt IS NULL)
             OR (room.recipient.id = :userId AND room.recipientLeftAt IS NULL))
-          AND (:cursorId IS NULL OR room.chatRoomId < :cursorId)
+          AND (:cursorId IS NULL OR
+            COALESCE((
+              SELECT MAX(cursorMessage.chatMessageId) FROM ChatMessage cursorMessage
+              WHERE cursorMessage.chatRoom.chatRoomId = room.chatRoomId
+            ), 0) < COALESCE((
+              SELECT MAX(boundaryMessage.chatMessageId) FROM ChatMessage boundaryMessage
+              WHERE boundaryMessage.chatRoom.chatRoomId = :cursorId
+            ), 0)
+            OR (
+              COALESCE((
+                SELECT MAX(cursorMessage.chatMessageId) FROM ChatMessage cursorMessage
+                WHERE cursorMessage.chatRoom.chatRoomId = room.chatRoomId
+              ), 0) = COALESCE((
+                SELECT MAX(boundaryMessage.chatMessageId) FROM ChatMessage boundaryMessage
+                WHERE boundaryMessage.chatRoom.chatRoomId = :cursorId
+              ), 0)
+              AND room.chatRoomId < :cursorId
+            )
+          )
           AND (:unreadOnly = false OR EXISTS (
               SELECT message.chatMessageId FROM ChatMessage message
               WHERE message.chatRoom = room
                 AND message.sender.id <> :userId
                 AND message.readAt IS NULL
           ))
-        ORDER BY room.chatRoomId DESC
+        ORDER BY COALESCE((
+          SELECT MAX(latestMessage.chatMessageId) FROM ChatMessage latestMessage
+          WHERE latestMessage.chatRoom.chatRoomId = room.chatRoomId
+        ), 0) DESC, room.chatRoomId DESC
     """)
     List<ChatRoom> findMyRooms(@Param("userId") Long userId,
                                @Param("cursorId") Long cursorId,
