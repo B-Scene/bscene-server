@@ -24,4 +24,7 @@ public class FanProfile extends BaseEntity {
     // 팬모드에서 사용할 닉네임
     @Column(nullable = false, unique = true, length = 20)
     private String nickname;
+
+    @Column(name = "profile_image_url", length = 2048)
+    private String profileImageUrl;
 }
