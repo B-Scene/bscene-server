@@ -5,6 +5,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.umc.bscene.domain.user.entity.User;
 import com.umc.bscene.domain.user.repository.UserRepository;
 import com.umc.bscene.domain.user.repository.UserBlockRepository;
+import com.umc.bscene.domain.user.repository.FanProfileRepository;
+import com.umc.bscene.domain.user.entity.FanProfile;
 import com.umc.bscene.domain.stream.repository.ReportHistoryRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -35,8 +37,10 @@ class LiveChatWebSocketHandlerTest {
     @Mock UserRepository userRepository;
     @Mock UserBlockRepository userBlockRepository;
     @Mock ReportHistoryRepository reportHistoryRepository;
+    @Mock FanProfileRepository fanProfileRepository;
     @Mock WebSocketSession session;
     @Mock User user;
+    @Mock FanProfile fanProfile;
 
     private LiveChatWebSocketHandler handler;
     private ObjectMapper objectMapper;
@@ -45,7 +49,8 @@ class LiveChatWebSocketHandlerTest {
     void setUp() {
         objectMapper = new ObjectMapper();
         handler = new LiveChatWebSocketHandler(
-                sessionRegistry, userRepository, userBlockRepository, reportHistoryRepository);
+                sessionRegistry, userRepository, userBlockRepository,
+                reportHistoryRepository, fanProfileRepository);
         when(session.getAttributes()).thenReturn(Map.of(
                 LiveChatWebSocketHandshakeInterceptor.USER_ID_ATTRIBUTE, USER_ID,
                 LiveChatWebSocketHandshakeInterceptor.LIVE_ID_ATTRIBUTE, LIVE_ID));
@@ -65,7 +70,8 @@ class LiveChatWebSocketHandlerTest {
     @Test
     void broadcastsMessageToLiveRoom() throws Exception {
         when(userRepository.findById(USER_ID)).thenReturn(Optional.of(user));
-        when(user.getName()).thenReturn("최준우");
+        when(fanProfileRepository.findByUser(user)).thenReturn(Optional.of(fanProfile));
+        when(fanProfile.getNickname()).thenReturn("웨이비팬");
         when(userBlockRepository.findBlockedUserIdsRelatedTo(USER_ID)).thenReturn(Set.of(2L));
         when(reportHistoryRepository.findReporterIdsByLiveIdAndTargetUserId(LIVE_ID, USER_ID))
                 .thenReturn(Set.of(3L));
@@ -79,7 +85,7 @@ class LiveChatWebSocketHandlerTest {
         verify(sessionRegistry).broadcastExcept(eq(LIVE_ID), eq(Set.of(2L, 3L)), captor.capture());
         JsonNode frame = objectMapper.readTree(captor.getValue().getPayload());
         assertEquals("live-chat.message", frame.get("type").asText());
-        assertEquals("최준우", frame.get("data").get("senderName").asText());
+        assertEquals("웨이비팬", frame.get("data").get("senderName").asText());
         assertEquals("라이브 자주 해주세요!", frame.get("data").get("content").asText());
     }
 
