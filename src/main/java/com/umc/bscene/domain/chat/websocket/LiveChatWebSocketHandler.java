@@ -12,6 +12,8 @@ import com.umc.bscene.domain.chat.exception.ChatException;
 import com.umc.bscene.domain.chat.response.code.LiveChatWebSocketErrorCode;
 import com.umc.bscene.domain.user.entity.User;
 import com.umc.bscene.domain.user.repository.UserRepository;
+import com.umc.bscene.domain.user.repository.UserBlockRepository;
+import com.umc.bscene.domain.stream.repository.ReportHistoryRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
@@ -25,6 +27,8 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.UUID;
+import java.util.HashSet;
+import java.util.Set;
 
 @Slf4j
 @Component
@@ -35,6 +39,8 @@ public class LiveChatWebSocketHandler extends TextWebSocketHandler implements Su
 
     private final LiveChatWebSocketSessionRegistry sessionRegistry;
     private final UserRepository userRepository;
+    private final UserBlockRepository userBlockRepository;
+    private final ReportHistoryRepository reportHistoryRepository;
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     @Override
@@ -45,7 +51,7 @@ public class LiveChatWebSocketHandler extends TextWebSocketHandler implements Su
     @Override
     public void afterConnectionEstablished(WebSocketSession session) throws Exception {
         Long liveId = liveId(session);
-        sessionRegistry.register(liveId, session);
+        sessionRegistry.register(liveId, userId(session), session);
         ChatWebSocketPushFrame frame = new ChatWebSocketPushFrame(
                 "system.event", null, new ChatWebSocketSystemEventData("connected"),
                 null, now());
@@ -96,7 +102,11 @@ public class LiveChatWebSocketHandler extends TextWebSocketHandler implements Su
                 messageId, liveId(session), userId, user.getName(), content, now());
         ChatWebSocketPushFrame push = new ChatWebSocketPushFrame(
                 "live-chat.message", null, data, frame.clientMsgId(), now());
-        sessionRegistry.broadcast(liveId(session),
+        Set<Long> excludedUserIds = new HashSet<>(
+                userBlockRepository.findBlockedUserIdsRelatedTo(userId));
+        excludedUserIds.addAll(reportHistoryRepository
+                .findReporterIdsByLiveIdAndTargetUserId(liveId(session), userId));
+        sessionRegistry.broadcastExcept(liveId(session), excludedUserIds,
                 new TextMessage(objectMapper.writeValueAsString(push)));
     }
 
