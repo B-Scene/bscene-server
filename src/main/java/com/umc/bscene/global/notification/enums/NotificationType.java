@@ -4,5 +4,6 @@ public enum NotificationType {
     PERFORMANCE,
     LIVE,
     MESSAGE,
-    SESSION
+    SESSION,
+    POST
 }
