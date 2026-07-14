@@ -48,11 +48,13 @@ public class ChatRoomController {
     @GetMapping("/{chatRoomId}")
     public SuccessResponse<ChatRoomDetailResponse> getChatRoomDetail(
             @AuthenticationPrincipal AuthMember authMember,
-            @PathVariable Long chatRoomId
+            @PathVariable Long chatRoomId,
+            @RequestParam(required = false) Long cursorId,
+            @RequestParam(defaultValue = "20") Integer size
     ) {
         return SuccessResponse.of(
                 chatRoomService.getRoomDetail(
-                        authMember.getUser().getId(), chatRoomId),
+                        authMember.getUser().getId(), chatRoomId, cursorId, size),
                 ChatSuccessCode.CHAT_ROOM_DETAIL_SUCCESS
         );
     }
