@@ -8,7 +8,7 @@ import java.sql.DatabaseMetaData;
 import java.sql.ResultSet;
 import java.sql.Statement;
 
-public class V18__allow_reapplication_after_cancellation extends BaseJavaMigration {
+public class V19__allow_reapplication_after_cancellation extends BaseJavaMigration {
     private static final String TABLE = "application_submissions";
     private static final String CONSTRAINT =
             "uk_application_submission_recruitment_application";
