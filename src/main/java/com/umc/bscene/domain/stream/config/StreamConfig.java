@@ -8,6 +8,7 @@ import com.umc.bscene.domain.stream.service.StreamService;
 import com.umc.bscene.domain.stream.service.StreamServiceImpl;
 import com.umc.bscene.domain.stream.sse.ViewerSsePresence;
 import com.umc.bscene.domain.stream.sse.ViewerSseRegistry;
+import com.umc.bscene.domain.chat.service.LiveChatRoomCloser;
 import com.umc.bscene.global.security.util.JwtUtil;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
@@ -71,6 +72,7 @@ public class StreamConfig {
             NotifyPort notifyPort,
             RestClient mtxRestClient,
             ViewerSsePresence viewerSsePresence,
+            LiveChatRoomCloser liveChatRoomCloser,
             @Value("${mediamtx.hls-url}") String hlsUrl,
             @Value("${mediamtx.webrtc-url}") String webrtcUrl
     ) {
@@ -89,6 +91,7 @@ public class StreamConfig {
                 notifyPort,
                 mtxRestClient,
                 viewerSsePresence,
+                liveChatRoomCloser,
                 hlsUrl,
                 webrtcUrl
         );

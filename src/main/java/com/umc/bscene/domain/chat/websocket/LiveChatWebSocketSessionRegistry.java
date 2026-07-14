@@ -3,6 +3,7 @@ package com.umc.bscene.domain.chat.websocket;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 import org.springframework.web.socket.TextMessage;
+import org.springframework.web.socket.CloseStatus;
 import org.springframework.web.socket.WebSocketSession;
 import org.springframework.web.socket.handler.ConcurrentWebSocketSessionDecorator;
 
@@ -64,6 +65,23 @@ public class LiveChatWebSocketSessionRegistry {
             log.warn("Live chat push failed: liveId={}, sessionId={}",
                     liveId, sessionId, exception);
         }
+    }
+
+    public void closeRoom(Long liveId, TextMessage finalMessage) {
+        Map<String, LiveChatSession> sessions = sessionsByLive.remove(liveId);
+        if (sessions == null) return;
+
+        sessions.forEach((sessionId, connection) -> {
+            WebSocketSession session = connection.session();
+            if (!session.isOpen()) return;
+            try {
+                session.sendMessage(finalMessage);
+                session.close(CloseStatus.NORMAL);
+            } catch (Exception exception) {
+                log.warn("Live chat room close failed: liveId={}, sessionId={}",
+                        liveId, sessionId, exception);
+            }
+        });
     }
 
     private record LiveChatSession(Long userId, WebSocketSession session) {

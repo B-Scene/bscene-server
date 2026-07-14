@@ -27,6 +27,7 @@ import com.umc.bscene.domain.stream.repository.StreamMemberRepository;
 import com.umc.bscene.domain.stream.repository.StreamReplayRepository;
 import com.umc.bscene.domain.stream.sse.ViewerSsePresence;
 import com.umc.bscene.domain.user.entity.User;
+import com.umc.bscene.domain.chat.service.LiveChatRoomCloser;
 import com.umc.bscene.domain.user.enums.UserMode;
 import com.umc.bscene.global.config.CacheConfig;
 import com.umc.bscene.global.response.CursorPage;
@@ -92,6 +93,7 @@ public class StreamServiceImpl implements StreamService {
     private final NotifyPort notifyPort;
     private final RestClient mtxRestClient;
     private final ViewerSsePresence viewerSsePresence;
+    private final LiveChatRoomCloser liveChatRoomCloser;
 
     private final String hlsUrl;
     private final String webrtcUrl;
@@ -209,6 +211,7 @@ public class StreamServiceImpl implements StreamService {
             @Override
             public void afterCommit() {
                 kickPublisher(path);
+                liveChatRoomCloser.close(streamId);
             }
         });
     }
