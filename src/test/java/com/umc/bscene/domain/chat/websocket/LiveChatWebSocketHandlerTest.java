@@ -20,6 +20,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.lenient;
 
 @ExtendWith(MockitoExtension.class)
 class LiveChatWebSocketHandlerTest {
@@ -42,7 +43,7 @@ class LiveChatWebSocketHandlerTest {
         when(session.getAttributes()).thenReturn(Map.of(
                 LiveChatWebSocketHandshakeInterceptor.USER_ID_ATTRIBUTE, USER_ID,
                 LiveChatWebSocketHandshakeInterceptor.LIVE_ID_ATTRIBUTE, LIVE_ID));
-        when(session.getId()).thenReturn(SESSION_ID);
+        lenient().when(session.getId()).thenReturn(SESSION_ID);
     }
 
     @Test
