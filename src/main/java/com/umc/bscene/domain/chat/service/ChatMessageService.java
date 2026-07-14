@@ -1,15 +1,17 @@
 package com.umc.bscene.domain.chat.service;
 
-import com.umc.bscene.domain.chat.dto.request.ChatMessageSendRequest;
+import com.umc.bscene.domain.chat.dto.ChatPushMessage;
 import com.umc.bscene.domain.chat.dto.request.ChatMessageReadRequest;
+import com.umc.bscene.domain.chat.dto.request.ChatMessageSendRequest;
+import com.umc.bscene.domain.chat.dto.response.ChatMessagePushData;
 import com.umc.bscene.domain.chat.dto.response.ChatMessageReadPushData;
 import com.umc.bscene.domain.chat.dto.response.ChatMessageReadResult;
-import com.umc.bscene.domain.chat.dto.response.ChatMessagePushData;
 import com.umc.bscene.domain.chat.dto.response.ChatMessageSendResult;
 import com.umc.bscene.domain.chat.entity.ChatMessage;
 import com.umc.bscene.domain.chat.entity.ChatRoom;
 import com.umc.bscene.domain.chat.enums.ChatContextType;
 import com.umc.bscene.domain.chat.exception.ChatException;
+import com.umc.bscene.domain.chat.port.NotifyPort;
 import com.umc.bscene.domain.chat.repository.ChatMessageRepository;
 import com.umc.bscene.domain.chat.repository.ChatRoomRepository;
 import com.umc.bscene.domain.chat.response.code.ChatErrorCode;
@@ -21,9 +23,11 @@ import com.umc.bscene.domain.user.entity.User;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
-import java.time.format.DateTimeFormatter;
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 
 @Service
 @RequiredArgsConstructor
@@ -36,6 +40,7 @@ public class ChatMessageService {
     private final ChatMessageRepository chatMessageRepository;
     private final SessionApplicationSubmissionRepository submissionRepository;
     private final SessionBasicProfileRepository sessionBasicProfileRepository;
+    private final NotifyPort notifyPort;
 
     @Transactional
     public ChatMessageSendResult send(Long userId, ChatMessageSendRequest request) {
@@ -70,7 +75,7 @@ public class ChatMessageService {
                 .map(profile -> profile.getProfileImageUrl())
                 .orElse(null);
 
-        return new ChatMessageSendResult(
+        ChatMessageSendResult result = new ChatMessageSendResult(
                 recipientId,
                 new ChatMessagePushData(
                         message.getChatMessageId(),
@@ -83,6 +88,10 @@ public class ChatMessageService {
                         message.getCreatedAt().format(DATE_TIME_FORMATTER)
                 )
         );
+
+        notifyRecipientAfterCommit(result);
+
+        return result;
     }
 
     @Transactional
@@ -150,5 +159,25 @@ public class ChatMessageService {
                         room.getSender().getId())
                 .map(submission -> submission.getStatus() != ApplicationStatus.REJECTED)
                 .orElse(true);
+    }
+
+    // 쪽지 저장 트랜잭션이 완료된 후 수신자에게 알림을 발송
+    private void notifyRecipientAfterCommit(ChatMessageSendResult result) {
+        ChatMessagePushData messageData = result.message();
+
+        ChatPushMessage pushMessage = ChatPushMessage.received(
+                messageData.senderName(),
+                messageData.content(),
+                messageData.chatRoomId()
+        );
+
+        TransactionSynchronizationManager.registerSynchronization(
+                new TransactionSynchronization() {
+                    @Override
+                    public void afterCommit() {
+                        notifyPort.notify(result.recipientId(), pushMessage);
+                    }
+                }
+        );
     }
 }
