@@ -5,6 +5,7 @@ public record LiveChatMessageData(
         Long liveId,
         Long senderId,
         String senderName,
+        String senderProfileImageUrl,
         String content,
         String sentAt
 ) {

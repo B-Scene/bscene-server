@@ -86,6 +86,7 @@ class LiveChatWebSocketHandlerTest {
         JsonNode frame = objectMapper.readTree(captor.getValue().getPayload());
         assertEquals("live-chat.message", frame.get("type").asText());
         assertEquals("웨이비팬", frame.get("data").get("senderName").asText());
+        assertEquals(true, frame.get("data").get("senderProfileImageUrl").isNull());
         assertEquals("라이브 자주 해주세요!", frame.get("data").get("content").asText());
     }
 

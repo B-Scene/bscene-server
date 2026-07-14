@@ -105,7 +105,7 @@ public class LiveChatWebSocketHandler extends TextWebSocketHandler implements Su
                 .orElse(user.getName());
         String messageId = UUID.randomUUID().toString();
         LiveChatMessageData data = new LiveChatMessageData(
-                messageId, liveId(session), userId, senderName, content, now());
+                messageId, liveId(session), userId, senderName, null, content, now());
         ChatWebSocketPushFrame push = new ChatWebSocketPushFrame(
                 "live-chat.message", null, data, frame.clientMsgId(), now());
         Set<Long> excludedUserIds = new HashSet<>(
