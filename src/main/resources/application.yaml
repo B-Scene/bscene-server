@@ -41,6 +41,9 @@ spring:
       host: ${REDIS_HOST:localhost}
       port: ${REDIS_PORT:6379}
 
+  elasticsearch:
+    uris: ${ES_URIS:http://localhost:9200}
+
   security:
     oauth2:
       client:
