@@ -33,4 +33,12 @@ public interface FollowRepository extends JpaRepository<Follow, Long> {
             @Param("bandId") Long bandId,
             @Param("userStatus") UserStatus userStatus
     );
+
+    // 후보 밴드 중 사용자가 팔로우 중인 밴드 id만 일괄 조회 (검색 결과의 팔로우 여부 표시용)
+    @Query("SELECT f.band.id FROM Follow f " +
+            "WHERE f.user.id = :userId AND f.band.id IN :bandIds")
+    List<Long> findBandIdsByUserIdAndBandIdIn(
+            @Param("userId") Long userId,
+            @Param("bandIds") List<Long> bandIds
+    );
 }

@@ -36,6 +36,10 @@ public class VideoDocument {
     @Id
     private Long id;
 
+    // 페이징 안정성용 tie-breaker (정렬 전용 — _id는 정렬 불가라 doc_values 필드로 복제)
+    @Field(type = FieldType.Long, index = false)
+    private Long docId;
+
     // 검색 대상 (가중치 : title^3) + 완전 일치 가점용 raw
     @MultiField(
             mainField = @Field(type = FieldType.Text, analyzer = "korean"),
@@ -82,6 +86,7 @@ public class VideoDocument {
         Band band = post.getBand();
         return VideoDocument.builder()
                 .id(post.getId())
+                .docId(post.getId())
                 .title(post.getTitle())
                 .bandName(band.getName())
                 .tags(post.getTagList().stream().map(PostTag::getTagName).toList())

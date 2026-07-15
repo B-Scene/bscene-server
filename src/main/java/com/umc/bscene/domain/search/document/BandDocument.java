@@ -31,6 +31,10 @@ public class BandDocument {
     @Id
     private Long id;
 
+    // 페이징 안정성용 tie-breaker (정렬 전용 — _id는 정렬 불가라 doc_values 필드로 복제)
+    @Field(type = FieldType.Long, index = false)
+    private Long docId;
+
     // 검색 대상 (name^3) + 완전 일치 가점용 raw
     @MultiField(
             mainField = @Field(type = FieldType.Text, analyzer = "korean"),
@@ -60,6 +64,7 @@ public class BandDocument {
     public static BandDocument from(Band band) {
         return BandDocument.builder()
                 .id(band.getId())
+                .docId(band.getId())
                 .name(band.getName())
                 .description(band.getDescription())
                 .genre(band.getGenre().name())

@@ -34,6 +34,10 @@ public class PerformanceDocument {
     @Id
     private Long id;
 
+    // 페이징 안정성용 tie-breaker (정렬 전용 — _id는 정렬 불가라 doc_values 필드로 복제)
+    @Field(type = FieldType.Long, index = false)
+    private Long docId;
+
     // 검색 대상 (title^3) + 완전 일치 가점용 raw
     @MultiField(
             mainField = @Field(type = FieldType.Text, analyzer = "korean"),
@@ -83,6 +87,7 @@ public class PerformanceDocument {
         Band band = performance.getBand();
         return PerformanceDocument.builder()
                 .id(performance.getId())
+                .docId(performance.getId())
                 .title(performance.getTitle())
                 .bandName(band.getName())
                 .description(performance.getDescription())

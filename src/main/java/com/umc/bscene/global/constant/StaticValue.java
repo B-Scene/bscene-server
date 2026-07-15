@@ -25,6 +25,7 @@ public class StaticValue {
     /* 5xx response */
     public static final int INTERNAL_SERVER_ERROR = 500;
     public static final int BAD_GATEWAY = 502;
+    public static final int SERVICE_UNAVAILABLE = 503;
 
     // 외부에서 생성할 수 없게 private 생성자로 방어
     private StaticValue() {}
