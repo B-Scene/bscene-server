@@ -2,6 +2,7 @@ package com.umc.bscene.domain.performance.config;
 
 import com.umc.bscene.domain.performance.adapter.FanHomeAdapter;
 import com.umc.bscene.domain.performance.adapter.BandAdapter;
+import com.umc.bscene.domain.performance.adapter.SearchAdapter;
 import com.umc.bscene.domain.performance.adapter.UserAdapter;
 import com.umc.bscene.domain.performance.repository.PerformanceInterestRepository;
 import com.umc.bscene.domain.performance.repository.PerformanceParticipationRepository;
@@ -35,5 +36,11 @@ public class PerformanceConfig {
             PerformanceParticipationRepository performanceParticipationRepository
     ) {
         return new UserAdapter(performanceInterestRepository, performanceParticipationRepository);
+    }
+
+    // 검색 색인 PerformancePort 구현 어댑터
+    @Bean
+    public SearchAdapter searchPerformanceAdapter(PerformanceRepository performanceRepository) {
+        return new SearchAdapter(performanceRepository);
     }
 }
