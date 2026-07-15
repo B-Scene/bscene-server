@@ -13,6 +13,30 @@ services:
       - recordings:/recordings  # mediamtx 녹화본 S3 업로드용 공유 볼륨
     depends_on:
       - redis
+      - elasticsearch  # 기동 순서만 보장 (ES 장애 시에도 spring은 뜨고 검색만 503)
+    networks:
+      - bscene
+
+  # 탐색 통합검색용 Elasticsearch (nori 포함 커스텀 이미지 — elasticsearch/Dockerfile로 빌드해 Docker Hub에 push)
+  # 최초 1회는 서버에서 수동 기동 필요 : docker compose up -d elasticsearch (CD는 spring만 재시작)
+  elasticsearch:
+    image: ${DOCKER_USERNAME}/bscene-es:9.4.3
+    container_name: elasticsearch
+    restart: always
+    environment:
+      - discovery.type=single-node
+      - xpack.security.enabled=false  # 내부 네트워크 전용(외부 미노출) 전제 — 포트 공개 금지
+      - TZ=Asia/Seoul
+    expose:
+      - "9200"  # spring 접근 (compose 내부 네트워크 전용)
+    volumes:
+      - es-data:/usr/share/elasticsearch/data  # 컨테이너 재생성에도 색인 유지
+    deploy:
+      resources:
+        limits:
+          memory: 1G  # ES가 이 상한을 보고 힙을 자동 계산 (약 512MB)
+        reservations:
+          memory: 512M
     networks:
       - bscene
 
@@ -109,3 +133,4 @@ networks:
 volumes:
   redis-data:
   recordings:
+  es-data:
