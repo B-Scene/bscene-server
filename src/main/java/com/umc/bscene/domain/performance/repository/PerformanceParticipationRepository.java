@@ -10,6 +10,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import java.time.LocalDate;
+import java.time.LocalTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -47,5 +48,40 @@ public interface PerformanceParticipationRepository extends JpaRepository<Perfor
             @Param("startDate") LocalDate startDate,
             @Param("endDate") LocalDate endDate,
             Pageable pageable
+    );
+
+    // 현재부터 1시간 이내에 시작하며 아직 사전 알림을 발송하지 않은 참여 기록 조회
+    @Query("""
+        SELECT pp
+        FROM PerformanceParticipation pp
+        JOIN FETCH pp.performance p
+        JOIN FETCH p.band
+        JOIN FETCH pp.user
+        WHERE pp.status = :participationStatus
+          AND pp.reminderSentAt IS NULL
+          AND p.status = :performanceStatus
+          AND (
+                p.performanceDate > :fromDate
+                OR (
+                    p.performanceDate = :fromDate
+                    AND p.startTime > :fromTime
+                )
+          )
+          AND (
+                p.performanceDate < :toDate
+                OR (
+                    p.performanceDate = :toDate
+                    AND p.startTime <= :toTime
+                )
+          )
+        ORDER BY p.performanceDate ASC, p.startTime ASC, p.id ASC, pp.id ASC
+        """)
+    List<PerformanceParticipation> findReminderTargets(
+            @Param("participationStatus") ParticipationStatus participationStatus,
+            @Param("performanceStatus") PerformanceStatus performanceStatus,
+            @Param("fromDate") LocalDate fromDate,
+            @Param("fromTime") LocalTime fromTime,
+            @Param("toDate") LocalDate toDate,
+            @Param("toTime") LocalTime toTime
     );
 }
