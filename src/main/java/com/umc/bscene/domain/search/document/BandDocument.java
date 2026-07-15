@@ -38,7 +38,7 @@ public class BandDocument {
     // 검색 대상 (name^3) + 완전 일치 가점용 raw + 접두어(부분 입력) 검색용 prefix
     // prefix는 색인만 잘게 썰고(korean_prefix) 검색어는 썰지 않는다(searchAnalyzer=korean) — 비대칭 필수
     @MultiField(
-            mainField = @Field(type = FieldType.Text, analyzer = "korean"),
+            mainField = @Field(type = FieldType.Text, analyzer = "korean", searchAnalyzer = "korean_search"),
             otherFields = {
                     @InnerField(suffix = "raw", type = FieldType.Keyword),
                     @InnerField(suffix = "prefix", type = FieldType.Text,
@@ -48,7 +48,7 @@ public class BandDocument {
     private String name;
 
     // 검색 대상 (소개글, 가중치 최하위)
-    @Field(type = FieldType.Text, analyzer = "korean")
+    @Field(type = FieldType.Text, analyzer = "korean", searchAnalyzer = "korean_search")
     private String description;
 
     // 필터용

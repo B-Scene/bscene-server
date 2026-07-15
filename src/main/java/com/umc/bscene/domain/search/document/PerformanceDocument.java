@@ -40,7 +40,7 @@ public class PerformanceDocument {
 
     // 검색 대상 (title^3) + 완전 일치 가점용 raw + 접두어(부분 입력) 검색용 prefix
     @MultiField(
-            mainField = @Field(type = FieldType.Text, analyzer = "korean"),
+            mainField = @Field(type = FieldType.Text, analyzer = "korean", searchAnalyzer = "korean_search"),
             otherFields = {
                     @InnerField(suffix = "raw", type = FieldType.Keyword),
                     @InnerField(suffix = "prefix", type = FieldType.Text,
@@ -51,7 +51,7 @@ public class PerformanceDocument {
 
     // 검색 대상 (bandName^2) : 제목에 밴드명이 없어도 밴드명으로 검색되도록 비정규화
     @MultiField(
-            mainField = @Field(type = FieldType.Text, analyzer = "korean"),
+            mainField = @Field(type = FieldType.Text, analyzer = "korean", searchAnalyzer = "korean_search"),
             otherFields = {
                     @InnerField(suffix = "raw", type = FieldType.Keyword),
                     @InnerField(suffix = "prefix", type = FieldType.Text,
@@ -61,7 +61,7 @@ public class PerformanceDocument {
     private String bandName;
 
     // 검색 대상 (가중치 최하위)
-    @Field(type = FieldType.Text, analyzer = "korean")
+    @Field(type = FieldType.Text, analyzer = "korean", searchAnalyzer = "korean_search")
     private String description;
 
     // 필터용 : 공연은 밴드와 별개로 자체 장르·지역을 가짐
@@ -76,7 +76,7 @@ public class PerformanceDocument {
     private LocalDate performanceDate;
 
     // 검색 대상 (장소명 검색 : "롤링홀", "이태원" 등. 가중치 최하위) + 표시용
-    @Field(type = FieldType.Text, analyzer = "korean")
+    @Field(type = FieldType.Text, analyzer = "korean", searchAnalyzer = "korean_search")
     private String venue;
 
     // 표시용

@@ -42,7 +42,7 @@ public class VideoDocument {
 
     // 검색 대상 (가중치 : title^3) + 완전 일치 가점용 raw + 접두어(부분 입력) 검색용 prefix
     @MultiField(
-            mainField = @Field(type = FieldType.Text, analyzer = "korean"),
+            mainField = @Field(type = FieldType.Text, analyzer = "korean", searchAnalyzer = "korean_search"),
             otherFields = {
                     @InnerField(suffix = "raw", type = FieldType.Keyword),
                     @InnerField(suffix = "prefix", type = FieldType.Text,
@@ -53,7 +53,7 @@ public class VideoDocument {
 
     // 검색 대상 (bandName^2) : 제목에 밴드명이 없어도 밴드명으로 검색되도록 비정규화
     @MultiField(
-            mainField = @Field(type = FieldType.Text, analyzer = "korean"),
+            mainField = @Field(type = FieldType.Text, analyzer = "korean", searchAnalyzer = "korean_search"),
             otherFields = {
                     @InnerField(suffix = "raw", type = FieldType.Keyword),
                     @InnerField(suffix = "prefix", type = FieldType.Text,
@@ -62,12 +62,12 @@ public class VideoDocument {
     )
     private String bandName;
 
-    // 검색 대상 (tags^2) : 곡명 검색의 주 매칭 지점
-    @Field(type = FieldType.Text, analyzer = "korean")
+    // 검색 대상 (tags^2) : 곡명 검색의 주 매칭 지점 — 동의어(곡명 별칭)의 최대 수혜 필드
+    @Field(type = FieldType.Text, analyzer = "korean", searchAnalyzer = "korean_search")
     private List<String> tags;
 
     // 검색 대상 (가중치 1, 최하위)
-    @Field(type = FieldType.Text, analyzer = "korean")
+    @Field(type = FieldType.Text, analyzer = "korean", searchAnalyzer = "korean_search")
     private String description;
 
     // 필터용 : 밴드의 장르·지역을 따름 (비정규화)
