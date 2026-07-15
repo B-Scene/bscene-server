@@ -11,6 +11,7 @@ services:
       - "8080"
     volumes:
       - recordings:/recordings  # mediamtx 녹화본 S3 업로드용 공유 볼륨
+      - ./certs/ca.crt:/app/config/certs/es-ca.crt:ro  # ES TLS 신뢰용 CA 공개 인증서 (개인키 아님)
     depends_on:
       - redis
       - elasticsearch  # 기동 순서만 보장 (ES 장애 시에도 spring은 뜨고 검색만 503)
@@ -19,18 +20,26 @@ services:
 
   # 탐색 통합검색용 Elasticsearch (nori 포함 커스텀 이미지 — elasticsearch/Dockerfile로 빌드해 Docker Hub에 push)
   # 최초 1회는 서버에서 수동 기동 필요 : docker compose up -d elasticsearch (CD는 spring만 재시작)
+  # 인증서(~/app/certs)는 배포 절차에 따라 서버에서 1회 생성 — 레포에 포함 금지 (개인키)
   elasticsearch:
     image: ${DOCKER_USERNAME}/bscene-es:9.4.3
     container_name: elasticsearch
     restart: always
     environment:
       - discovery.type=single-node
-      - xpack.security.enabled=false  # 내부 네트워크 전용(외부 미노출) 전제 — 포트 공개 금지
+      - ELASTIC_PASSWORD=${ES_PASSWORD}
+      - xpack.security.enabled=true
+      - xpack.security.http.ssl.enabled=true
+      - xpack.security.http.ssl.certificate=certs/instance.crt
+      - xpack.security.http.ssl.key=certs/instance.key
+      - xpack.security.http.ssl.certificate_authorities=certs/ca.crt
+      - xpack.security.transport.ssl.enabled=false  # 노드 간 통신용 — 단일 노드라 해당 없음
       - TZ=Asia/Seoul
     expose:
-      - "9200"  # spring 접근 (compose 내부 네트워크 전용)
+      - "9200"  # spring 접근 (compose 내부 네트워크 전용 — 보안을 켰어도 외부 공개 금지 유지)
     volumes:
       - es-data:/usr/share/elasticsearch/data  # 컨테이너 재생성에도 색인 유지
+      - ./certs:/usr/share/elasticsearch/config/certs:ro  # 서버에서 생성한 인증서 (읽기 전용)
     deploy:
       resources:
         limits:
