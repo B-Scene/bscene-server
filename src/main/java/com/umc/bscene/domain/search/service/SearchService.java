@@ -54,6 +54,11 @@ public class SearchService {
     private static final List<String> VIDEO_FUZZY_FIELDS = List.of("title^3", "bandName^2");
     private static final List<String> VIDEO_EXACT_FIELDS = List.of("tags^2", "description");
 
+    // 접두어(부분 입력) 검색 : "블루" → 블루문. edge_ngram(2~10자)으로 색인된 서브필드 (가중치 없음 — 완성어 매칭보다 항상 아래)
+    private static final List<String> BAND_PREFIX_FIELDS = List.of("name.prefix");
+    private static final List<String> PERFORMANCE_PREFIX_FIELDS = List.of("title.prefix", "bandName.prefix");
+    private static final List<String> VIDEO_PREFIX_FIELDS = List.of("title.prefix", "bandName.prefix");
+
     private final ElasticsearchOperations elasticsearchOperations;
     private final FollowPort followPort;
 
@@ -84,9 +89,12 @@ public class SearchService {
 
     // 통합 모드 : 쿼리 3개를 multiSearch(_msearch) 한 번으로 실행, 섹션별 상위 4개 + 전체 건수 합산
     private ExploreSearchResponse searchAll(Long userId, String keyword, Genre genre, Region region) {
-        NativeQuery bandQuery = buildQuery(keyword, BAND_FUZZY_FIELDS, BAND_EXACT_FIELDS, "name", genre, region, "createdAt", SECTION_SIZE, null);
-        NativeQuery performanceQuery = buildQuery(keyword, PERFORMANCE_FUZZY_FIELDS, PERFORMANCE_EXACT_FIELDS, "title", genre, region, "performanceDate", SECTION_SIZE, null);
-        NativeQuery videoQuery = buildQuery(keyword, VIDEO_FUZZY_FIELDS, VIDEO_EXACT_FIELDS, "title", genre, region, "uploadedAt", SECTION_SIZE, null);
+        NativeQuery bandQuery = buildQuery(keyword, BAND_FUZZY_FIELDS, BAND_EXACT_FIELDS, BAND_PREFIX_FIELDS,
+                "name", genre, region, "createdAt", SECTION_SIZE, null);
+        NativeQuery performanceQuery = buildQuery(keyword, PERFORMANCE_FUZZY_FIELDS, PERFORMANCE_EXACT_FIELDS, PERFORMANCE_PREFIX_FIELDS,
+                "title", genre, region, "performanceDate", SECTION_SIZE, null);
+        NativeQuery videoQuery = buildQuery(keyword, VIDEO_FUZZY_FIELDS, VIDEO_EXACT_FIELDS, VIDEO_PREFIX_FIELDS,
+                "title", genre, region, "uploadedAt", SECTION_SIZE, null);
 
         List<SearchHits<?>> results = elasticsearchOperations.multiSearch(
                 List.of(bandQuery, performanceQuery, videoQuery),
@@ -116,8 +124,8 @@ public class SearchService {
     // 단일 모드 : 밴드만 커서 기반 무한스크롤
     private ExploreSearchResponse searchBandsOnly(Long userId, String keyword, Genre genre, Region region, String cursor, int size) {
         int pageSize = clampSize(size);
-        NativeQuery query = buildQuery(keyword, BAND_FUZZY_FIELDS, BAND_EXACT_FIELDS, "name", genre, region, "createdAt",
-                pageSize + 1, SearchCursor.decode(cursor));
+        NativeQuery query = buildQuery(keyword, BAND_FUZZY_FIELDS, BAND_EXACT_FIELDS, BAND_PREFIX_FIELDS,
+                "name", genre, region, "createdAt", pageSize + 1, SearchCursor.decode(cursor));
         CursorSlice<BandDocument> slice = searchSlice(query, BandDocument.class, pageSize);
 
         return new ExploreSearchResponse(
@@ -130,8 +138,8 @@ public class SearchService {
     // 단일 모드 : 공연만 커서 기반 무한스크롤
     private ExploreSearchResponse searchPerformancesOnly(String keyword, Genre genre, Region region, String cursor, int size) {
         int pageSize = clampSize(size);
-        NativeQuery query = buildQuery(keyword, PERFORMANCE_FUZZY_FIELDS, PERFORMANCE_EXACT_FIELDS, "title", genre, region, "performanceDate",
-                pageSize + 1, SearchCursor.decode(cursor));
+        NativeQuery query = buildQuery(keyword, PERFORMANCE_FUZZY_FIELDS, PERFORMANCE_EXACT_FIELDS, PERFORMANCE_PREFIX_FIELDS,
+                "title", genre, region, "performanceDate", pageSize + 1, SearchCursor.decode(cursor));
         CursorSlice<PerformanceDocument> slice = searchSlice(query, PerformanceDocument.class, pageSize);
 
         return new ExploreSearchResponse(
@@ -144,8 +152,8 @@ public class SearchService {
     // 단일 모드 : 영상만 커서 기반 무한스크롤
     private ExploreSearchResponse searchVideosOnly(String keyword, Genre genre, Region region, String cursor, int size) {
         int pageSize = clampSize(size);
-        NativeQuery query = buildQuery(keyword, VIDEO_FUZZY_FIELDS, VIDEO_EXACT_FIELDS, "title", genre, region, "uploadedAt",
-                pageSize + 1, SearchCursor.decode(cursor));
+        NativeQuery query = buildQuery(keyword, VIDEO_FUZZY_FIELDS, VIDEO_EXACT_FIELDS, VIDEO_PREFIX_FIELDS,
+                "title", genre, region, "uploadedAt", pageSize + 1, SearchCursor.decode(cursor));
         CursorSlice<VideoDocument> slice = searchSlice(query, VideoDocument.class, pageSize);
 
         return new ExploreSearchResponse(
@@ -163,20 +171,22 @@ public class SearchService {
      * sort   : _score → 날짜 최신순 → docId — search_after가 요구하는 결정적 정렬
      */
     private NativeQuery buildQuery(
-            String keyword, List<String> fuzzyFields, List<String> exactFields, String titleField,
-            Genre genre, Region region, String dateSortField,
+            String keyword, List<String> fuzzyFields, List<String> exactFields, List<String> prefixFields,
+            String titleField, Genre genre, Region region, String dateSortField,
             int size, List<Object> searchAfter
     ) {
         var builder = NativeQuery.builder()
                 .withQuery(q -> q.bool(b -> {
-                    // must : 두 조 중 하나라도 매칭되면 결과 포함 (minimum_should_match 1)
+                    // must : 세 조 중 하나라도 매칭되면 결과 포함 (minimum_should_match 1)
                     //  - 오타 허용 조 : 제목·밴드명·장소. AUTO = 길이별 편집거리(2자 이하 0, 3~5자 1, 6자+ 2),
                     //    prefixLength 1 = 첫 글자 정확 일치 강제 (텀 사전 스캔 비용 절감 + 오매칭 방지)
                     //  - 정확 매칭 조 : 태그·설명 (오타 허용 시 오매칭이 이득보다 큼)
+                    //  - 접두어 조 : 부분 입력("블루" → 블루문). 오타 허용 없음 (조각 텀에 fuzzy까지 걸면 오매칭 폭발)
                     b.must(m -> m.bool(inner -> inner
                             .should(s -> s.multiMatch(mm -> mm.query(keyword).fields(fuzzyFields)
                                     .fuzziness("AUTO").prefixLength(1)))
                             .should(s -> s.multiMatch(mm -> mm.query(keyword).fields(exactFields)))
+                            .should(s -> s.multiMatch(mm -> mm.query(keyword).fields(prefixFields)))
                             .minimumShouldMatch("1")));
                     b.should(s -> s.matchPhrase(mp -> mp.field(titleField).query(keyword)));
                     b.should(s -> s.term(t -> t.field(titleField + ".raw").value(keyword)));

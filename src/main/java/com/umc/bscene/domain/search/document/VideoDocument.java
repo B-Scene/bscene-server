@@ -40,17 +40,25 @@ public class VideoDocument {
     @Field(type = FieldType.Long, index = false)
     private Long docId;
 
-    // 검색 대상 (가중치 : title^3) + 완전 일치 가점용 raw
+    // 검색 대상 (가중치 : title^3) + 완전 일치 가점용 raw + 접두어(부분 입력) 검색용 prefix
     @MultiField(
             mainField = @Field(type = FieldType.Text, analyzer = "korean"),
-            otherFields = @InnerField(suffix = "raw", type = FieldType.Keyword)
+            otherFields = {
+                    @InnerField(suffix = "raw", type = FieldType.Keyword),
+                    @InnerField(suffix = "prefix", type = FieldType.Text,
+                            analyzer = "korean_prefix", searchAnalyzer = "korean")
+            }
     )
     private String title;
 
     // 검색 대상 (bandName^2) : 제목에 밴드명이 없어도 밴드명으로 검색되도록 비정규화
     @MultiField(
             mainField = @Field(type = FieldType.Text, analyzer = "korean"),
-            otherFields = @InnerField(suffix = "raw", type = FieldType.Keyword)
+            otherFields = {
+                    @InnerField(suffix = "raw", type = FieldType.Keyword),
+                    @InnerField(suffix = "prefix", type = FieldType.Text,
+                            analyzer = "korean_prefix", searchAnalyzer = "korean")
+            }
     )
     private String bandName;
 

@@ -10,11 +10,23 @@
         "decompound_mode": "mixed"
       }
     },
+    "filter": {
+      "prefix_2_10": {
+        "type": "edge_ngram",
+        "min_gram": 2,
+        "max_gram": 10
+      }
+    },
     "analyzer": {
       "korean": {
         "type": "custom",
         "tokenizer": "nori_mixed",
         "filter": ["nori_part_of_speech", "nori_readingform", "lowercase"]
+      },
+      "korean_prefix": {
+        "type": "custom",
+        "tokenizer": "nori_mixed",
+        "filter": ["nori_part_of_speech", "nori_readingform", "lowercase", "prefix_2_10"]
       }
     }
   }
