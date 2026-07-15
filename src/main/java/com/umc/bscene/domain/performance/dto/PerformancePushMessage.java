@@ -25,4 +25,19 @@ public record PerformancePushMessage(
                 performanceId
         );
     }
+
+    // 공연 시작 1시간 전 알림
+    public static PerformancePushMessage reminder(
+            String bandName,
+            String performanceTitle,
+            Long performanceId
+    ) {
+        return new PerformancePushMessage(
+                NotificationType.PERFORMANCE,
+                "공연 시작 1시간 전이에요",
+                bandName + "의 '" + performanceTitle + "' 공연이 곧 시작돼요.",
+                "/performances/" + performanceId,
+                performanceId
+        );
+    }
 }
