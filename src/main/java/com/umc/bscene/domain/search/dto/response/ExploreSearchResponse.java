@@ -13,8 +13,8 @@ import java.util.Set;
 
 /**
  * 탐색 통합검색 응답.
- * - ALL(통합 모드) : bands/performances/videos 세 섹션 모두 채움 (섹션별 최대 4개), page/hasNext는 null
- * - 단일 모드 : 해당 타입 섹션만 채우고 나머지는 null, page/hasNext로 무한스크롤
+ * - ALL(통합 모드) : bands/performances/videos 세 섹션 모두 채움 (섹션별 최대 4개), 커서 필드는 null
+ * - 단일 모드 : 해당 타입 섹션만 채우고 나머지는 null, nextCursor/hasNext로 커서 기반 무한스크롤
  */
 public record ExploreSearchResponse(
         long totalCount,                            // ALL : 세 섹션 합산 / 단일 : 해당 타입 전체 건수
@@ -22,7 +22,7 @@ public record ExploreSearchResponse(
         SearchSection<BandItem> bands,
         SearchSection<PerformanceItem> performances,
         SearchSection<VideoItem> videos,
-        Integer page,                               // 단일 모드에서만 (0-base)
+        String nextCursor,                          // 단일 모드에서만 — 다음 요청에 그대로 전달 (마지막 페이지면 null)
         Boolean hasNext                             // 단일 모드에서만
 ) {
 
@@ -79,7 +79,7 @@ public record ExploreSearchResponse(
     }
 
     public record VideoItem(
-            Long videoId,
+            Long postId,        // 영상 게시물(Post)의 PK — 게시물 상세 이동 시 그대로 사용
             String title,
             String bandName,
             List<String> tags,
