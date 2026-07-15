@@ -1,11 +1,13 @@
 package com.umc.bscene.domain.performance.config;
 
-import com.umc.bscene.domain.performance.adapter.FanHomeAdapter;
 import com.umc.bscene.domain.performance.adapter.BandAdapter;
+import com.umc.bscene.domain.performance.adapter.FanHomeAdapter;
 import com.umc.bscene.domain.performance.adapter.UserAdapter;
 import com.umc.bscene.domain.performance.repository.PerformanceInterestRepository;
 import com.umc.bscene.domain.performance.repository.PerformanceParticipationRepository;
 import com.umc.bscene.domain.performance.repository.PerformanceRepository;
+import com.umc.bscene.domain.performance.scheduler.PerformanceReminderScheduler;
+import com.umc.bscene.domain.performance.service.PerformanceReminderService;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
@@ -35,5 +37,13 @@ public class PerformanceConfig {
             PerformanceParticipationRepository performanceParticipationRepository
     ) {
         return new UserAdapter(performanceInterestRepository, performanceParticipationRepository);
+    }
+
+    // 공연 시작 1시간 전 알림 발송 스케줄러
+    @Bean
+    public PerformanceReminderScheduler performanceReminderScheduler(
+            PerformanceReminderService performanceReminderService
+    ) {
+        return new PerformanceReminderScheduler(performanceReminderService);
     }
 }
