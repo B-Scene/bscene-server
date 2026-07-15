@@ -20,7 +20,9 @@ import com.umc.bscene.domain.performance.port.NotifyPort;
 import com.umc.bscene.domain.performance.repository.PerformanceInterestRepository;
 import com.umc.bscene.domain.performance.repository.PerformanceRepository;
 import com.umc.bscene.domain.performance.response.code.PerformanceErrorCode;
+import com.umc.bscene.domain.search.event.PerformanceChangedEvent;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionSynchronization;
@@ -40,6 +42,7 @@ public class PerformanceService {
     private final BandMemberRepository bandMemberRepository;
     private final FollowPort followPort;
     private final NotifyPort notifyPort;
+    private final ApplicationEventPublisher eventPublisher;
 
     // 공연 등록 (밴드 멤버만 가능, 지난 날짜 등록 불가)
     @Transactional
@@ -63,6 +66,9 @@ public class PerformanceService {
                 .build();
 
         Performance savedPerformance = performanceRepository.save(performance);
+
+        // 검색 색인 동기화 (커밋 후 search 도메인 리스너가 비동기 처리)
+        eventPublisher.publishEvent(new PerformanceChangedEvent(savedPerformance.getId()));
 
         notifyFollowersAfterCommit(savedPerformance);
 
@@ -137,6 +143,9 @@ public class PerformanceService {
                 request.posterImageUrl()
         );
 
+        // 검색 색인 동기화 (커밋 후 search 도메인 리스너가 비동기 처리)
+        eventPublisher.publishEvent(new PerformanceChangedEvent(performanceId));
+
         long interestCount = performanceInterestRepository.countByPerformance_Id(performanceId);
         boolean isInterested = performanceInterestRepository.existsByPerformance_IdAndUser_Id(performanceId, userId);
 
@@ -150,6 +159,9 @@ public class PerformanceService {
         validateBandMember(performance.getBand(), userId);
 
         performance.delete();
+
+        // 검색 색인 동기화 (소프트 삭제 → 리스너가 검색 문서 삭제로 처리)
+        eventPublisher.publishEvent(new PerformanceChangedEvent(performanceId));
     }
 
     private Band getBand(Long bandId) {

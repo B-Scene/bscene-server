@@ -74,4 +74,57 @@ public class SearchIndexService {
         }
         indexOps.createWithMapping();
     }
+
+    // ===== 이벤트 기반 단건 동기화 =====
+    // 공통 원칙 : 원본(MySQL)을 다시 조회해서 있으면 덮어쓰기(멱등), 없으면 문서 삭제
+
+    // 밴드 변경 : 밴드 문서 + 비정규화된 밴드명·장르·지역을 쓰는 공연·영상 문서까지 연쇄 재색인
+    @Transactional(readOnly = true)
+    public void indexBand(Long bandId) {
+        bandPort.findById(bandId).ifPresentOrElse(
+                band -> {
+                    bandSearchRepository.save(BandDocument.from(band));
+
+                    List<PerformanceDocument> performances = performancePort.findAllActiveByBandIdWithBand(bandId).stream()
+                            .map(PerformanceDocument::from)
+                            .toList();
+                    if (!performances.isEmpty()) performanceSearchRepository.saveAll(performances);
+
+                    List<VideoDocument> videos = postPort.findAllVideosByBandIdWithBandAndTags(bandId).stream()
+                            .map(VideoDocument::from)
+                            .toList();
+                    if (!videos.isEmpty()) videoSearchRepository.saveAll(videos);
+
+                    log.info("밴드 색인 동기화 완료 - bandId: {} (공연 {}건, 영상 {}건 연쇄)",
+                            bandId, performances.size(), videos.size());
+                },
+                () -> {
+                    // 밴드가 사라졌으면 밴드 문서와 소속 공연·영상 문서를 모두 제거
+                    bandSearchRepository.deleteById(bandId);
+                    performanceSearchRepository.deleteByBandId(bandId);
+                    videoSearchRepository.deleteByBandId(bandId);
+                    log.info("밴드 색인 삭제 완료 - bandId: {}", bandId);
+                }
+        );
+    }
+
+    // 공연 변경 : ACTIVE면 덮어쓰기, 아니면(삭제·소프트삭제) 문서 삭제
+    @Transactional(readOnly = true)
+    public void indexPerformance(Long performanceId) {
+        performancePort.findActiveByIdWithBand(performanceId).ifPresentOrElse(
+                performance -> performanceSearchRepository.save(PerformanceDocument.from(performance)),
+                () -> performanceSearchRepository.deleteById(performanceId)
+        );
+        log.info("공연 색인 동기화 완료 - performanceId: {}", performanceId);
+    }
+
+    // 영상 게시물 변경 : VIDEO 타입으로 존재하면 덮어쓰기, 아니면 문서 삭제
+    @Transactional(readOnly = true)
+    public void indexVideo(Long postId) {
+        postPort.findVideoByIdWithBandAndTags(postId).ifPresentOrElse(
+                post -> videoSearchRepository.save(VideoDocument.from(post)),
+                () -> videoSearchRepository.deleteById(postId)
+        );
+        log.info("영상 색인 동기화 완료 - postId: {}", postId);
+    }
 }
