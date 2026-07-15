@@ -29,7 +29,8 @@ import java.util.List;
 @Builder
 @AllArgsConstructor(access = AccessLevel.PRIVATE)
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-@Document(indexName = "videos")
+// createIndex=false : 인덱스 생성은 SearchIndexService.recreateIndex()가 전담 (기동 시 ES 무접촉)
+@Document(indexName = "videos", createIndex = false)
 @Setting(settingPath = "elasticsearch/korean-settings.json")
 public class VideoDocument {
 

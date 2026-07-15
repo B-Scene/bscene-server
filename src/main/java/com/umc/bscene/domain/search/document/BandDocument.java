@@ -24,7 +24,9 @@ import java.time.LocalDateTime;
 @Builder
 @AllArgsConstructor(access = AccessLevel.PRIVATE)
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-@Document(indexName = "bands")
+// createIndex=false : 인덱스 생성은 SearchIndexService.recreateIndex()가 전담 —
+// 기동 시 ES 접속을 시도하지 않아 ES가 없어도(CI·장애 상황) 앱이 정상 기동한다
+@Document(indexName = "bands", createIndex = false)
 @Setting(settingPath = "elasticsearch/korean-settings.json")
 public class BandDocument {
 
