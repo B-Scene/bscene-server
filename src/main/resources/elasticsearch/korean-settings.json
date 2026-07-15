@@ -1,0 +1,21 @@
+{
+  "index": {
+    "number_of_shards": "1",
+    "number_of_replicas": "0"
+  },
+  "analysis": {
+    "tokenizer": {
+      "nori_mixed": {
+        "type": "nori_tokenizer",
+        "decompound_mode": "mixed"
+      }
+    },
+    "analyzer": {
+      "korean": {
+        "type": "custom",
+        "tokenizer": "nori_mixed",
+        "filter": ["nori_part_of_speech", "nori_readingform", "lowercase"]
+      }
+    }
+  }
+}
