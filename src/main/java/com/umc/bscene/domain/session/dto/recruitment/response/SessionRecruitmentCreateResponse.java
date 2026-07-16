@@ -14,6 +14,7 @@ import java.time.LocalDateTime;
         "sessionRecruitmentId",
         "bandId",
         "recruitmentTitle",
+        "summary",
         "content",
         "part",
         "skillLevel",
@@ -30,6 +31,7 @@ public class SessionRecruitmentCreateResponse {
     private Long sessionRecruitmentId;
     private Long bandId;
     private String recruitmentTitle;
+    private String summary;
     private String content;
     private String part;
     private String skillLevel;
@@ -47,6 +49,7 @@ public class SessionRecruitmentCreateResponse {
                 .sessionRecruitmentId(recruitment.getSessionRecruitmentId())
                 .bandId(recruitment.getBand().getId())
                 .recruitmentTitle(recruitment.getRecruitmentTitle())
+                .summary(recruitment.getSummary())
                 .content(recruitment.getContent())
 
                 // 한글 응답

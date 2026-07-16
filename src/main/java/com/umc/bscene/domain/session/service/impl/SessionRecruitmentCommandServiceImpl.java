@@ -48,6 +48,7 @@ public class SessionRecruitmentCommandServiceImpl implements SessionRecruitmentC
         SessionRecruitment recruitment = SessionRecruitment.builder()
                 .band(band)
                 .recruitmentTitle(request.getRecruitmentTitle())
+                .summary(request.getSummary())
                 .content(request.getContent())
                 .part(request.getPart())
                 .skillLevel(request.getSkillLevel())
@@ -81,6 +82,7 @@ public class SessionRecruitmentCommandServiceImpl implements SessionRecruitmentC
 
         recruitment.update(
                 request.getRecruitmentTitle(),
+                request.getSummary(),
                 request.getContent(),
                 request.getPart(),
                 request.getSkillLevel(),

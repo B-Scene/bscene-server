@@ -151,10 +151,11 @@ public class SessionRecruitmentQueryServiceImpl implements SessionRecruitmentQue
 
 
                 // 모집 상세 정보
+                .summary(recruitment.getSummary())
                 .content(recruitment.getContent())
                 .part(recruitment.getPart().getDescription())
                 .genre(recruitment.getGenre().getDescription())
-                .region(recruitment.getRegion().getDescription())
+                .region(recruitment.getRegion())
                 .practiceSchedule(recruitment.getPracticeSchedule())
                 .practicePlace(recruitment.getPracticePlace())
                 .qualification(recruitment.getQualification())
@@ -173,7 +174,7 @@ public class SessionRecruitmentQueryServiceImpl implements SessionRecruitmentQue
                 .bandName(recruitment.getBand().getName())
                 .bandGenre(recruitment.getBand().getGenre().getName())
                 .bandRegion(recruitment.getBand().getRegion().getName())
-                .content(recruitment.getContent())
+                .summary(recruitment.getSummary())
                 .part(recruitment.getPart())
                 .skillLevel(recruitment.getSkillLevel())
                 .practiceSchedule(recruitment.getPracticeSchedule())

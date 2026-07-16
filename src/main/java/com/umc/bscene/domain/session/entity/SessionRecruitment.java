@@ -30,6 +30,9 @@ public class SessionRecruitment extends BaseEntity {
     @Column(length = 500)
     private String content;
 
+    @Column(nullable = false, length = 50)
+    private String summary;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private Part part;
@@ -73,6 +76,7 @@ public class SessionRecruitment extends BaseEntity {
 
     public void update(
             String recruitmentTitle,
+            String summary,
             String content,
             Part part,
             SkillLevel skillLevel,
@@ -84,6 +88,7 @@ public class SessionRecruitment extends BaseEntity {
             String qualification
     ) {
         this.recruitmentTitle = recruitmentTitle;
+        this.summary = summary;
         this.content = content;
         this.part = part;
         this.skillLevel = skillLevel;

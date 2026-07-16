@@ -32,7 +32,7 @@ public enum SessionRegion {
     @JsonCreator
     public static SessionRegion fromValue(String value) {
         for (SessionRegion region : values()) {
-            if (region.name().equalsIgnoreCase(value) || region.description.equals(value)) {
+            if (region.name().equalsIgnoreCase(value)) {
                 return region;
             }
         }
