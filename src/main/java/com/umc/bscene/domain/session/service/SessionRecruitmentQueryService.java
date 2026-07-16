@@ -7,6 +7,7 @@ import com.umc.bscene.domain.session.enums.Part;
 import com.umc.bscene.domain.session.enums.SessionGenre;
 import com.umc.bscene.domain.session.enums.SessionRegion;
 import com.umc.bscene.domain.session.enums.SkillLevel;
+import com.umc.bscene.domain.session.enums.SessionRecruitmentSortType;
 
 public interface SessionRecruitmentQueryService {
 
@@ -17,6 +18,7 @@ public interface SessionRecruitmentQueryService {
             SessionGenre genre,
             SessionRegion region,
             String keyword,
+            SessionRecruitmentSortType sort,
             Long cursorId,
             Integer size
     );

@@ -12,6 +12,7 @@ import com.umc.bscene.domain.session.enums.Part;
 import com.umc.bscene.domain.session.enums.SessionGenre;
 import com.umc.bscene.domain.session.enums.SessionRegion;
 import com.umc.bscene.domain.session.enums.SkillLevel;
+import com.umc.bscene.domain.session.enums.SessionRecruitmentSortType;
 import com.umc.bscene.domain.session.enums.code.SessionErrorCode;
 import com.umc.bscene.domain.session.exception.SessionException;
 import com.umc.bscene.domain.session.repository.SessionRecruitmentRepository;
@@ -53,6 +54,7 @@ public class SessionRecruitmentQueryServiceImpl implements SessionRecruitmentQue
             SessionGenre genre,
             SessionRegion region,
             String keyword,
+            SessionRecruitmentSortType sort,
             Long cursorId,
             Integer size
     ) {
@@ -64,16 +66,17 @@ public class SessionRecruitmentQueryServiceImpl implements SessionRecruitmentQue
                 ? null
                 : keyword.trim();
 
-        List<SessionRecruitment> recruitments = sessionRecruitmentRepository.findRecruitments(
-                now,
-                part,
-                skillLevel,
-                genre,
-                region,
-                normalizedKeyword,
-                cursorId,
-                pageRequest
-        );
+        SessionRecruitmentSortType sortType = sort == null
+                ? SessionRecruitmentSortType.LATEST
+                : sort;
+        List<SessionRecruitment> recruitments = switch (sortType) {
+            case LATEST -> sessionRecruitmentRepository.findLatestRecruitments(
+                    now, part, skillLevel, genre, region, normalizedKeyword, cursorId, pageRequest
+            );
+            case IMMINENT -> sessionRecruitmentRepository.findImminentRecruitments(
+                    now, part, skillLevel, genre, region, normalizedKeyword, cursorId, pageRequest
+            );
+        };
 
         boolean hasNext = recruitments.size() > pageSize;
 

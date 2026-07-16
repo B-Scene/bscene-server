@@ -20,6 +20,7 @@ import com.umc.bscene.domain.session.enums.Part;
 import com.umc.bscene.domain.session.enums.SessionGenre;
 import com.umc.bscene.domain.session.enums.SessionRegion;
 import com.umc.bscene.domain.session.enums.SkillLevel;
+import com.umc.bscene.domain.session.enums.SessionRecruitmentSortType;
 import com.umc.bscene.domain.session.service.SessionRecruitmentQueryService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -125,6 +126,7 @@ public class SessionRecruitmentController {
             @RequestParam(required = false) SessionGenre genre,
             @RequestParam(required = false) SessionRegion region,
             @RequestParam(required = false) String keyword,
+            @RequestParam(defaultValue = "LATEST") SessionRecruitmentSortType sort,
             @RequestParam(required = false) Long cursorId,
             @RequestParam(defaultValue = "10") Integer size
     ) {
@@ -136,6 +138,7 @@ public class SessionRecruitmentController {
                         genre,
                         region,
                         keyword,
+                        sort,
                         cursorId,
                         size
                 );
