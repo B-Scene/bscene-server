@@ -77,6 +77,9 @@ public class RecordingUploadSweeper {
             } catch (IOException e) {
                 log.warn("녹화 스위퍼: {} 디렉터리 탐색 실패", streamPath, e);
             }
+
+            // 파일 업로드는 끝났지만 알림 처리만 실패한 경우에도 완료 판정을 재시도
+            recordingUploadService.tryCompleteReplay(streamPath);
         }
 
         log.info("녹화 스위퍼 완료: 스캔 {}건, 업로드 시도 {}건", scanned, attempted);
