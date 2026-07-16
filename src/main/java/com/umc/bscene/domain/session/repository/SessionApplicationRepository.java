@@ -70,6 +70,7 @@ public interface SessionApplicationRepository extends JpaRepository<SessionAppli
           AND (:region IS NULL OR sa.region = :region)
           AND (:skillLevel IS NULL OR sa.skillLevel = :skillLevel)
           AND (:part IS NULL OR sa.part = :part)
+          AND (:genre IS NULL OR sa.genre = :genre)
           AND (:recommendationEnabled = false
                OR sa.genre = :recommendedGenre
                OR sa.region = :recommendedRegion)
@@ -86,6 +87,7 @@ public interface SessionApplicationRepository extends JpaRepository<SessionAppli
             @Param("region") SessionRegion region,
             @Param("skillLevel") SkillLevel skillLevel,
             @Param("part") Part part,
+            @Param("genre") SessionGenre genre,
             @Param("recommendationEnabled") boolean recommendationEnabled,
             @Param("recommendedGenre") SessionGenre recommendedGenre,
             @Param("recommendedRegion") SessionRegion recommendedRegion,

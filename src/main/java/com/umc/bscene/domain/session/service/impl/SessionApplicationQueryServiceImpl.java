@@ -12,6 +12,7 @@ import com.umc.bscene.domain.session.entity.SessionApplicationSubmission;
 import com.umc.bscene.domain.session.entity.SessionApplication;
 import com.umc.bscene.domain.session.entity.SessionBasicProfile;
 import com.umc.bscene.domain.session.enums.Part;
+import com.umc.bscene.domain.session.enums.SessionGenre;
 import com.umc.bscene.domain.session.enums.SessionRegion;
 import com.umc.bscene.domain.session.enums.SkillLevel;
 import com.umc.bscene.domain.session.enums.code.SessionErrorCode;
@@ -207,6 +208,7 @@ public class SessionApplicationQueryServiceImpl implements SessionApplicationQue
             SessionRegion region,
             SkillLevel skillLevel,
             Part part,
+            SessionGenre genre,
             String keyword,
             Long cursorId,
             Integer size
@@ -219,6 +221,7 @@ public class SessionApplicationQueryServiceImpl implements SessionApplicationQue
         boolean explicitCondition = region != null
                 || skillLevel != null
                 || part != null
+                || genre != null
                 || normalizedKeyword != null;
         SessionApplication myDefaultApplication = explicitCondition
                 ? null
@@ -243,6 +246,7 @@ public class SessionApplicationQueryServiceImpl implements SessionApplicationQue
                         region,
                         skillLevel,
                         part,
+                        genre,
                         recommendationEnabled,
                         recommendationEnabled ? myDefaultApplication.getGenre() : null,
                         recommendationEnabled ? myDefaultApplication.getRegion() : null,

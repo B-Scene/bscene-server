@@ -9,6 +9,7 @@ import com.umc.bscene.domain.session.dto.application.response.MySessionApplicati
 import com.umc.bscene.domain.session.dto.application.response.SessionApplicationVisibilityResponse;
 import com.umc.bscene.domain.session.dto.application.response.MyApplicationSubmissionListResponse;
 import com.umc.bscene.domain.session.enums.Part;
+import com.umc.bscene.domain.session.enums.SessionGenre;
 import com.umc.bscene.domain.session.enums.SessionRegion;
 import com.umc.bscene.domain.session.enums.SkillLevel;
 import com.umc.bscene.domain.session.enums.code.SessionSuccessCode;
@@ -123,6 +124,7 @@ public class SessionApplicationController {
             @RequestParam(required = false) SessionRegion region,
             @RequestParam(required = false) SkillLevel skillLevel,
             @RequestParam(required = false) Part part,
+            @RequestParam(required = false) SessionGenre genre,
             @RequestParam(required = false) String keyword,
             @RequestParam(required = false) Long cursorId,
             @RequestParam(defaultValue = "10") Integer size
@@ -133,6 +135,7 @@ public class SessionApplicationController {
                         region,
                         skillLevel,
                         part,
+                        genre,
                         keyword,
                         cursorId,
                         size

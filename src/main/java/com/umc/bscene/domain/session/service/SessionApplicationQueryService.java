@@ -7,6 +7,7 @@ import com.umc.bscene.domain.session.dto.application.response.MySessionApplicati
 import com.umc.bscene.domain.session.dto.application.response.MyApplicationSubmissionListResponse;
 import com.umc.bscene.domain.session.dto.application.response.SubmittedApplicationDetailResponse;
 import com.umc.bscene.domain.session.enums.Part;
+import com.umc.bscene.domain.session.enums.SessionGenre;
 import com.umc.bscene.domain.session.enums.SessionRegion;
 import com.umc.bscene.domain.session.enums.SkillLevel;
 
@@ -41,6 +42,7 @@ public interface SessionApplicationQueryService {
             SessionRegion region,
             SkillLevel skillLevel,
             Part part,
+            SessionGenre genre,
             String keyword,
             Long cursorId,
             Integer size
