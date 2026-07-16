@@ -74,7 +74,7 @@ public class StreamReplayServiceImpl implements StreamReplayService {
         if (segments.isEmpty())
             throw new StreamException(StreamErrorCode.RECORDING_NOT_FOUND);
 
-        recordingUploadService.markPending(audioStream.getPath());
+        recordingUploadService.markPending(audioStream.getPath(), segments.size());
 
         // RecordingUploadService 빈을 통해 호출해야 @Async 프록시가 적용됨 (self-invocation 방지)
         for (Path segment : segments)

@@ -51,6 +51,10 @@ public class AudioStream extends BaseEntity {
     // 방송 종료 시점의 시청자 수 스냅샷. 종료 전에는 null
     private Integer closedViewerCount;
 
+    // 모든 녹화 세그먼트의 다시보기 등록 완료 알림 발송 시각
+    @Column(name = "replayNotificationSentAt")
+    private LocalDateTime replayNotificationSentAt;
+
     public void close(int closedViewerCount) {
         this.status = StreamStatus.CLOSED;
         this.closedAt = LocalDateTime.now();

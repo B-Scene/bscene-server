@@ -13,6 +13,8 @@ public interface StreamReplayRepository extends JpaRepository<StreamReplay, Long
 
     boolean existsByS3Key(String s3Key);
 
+    long countByAudioStream_Id(Long audioStreamId);
+
     // 라이브의 전체 세그먼트를 재생 순서로 조회. mediamtx 세그먼트 파일명이 시간순이라 s3Key 오름차순 = 녹화 순서
     List<StreamReplay> findAllByAudioStream_IdOrderByS3KeyAsc(Long audioStreamId);
 
