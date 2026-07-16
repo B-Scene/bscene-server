@@ -49,6 +49,7 @@ public class SessionRecruitmentQueryServiceImpl implements SessionRecruitmentQue
     private final SessionRecruitmentSearchKeywordService searchKeywordService;
 
     @Override
+    @Transactional
     public SessionRecruitmentListResponse getSessionRecruitments(
             Long userId,
             Part part,

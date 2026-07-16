@@ -205,6 +205,7 @@ public class SessionApplicationQueryServiceImpl implements SessionApplicationQue
     }
 
     @Override
+    @Transactional
     public SessionApplicationSearchResponse searchDefaultApplications(
             Long viewerUserId,
             SessionRegion region,
