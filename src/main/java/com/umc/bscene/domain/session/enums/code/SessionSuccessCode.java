@@ -143,12 +143,12 @@ public enum SessionSuccessCode implements BaseResponseCode {
     SESSION_RECRUITMENT_SEARCH_HISTORY_SUCCESS(
             HttpStatus.OK.value(),
             "SESSION_RECRUITMENT_SEARCH_HISTORY_SUCCESS",
-            "세션 모집공고 최근 검색어 조회에 성공했습니다."
+            "세션 최근검색어 조회에 성공했습니다."
     ),
     SESSION_RECRUITMENT_SEARCH_HISTORY_DELETE_SUCCESS(
             HttpStatus.OK.value(),
             "SESSION_RECRUITMENT_SEARCH_HISTORY_DELETE_SUCCESS",
-            "세션 모집공고 최근 검색어 삭제에 성공했습니다."
+            "세션 최근검색어 삭제에 성공했습니다."
     );
 
     private final int status;
