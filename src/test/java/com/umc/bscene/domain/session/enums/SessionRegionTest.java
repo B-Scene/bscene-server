@@ -8,15 +8,15 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 class SessionRegionTest {
 
     @Test
-    void acceptsEnumNameIgnoringCase() {
+    void acceptsEnumNameAndDisplayName() {
         assertThat(SessionRegion.fromValue("SEOUL")).isEqualTo(SessionRegion.SEOUL);
         assertThat(SessionRegion.fromValue("gyeonggi")).isEqualTo(SessionRegion.GYEONGGI);
+        assertThat(SessionRegion.fromValue(SessionRegion.SEOUL.getDescription()))
+                .isEqualTo(SessionRegion.SEOUL);
     }
 
     @Test
-    void rejectsDisplayNameAndUnknownRegion() {
-        assertThatThrownBy(() -> SessionRegion.fromValue(SessionRegion.SEOUL.getDescription()))
-                .isInstanceOf(IllegalArgumentException.class);
+    void rejectsUnknownRegion() {
         assertThatThrownBy(() -> SessionRegion.fromValue("SEOUL_MAPO"))
                 .isInstanceOf(IllegalArgumentException.class);
     }
