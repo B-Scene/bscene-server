@@ -64,6 +64,9 @@ public class SessionRecruitment extends BaseEntity {
     @Column(nullable = false, length = 100)
     private String recruitmentTitle;
 
+    @Column
+    private LocalDateTime deadlineReminderSentAt;
+
     public void delete() {
         this.deletedAt = LocalDateTime.now();
     }
@@ -90,5 +93,10 @@ public class SessionRecruitment extends BaseEntity {
         this.practicePlace = practicePlace;
         this.deadlineAt = deadlineAt;
         this.qualification = qualification;
+    }
+
+    // 모집 마감 임박 알림 발송 완료 시각 기록
+    public void markDeadlineReminderSent(LocalDateTime sentAt) {
+        this.deadlineReminderSentAt = sentAt;
     }
 }
