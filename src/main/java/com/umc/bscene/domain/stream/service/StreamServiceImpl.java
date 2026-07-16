@@ -1,10 +1,25 @@
 package com.umc.bscene.domain.stream.service;
 
+import com.umc.bscene.domain.chat.service.LiveChatRoomCloser;
+import com.umc.bscene.domain.stream.dto.StreamPushMessage;
 import com.umc.bscene.domain.stream.dto.request.ReportUserRequest;
 import com.umc.bscene.domain.stream.dto.request.ReservationPatchRequest;
 import com.umc.bscene.domain.stream.dto.request.StreamCreateRequest;
-import com.umc.bscene.domain.stream.dto.response.*;
+import com.umc.bscene.domain.stream.dto.response.BandInfoForGetLiveResponse;
+import com.umc.bscene.domain.stream.dto.response.BandLiveHomeResponse;
+import com.umc.bscene.domain.stream.dto.response.BandSummaryResponse;
+import com.umc.bscene.domain.stream.dto.response.CoHostCandidateResponse;
+import com.umc.bscene.domain.stream.dto.response.FanLiveHomeResponse;
+import com.umc.bscene.domain.stream.dto.response.LiveAlarmToggleResponse;
+import com.umc.bscene.domain.stream.dto.response.LiveHomeResponse;
+import com.umc.bscene.domain.stream.dto.response.LiveMembersResponse;
+import com.umc.bscene.domain.stream.dto.response.LiveStreamResponse;
+import com.umc.bscene.domain.stream.dto.response.MtxPathResponse;
+import com.umc.bscene.domain.stream.dto.response.ReservationEditResponse;
+import com.umc.bscene.domain.stream.dto.response.StreamCreateResponse;
+import com.umc.bscene.domain.stream.dto.response.StreamRoomResponse;
 import com.umc.bscene.domain.stream.dto.response.StreamSummaryResponse;
+import com.umc.bscene.domain.stream.dto.response.UpcomingLiveResponse;
 import com.umc.bscene.domain.stream.entity.AudioStream;
 import com.umc.bscene.domain.stream.entity.LiveAlarm;
 import com.umc.bscene.domain.stream.entity.StreamReplay;
@@ -14,7 +29,6 @@ import com.umc.bscene.domain.stream.enums.StreamMemberStatus;
 import com.umc.bscene.domain.stream.enums.StreamStatus;
 import com.umc.bscene.domain.stream.enums.code.error.StreamErrorCode;
 import com.umc.bscene.domain.stream.exception.StreamException;
-import com.umc.bscene.domain.stream.dto.StreamPushMessage;
 import com.umc.bscene.domain.stream.port.BandMemberPort;
 import com.umc.bscene.domain.stream.port.FollowPort;
 import com.umc.bscene.domain.stream.port.NotifyPort;
@@ -27,7 +41,6 @@ import com.umc.bscene.domain.stream.repository.StreamMemberRepository;
 import com.umc.bscene.domain.stream.repository.StreamReplayRepository;
 import com.umc.bscene.domain.stream.sse.ViewerSsePresence;
 import com.umc.bscene.domain.user.entity.User;
-import com.umc.bscene.domain.chat.service.LiveChatRoomCloser;
 import com.umc.bscene.domain.user.enums.UserMode;
 import com.umc.bscene.global.config.CacheConfig;
 import com.umc.bscene.global.response.CursorPage;
@@ -52,8 +65,16 @@ import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
-import java.util.*;
+import java.util.Collection;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Locale;
+import java.util.Map;
+import java.util.Optional;
+import java.util.Set;
+import java.util.UUID;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 @Slf4j
 @RequiredArgsConstructor
@@ -178,9 +199,9 @@ public class StreamServiceImpl implements StreamService {
                             .build()
             );
 
-            // 예약 라이브 생성 시 팔로워에게 예약 알림 1회 발송 (terms 알림 수신 동의자 한정)
+            // 예약 라이브 생성 시 알림 수신에 동의한 팔로워와 밴드 구성원에게 알림 발송
             if(save.getScheduledAt() != null)
-                notifyFollowersAfterCommit(save, false);
+                notifyLiveRecipientsAfterCommit(save, false);
 
             return new StreamCreateResponse(
                     save.getId(),
@@ -599,12 +620,12 @@ public class StreamServiceImpl implements StreamService {
     }
 
     /*
-     * 송출자 소속 밴드의 팔로워 중 알림 수신 약관 동의자에게 커밋 후 푸시 발송
-     * - started=false: 라이브 예약 생성 알림 (createStream)
-     * - started=true : 라이브 시작 알림 (enterRoom에서 SCHEDULED → OPEN 전환 시)
-     * 수신자/메시지는 트랜잭션 안에서 계산하고, 실제 발송은 afterCommit에서 수행 (롤백 시 미발송 보장)
+     * 알림 수신에 동의한 팔로워와 송출자 소속 밴드 구성원에게 커밋 후 푸시를 발송합니다.
+     * - started=false: 라이브 예약 생성 알림
+     * - started=true: 라이브 정상 시작 알림
+     * 팔로워와 밴드 구성원의 중복을 제거하고 송출자 본인은 제외합니다.
      */
-    private void notifyFollowersAfterCommit(AudioStream stream, boolean started) {
+    private void notifyLiveRecipientsAfterCommit(AudioStream stream, boolean started) {
 
         Optional<BandSummaryResponse> bandSummary = bandMemberPort.getBandSummaryByBandId(stream.getBandId());
         if(bandSummary.isEmpty())
@@ -622,13 +643,24 @@ public class StreamServiceImpl implements StreamService {
         }
 
         List<Long> followerIds = followPort.getFollowerUserIdsByBandId(band.bandId());
-        if(followerIds.isEmpty())
-            return;
+        List<Long> agreedFollowerIds =
+                userTermsPort.filterNotificationAgreedUserIds(followerIds);
 
-        // terms에서 알림 수신 약관에 동의한 팔로워만 발송 대상
-        List<Long> receiverIds = userTermsPort.filterNotificationAgreedUserIds(followerIds);
-        if(receiverIds.isEmpty())
+        List<Long> memberIds =
+                bandMemberPort.getAcceptedMemberUserIds(band.bandId());
+
+        // 약관에 동의한 팔로워와 밴드 구성원을 합칩니다.
+        List<Long> receiverIds = Stream.concat(
+                        agreedFollowerIds.stream(),
+                        memberIds.stream()
+                )
+                .filter(userId -> !userId.equals(stream.getBroadcasterId()))
+                .distinct()
+                .toList();
+
+        if (receiverIds.isEmpty()) {
             return;
+        }
 
         StreamPushMessage message = started
                 ? StreamPushMessage.started(band.bandName(), stream.getTitle(), stream.getId())
@@ -704,8 +736,8 @@ public class StreamServiceImpl implements StreamService {
                 stream = audioStreamRepository.findById(liveId)
                         .orElseThrow(() -> new StreamException(StreamErrorCode.AUDIO_STREAM_NOT_FOUND));
 
-                // 방송 시작(SCHEDULED → OPEN) 전환 시 팔로워에게 라이브 시작 알림 1회 발송 (terms 알림 수신 동의자 한정)
-                notifyFollowersAfterCommit(stream, true);
+                // 방송 시작 시 알림 수신에 동의한 팔로워와 밴드 구성원에게 알림 발송
+                notifyLiveRecipientsAfterCommit(stream, true);
             }
         } else {
             // 청취자일 때
