@@ -26,6 +26,7 @@ import com.umc.bscene.domain.user.repository.UserRepository;
 import com.umc.bscene.global.exception.BaseException;
 import com.umc.bscene.global.response.code.GeneralErrorCode;
 import com.umc.bscene.domain.session.service.SessionApplicationQueryService;
+import com.umc.bscene.domain.session.service.SessionRecruitmentSearchKeywordService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
@@ -47,6 +48,7 @@ public class SessionApplicationQueryServiceImpl implements SessionApplicationQue
     private final SessionApplicationSubmissionRepository submissionRepository;
     private final SessionBasicProfileRepository sessionBasicProfileRepository;
     private final UserRepository userRepository;
+    private final SessionRecruitmentSearchKeywordService searchKeywordService;
 
     @Override
     public List<MySessionApplicationResponse> getMySessionApplications(Long userId) {
@@ -217,6 +219,7 @@ public class SessionApplicationQueryServiceImpl implements SessionApplicationQue
         String normalizedKeyword = keyword == null || keyword.isBlank()
                 ? null
                 : keyword.trim();
+        searchKeywordService.record(viewerUserId, normalizedKeyword);
 
         boolean explicitCondition = region != null
                 || skillLevel != null
