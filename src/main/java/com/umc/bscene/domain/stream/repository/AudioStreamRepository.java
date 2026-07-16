@@ -194,4 +194,18 @@ where a.id = :id
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select a from AudioStream a where a.id = :id")
     Optional<AudioStream> findByIdForUpdate(@Param("id") Long id);
+
+    // 시작까지 30분 이내인 예정 라이브 중 밴드 구성원 알림을 발송하지 않은 라이브 조회
+    @Query("""
+    select a from AudioStream a
+    where a.memberReminderSentAt is null
+        and a.status = com.umc.bscene.domain.stream.enums.StreamStatus.SCHEDULED
+        and a.scheduledAt > :now
+        and a.scheduledAt <= :reminderLimit
+    order by a.scheduledAt asc, a.id asc
+    """)
+    List<AudioStream> findMemberReminderTargets(
+            @Param("now") LocalDateTime now,
+            @Param("reminderLimit") LocalDateTime reminderLimit
+    );
 }
