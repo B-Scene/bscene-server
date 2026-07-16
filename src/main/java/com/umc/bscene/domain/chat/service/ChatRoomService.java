@@ -23,7 +23,6 @@ import com.umc.bscene.domain.session.repository.SessionBasicProfileRepository;
 import com.umc.bscene.domain.session.enums.ApplicationStatus;
 import com.umc.bscene.domain.user.entity.User;
 import com.umc.bscene.domain.user.repository.UserRepository;
-import com.umc.bscene.domain.user.repository.UserBlockRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -50,7 +49,6 @@ public class ChatRoomService {
     private final ChatMessageRepository chatMessageRepository;
     private final SessionApplicationSubmissionRepository submissionRepository;
     private final SessionBasicProfileRepository sessionBasicProfileRepository;
-    private final UserBlockRepository userBlockRepository;
 
     @Transactional(readOnly = true)
     public ChatRoomListResponse getMyRooms(Long userId, ChatRoomFilter filter,
@@ -294,9 +292,6 @@ public class ChatRoomService {
     private void validateNotSelf(Long senderId, Long recipientId) {
         if (senderId.equals(recipientId)) {
             throw new ChatException(ChatErrorCode.SELF_CHAT_NOT_ALLOWED);
-        }
-        if (userBlockRepository.existsBetween(senderId, recipientId)) {
-            throw new ChatException(ChatErrorCode.USER_BLOCKED);
         }
     }
 }

@@ -19,7 +19,8 @@ public class UserBlockController {
             @AuthenticationPrincipal AuthMember authMember,
             @Valid @RequestBody UserBlockRequest request
     ) {
-        userBlockService.block(authMember.getUser().getId(), request.targetUserId());
+        userBlockService.block(
+                authMember.getUser().getId(), request.targetUserId(), request.liveId());
         return new SuccessResponse<>(null, UserSuccessCode.USER_BLOCK_SUCCESS);
     }
 
@@ -28,7 +29,8 @@ public class UserBlockController {
             @AuthenticationPrincipal AuthMember authMember,
             @Valid @RequestBody UserBlockRequest request
     ) {
-        userBlockService.unblock(authMember.getUser().getId(), request.targetUserId());
+        userBlockService.unblock(
+                authMember.getUser().getId(), request.targetUserId(), request.liveId());
         return new SuccessResponse<>(null, UserSuccessCode.USER_UNBLOCK_SUCCESS);
     }
 
