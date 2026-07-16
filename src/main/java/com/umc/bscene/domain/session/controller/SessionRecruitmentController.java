@@ -22,11 +22,14 @@ import com.umc.bscene.domain.session.enums.SessionRegion;
 import com.umc.bscene.domain.session.enums.SkillLevel;
 import com.umc.bscene.domain.session.enums.SessionRecruitmentSortType;
 import com.umc.bscene.domain.session.service.SessionRecruitmentQueryService;
+import com.umc.bscene.domain.session.service.SessionRecruitmentSearchKeywordService;
+import com.umc.bscene.domain.session.dto.recruitment.response.RecruitmentSearchKeywordResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 import com.umc.bscene.domain.session.dto.recruitment.response.SessionRecruitmentDetailResponse;
+import java.util.List;
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/sessions/recruitments")
@@ -37,6 +40,29 @@ public class SessionRecruitmentController {
     private final SessionApplicationQueryService sessionApplicationQueryService;
     private final SessionRecruitmentInterestService sessionRecruitmentInterestService;
     private final SessionRecruitmentQueryService sessionRecruitmentQueryService;
+    private final SessionRecruitmentSearchKeywordService searchKeywordService;
+
+    @GetMapping("/search-history")
+    public SuccessResponse<List<RecruitmentSearchKeywordResponse>> getSearchHistory(
+            @AuthenticationPrincipal AuthMember authMember
+    ) {
+        return SuccessResponse.of(
+                searchKeywordService.getAll(authMember.getUser().getId()),
+                SessionSuccessCode.SESSION_RECRUITMENT_SEARCH_HISTORY_SUCCESS
+        );
+    }
+
+    @DeleteMapping("/search-history/{keywordId}")
+    public SuccessResponse<Void> deleteSearchHistory(
+            @AuthenticationPrincipal AuthMember authMember,
+            @PathVariable Long keywordId
+    ) {
+        searchKeywordService.delete(authMember.getUser().getId(), keywordId);
+        return new SuccessResponse<>(
+                null,
+                SessionSuccessCode.SESSION_RECRUITMENT_SEARCH_HISTORY_DELETE_SUCCESS
+        );
+    }
     @PostMapping
     public SuccessResponse<SessionRecruitmentCreateResponse> createSessionRecruitment(
             @AuthenticationPrincipal AuthMember authMember,

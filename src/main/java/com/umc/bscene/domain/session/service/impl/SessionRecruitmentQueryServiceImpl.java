@@ -21,6 +21,7 @@ import com.umc.bscene.domain.session.repository.SessionRecruitmentViewRepository
 import com.umc.bscene.domain.session.repository.SessionApplicationSubmissionRepository;
 import com.umc.bscene.domain.user.repository.UserRepository;
 import com.umc.bscene.domain.session.service.SessionRecruitmentQueryService;
+import com.umc.bscene.domain.session.service.SessionRecruitmentSearchKeywordService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
@@ -45,6 +46,7 @@ public class SessionRecruitmentQueryServiceImpl implements SessionRecruitmentQue
     private final SessionRecruitmentViewRepository viewRepository;
     private final SessionApplicationSubmissionRepository submissionRepository;
     private final UserRepository userRepository;
+    private final SessionRecruitmentSearchKeywordService searchKeywordService;
 
     @Override
     public SessionRecruitmentListResponse getSessionRecruitments(
@@ -65,6 +67,7 @@ public class SessionRecruitmentQueryServiceImpl implements SessionRecruitmentQue
         String normalizedKeyword = keyword == null || keyword.isBlank()
                 ? null
                 : keyword.trim();
+        searchKeywordService.record(userId, normalizedKeyword);
 
         SessionRecruitmentSortType sortType = sort == null
                 ? SessionRecruitmentSortType.LATEST
