@@ -60,4 +60,12 @@ public interface BandMemberPort {
      *         해당 밴드의 멤버 프로필이 없는 유저는 결과에서 제외해주세요.
      */
     List<LiveMemberProfileResponse> getLiveMemberProfiles(Long bandId, List<Long> userIds);
+
+    /**
+     * 라이브 알림을 받을 밴드 구성원 ID를 조회합니다.
+     *
+     * @param bandId 구성원을 조회할 밴드 ID
+     * @return ACCEPTED 상태인 밴드 구성원 사용자 ID 목록
+     */
+    List<Long> getAcceptedMemberUserIds(Long bandId);
 }
