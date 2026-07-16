@@ -13,11 +13,13 @@ import com.umc.bscene.domain.performance.dto.response.PerformanceListResponse;
 import com.umc.bscene.domain.performance.dto.response.PerformanceResponse;
 import com.umc.bscene.domain.performance.dto.response.PerformanceSummaryResponse;
 import com.umc.bscene.domain.performance.entity.Performance;
+import com.umc.bscene.domain.performance.enums.ParticipationStatus;
 import com.umc.bscene.domain.performance.enums.PerformanceStatus;
 import com.umc.bscene.domain.performance.exception.PerformanceException;
 import com.umc.bscene.domain.performance.port.FollowPort;
 import com.umc.bscene.domain.performance.port.NotifyPort;
 import com.umc.bscene.domain.performance.repository.PerformanceInterestRepository;
+import com.umc.bscene.domain.performance.repository.PerformanceParticipationRepository;
 import com.umc.bscene.domain.performance.repository.PerformanceRepository;
 import com.umc.bscene.domain.performance.response.code.PerformanceErrorCode;
 import lombok.RequiredArgsConstructor;
@@ -40,6 +42,7 @@ public class PerformanceService {
     private final BandMemberRepository bandMemberRepository;
     private final FollowPort followPort;
     private final NotifyPort notifyPort;
+    private final PerformanceParticipationRepository performanceParticipationRepository;
 
     // 공연 등록 (밴드 멤버만 가능, 지난 날짜 등록 불가)
     @Transactional
@@ -137,6 +140,8 @@ public class PerformanceService {
                 request.posterImageUrl()
         );
 
+        notifyPerformanceUpdateAfterCommit(performance);
+
         long interestCount = performanceInterestRepository.countByPerformance_Id(performanceId);
         boolean isInterested = performanceInterestRepository.existsByPerformance_IdAndUser_Id(performanceId, userId);
 
@@ -178,5 +183,33 @@ public class PerformanceService {
         if (performanceDate.isBefore(LocalDate.now())) {
             throw new PerformanceException(PerformanceErrorCode.PAST_DATE_NOT_ALLOWED);
         }
+    }
+
+    // 공연 정보 수정 트랜잭션 완료 후 알림 설정 사용자에게 알림 발송
+    private void notifyPerformanceUpdateAfterCommit(Performance performance) {
+        List<Long> receiverIds =
+                performanceParticipationRepository.findUserIdsByPerformanceIdAndStatus(
+                        performance.getId(),
+                        ParticipationStatus.SCHEDULED
+                );
+
+        if (receiverIds.isEmpty()) {
+            return;
+        }
+
+        PerformancePushMessage message = PerformancePushMessage.updated(
+                performance.getBand().getName(),
+                performance.getTitle(),
+                performance.getId()
+        );
+
+        TransactionSynchronizationManager.registerSynchronization(
+                new TransactionSynchronization() {
+                    @Override
+                    public void afterCommit() {
+                        notifyPort.notify(receiverIds, message);
+                    }
+                }
+        );
     }
 }

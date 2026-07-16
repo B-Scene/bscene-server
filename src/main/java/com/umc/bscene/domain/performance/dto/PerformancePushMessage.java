@@ -40,4 +40,19 @@ public record PerformancePushMessage(
                 performanceId
         );
     }
+
+    // 공연 정보 변경 알림
+    public static PerformancePushMessage updated(
+            String bandName,
+            String performanceTitle,
+            Long performanceId
+    ) {
+        return new PerformancePushMessage(
+                NotificationType.PERFORMANCE,
+                "공연 정보가 변경됐어요",
+                bandName + "의 '" + performanceTitle + "' 공연 정보를 다시 확인해주세요.",
+                "/performances/" + performanceId,
+                performanceId
+        );
+    }
 }
