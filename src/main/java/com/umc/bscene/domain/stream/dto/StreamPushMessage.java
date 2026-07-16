@@ -46,4 +46,15 @@ public record StreamPushMessage(
                 liveId
         );
     }
+
+    // 라이브 다시보기 등록 완료 알림
+    public static StreamPushMessage replayReady(String bandName, String liveTitle, Long liveId) {
+        return new StreamPushMessage(
+                NotificationType.LIVE,
+                bandName + " 라이브 다시보기가 등록됐어요",
+                "'" + liveTitle + "' 다시보기를 지금 확인해보세요.",
+                "/lives/" + liveId + "/replay",
+                liveId
+        );
+    }
 }
