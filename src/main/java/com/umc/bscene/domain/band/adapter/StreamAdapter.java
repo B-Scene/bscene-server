@@ -1,7 +1,6 @@
 package com.umc.bscene.domain.band.adapter;
 
 import com.umc.bscene.domain.band.entity.Band;
-import com.umc.bscene.domain.band.entity.BandMember;
 import com.umc.bscene.domain.band.enums.BandMemberStatus;
 import com.umc.bscene.domain.band.repository.BandMemberRepository;
 import com.umc.bscene.domain.stream.dto.response.BandInfoForGetLiveResponse;
@@ -69,5 +68,15 @@ public class StreamAdapter implements BandMemberPort {
     @Override
     public List<LiveMembersResponse.LiveMemberProfileResponse> getLiveMemberProfiles(Long bandId, List<Long> userIds) {
         return List.of();
+    }
+
+    @Override
+    public List<Long> getAcceptedMemberUserIds(Long bandId) {
+        return bandMemberRepository
+                .findByBand_IdAndStatus(bandId, BandMemberStatus.ACCEPTED)
+                .stream()
+                .map(member -> member.getUser().getId())
+                .distinct()
+                .toList();
     }
 }
