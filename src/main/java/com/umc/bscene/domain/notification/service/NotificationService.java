@@ -3,6 +3,7 @@ package com.umc.bscene.domain.notification.service;
 import com.umc.bscene.domain.notification.dto.request.PushTestSendRequest;
 import com.umc.bscene.domain.notification.dto.request.PushTokenDeleteRequest;
 import com.umc.bscene.domain.notification.dto.request.PushTokenSaveRequest;
+import com.umc.bscene.domain.notification.dto.response.NotificationListItemResponse;
 import com.umc.bscene.domain.notification.dto.response.PushSendResult;
 import com.umc.bscene.domain.notification.entity.Notification;
 import com.umc.bscene.domain.notification.entity.PushToken;
@@ -14,8 +15,10 @@ import com.umc.bscene.domain.notification.response.code.NotificationErrorCode;
 import com.umc.bscene.domain.user.entity.User;
 import com.umc.bscene.domain.user.repository.UserRepository;
 import com.umc.bscene.global.notification.message.PushMessage;
+import com.umc.bscene.global.response.CursorPage;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
@@ -89,20 +92,56 @@ public class NotificationService {
         User receiver = userRepository.findById(receiverId)
                 .orElseThrow(() -> new NotificationException(NotificationErrorCode.RECEIVER_NOT_FOUND));
 
-        notificationRepository.save(Notification.of(receiver, message));
+        Notification notification = notificationRepository.save(
+                Notification.of(receiver, message)
+        );
 
         List<PushToken> pushTokens = pushTokenRepository.findAllByUser_Id(receiverId);
 
-        Map<String, String> data = createPushData(message);
+        Map<String, String> data = createPushData(notification.getId(), message);
 
         for (PushToken pushToken : pushTokens) {
             sendPush(pushToken, message.title(), message.body(), data);
         }
     }
 
-    private Map<String, String> createPushData(PushMessage message) {
+    // 사용자의 알림 목록을 최신순으로 조회
+    @Transactional(readOnly = true)
+    public CursorPage<NotificationListItemResponse> getNotifications(Long userId, Long cursor, int size) {
+        List<Notification> notifications = notificationRepository.findNotificationPage(
+                userId,
+                cursor,
+                PageRequest.ofSize(size + 1)
+        );
+
+        boolean hasNext = notifications.size() > size;
+        List<Notification> page = hasNext ? notifications.subList(0, size) : notifications;
+
+        List<NotificationListItemResponse> items = page.stream()
+                .map(NotificationListItemResponse::from)
+                .toList();
+
+        Long nextCursor = hasNext ? page.getLast().getId() : null;
+
+        return CursorPage.of(items, nextCursor, hasNext);
+    }
+
+    // 사용자의 알림을 읽음 상태로 변경
+    @Transactional
+    public void readNotification(Long userId, Long notificationId) {
+        Notification notification = notificationRepository
+                .findByIdAndUser_Id(notificationId, userId)
+                .orElseThrow(() -> new NotificationException(
+                        NotificationErrorCode.NOTIFICATION_NOT_FOUND
+                ));
+
+        notification.markAsRead();
+    }
+
+    private Map<String, String> createPushData(Long notificationId, PushMessage message) {
         Map<String, String> data = new HashMap<>();
 
+        data.put("notificationId", String.valueOf(notificationId));
         data.put("type", message.type().name());
 
         if (message.deepLink() != null) {
