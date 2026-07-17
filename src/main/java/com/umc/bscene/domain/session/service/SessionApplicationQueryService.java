@@ -26,7 +26,7 @@ public interface SessionApplicationQueryService {
     );
 
     SubmittedApplicationDetailResponse getSubmittedApplication(
-            Long ownerId,
+            Long viewerId,
             Long applicationSubmissionId
     );
 

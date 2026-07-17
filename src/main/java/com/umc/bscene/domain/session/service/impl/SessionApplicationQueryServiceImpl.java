@@ -128,11 +128,11 @@ public class SessionApplicationQueryServiceImpl implements SessionApplicationQue
     @Override
     @Transactional
     public SubmittedApplicationDetailResponse getSubmittedApplication(
-            Long ownerId,
+            Long viewerId,
             Long applicationSubmissionId
     ) {
         SessionApplicationSubmission submission = submissionRepository
-                .findForRecruitmentOwner(applicationSubmissionId, ownerId)
+                .findForRecruitmentMember(applicationSubmissionId, viewerId)
                 .orElseThrow(() -> new SessionApplicationException(
                         SessionErrorCode.APPLICATION_SUBMISSION_NOT_FOUND
                 ));
