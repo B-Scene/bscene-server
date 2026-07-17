@@ -3,6 +3,7 @@ package com.umc.bscene.domain.notification.service;
 import com.umc.bscene.domain.notification.dto.request.PushTestSendRequest;
 import com.umc.bscene.domain.notification.dto.request.PushTokenDeleteRequest;
 import com.umc.bscene.domain.notification.dto.request.PushTokenSaveRequest;
+import com.umc.bscene.domain.notification.dto.response.NotificationListItemResponse;
 import com.umc.bscene.domain.notification.dto.response.PushSendResult;
 import com.umc.bscene.domain.notification.entity.Notification;
 import com.umc.bscene.domain.notification.entity.PushToken;
@@ -14,8 +15,10 @@ import com.umc.bscene.domain.notification.response.code.NotificationErrorCode;
 import com.umc.bscene.domain.user.entity.User;
 import com.umc.bscene.domain.user.repository.UserRepository;
 import com.umc.bscene.global.notification.message.PushMessage;
+import com.umc.bscene.global.response.CursorPage;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
@@ -98,6 +101,27 @@ public class NotificationService {
         for (PushToken pushToken : pushTokens) {
             sendPush(pushToken, message.title(), message.body(), data);
         }
+    }
+
+    // 사용자의 알림 목록을 최신순으로 조회
+    @Transactional(readOnly = true)
+    public CursorPage<NotificationListItemResponse> getNotifications(Long userId, Long cursor, int size) {
+        List<Notification> notifications = notificationRepository.findNotificationPage(
+                userId,
+                cursor,
+                PageRequest.ofSize(size + 1)
+        );
+
+        boolean hasNext = notifications.size() > size;
+        List<Notification> page = hasNext ? notifications.subList(0, size) : notifications;
+
+        List<NotificationListItemResponse> items = page.stream()
+                .map(NotificationListItemResponse::from)
+                .toList();
+
+        Long nextCursor = hasNext ? page.getLast().getId() : null;
+
+        return CursorPage.of(items, nextCursor, hasNext);
     }
 
     private Map<String, String> createPushData(PushMessage message) {

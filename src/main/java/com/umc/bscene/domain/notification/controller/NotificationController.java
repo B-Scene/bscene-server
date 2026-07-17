@@ -3,15 +3,25 @@ package com.umc.bscene.domain.notification.controller;
 import com.umc.bscene.domain.notification.dto.request.PushTestSendRequest;
 import com.umc.bscene.domain.notification.dto.request.PushTokenDeleteRequest;
 import com.umc.bscene.domain.notification.dto.request.PushTokenSaveRequest;
+import com.umc.bscene.domain.notification.dto.response.NotificationListItemResponse;
 import com.umc.bscene.domain.notification.response.code.NotificationSuccessCode;
 import com.umc.bscene.domain.notification.service.NotificationService;
+import com.umc.bscene.global.response.CursorPage;
 import com.umc.bscene.global.response.SuccessResponse;
 import com.umc.bscene.global.security.entity.AuthMember;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequiredArgsConstructor
@@ -61,6 +71,29 @@ public class NotificationController {
                 (Void) null,
                 NotificationSuccessCode.PUSH_TEST_SEND_SUCCESS
         );
+
+        return ResponseEntity.status(successResponse.getStatus()).body(successResponse);
+    }
+
+    // 사용자의 알림 목록을 최신순으로 조회합니다.
+    @GetMapping
+    public ResponseEntity<SuccessResponse<CursorPage<NotificationListItemResponse>>> getNotifications(
+            @AuthenticationPrincipal AuthMember authMember,
+            @RequestParam(required = false) Long cursor,
+            @RequestParam(defaultValue = "20") @Min(1) @Max(50) int size
+    ) {
+        CursorPage<NotificationListItemResponse> response =
+                notificationService.getNotifications(
+                        authMember.getUser().getId(),
+                        cursor,
+                        size
+                );
+
+        SuccessResponse<CursorPage<NotificationListItemResponse>> successResponse =
+                SuccessResponse.of(
+                        response,
+                        NotificationSuccessCode.NOTIFICATION_LIST_SUCCESS
+                );
 
         return ResponseEntity.status(successResponse.getStatus()).body(successResponse);
     }
