@@ -5,3 +5,19 @@ coolsms:
   api-key: ${COOLSMS_API_KEY}
   api-secret: ${COOLSMS_API_SECRET}
   from-number: ${COOLSMS_FROM_NUMBER}
+
+# 운영 Elasticsearch : TLS + 계정 인증 (로컬 dev는 보안 없이 http — application.yaml 기본값 사용)
+spring:
+  ssl:
+    bundle:
+      pem:
+        es:
+          truststore:
+            certificate: file:/app/config/certs/es-ca.crt   # compose가 마운트하는 CA 공개 인증서
+  elasticsearch:
+    uris: ${ES_URIS}
+    username: ${ES_USERNAME:elastic}
+    password: ${ES_PASSWORD}
+    restclient:
+      ssl:
+        bundle: es                        # 위 번들로 ES의 자체 서명 인증서를 신뢰

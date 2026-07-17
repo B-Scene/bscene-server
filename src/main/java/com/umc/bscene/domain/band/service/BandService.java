@@ -5,12 +5,20 @@ import com.umc.bscene.domain.band.dto.request.BandMemberAcceptRequest;
 import com.umc.bscene.domain.band.dto.request.BandMemberInviteRequest;
 import com.umc.bscene.domain.band.dto.request.BandUpdateRequest;
 import com.umc.bscene.domain.band.dto.request.MusicLinkSaveRequest;
-import com.umc.bscene.domain.band.dto.response.*;
+import com.umc.bscene.domain.band.dto.response.BandMemberAcceptResponse;
+import com.umc.bscene.domain.band.dto.response.BandMemberResponse;
+import com.umc.bscene.domain.band.dto.response.BandMemberSearchItem;
+import com.umc.bscene.domain.band.dto.response.BandNameCheckResponse;
+import com.umc.bscene.domain.band.dto.response.BandProfileResponse;
+import com.umc.bscene.domain.band.dto.response.BandPublicMemberProfileResponse;
+import com.umc.bscene.domain.band.dto.response.BandResponse;
+import com.umc.bscene.domain.band.dto.response.MusicLinkResponse;
 import com.umc.bscene.domain.band.entity.Band;
 import com.umc.bscene.domain.band.entity.BandMember;
 import com.umc.bscene.domain.band.entity.BandMemberProfile;
 import com.umc.bscene.domain.band.entity.MusicLink;
 import com.umc.bscene.domain.band.enums.BandMemberStatus;
+import com.umc.bscene.domain.band.enums.BandMemberType;
 import com.umc.bscene.domain.band.exception.BandException;
 import com.umc.bscene.domain.band.port.FollowPort;
 import com.umc.bscene.domain.band.port.PerformancePort;
@@ -19,9 +27,11 @@ import com.umc.bscene.domain.band.repository.BandMemberRepository;
 import com.umc.bscene.domain.band.repository.BandRepository;
 import com.umc.bscene.domain.band.repository.MusicLinkRepository;
 import com.umc.bscene.domain.band.response.code.BandErrorCode;
+import com.umc.bscene.domain.search.event.BandChangedEvent;
 import com.umc.bscene.domain.user.entity.User;
 import com.umc.bscene.domain.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -39,6 +49,7 @@ public class BandService {
     private final UserRepository userRepository;
     private final FollowPort followPort;
     private final PerformancePort performancePort;
+    private final ApplicationEventPublisher eventPublisher;
 
     // 밴드 개설 (요청자가 오너가 됨, 이 밴드에서 사용할 멤버 프로필 선택)
     @Transactional
@@ -66,6 +77,9 @@ public class BandService {
                 .status(BandMemberStatus.ACCEPTED)
                 .build();
         bandMemberRepository.save(ownerMembership);
+
+        // 검색 색인 동기화 (커밋 후 search 도메인 리스너가 비동기 처리)
+        eventPublisher.publishEvent(new BandChangedEvent(savedBand.getId()));
 
         return BandResponse.from(savedBand);
     }
@@ -110,6 +124,9 @@ public class BandService {
                 request.profileImageUrl(),
                 request.description()
         );
+
+        // 검색 색인 동기화 (밴드명·장르·지역 변경 시 소속 공연·영상 문서까지 연쇄 재색인됨)
+        eventPublisher.publishEvent(new BandChangedEvent(bandId));
 
         Long followerCount = followPort.countFollowersByBandId(bandId);
         Long memberCount = bandMemberRepository.countByBand_IdAndStatus(bandId, BandMemberStatus.ACCEPTED);
@@ -289,5 +306,21 @@ public class BandService {
         if (hasEtcPlatform != hasEtcUrl) {
             throw new BandException(BandErrorCode.INVALID_ETC_MUSIC_LINK);
         }
+    }
+
+    // 팬에게 공개할 정식 밴드 구성원 프로필 조회
+    public List<BandPublicMemberProfileResponse> getPublicMemberProfiles(Long bandId) {
+        Band band = getBand(bandId);
+
+        return bandMemberRepository.findPublicBandMembers(
+                        bandId,
+                        BandMemberStatus.ACCEPTED,
+                        BandMemberType.MEMBER
+                ).stream()
+                .map(bandMember -> BandPublicMemberProfileResponse.from(
+                        bandMember,
+                        band.getOwner().getId().equals(bandMember.getUser().getId())
+                ))
+                .toList();
     }
 }

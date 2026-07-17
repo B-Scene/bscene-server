@@ -126,4 +126,14 @@ public class StreamAdapter implements BandMemberPort {
                 .stream()
                 .findFirst();
     }
+
+    @Override
+    public List<Long> getAcceptedMemberUserIds(Long bandId) {
+        return bandMemberRepository
+                .findByBand_IdAndStatus(bandId, BandMemberStatus.ACCEPTED)
+                .stream()
+                .map(member -> member.getUser().getId())
+                .distinct()
+                .toList();
+    }
 }

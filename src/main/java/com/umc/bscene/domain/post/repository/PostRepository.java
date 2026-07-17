@@ -11,6 +11,7 @@ import org.springframework.data.repository.query.Param;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 
 public interface PostRepository extends JpaRepository<Post, Long> {
 
@@ -41,4 +42,16 @@ public interface PostRepository extends JpaRepository<Post, Long> {
     // FanHomeAdapter에서 사용 : 여러 포스트의 태그를 한 번에 조회
     @Query("SELECT t FROM PostTag t WHERE t.post.id IN :postIds")
     List<PostTag> findTagsByPostIds(@Param("postIds") List<Long> postIds);
+
+    // SearchAdapter에서 사용 : 검색 전체 색인용 VIDEO 게시물 (band·tags fetch join → 밴드명·태그 비정규화)
+    @Query("SELECT DISTINCT p FROM Post p JOIN FETCH p.band LEFT JOIN FETCH p.tagList WHERE p.type = :type")
+    List<Post> findAllByTypeWithBandAndTags(@Param("type") PostType type);
+
+    // SearchAdapter에서 사용 : 검색 단건 색인용 (band·tags fetch join)
+    @Query("SELECT p FROM Post p JOIN FETCH p.band LEFT JOIN FETCH p.tagList WHERE p.id = :id AND p.type = :type")
+    Optional<Post> findByIdAndTypeWithBandAndTags(@Param("id") Long id, @Param("type") PostType type);
+
+    // SearchAdapter에서 사용 : 밴드 정보 변경 시 연쇄 재색인용 (band·tags fetch join)
+    @Query("SELECT DISTINCT p FROM Post p JOIN FETCH p.band b LEFT JOIN FETCH p.tagList WHERE b.id = :bandId AND p.type = :type")
+    List<Post> findAllByBandIdAndTypeWithBandAndTags(@Param("bandId") Long bandId, @Param("type") PostType type);
 }

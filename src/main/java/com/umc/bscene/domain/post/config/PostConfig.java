@@ -1,6 +1,7 @@
 package com.umc.bscene.domain.post.config;
 
 import com.umc.bscene.domain.post.adapter.FanHomeAdapter;
+import com.umc.bscene.domain.post.adapter.SearchAdapter;
 import com.umc.bscene.domain.post.repository.PostRepository;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -12,5 +13,11 @@ public class PostConfig {
     @Bean
     public FanHomeAdapter fanHomePostAdapter(PostRepository postRepository) {
         return new FanHomeAdapter(postRepository);
+    }
+
+    // 검색 색인 PostPort 구현 어댑터 (VIDEO 게시물)
+    @Bean
+    public SearchAdapter searchPostAdapter(PostRepository postRepository) {
+        return new SearchAdapter(postRepository);
     }
 }

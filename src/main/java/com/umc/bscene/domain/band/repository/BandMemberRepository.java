@@ -2,6 +2,7 @@ package com.umc.bscene.domain.band.repository;
 
 import com.umc.bscene.domain.band.entity.BandMember;
 import com.umc.bscene.domain.band.enums.BandMemberStatus;
+import com.umc.bscene.domain.band.enums.BandMemberType;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -21,10 +22,6 @@ public interface BandMemberRepository extends JpaRepository<BandMember, Long> {
     List<BandMember> findByBand_IdOrderByIdAsc(Long bandId);
 
     List<BandMember> findByBand_IdAndStatus(Long bandId, BandMemberStatus status);
-
-    List<BandMember> findBySessionApplication_SessionApplicationId(
-            Long sessionApplicationId
-    );
 
     Long countByBand_IdAndStatus(Long bandId, BandMemberStatus status);
 
@@ -87,5 +84,23 @@ public interface BandMemberRepository extends JpaRepository<BandMember, Long> {
     List<BandMember> findWithBandAndProfileByBand_IdAndUser_IdIn(
             @Param("bandId") Long bandId,
             @Param("userIds") Collection<Long> userIds
+    );
+
+    @Query("""
+        SELECT bm
+        FROM BandMember bm
+        JOIN FETCH bm.band band
+        JOIN FETCH band.owner
+        JOIN FETCH bm.user
+        JOIN FETCH bm.bandMemberProfile
+        WHERE band.id = :bandId
+          AND bm.status = :status
+          AND bm.memberType = :memberType
+        ORDER BY bm.id ASC
+    """)
+    List<BandMember> findPublicBandMembers(
+            @Param("bandId") Long bandId,
+            @Param("status") BandMemberStatus status,
+            @Param("memberType") BandMemberType memberType
     );
 }

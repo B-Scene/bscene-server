@@ -44,4 +44,20 @@ public interface SessionRecruitmentRepository extends JpaRepository<SessionRecru
             @Param("cursorId") Long cursorId,
             Pageable pageable
     );
+
+    // 현재부터 24시간 이내에 마감되며 아직 알림을 발송하지 않은 공고 조회
+    @Query("""
+        SELECT sr
+        FROM SessionRecruitment sr
+        JOIN FETCH sr.band
+        WHERE sr.deletedAt IS NULL
+          AND sr.deadlineReminderSentAt IS NULL
+          AND sr.deadlineAt > :now
+          AND sr.deadlineAt <= :reminderLimit
+        ORDER BY sr.deadlineAt ASC, sr.sessionRecruitmentId ASC
+    """)
+    List<SessionRecruitment> findDeadlineReminderTargets(
+            @Param("now") LocalDateTime now,
+            @Param("reminderLimit") LocalDateTime reminderLimit
+    );
 }

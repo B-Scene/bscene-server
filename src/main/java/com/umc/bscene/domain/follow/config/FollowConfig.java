@@ -41,4 +41,10 @@ public class FollowConfig {
     public PostAdapter postFollowAdapter(FollowRepository followRepository) {
         return new PostAdapter(followRepository);
     }
+
+    // 검색 FollowPort 구현 어댑터 (검색 결과 밴드의 팔로우 여부)
+    @Bean
+    public SearchAdapter searchFollowAdapter(FollowRepository followRepository) {
+        return new SearchAdapter(followRepository);
+    }
 }

@@ -81,7 +81,9 @@ class SessionProfileMigrationTest {
             assertThat(columnExists(connection,
                     "session_application_links", "session_application_id")).isTrue();
             assertThat(columnExists(connection,
-                    "BandMember", "session_application_id")).isTrue();
+                    "BandMember", "session_application_id")).isFalse();
+            assertThat(columnExists(connection,
+                    "BandMember", "member_type")).isTrue();
             assertThat(columnExists(connection,
                     "session_recruitment", "session_profile_id")).isFalse();
 
