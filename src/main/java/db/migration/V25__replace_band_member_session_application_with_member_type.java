@@ -32,14 +32,15 @@ public class V25__replace_band_member_session_application_with_member_type exten
                     + " VARCHAR(20) NOT NULL DEFAULT 'MEMBER'");
         }
 
-        if (columnExists(connection, bandMemberTable, SESSION_APPLICATION_COLUMN)) {
+        String sessionApplicationColumn = findColumn(connection, bandMemberTable, SESSION_APPLICATION_COLUMN);
+        if (sessionApplicationColumn != null) {
             execute(connection, "UPDATE " + q(bandMemberTable, mysql)
                     + " SET " + q(MEMBER_TYPE_COLUMN, mysql) + " = 'SESSION'"
-                    + " WHERE " + q(SESSION_APPLICATION_COLUMN, mysql) + " IS NOT NULL");
+                    + " WHERE " + q(sessionApplicationColumn, mysql) + " IS NOT NULL");
 
-            dropForeignKeysForColumn(connection, mysql, bandMemberTable, SESSION_APPLICATION_COLUMN);
+            dropForeignKeysForColumn(connection, mysql, bandMemberTable, sessionApplicationColumn);
             execute(connection, "ALTER TABLE " + q(bandMemberTable, mysql)
-                    + " DROP COLUMN " + q(SESSION_APPLICATION_COLUMN, mysql));
+                    + " DROP COLUMN " + q(sessionApplicationColumn, mysql));
         }
     }
 
@@ -83,14 +84,24 @@ public class V25__replace_band_member_session_application_with_member_type exten
             String tableName,
             String expectedColumn
     ) throws SQLException {
+        return findColumn(connection, tableName, expectedColumn) != null;
+    }
+
+    private String findColumn(
+            Connection connection,
+            String tableName,
+            String expectedColumn
+    ) throws SQLException {
         DatabaseMetaData metadata = connection.getMetaData();
         try (ResultSet columns = metadata.getColumns(
                 connection.getCatalog(), connection.getSchema(), tableName, "%")) {
             while (columns.next()) {
-                if (expectedColumn.equalsIgnoreCase(columns.getString("COLUMN_NAME"))) return true;
+                if (expectedColumn.equalsIgnoreCase(columns.getString("COLUMN_NAME"))) {
+                    return columns.getString("COLUMN_NAME");
+                }
             }
         }
-        return false;
+        return null;
     }
 
     private void execute(Connection connection, String sql) throws SQLException {
@@ -102,6 +113,6 @@ public class V25__replace_band_member_session_application_with_member_type exten
     private String q(String identifier, boolean mysql) {
         return mysql
                 ? "`" + identifier + "`"
-                : "\"" + identifier.toUpperCase() + "\"";
+                : "\"" + identifier + "\"";
     }
 }
