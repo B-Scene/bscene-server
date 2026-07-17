@@ -19,9 +19,11 @@ import com.umc.bscene.domain.band.repository.BandMemberRepository;
 import com.umc.bscene.domain.band.repository.BandRepository;
 import com.umc.bscene.domain.band.repository.MusicLinkRepository;
 import com.umc.bscene.domain.band.response.code.BandErrorCode;
+import com.umc.bscene.domain.search.event.BandChangedEvent;
 import com.umc.bscene.domain.user.entity.User;
 import com.umc.bscene.domain.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -39,6 +41,7 @@ public class BandService {
     private final UserRepository userRepository;
     private final FollowPort followPort;
     private final PerformancePort performancePort;
+    private final ApplicationEventPublisher eventPublisher;
 
     // 밴드 개설 (요청자가 오너가 됨, 이 밴드에서 사용할 멤버 프로필 선택)
     @Transactional
@@ -66,6 +69,9 @@ public class BandService {
                 .status(BandMemberStatus.ACCEPTED)
                 .build();
         bandMemberRepository.save(ownerMembership);
+
+        // 검색 색인 동기화 (커밋 후 search 도메인 리스너가 비동기 처리)
+        eventPublisher.publishEvent(new BandChangedEvent(savedBand.getId()));
 
         return BandResponse.from(savedBand);
     }
@@ -110,6 +116,9 @@ public class BandService {
                 request.profileImageUrl(),
                 request.description()
         );
+
+        // 검색 색인 동기화 (밴드명·장르·지역 변경 시 소속 공연·영상 문서까지 연쇄 재색인됨)
+        eventPublisher.publishEvent(new BandChangedEvent(bandId));
 
         Long followerCount = followPort.countFollowersByBandId(bandId);
         Long memberCount = bandMemberRepository.countByBand_IdAndStatus(bandId, BandMemberStatus.ACCEPTED);

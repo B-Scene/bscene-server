@@ -11,6 +11,7 @@ import org.springframework.data.repository.query.Param;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.List;
+import java.util.Optional;
 
 public interface PerformanceRepository extends JpaRepository<Performance, Long> {
 
@@ -122,4 +123,16 @@ public interface PerformanceRepository extends JpaRepository<Performance, Long> 
             @Param("date") LocalDate date,
             Pageable pageable
     );
+
+    // SearchAdapter에서 사용 : 검색 전체 색인용 ACTIVE 공연 (band fetch join → 밴드명 비정규화)
+    @Query("SELECT p FROM Performance p JOIN FETCH p.band WHERE p.status = :status")
+    List<Performance> findAllByStatusWithBand(@Param("status") PerformanceStatus status);
+
+    // SearchAdapter에서 사용 : 검색 단건 색인용 (band fetch join)
+    @Query("SELECT p FROM Performance p JOIN FETCH p.band WHERE p.id = :id AND p.status = :status")
+    Optional<Performance> findByIdAndStatusWithBand(@Param("id") Long id, @Param("status") PerformanceStatus status);
+
+    // SearchAdapter에서 사용 : 밴드 정보 변경 시 연쇄 재색인용 (band fetch join)
+    @Query("SELECT p FROM Performance p JOIN FETCH p.band b WHERE b.id = :bandId AND p.status = :status")
+    List<Performance> findAllByBandIdAndStatusWithBand(@Param("bandId") Long bandId, @Param("status") PerformanceStatus status);
 }

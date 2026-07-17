@@ -17,6 +17,7 @@ import com.umc.bscene.domain.post.dto.response.PostUpdateResponse;
 import com.umc.bscene.domain.post.entity.Post;
 import com.umc.bscene.domain.post.enums.PostType;
 import com.umc.bscene.domain.post.event.PostVideoThumbnailRequestedEvent;
+import com.umc.bscene.domain.search.event.PostChangedEvent;
 import com.umc.bscene.domain.post.exception.PostException;
 import com.umc.bscene.domain.post.port.FollowPort;
 import com.umc.bscene.domain.post.port.NotifyPort;
@@ -76,6 +77,9 @@ public class PostService {
 
         notifyFollowersAfterCommit(savedPost);
 
+        // 검색 색인 동기화 (VIDEO 여부 판단은 리스너 몫 — 다른 타입이면 무시됨)
+        eventPublisher.publishEvent(new PostChangedEvent(savedPost.getId()));
+
         return PostCreateResponse.from(savedPost);
     }
 
@@ -85,6 +89,9 @@ public class PostService {
         postRepository.findById(postId).ifPresent(post -> {
             if (post.getThumbnailUrl() == null) {
                 post.update(null, null, thumbnailUrl);
+
+                // 검색 색인 동기화 (자동 생성된 썸네일을 검색 결과 카드에 반영)
+                eventPublisher.publishEvent(new PostChangedEvent(postId));
             }
         });
     }
@@ -138,6 +145,9 @@ public class PostService {
             addTagList(post, request.tags());
         }
 
+        // 검색 색인 동기화 (커밋 후 search 도메인 리스너가 비동기 처리)
+        eventPublisher.publishEvent(new PostChangedEvent(postId));
+
         return PostUpdateResponse.from(post);
     }
 
@@ -148,6 +158,9 @@ public class PostService {
         validateBandMember(post.getBand(), userId);
 
         postRepository.delete(post);
+
+        // 검색 색인 동기화 (하드 삭제 → 리스너가 검색 문서 삭제로 처리)
+        eventPublisher.publishEvent(new PostChangedEvent(postId));
     }
 
     private void addMediaList(Post post, List<String> mediaUrls) {
