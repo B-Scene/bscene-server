@@ -23,6 +23,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -36,6 +37,8 @@ public class NotificationService {
     private final NotificationRepository notificationRepository;
     private final PushTokenRepository pushTokenRepository;
     private final PushPort pushPort;
+
+    private static final long READ_NOTIFICATION_RETENTION_DAYS = 3L;
 
     // FCM 토큰 저장/갱신
     @Transactional
@@ -136,6 +139,14 @@ public class NotificationService {
                 ));
 
         notification.markAsRead();
+    }
+
+    // 읽은 시각으로부터 보관 기간이 지난 알림을 삭제
+    @Transactional
+    public long deleteExpiredReadNotifications(LocalDateTime now) {
+        LocalDateTime threshold = now.minusDays(READ_NOTIFICATION_RETENTION_DAYS);
+
+        return notificationRepository.deleteByIsReadTrueAndReadAtBefore(threshold);
     }
 
     private Map<String, String> createPushData(Long notificationId, PushMessage message) {

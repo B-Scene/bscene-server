@@ -6,6 +6,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -30,4 +31,7 @@ public interface NotificationRepository extends JpaRepository<Notification, Long
             @Param("cursor") Long cursor,
             Pageable pageable
     );
+
+    // 읽은 후 보관 기간이 지난 알림을 삭제
+    long deleteByIsReadTrueAndReadAtBefore(LocalDateTime threshold);
 }
