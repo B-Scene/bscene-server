@@ -12,6 +12,7 @@ import com.umc.bscene.domain.notification.adapter.SessionAdapter;
 import com.umc.bscene.domain.notification.adapter.StreamAdapter;
 import com.umc.bscene.domain.notification.port.PushPort;
 import com.umc.bscene.domain.notification.repository.NotificationRepository;
+import com.umc.bscene.domain.notification.scheduler.NotificationCleanupScheduler;
 import com.umc.bscene.domain.notification.service.NotificationService;
 import com.umc.bscene.global.notification.port.NotificationPort;
 import org.springframework.beans.factory.ObjectProvider;
@@ -73,5 +74,12 @@ public class NotificationConfig {
     @Bean
     public ChatAdapter chatNotificationAdapter(NotificationPort notificationPort) {
         return new ChatAdapter(notificationPort);
+    }
+
+    @Bean
+    public NotificationCleanupScheduler notificationCleanupScheduler(
+            NotificationService notificationService
+    ) {
+        return new NotificationCleanupScheduler(notificationService);
     }
 }
