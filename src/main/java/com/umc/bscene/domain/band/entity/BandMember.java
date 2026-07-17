@@ -1,7 +1,7 @@
 package com.umc.bscene.domain.band.entity;
 
 import com.umc.bscene.domain.band.enums.BandMemberStatus;
-import com.umc.bscene.domain.session.entity.SessionApplication;
+import com.umc.bscene.domain.band.enums.BandMemberType;
 import com.umc.bscene.domain.user.entity.User;
 import com.umc.bscene.global.entity.BaseEntity;
 import jakarta.persistence.*;
@@ -36,11 +36,6 @@ public class BandMember extends BaseEntity {
     @JoinColumn(name = "userId", nullable = false)
     private User user;
 
-    // 밴드 활동에 사용한 지원서
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "session_application_id")
-    private SessionApplication sessionApplication;
-
     // 이 밴드에서 사용하는 멤버 프로필
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "bandMemberProfileId")
@@ -51,6 +46,11 @@ public class BandMember extends BaseEntity {
     @Builder.Default
     private BandMemberStatus status = BandMemberStatus.INVITED;
 
+    @Column(nullable = false)
+    @Enumerated(EnumType.STRING)
+    @Builder.Default
+    private BandMemberType memberType = BandMemberType.MEMBER;
+
     // 초대 수락 처리
     public void accept() {
         this.status = BandMemberStatus.ACCEPTED;
@@ -60,9 +60,5 @@ public class BandMember extends BaseEntity {
     public void acceptWithProfile(BandMemberProfile bandMemberProfile) {
         this.bandMemberProfile = bandMemberProfile;
         accept();
-    }
-
-    public void clearSessionApplication() {
-        this.sessionApplication = null;
     }
 }

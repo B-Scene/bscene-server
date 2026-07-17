@@ -1,6 +1,5 @@
 package com.umc.bscene.domain.session.service.impl;
 
-import com.umc.bscene.domain.band.repository.BandMemberRepository;
 import com.umc.bscene.domain.session.dto.SessionPushMessage;
 import com.umc.bscene.domain.session.dto.application.request.MySessionApplicationUpdateRequest;
 import com.umc.bscene.domain.session.dto.application.request.SessionApplicationVisibilityRequest;
@@ -41,7 +40,6 @@ public class SessionApplicationCommandServiceImpl implements SessionApplicationC
     private final SessionApplicationRepository sessionApplicationRepository;
     private final SessionApplicationSubmissionRepository submissionRepository;
     private final SessionRecruitmentRepository sessionRecruitmentRepository;
-    private final BandMemberRepository bandMemberRepository;
     private final UserRepository userRepository;
 
     private final BandMemberPort bandMemberPort;
@@ -118,9 +116,6 @@ public class SessionApplicationCommandServiceImpl implements SessionApplicationC
                         SessionErrorCode.SESSION_APPLICATION_NOT_FOUND
                 ));
 
-        bandMemberRepository
-                .findBySessionApplication_SessionApplicationId(sessionApplicationId)
-                .forEach(bandMember -> bandMember.clearSessionApplication());
         submissionRepository
                 .deleteAllBySessionApplication_SessionApplicationId(sessionApplicationId);
         sessionApplicationRepository.delete(sessionApplication);

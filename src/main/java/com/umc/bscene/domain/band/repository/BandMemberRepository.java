@@ -22,10 +22,6 @@ public interface BandMemberRepository extends JpaRepository<BandMember, Long> {
 
     List<BandMember> findByBand_IdAndStatus(Long bandId, BandMemberStatus status);
 
-    List<BandMember> findBySessionApplication_SessionApplicationId(
-            Long sessionApplicationId
-    );
-
     Long countByBand_IdAndStatus(Long bandId, BandMemberStatus status);
 
     Optional<BandMember> findFirstByUser_IdAndStatus(Long userId, BandMemberStatus status);
