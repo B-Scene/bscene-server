@@ -26,4 +26,18 @@ public record SessionPushMessage(
                 applicationSubmissionId
         );
     }
+
+    // 세션 모집 마감 24시간 전 알림
+    public static SessionPushMessage deadlineReminder(
+            String recruitmentTitle,
+            Long sessionRecruitmentId
+    ) {
+        return new SessionPushMessage(
+                NotificationType.SESSION,
+                "세션 모집 마감이 하루 남았어요",
+                "'" + recruitmentTitle + "' 모집 공고를 확인해주세요.",
+                "/sessions/recruitments/" + sessionRecruitmentId,
+                sessionRecruitmentId
+        );
+    }
 }

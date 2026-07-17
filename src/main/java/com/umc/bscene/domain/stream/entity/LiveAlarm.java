@@ -5,6 +5,8 @@ import com.umc.bscene.global.entity.BaseEntity;
 import jakarta.persistence.*;
 import lombok.*;
 
+import java.time.LocalDateTime;
+
 @Entity
 @Getter
 @Builder
@@ -31,4 +33,12 @@ public class LiveAlarm extends BaseEntity {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "userId", nullable = false)
     private User user;
+
+    // 예정 라이브 리마인드 발송 완료 시각
+    @Column(name = "reminderSentAt")
+    private LocalDateTime reminderSentAt;
+
+    public void markReminderSent(LocalDateTime sentAt) {
+        this.reminderSentAt = sentAt;
+    }
 }

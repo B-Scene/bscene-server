@@ -69,6 +69,10 @@ public class RecordingUploadService {
     private static final String PENDING_KEY_PREFIX = "recording:pending:";
     private static final Duration PENDING_TTL = Duration.ofHours(73);
 
+    // 다시보기 등록 완료 판정을 위한 스트림별 전체 세그먼트 수
+    private static final String EXPECTED_COUNT_KEY_PREFIX = "recording:expected:";
+    private static final Duration EXPECTED_COUNT_TTL = Duration.ofHours(73);
+
     // ffprobe 실행이 매달리는 것을 방지하기 위한 바운드 대기 시간
     private static final long FFPROBE_TIMEOUT_SEC = 30;
 
@@ -76,6 +80,7 @@ public class RecordingUploadService {
     private final StringRedisTemplate redisTemplate;
     private final StreamReplayRepository streamReplayRepository;
     private final AudioStreamRepository audioStreamRepository;
+    private final ReplayNotificationService replayNotificationService;
 
     @Value("${aws.s3.bucket}")
     private String bucket;
@@ -228,6 +233,7 @@ public class RecordingUploadService {
 
             redisTemplate.delete(uploadIdKey);
             Files.deleteIfExists(file);
+            tryCompleteReplay(extractStreamPath(s3Key));
             log.info("녹화 S3 멀티파트 업로드 완료 key={}", s3Key);
 
         } catch (Exception e) {
@@ -278,8 +284,49 @@ public class RecordingUploadService {
      * s3Key "recordings/{path}/{filename}"에서 {path}를 추출한다.
      * 접두사(recordings/)와 마지막 '/' 사이의 구간이 {path}.
      */
-    public void markPending(String streamPath) {
+    public void markPending(String streamPath, int expectedSegmentCount) {
         redisTemplate.opsForValue().set(PENDING_KEY_PREFIX + streamPath, "1", PENDING_TTL);
+        redisTemplate.opsForValue().set(
+                EXPECTED_COUNT_KEY_PREFIX + streamPath,
+                String.valueOf(expectedSegmentCount),
+                EXPECTED_COUNT_TTL
+        );
+    }
+
+    /*
+     * 저장된 다시보기 메타데이터 수가 요청 당시 전체 세그먼트 수에 도달하면 등록 완료 알림을 발송한다.
+     * 알림 처리 중 일시 오류가 발생하면 pending 키를 유지해 스위퍼가 다시 확인한다.
+     */
+    void tryCompleteReplay(String streamPath) {
+        String expectedCountValue =
+                redisTemplate.opsForValue().get(EXPECTED_COUNT_KEY_PREFIX + streamPath);
+
+        if (expectedCountValue == null) {
+            return;
+        }
+
+        try {
+            long expectedCount = Long.parseLong(expectedCountValue);
+            AudioStream audioStream = audioStreamRepository.findByPath(streamPath).orElse(null);
+
+            if (audioStream == null
+                    || streamReplayRepository.countByAudioStream_Id(audioStream.getId()) < expectedCount) {
+                return;
+            }
+
+            replayNotificationService.notifyReplayReady(audioStream);
+            redisTemplate.delete(List.of(
+                    PENDING_KEY_PREFIX + streamPath,
+                    EXPECTED_COUNT_KEY_PREFIX + streamPath
+            ));
+        } catch (NumberFormatException exception) {
+            log.warn("다시보기 예상 세그먼트 수 파싱 실패 path={}, value={}",
+                    streamPath, expectedCountValue, exception);
+            redisTemplate.delete(EXPECTED_COUNT_KEY_PREFIX + streamPath);
+        } catch (RuntimeException exception) {
+            log.warn("다시보기 등록 완료 알림 처리 실패, 스위퍼가 재시도함 path={}",
+                    streamPath, exception);
+        }
     }
 
     /*

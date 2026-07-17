@@ -109,7 +109,7 @@ public class LiveChatWebSocketHandler extends TextWebSocketHandler implements Su
         ChatWebSocketPushFrame push = new ChatWebSocketPushFrame(
                 "live-chat.message", null, data, frame.clientMsgId(), now());
         Set<Long> excludedUserIds = new HashSet<>(
-                userBlockRepository.findBlockedUserIdsRelatedTo(userId));
+                userBlockRepository.findBlockedUserIdsRelatedTo(liveId(session), userId));
         excludedUserIds.addAll(reportHistoryRepository
                 .findReporterIdsByLiveIdAndTargetUserId(liveId(session), userId));
         sessionRegistry.broadcastExcept(liveId(session), excludedUserIds,

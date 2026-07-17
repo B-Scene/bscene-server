@@ -177,8 +177,35 @@ where a.id = :id
             @Param("now") LocalDateTime now
     );
 
+    // 다시보기 등록 완료 알림 발송 권한을 한 작업자만 획득하도록 원자적으로 발송 시각 갱신
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query("""
+    update AudioStream a
+    set a.replayNotificationSentAt = :sentAt
+    where a.id = :id
+        and a.replayNotificationSentAt is null
+    """)
+    int markReplayNotificationSentIfAbsent(
+            @Param("id") Long id,
+            @Param("sentAt") LocalDateTime sentAt
+    );
+
     // 예약 편집/취소: coHost 읽기 전 행 선점으로 동시 PATCH 직렬화 및 cancel <-> PATCH insert race condition 방지
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select a from AudioStream a where a.id = :id")
     Optional<AudioStream> findByIdForUpdate(@Param("id") Long id);
+
+    // 시작까지 30분 이내인 예정 라이브 중 밴드 구성원 알림을 발송하지 않은 라이브 조회
+    @Query("""
+    select a from AudioStream a
+    where a.memberReminderSentAt is null
+        and a.status = com.umc.bscene.domain.stream.enums.StreamStatus.SCHEDULED
+        and a.scheduledAt > :now
+        and a.scheduledAt <= :reminderLimit
+    order by a.scheduledAt asc, a.id asc
+    """)
+    List<AudioStream> findMemberReminderTargets(
+            @Param("now") LocalDateTime now,
+            @Param("reminderLimit") LocalDateTime reminderLimit
+    );
 }

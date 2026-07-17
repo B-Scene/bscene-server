@@ -84,4 +84,16 @@ public interface PerformanceParticipationRepository extends JpaRepository<Perfor
             @Param("toDate") LocalDate toDate,
             @Param("toTime") LocalTime toTime
     );
+
+    // 해당 공연의 알림을 설정한 사용자 ID 조회
+    @Query("""
+        SELECT pp.user.id
+        FROM PerformanceParticipation pp
+        WHERE pp.performance.id = :performanceId
+          AND pp.status = :status
+        """)
+    List<Long> findUserIdsByPerformanceIdAndStatus(
+            @Param("performanceId") Long performanceId,
+            @Param("status") ParticipationStatus status
+    );
 }

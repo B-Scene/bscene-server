@@ -72,7 +72,8 @@ class LiveChatWebSocketHandlerTest {
         when(userRepository.findById(USER_ID)).thenReturn(Optional.of(user));
         when(fanProfileRepository.findByUser(user)).thenReturn(Optional.of(fanProfile));
         when(fanProfile.getNickname()).thenReturn("웨이비팬");
-        when(userBlockRepository.findBlockedUserIdsRelatedTo(USER_ID)).thenReturn(Set.of(2L));
+        when(userBlockRepository.findBlockedUserIdsRelatedTo(LIVE_ID, USER_ID))
+                .thenReturn(Set.of(2L));
         when(reportHistoryRepository.findReporterIdsByLiveIdAndTargetUserId(LIVE_ID, USER_ID))
                 .thenReturn(Set.of(3L));
 

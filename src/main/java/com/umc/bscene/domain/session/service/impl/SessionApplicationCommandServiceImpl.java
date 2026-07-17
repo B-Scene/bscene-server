@@ -14,6 +14,7 @@ import com.umc.bscene.domain.session.entity.SessionRecruitment;
 import com.umc.bscene.domain.session.enums.ApplicationStatus;
 import com.umc.bscene.domain.session.enums.code.SessionErrorCode;
 import com.umc.bscene.domain.session.exception.SessionApplicationException;
+import com.umc.bscene.domain.session.port.BandMemberPort;
 import com.umc.bscene.domain.session.port.NotifyPort;
 import com.umc.bscene.domain.session.repository.SessionApplicationRepository;
 import com.umc.bscene.domain.session.repository.SessionApplicationSubmissionRepository;
@@ -30,6 +31,7 @@ import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Service
 @RequiredArgsConstructor
@@ -42,6 +44,7 @@ public class SessionApplicationCommandServiceImpl implements SessionApplicationC
     private final BandMemberRepository bandMemberRepository;
     private final UserRepository userRepository;
 
+    private final BandMemberPort bandMemberPort;
     private final NotifyPort notifyPort;
 
     @Override
@@ -203,8 +206,8 @@ public class SessionApplicationCommandServiceImpl implements SessionApplicationC
                         .build()
         );
 
-        // 지원서 저장 후 Owner에게 알림 발송
-        notifyRecruitmentOwnerAfterCommit(submission);
+        // 지원서 저장 후 밴드 구성원 전체에게 알림 발송
+        notifyRecruitmentMembersAfterCommit(submission);
 
         return SessionApplicationSubmitResponse.from(submission);
     }
@@ -250,11 +253,19 @@ public class SessionApplicationCommandServiceImpl implements SessionApplicationC
                 );
     }
 
-    private void notifyRecruitmentOwnerAfterCommit(
+    // 지원서 저장 트랜잭션 완료 후 밴드 구성원 전체에게 알림 발송
+    private void notifyRecruitmentMembersAfterCommit(
             SessionApplicationSubmission submission
     ) {
         SessionRecruitment recruitment = submission.getSessionRecruitment();
-        Long receiverId = recruitment.getBand().getOwner().getId();
+
+        List<Long> receiverIds = bandMemberPort.getAcceptedMemberUserIds(
+                recruitment.getBand().getId()
+        );
+
+        if (receiverIds.isEmpty()) {
+            return;
+        }
 
         SessionPushMessage message = SessionPushMessage.applicationSubmitted(
                 submission.getApplicationSubmissionId(),
@@ -266,7 +277,7 @@ public class SessionApplicationCommandServiceImpl implements SessionApplicationC
                 new TransactionSynchronization() {
                     @Override
                     public void afterCommit() {
-                        notifyPort.notify(receiverId, message);
+                        notifyPort.notify(receiverIds, message);
                     }
                 }
         );

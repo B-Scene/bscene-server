@@ -3,7 +3,9 @@ package com.umc.bscene.domain.stream.config;
 import com.umc.bscene.domain.stream.port.*;
 import com.umc.bscene.domain.stream.repository.*;
 import com.umc.bscene.domain.stream.scheduler.StreamCleanupScheduler;
+import com.umc.bscene.domain.stream.scheduler.StreamReminderScheduler;
 import com.umc.bscene.domain.stream.service.MediaMtxLivePoller;
+import com.umc.bscene.domain.stream.service.StreamReminderService;
 import com.umc.bscene.domain.stream.service.StreamService;
 import com.umc.bscene.domain.stream.service.StreamServiceImpl;
 import com.umc.bscene.domain.stream.sse.ViewerSsePresence;
@@ -106,5 +108,13 @@ public class StreamConfig {
                 audioStreamRepository,
                 redisTemplate
         );
+    }
+
+    // 예정 라이브 시작 30분 전 알림 발송 스케줄러
+    @Bean
+    public StreamReminderScheduler streamReminderScheduler(
+            StreamReminderService streamReminderService
+    ) {
+        return new StreamReminderScheduler(streamReminderService);
     }
 }

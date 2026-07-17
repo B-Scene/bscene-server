@@ -35,4 +35,26 @@ public record StreamPushMessage(
                 liveId
         );
     }
+
+    // 예정 라이브 시작 30분 전 리마인드 알림
+    public static StreamPushMessage reminder(String bandName, String liveTitle, Long liveId) {
+        return new StreamPushMessage(
+                NotificationType.LIVE,
+                bandName + " 라이브가 30분 후 시작돼요",
+                "'" + liveTitle + "' 라이브가 곧 시작될 예정이에요.",
+                "/lives/" + liveId,
+                liveId
+        );
+    }
+
+    // 라이브 다시보기 등록 완료 알림
+    public static StreamPushMessage replayReady(String bandName, String liveTitle, Long liveId) {
+        return new StreamPushMessage(
+                NotificationType.LIVE,
+                bandName + " 라이브 다시보기가 등록됐어요",
+                "'" + liveTitle + "' 다시보기를 지금 확인해보세요.",
+                "/lives/" + liveId + "/replay",
+                liveId
+        );
+    }
 }
