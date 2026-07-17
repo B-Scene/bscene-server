@@ -5,12 +5,20 @@ import com.umc.bscene.domain.band.dto.request.BandMemberAcceptRequest;
 import com.umc.bscene.domain.band.dto.request.BandMemberInviteRequest;
 import com.umc.bscene.domain.band.dto.request.BandUpdateRequest;
 import com.umc.bscene.domain.band.dto.request.MusicLinkSaveRequest;
-import com.umc.bscene.domain.band.dto.response.*;
+import com.umc.bscene.domain.band.dto.response.BandMemberAcceptResponse;
+import com.umc.bscene.domain.band.dto.response.BandMemberResponse;
+import com.umc.bscene.domain.band.dto.response.BandMemberSearchItem;
+import com.umc.bscene.domain.band.dto.response.BandNameCheckResponse;
+import com.umc.bscene.domain.band.dto.response.BandProfileResponse;
+import com.umc.bscene.domain.band.dto.response.BandPublicMemberProfileResponse;
+import com.umc.bscene.domain.band.dto.response.BandResponse;
+import com.umc.bscene.domain.band.dto.response.MusicLinkResponse;
 import com.umc.bscene.domain.band.entity.Band;
 import com.umc.bscene.domain.band.entity.BandMember;
 import com.umc.bscene.domain.band.entity.BandMemberProfile;
 import com.umc.bscene.domain.band.entity.MusicLink;
 import com.umc.bscene.domain.band.enums.BandMemberStatus;
+import com.umc.bscene.domain.band.enums.BandMemberType;
 import com.umc.bscene.domain.band.exception.BandException;
 import com.umc.bscene.domain.band.port.FollowPort;
 import com.umc.bscene.domain.band.port.PerformancePort;
@@ -298,5 +306,21 @@ public class BandService {
         if (hasEtcPlatform != hasEtcUrl) {
             throw new BandException(BandErrorCode.INVALID_ETC_MUSIC_LINK);
         }
+    }
+
+    // 팬에게 공개할 정식 밴드 구성원 프로필 조회
+    public List<BandPublicMemberProfileResponse> getPublicMemberProfiles(Long bandId) {
+        Band band = getBand(bandId);
+
+        return bandMemberRepository.findPublicBandMembers(
+                        bandId,
+                        BandMemberStatus.ACCEPTED,
+                        BandMemberType.MEMBER
+                ).stream()
+                .map(bandMember -> BandPublicMemberProfileResponse.from(
+                        bandMember,
+                        band.getOwner().getId().equals(bandMember.getUser().getId())
+                ))
+                .toList();
     }
 }
