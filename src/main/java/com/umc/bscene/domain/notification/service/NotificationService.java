@@ -92,11 +92,13 @@ public class NotificationService {
         User receiver = userRepository.findById(receiverId)
                 .orElseThrow(() -> new NotificationException(NotificationErrorCode.RECEIVER_NOT_FOUND));
 
-        notificationRepository.save(Notification.of(receiver, message));
+        Notification notification = notificationRepository.save(
+                Notification.of(receiver, message)
+        );
 
         List<PushToken> pushTokens = pushTokenRepository.findAllByUser_Id(receiverId);
 
-        Map<String, String> data = createPushData(message);
+        Map<String, String> data = createPushData(notification.getId(), message);
 
         for (PushToken pushToken : pushTokens) {
             sendPush(pushToken, message.title(), message.body(), data);
@@ -124,9 +126,22 @@ public class NotificationService {
         return CursorPage.of(items, nextCursor, hasNext);
     }
 
-    private Map<String, String> createPushData(PushMessage message) {
+    // 사용자의 알림을 읽음 상태로 변경
+    @Transactional
+    public void readNotification(Long userId, Long notificationId) {
+        Notification notification = notificationRepository
+                .findByIdAndUser_Id(notificationId, userId)
+                .orElseThrow(() -> new NotificationException(
+                        NotificationErrorCode.NOTIFICATION_NOT_FOUND
+                ));
+
+        notification.markAsRead();
+    }
+
+    private Map<String, String> createPushData(Long notificationId, PushMessage message) {
         Map<String, String> data = new HashMap<>();
 
+        data.put("notificationId", String.valueOf(notificationId));
         data.put("type", message.type().name());
 
         if (message.deepLink() != null) {
