@@ -1,7 +1,7 @@
 package com.umc.bscene.domain.notification.repository;
 
 import com.umc.bscene.domain.notification.entity.NotificationSetting;
-import com.umc.bscene.domain.notification.enums.NotificationSettingType;
+import com.umc.bscene.global.notification.enums.NotificationSettingType;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.Collection;

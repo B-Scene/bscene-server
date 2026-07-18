@@ -11,7 +11,6 @@ import com.umc.bscene.domain.notification.dto.response.PushSendResult;
 import com.umc.bscene.domain.notification.entity.Notification;
 import com.umc.bscene.domain.notification.entity.NotificationSetting;
 import com.umc.bscene.domain.notification.entity.PushToken;
-import com.umc.bscene.domain.notification.enums.NotificationSettingType;
 import com.umc.bscene.domain.notification.exception.NotificationException;
 import com.umc.bscene.domain.notification.port.PushPort;
 import com.umc.bscene.domain.notification.repository.NotificationRepository;
@@ -19,8 +18,9 @@ import com.umc.bscene.domain.notification.repository.NotificationSettingReposito
 import com.umc.bscene.domain.notification.repository.PushTokenRepository;
 import com.umc.bscene.domain.notification.response.code.NotificationErrorCode;
 import com.umc.bscene.domain.user.entity.User;
-import com.umc.bscene.domain.user.enums.UserMode;
 import com.umc.bscene.domain.user.repository.UserRepository;
+import com.umc.bscene.global.notification.enums.NotificationSettingMode;
+import com.umc.bscene.global.notification.enums.NotificationSettingType;
 import com.umc.bscene.global.notification.message.PushMessage;
 import com.umc.bscene.global.response.CursorPage;
 import lombok.RequiredArgsConstructor;
@@ -101,8 +101,14 @@ public class NotificationService {
     // 푸시 알림
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void send(Long receiverId, PushMessage message) {
+        if (!isNotificationEnabled(receiverId, message)) {
+            return;
+        }
+
         User receiver = userRepository.findById(receiverId)
-                .orElseThrow(() -> new NotificationException(NotificationErrorCode.RECEIVER_NOT_FOUND));
+                .orElseThrow(() -> new NotificationException(
+                        NotificationErrorCode.RECEIVER_NOT_FOUND
+                ));
 
         Notification notification = notificationRepository.save(
                 Notification.of(receiver, message)
@@ -163,7 +169,7 @@ public class NotificationService {
     @Transactional(readOnly = true)
     public NotificationSettingsResponse getNotificationSettings(
             Long userId,
-            UserMode mode
+            NotificationSettingMode mode
     ) {
         List<NotificationSettingType> settingTypes = Arrays.stream(
                         NotificationSettingType.values()
@@ -224,6 +230,24 @@ public class NotificationService {
         );
     }
 
+
+    // 저장된 설정이 없으면 알림 종류별 기본값을 사용합니다.
+    private boolean isNotificationEnabled(
+            Long userId,
+            PushMessage message
+    ) {
+        NotificationSettingType settingType = message.settingType();
+
+        // 설정 항목이 없는 쪽지·게시물 알림은 항상 발송합니다.
+        if (settingType == null) {
+            return true;
+        }
+
+        return notificationSettingRepository
+                .findByUser_IdAndSettingType(userId, settingType)
+                .map(setting -> Boolean.TRUE.equals(setting.getEnabled()))
+                .orElse(settingType.isDefaultEnabled());
+    }
 
     private Map<String, String> createPushData(Long notificationId, PushMessage message) {
         Map<String, String> data = new HashMap<>();

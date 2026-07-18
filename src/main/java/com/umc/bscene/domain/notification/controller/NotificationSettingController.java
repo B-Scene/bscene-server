@@ -3,10 +3,10 @@ package com.umc.bscene.domain.notification.controller;
 import com.umc.bscene.domain.notification.dto.request.NotificationSettingUpdateRequest;
 import com.umc.bscene.domain.notification.dto.response.NotificationSettingItemResponse;
 import com.umc.bscene.domain.notification.dto.response.NotificationSettingsResponse;
-import com.umc.bscene.domain.notification.enums.NotificationSettingType;
+import com.umc.bscene.global.notification.enums.NotificationSettingMode;
+import com.umc.bscene.global.notification.enums.NotificationSettingType;
 import com.umc.bscene.domain.notification.response.code.NotificationSuccessCode;
 import com.umc.bscene.domain.notification.service.NotificationService;
-import com.umc.bscene.domain.user.enums.UserMode;
 import com.umc.bscene.global.response.SuccessResponse;
 import com.umc.bscene.global.security.entity.AuthMember;
 import jakarta.validation.Valid;
@@ -32,7 +32,7 @@ public class NotificationSettingController {
     @GetMapping
     public ResponseEntity<SuccessResponse<NotificationSettingsResponse>> getNotificationSettings(
             @AuthenticationPrincipal AuthMember authMember,
-            @RequestParam UserMode mode
+            @RequestParam NotificationSettingMode mode
     ) {
         NotificationSettingsResponse response =
                 notificationService.getNotificationSettings(
