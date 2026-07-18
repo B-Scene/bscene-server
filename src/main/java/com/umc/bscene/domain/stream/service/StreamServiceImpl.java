@@ -43,6 +43,7 @@ import com.umc.bscene.domain.stream.sse.ViewerSsePresence;
 import com.umc.bscene.domain.user.entity.User;
 import com.umc.bscene.domain.user.enums.UserMode;
 import com.umc.bscene.global.config.CacheConfig;
+import com.umc.bscene.global.notification.enums.NotificationSettingType;
 import com.umc.bscene.global.response.CursorPage;
 import com.umc.bscene.global.security.util.JwtUtil;
 import lombok.RequiredArgsConstructor;
@@ -74,7 +75,6 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 @Slf4j
 @RequiredArgsConstructor
@@ -649,30 +649,76 @@ public class StreamServiceImpl implements StreamService {
         List<Long> memberIds =
                 bandMemberPort.getAcceptedMemberUserIds(band.bandId());
 
-        // 약관에 동의한 팔로워와 밴드 구성원을 합칩니다.
-        List<Long> receiverIds = Stream.concat(
-                        agreedFollowerIds.stream(),
-                        memberIds.stream()
-                )
+        List<Long> memberReceiverIds = memberIds.stream()
                 .filter(userId -> !userId.equals(stream.getBroadcasterId()))
                 .distinct()
                 .toList();
 
-        if (receiverIds.isEmpty()) {
+        Set<Long> memberReceiverIdSet = new HashSet<>(memberReceiverIds);
+
+        // 밴드 구성원이면서 팔로워인 사용자는 밴드 알림으로 한 번만 발송합니다.
+        List<Long> fanReceiverIds = agreedFollowerIds.stream()
+                .filter(userId -> !userId.equals(stream.getBroadcasterId()))
+                .filter(userId -> !memberReceiverIdSet.contains(userId))
+                .distinct()
+                .toList();
+
+        if (fanReceiverIds.isEmpty() && memberReceiverIds.isEmpty()) {
             return;
         }
 
-        StreamPushMessage message = started
-                ? StreamPushMessage.started(band.bandName(), stream.getTitle(), stream.getId())
-                : StreamPushMessage.scheduled(band.bandName(), stream.getTitle(), formatScheduledAt(stream.getScheduledAt()), stream.getId());
+        NotificationSettingType fanSettingType = started
+                ? NotificationSettingType.FAN_FOLLOWED_BAND_LIVE_START
+                : NotificationSettingType.FAN_SCHEDULED_LIVE_REMINDER;
 
-        // 실제 발송(팬아웃, 재시도, 실패 처리)은 어댑터 책임
-        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
-            @Override
-            public void afterCommit() {
-                notifyPort.notify(receiverIds, message);
-            }
-        });
+        NotificationSettingType bandSettingType = started
+                ? NotificationSettingType.BAND_LIVE_START_STATUS
+                : NotificationSettingType.BAND_SCHEDULED_LIVE_REMINDER;
+
+        StreamPushMessage fanMessage = started
+                ? StreamPushMessage.started(
+                fanSettingType,
+                band.bandName(),
+                stream.getTitle(),
+                stream.getId()
+        )
+                : StreamPushMessage.scheduled(
+                fanSettingType,
+                band.bandName(),
+                stream.getTitle(),
+                formatScheduledAt(stream.getScheduledAt()),
+                stream.getId()
+        );
+
+        StreamPushMessage bandMessage = started
+                ? StreamPushMessage.started(
+                bandSettingType,
+                band.bandName(),
+                stream.getTitle(),
+                stream.getId()
+        )
+                : StreamPushMessage.scheduled(
+                bandSettingType,
+                band.bandName(),
+                stream.getTitle(),
+                formatScheduledAt(stream.getScheduledAt()),
+                stream.getId()
+        );
+
+        TransactionSynchronizationManager.registerSynchronization(
+                new TransactionSynchronization() {
+                    @Override
+                    public void afterCommit() {
+                        if (!fanReceiverIds.isEmpty()) {
+                            notifyPort.notify(fanReceiverIds, fanMessage);
+                        }
+
+                        if (!memberReceiverIds.isEmpty()) {
+                            notifyPort.notify(memberReceiverIds, bandMessage);
+                        }
+                    }
+                }
+        );
     }
 
     @Override

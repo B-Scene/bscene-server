@@ -9,18 +9,19 @@ import com.umc.bscene.domain.stream.port.NotifyPort;
 import com.umc.bscene.domain.stream.port.UserTermsPort;
 import com.umc.bscene.domain.stream.repository.AudioStreamRepository;
 import com.umc.bscene.domain.stream.repository.LiveAlarmRepository;
+import com.umc.bscene.global.notification.enums.NotificationSettingType;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 @Service
 @RequiredArgsConstructor
@@ -79,7 +80,7 @@ public class StreamReminderService {
         }
     }
 
-    // 같은 라이브의 팬과 밴드 구성원을 합쳐 한 번의 알림 발송 요청으로 전달합니다.
+    // 같은 라이브의 팬과 밴드 구성원에게 각각의 알림 설정을 적용해 발송
     private void sendReminder(
             AudioStream stream,
             List<LiveAlarm> fanTargets,
@@ -101,24 +102,42 @@ public class StreamReminderService {
                     ? bandMemberPort.getAcceptedMemberUserIds(stream.getBandId())
                     : List.of();
 
-            List<Long> receiverIds = Stream.concat(
-                            agreedFanIds.stream(),
-                            memberIds.stream()
-                    )
+            List<Long> memberReceiverIds = memberIds.stream()
                     .filter(userId -> !userId.equals(stream.getBroadcasterId()))
                     .distinct()
                     .toList();
 
-            if (!receiverIds.isEmpty()) {
-                BandSummaryResponse band = bandSummary.get();
+            Set<Long> memberReceiverIdSet = new HashSet<>(memberReceiverIds);
 
-                StreamPushMessage message = StreamPushMessage.reminder(
+            // 밴드 구성원이면서 팬 알림 대상인 사용자는 밴드 알림으로 한 번만 발송합니다.
+            List<Long> fanReceiverIds = agreedFanIds.stream()
+                    .filter(userId -> !userId.equals(stream.getBroadcasterId()))
+                    .filter(userId -> !memberReceiverIdSet.contains(userId))
+                    .distinct()
+                    .toList();
+
+            BandSummaryResponse band = bandSummary.get();
+
+            if (!fanReceiverIds.isEmpty()) {
+                StreamPushMessage fanMessage = StreamPushMessage.reminder(
+                        NotificationSettingType.FAN_SCHEDULED_LIVE_REMINDER,
                         band.bandName(),
                         stream.getTitle(),
                         stream.getId()
                 );
 
-                notifyPort.notify(receiverIds, message);
+                notifyPort.notify(fanReceiverIds, fanMessage);
+            }
+
+            if (!memberReceiverIds.isEmpty()) {
+                StreamPushMessage bandMessage = StreamPushMessage.reminder(
+                        NotificationSettingType.BAND_SCHEDULED_LIVE_REMINDER,
+                        band.bandName(),
+                        stream.getTitle(),
+                        stream.getId()
+                );
+
+                notifyPort.notify(memberReceiverIds, bandMessage);
             }
         }
 
