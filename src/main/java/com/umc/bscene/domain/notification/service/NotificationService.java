@@ -1,18 +1,25 @@
 package com.umc.bscene.domain.notification.service;
 
+import com.umc.bscene.domain.notification.dto.request.NotificationSettingUpdateRequest;
 import com.umc.bscene.domain.notification.dto.request.PushTestSendRequest;
 import com.umc.bscene.domain.notification.dto.request.PushTokenDeleteRequest;
 import com.umc.bscene.domain.notification.dto.request.PushTokenSaveRequest;
 import com.umc.bscene.domain.notification.dto.response.NotificationListItemResponse;
+import com.umc.bscene.domain.notification.dto.response.NotificationSettingItemResponse;
+import com.umc.bscene.domain.notification.dto.response.NotificationSettingsResponse;
 import com.umc.bscene.domain.notification.dto.response.PushSendResult;
 import com.umc.bscene.domain.notification.entity.Notification;
+import com.umc.bscene.domain.notification.entity.NotificationSetting;
 import com.umc.bscene.domain.notification.entity.PushToken;
+import com.umc.bscene.domain.notification.enums.NotificationSettingType;
 import com.umc.bscene.domain.notification.exception.NotificationException;
 import com.umc.bscene.domain.notification.port.PushPort;
 import com.umc.bscene.domain.notification.repository.NotificationRepository;
+import com.umc.bscene.domain.notification.repository.NotificationSettingRepository;
 import com.umc.bscene.domain.notification.repository.PushTokenRepository;
 import com.umc.bscene.domain.notification.response.code.NotificationErrorCode;
 import com.umc.bscene.domain.user.entity.User;
+import com.umc.bscene.domain.user.enums.UserMode;
 import com.umc.bscene.domain.user.repository.UserRepository;
 import com.umc.bscene.global.notification.message.PushMessage;
 import com.umc.bscene.global.response.CursorPage;
@@ -24,6 +31,7 @@ import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -37,6 +45,7 @@ public class NotificationService {
     private final NotificationRepository notificationRepository;
     private final PushTokenRepository pushTokenRepository;
     private final PushPort pushPort;
+    private final NotificationSettingRepository notificationSettingRepository;
 
     private static final long READ_NOTIFICATION_RETENTION_DAYS = 3L;
 
@@ -148,6 +157,73 @@ public class NotificationService {
 
         return notificationRepository.deleteByIsReadTrueAndReadAtBefore(threshold);
     }
+
+
+    // 사용자의 모드별 알림 설정 조회
+    @Transactional(readOnly = true)
+    public NotificationSettingsResponse getNotificationSettings(
+            Long userId,
+            UserMode mode
+    ) {
+        List<NotificationSettingType> settingTypes = Arrays.stream(
+                        NotificationSettingType.values()
+                )
+                .filter(settingType -> settingType.getMode() == mode)
+                .toList();
+
+        List<NotificationSetting> savedSettings =
+                notificationSettingRepository.findAllByUser_IdAndSettingTypeIn(
+                        userId,
+                        settingTypes
+                );
+
+        Map<NotificationSettingType, Boolean> enabledByType = new HashMap<>();
+
+        for (NotificationSetting savedSetting : savedSettings) {
+            enabledByType.put(
+                    savedSetting.getSettingType(),
+                    savedSetting.getEnabled()
+            );
+        }
+
+        List<NotificationSettingItemResponse> settings = settingTypes.stream()
+                .map(settingType -> new NotificationSettingItemResponse(
+                        settingType,
+                        enabledByType.getOrDefault(
+                                settingType,
+                                settingType.isDefaultEnabled()
+                        )
+                ))
+                .toList();
+
+        return new NotificationSettingsResponse(mode, settings);
+    }
+
+    // 사용자의 특정 알림 설정 변경
+    @Transactional
+    public NotificationSettingItemResponse updateNotificationSetting(
+            Long userId,
+            NotificationSettingType settingType,
+            NotificationSettingUpdateRequest request
+    ) {
+        NotificationSetting setting = notificationSettingRepository
+                .findByUser_IdAndSettingType(userId, settingType)
+                .orElseGet(() -> NotificationSetting.of(
+                        userRepository.getReferenceById(userId),
+                        settingType
+                ));
+
+        setting.updateEnabled(request.enabled());
+
+        NotificationSetting savedSetting =
+                notificationSettingRepository.save(setting);
+
+        return new NotificationSettingItemResponse(
+                savedSetting.getSettingType(),
+                savedSetting.getEnabled()
+        );
+    }
+
 
     private Map<String, String> createPushData(Long notificationId, PushMessage message) {
         Map<String, String> data = new HashMap<>();
