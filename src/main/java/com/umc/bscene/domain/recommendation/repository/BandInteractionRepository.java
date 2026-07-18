@@ -1,14 +1,23 @@
 package com.umc.bscene.domain.recommendation.repository;
 
 import com.umc.bscene.domain.recommendation.entity.BandInteraction;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import java.time.LocalDateTime;
+import java.util.List;
+import java.util.Optional;
 
 public interface BandInteractionRepository extends JpaRepository<BandInteraction, Long> {
+
+    // 특정 유저-밴드 쌍의 상호작용 단건 조회
+    Optional<BandInteraction> findByUser_IdAndBand_Id(Long userId, Long bandId);
+
+    // 유저의 클릭 수 상위 N개 밴드 조회 (limit은 Pageable로 전달)
+    List<BandInteraction> findByUser_IdOrderByClickCountDesc(Long userId, Pageable pageable);
 
     // 이미 (userId, bandId) row가 있는 경우: SELECT 없이 clickCount를 원자적으로 +1.
     // 대상 row가 없으면 0건 갱신되므로, row 존재 여부를 모르는 최초 상호작용 시점에는 upsertInteraction()을 사용할 것.
