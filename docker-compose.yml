@@ -88,6 +88,8 @@ services:
     image: grafana/promtail:3.4.1
     container_name: promtail
     restart: always
+    environment:
+      - LOKI_URL=${LOKI_URL}
     volumes:
       - ./promtail/promtail-config.yml:/etc/promtail/config.yml:ro
       - /var/lib/docker/containers:/var/lib/docker/containers:ro
