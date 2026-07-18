@@ -1,8 +1,15 @@
+x-logging: &default-logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "3"
+
 services:
 
   spring:
     image: ${BACKEND_IMAGE}
     container_name: spring
+    logging: *default-logging
     restart: always
     env_file: ./.env
     expose:
@@ -15,6 +22,7 @@ services:
   redis:
     image: redis:7.4-alpine
     container_name: redis
+    logging: *default-logging
     restart: always
     expose:
       - "6379"
@@ -46,6 +54,7 @@ services:
   nginx:
     image: nginx:stable
     container_name: nginx
+    logging: *default-logging
     restart: always
     ports:
       - "80:80"
@@ -70,6 +79,7 @@ services:
   node-exporter:
     image: prom/node-exporter:v1.9.1
     container_name: node-exporter
+    logging: *default-logging
     restart: always
     pid: host
     ports:
@@ -87,6 +97,7 @@ services:
   promtail:
     image: grafana/promtail:3.4.1
     container_name: promtail
+    logging: *default-logging
     restart: always
     environment:
       - LOKI_URL=${LOKI_URL}
