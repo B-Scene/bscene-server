@@ -1,6 +1,6 @@
 package com.umc.bscene.domain.notification.entity;
 
-import com.umc.bscene.domain.notification.enums.NotificationSettingType;
+import com.umc.bscene.global.notification.enums.NotificationSettingType;
 import com.umc.bscene.domain.user.entity.User;
 import com.umc.bscene.global.entity.BaseEntity;
 import jakarta.persistence.*;

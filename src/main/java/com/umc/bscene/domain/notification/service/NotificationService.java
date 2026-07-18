@@ -11,7 +11,6 @@ import com.umc.bscene.domain.notification.dto.response.PushSendResult;
 import com.umc.bscene.domain.notification.entity.Notification;
 import com.umc.bscene.domain.notification.entity.NotificationSetting;
 import com.umc.bscene.domain.notification.entity.PushToken;
-import com.umc.bscene.domain.notification.enums.NotificationSettingType;
 import com.umc.bscene.domain.notification.exception.NotificationException;
 import com.umc.bscene.domain.notification.port.PushPort;
 import com.umc.bscene.domain.notification.repository.NotificationRepository;
@@ -19,8 +18,9 @@ import com.umc.bscene.domain.notification.repository.NotificationSettingReposito
 import com.umc.bscene.domain.notification.repository.PushTokenRepository;
 import com.umc.bscene.domain.notification.response.code.NotificationErrorCode;
 import com.umc.bscene.domain.user.entity.User;
-import com.umc.bscene.domain.user.enums.UserMode;
 import com.umc.bscene.domain.user.repository.UserRepository;
+import com.umc.bscene.global.notification.enums.NotificationSettingMode;
+import com.umc.bscene.global.notification.enums.NotificationSettingType;
 import com.umc.bscene.global.notification.message.PushMessage;
 import com.umc.bscene.global.response.CursorPage;
 import lombok.RequiredArgsConstructor;
@@ -163,7 +163,7 @@ public class NotificationService {
     @Transactional(readOnly = true)
     public NotificationSettingsResponse getNotificationSettings(
             Long userId,
-            UserMode mode
+            NotificationSettingMode mode
     ) {
         List<NotificationSettingType> settingTypes = Arrays.stream(
                         NotificationSettingType.values()
