@@ -23,6 +23,10 @@ public interface PostRepository extends JpaRepository<Post, Long> {
     @Query("SELECT DISTINCT p.band.id FROM Post p WHERE p.band.id IN :bandIds AND p.createdAt >= :since")
     List<Long> findBandIdsWithRecentPost(@Param("bandIds") List<Long> bandIds, @Param("since") LocalDateTime since);
 
+    // 후보 밴드별 가장 최근 포스트 작성일시 (추천 동점자 정렬용 tie-breaker)
+    @Query("SELECT p.band.id, MAX(p.createdAt) FROM Post p WHERE p.band.id IN :bandIds GROUP BY p.band.id")
+    List<Object[]> findLatestActivityAtByBandIds(@Param("bandIds") List<Long> bandIds);
+
     // FanHomeAdapter에서 사용 : 팔로우한 밴드 소식을 id 커서 기반 최신순으로 조회 (홈 미리보기 + 전체조회 공용, 밴드 정보 fetch join)
     // 첫 페이지는 cursor에 Long.MAX_VALUE를 넘겨 상위부터 조회 (id < :cursor 를 깨끗한 인덱스 range seek로 유지)
     @Query("SELECT p FROM Post p JOIN FETCH p.band b " +
