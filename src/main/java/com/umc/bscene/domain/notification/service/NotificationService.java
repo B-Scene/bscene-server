@@ -101,8 +101,14 @@ public class NotificationService {
     // 푸시 알림
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void send(Long receiverId, PushMessage message) {
+        if (!isNotificationEnabled(receiverId, message)) {
+            return;
+        }
+
         User receiver = userRepository.findById(receiverId)
-                .orElseThrow(() -> new NotificationException(NotificationErrorCode.RECEIVER_NOT_FOUND));
+                .orElseThrow(() -> new NotificationException(
+                        NotificationErrorCode.RECEIVER_NOT_FOUND
+                ));
 
         Notification notification = notificationRepository.save(
                 Notification.of(receiver, message)
@@ -224,6 +230,24 @@ public class NotificationService {
         );
     }
 
+
+    // 저장된 설정이 없으면 알림 종류별 기본값을 사용합니다.
+    private boolean isNotificationEnabled(
+            Long userId,
+            PushMessage message
+    ) {
+        NotificationSettingType settingType = message.settingType();
+
+        // 설정 항목이 없는 쪽지·게시물 알림은 항상 발송합니다.
+        if (settingType == null) {
+            return true;
+        }
+
+        return notificationSettingRepository
+                .findByUser_IdAndSettingType(userId, settingType)
+                .map(setting -> Boolean.TRUE.equals(setting.getEnabled()))
+                .orElse(settingType.isDefaultEnabled());
+    }
 
     private Map<String, String> createPushData(Long notificationId, PushMessage message) {
         Map<String, String> data = new HashMap<>();
