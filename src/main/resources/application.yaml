@@ -76,6 +76,12 @@ spring:
     virtual:
       enabled: true
 
+  # discord webhook
+  http:
+    serviceclient:
+      discord:
+        base-url: ${DISCORD_WEBHOOK_URL}
+
 jwt:
   token:
     secretKey: ${JWT_SECRET_KEY}
