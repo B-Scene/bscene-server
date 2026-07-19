@@ -2,6 +2,7 @@ package com.umc.bscene.domain.stream.service;
 
 import com.umc.bscene.domain.chat.service.LiveChatRoomCloser;
 import com.umc.bscene.domain.stream.dto.StreamPushMessage;
+import com.umc.bscene.domain.stream.dto.request.DiscordWebhookRequest;
 import com.umc.bscene.domain.stream.dto.request.ReportUserRequest;
 import com.umc.bscene.domain.stream.dto.request.ReservationPatchRequest;
 import com.umc.bscene.domain.stream.dto.request.StreamCreateRequest;
@@ -25,6 +26,7 @@ import com.umc.bscene.domain.stream.entity.LiveAlarm;
 import com.umc.bscene.domain.stream.entity.StreamReplay;
 import com.umc.bscene.domain.stream.entity.mapper.ReportHistory;
 import com.umc.bscene.domain.stream.entity.mapper.StreamMember;
+import com.umc.bscene.domain.stream.enums.DiscordEventMessage;
 import com.umc.bscene.domain.stream.enums.StreamMemberStatus;
 import com.umc.bscene.domain.stream.enums.StreamStatus;
 import com.umc.bscene.domain.stream.enums.code.error.StreamErrorCode;
@@ -115,6 +117,7 @@ public class StreamServiceImpl implements StreamService {
     private final RestClient mtxRestClient;
     private final ViewerSsePresence viewerSsePresence;
     private final LiveChatRoomCloser liveChatRoomCloser;
+    private final DiscordMessageSender discordMessageSender;
 
     private final String hlsUrl;
     private final String webrtcUrl;
@@ -1023,7 +1026,7 @@ public class StreamServiceImpl implements StreamService {
                 .findFirst()
                 .orElseThrow(() -> new StreamException(StreamErrorCode.REPORT_TARGET_NOT_FOUND));
 
-        ReportHistory report = reportHistoryRepository.save(
+        reportHistoryRepository.save(
                 ReportHistory.builder()
                         .targetUser(targetUser)
                         .audioStream(stream)
@@ -1034,18 +1037,19 @@ public class StreamServiceImpl implements StreamService {
                         .build()
         );
 
-        // 모니터링 파이프라인(Loki -> 디스코드 신고 채널) 감지용 로그.
-        // 롤백된 신고가 알림으로 새지 않도록 커밋 이후에 기록 (마커: [USER_REPORT])
+        // 신고 이력이 저장되면, Discord Webhook으로 메시지 발신하는 로직
         TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
             @Override
             public void afterCommit() {
-                log.warn("[USER_REPORT] reportId={} liveId={} reporterId={} targetUserId={} reportType={} chatMessage=\"{}\"",
-                        report.getId(),
-                        stream.getId(),
-                        reporter.getId(),
-                        request.targetUserId(),
-                        request.reportType(),
-                        request.chatMessage()
+                discordMessageSender.send(
+                        DiscordWebhookRequest.of(
+                                DiscordEventMessage.USER_REPORT_EVENT,
+                                reporter.getId(),
+                                targetUser.getId(),
+                                request.reportType(),
+                                request.chatMessage(),
+                                request.comment()
+                        )
                 );
             }
         });
