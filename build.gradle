@@ -47,6 +47,10 @@ dependencies {
 	// coolsms
 	implementation 'net.nurigo:sdk:4.3.0'
 
+	// api response time monitoring
+	implementation 'org.springframework.boot:spring-boot-starter-actuator'
+	runtimeOnly 'io.micrometer:micrometer-registry-prometheus'
+
 	// Test Only
 	testRuntimeOnly 'com.h2database:h2'
 }
