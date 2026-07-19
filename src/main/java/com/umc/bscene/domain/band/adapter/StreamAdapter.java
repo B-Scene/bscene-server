@@ -1,8 +1,11 @@
 package com.umc.bscene.domain.band.adapter;
 
 import com.umc.bscene.domain.band.entity.Band;
+import com.umc.bscene.domain.band.entity.BandMember;
+import com.umc.bscene.domain.band.entity.BandMemberProfile;
 import com.umc.bscene.domain.band.enums.BandMemberStatus;
 import com.umc.bscene.domain.band.repository.BandMemberRepository;
+import com.umc.bscene.domain.band.repository.BandRepository;
 import com.umc.bscene.domain.stream.dto.response.BandInfoForGetLiveResponse;
 import com.umc.bscene.domain.stream.dto.response.BandSummaryResponse;
 import com.umc.bscene.domain.stream.dto.response.CoHostCandidateResponse;
@@ -10,7 +13,10 @@ import com.umc.bscene.domain.stream.dto.response.LiveMembersResponse;
 import com.umc.bscene.domain.stream.port.BandMemberPort;
 import lombok.RequiredArgsConstructor;
 
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -19,6 +25,7 @@ import java.util.stream.Collectors;
 public class StreamAdapter implements BandMemberPort {
 
     private final BandMemberRepository bandMemberRepository;
+    private final BandRepository bandRepository;
 
     @Override
     public List<BandInfoForGetLiveResponse> getBandNameWithBandProfileByBroadcasterId(Set<Long> broadcasterIds) {
@@ -47,27 +54,77 @@ public class StreamAdapter implements BandMemberPort {
 
     @Override
     public Optional<BandSummaryResponse> getBandSummaryByBroadcasterId(Long broadcasterId) {
-        return Optional.empty();
+        return findActiveBandMembership(broadcasterId)
+                .map(member -> {
+                    Band band = member.getBand();
+                    return new BandSummaryResponse(band.getId(), band.getName());
+                });
     }
 
     @Override
     public Optional<BandSummaryResponse> getBandSummaryByBandId(Long bandId) {
-        return Optional.empty();
+        return bandRepository.findById(bandId)
+                .map(band -> new BandSummaryResponse(band.getId(), band.getName()));
     }
 
     @Override
     public List<CoHostCandidateResponse> getCoHostCandidatesByBroadcasterId(Long broadcasterId) {
-        return List.of();
+        return findActiveBandMembership(broadcasterId)
+                .map(member -> bandMemberRepository
+                        .findWithUserByBand_IdAndStatus(member.getBand().getId(), BandMemberStatus.ACCEPTED).stream()
+                        .filter(bm -> !bm.getUser().getId().equals(broadcasterId))
+                        .map(bm -> new CoHostCandidateResponse(bm.getUser().getId(), bm.getUser().getName()))
+                        .toList())
+                .orElseGet(List::of);
     }
 
     @Override
     public boolean isRegularMemberOfBroadcasterBand(Long broadcasterId, Long userId) {
-        return false;
+        return findActiveBandMembership(broadcasterId)
+                .map(member -> bandMemberRepository.existsByBand_IdAndUser_IdAndStatus(
+                        member.getBand().getId(), userId, BandMemberStatus.ACCEPTED))
+                .orElse(false);
     }
 
     @Override
     public List<LiveMembersResponse.LiveMemberProfileResponse> getLiveMemberProfiles(Long bandId, List<Long> userIds) {
-        return List.of();
+        if (userIds.isEmpty()) {
+            return List.of();
+        }
+
+        Map<Long, BandMember> memberByUserId = bandMemberRepository
+                .findWithBandAndProfileByBand_IdAndUser_IdIn(bandId, userIds).stream()
+                .collect(Collectors.toMap(
+                        member -> member.getUser().getId(),
+                        member -> member,
+                        (first, second) -> first,
+                        LinkedHashMap::new
+                ));
+
+        return userIds.stream()
+                .map(memberByUserId::get)
+                .filter(Objects::nonNull)
+                .map(member -> {
+                    Band band = member.getBand();
+                    BandMemberProfile profile = member.getBandMemberProfile();
+                    boolean isLeader = band.getOwner().getId().equals(member.getUser().getId());
+                    return new LiveMembersResponse.LiveMemberProfileResponse(
+                            band.getProfileImageUrl(),
+                            profile.getNickname(),
+                            band.getName(),
+                            List.of(profile.getPart()),
+                            isLeader
+                    );
+                })
+                .toList();
+    }
+
+    // 송출자의 현재 활성 프로필(BandMemberProfile.active = true)에 연결된 밴드 소속 정보를 조회
+    private Optional<BandMember> findActiveBandMembership(Long broadcasterId) {
+        return bandMemberRepository
+                .findWithBandByUser_IdInAndStatus(Set.of(broadcasterId), BandMemberStatus.ACCEPTED)
+                .stream()
+                .findFirst();
     }
 
     @Override

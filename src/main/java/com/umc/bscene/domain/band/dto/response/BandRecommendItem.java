@@ -11,9 +11,10 @@ public record BandRecommendItem(
         Region region,
         String profileImageUrl,
         String description,
-        int score
+        double score,
+        String reason
 ) {
-    public static BandRecommendItem of(Band band, int score) {
+    public static BandRecommendItem of(Band band, double score, String reason) {
         return new BandRecommendItem(
                 band.getId(),
                 band.getName(),
@@ -21,7 +22,8 @@ public record BandRecommendItem(
                 band.getRegion(),
                 band.getProfileImageUrl(),
                 band.getDescription(),
-                score
+                score,
+                reason
         );
     }
 }

@@ -9,6 +9,7 @@ import com.umc.bscene.domain.band.dto.response.BandResponse;
 import com.umc.bscene.domain.band.response.code.BandSuccessCode;
 import com.umc.bscene.domain.band.service.BandRecommendationService;
 import com.umc.bscene.domain.band.service.BandService;
+import com.umc.bscene.domain.recommendation.service.InteractionService;
 import com.umc.bscene.global.response.SuccessResponse;
 import com.umc.bscene.global.security.entity.AuthMember;
 import jakarta.validation.Valid;
@@ -24,6 +25,7 @@ public class BandController {
 
     private final BandService bandService;
     private final BandRecommendationService bandRecommendationService;
+    private final InteractionService interactionService;
 
     // 밴드 개설 API
     @PostMapping
@@ -40,7 +42,7 @@ public class BandController {
         return ResponseEntity.status(successResponse.getStatus()).body(successResponse);
     }
 
-    // 밴드 추천 목록 조회 API (취향/활동 기반)
+    // 밴드 추천 목록 조회 API
     @GetMapping("/recommendations")
     public ResponseEntity<SuccessResponse<BandRecommendResponse>> getRecommendedBands(
             @AuthenticationPrincipal AuthMember authMember,
@@ -76,9 +78,11 @@ public class BandController {
     // 밴드 프로필 조회
     @GetMapping("/{bandId}")
     public ResponseEntity<SuccessResponse<BandProfileResponse>> getBandProfile(
+            @AuthenticationPrincipal AuthMember authMember,
             @PathVariable Long bandId
     ) {
         BandProfileResponse response = bandService.getBandProfile(bandId);
+        interactionService.recordClick(authMember.getUser().getId(), bandId);
         SuccessResponse<BandProfileResponse> successResponse = SuccessResponse.of(
                 response,
                 BandSuccessCode.BAND_PROFILE_GET_SUCCESS

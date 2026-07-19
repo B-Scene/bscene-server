@@ -23,7 +23,9 @@ public enum Region {
     GYEONGBUK("경북"),
     GYEONGNAM("경남"),
     GANGWON("강원"),
-    JEJU("제주");
+    JEJU("제주"),
+    UNKNOWN("지역 미상");
+
 
     private final String name;
 }

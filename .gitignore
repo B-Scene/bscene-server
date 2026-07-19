@@ -44,6 +44,11 @@ out/
 .env.*
 !.env.example
 
+# ml-server (Python batch)
+ml-server/venv/
+ml-server/__pycache__/
+ml-server/*.pyc
+
 # Oh My Codex(Claude)
 .omx/
 .omc/

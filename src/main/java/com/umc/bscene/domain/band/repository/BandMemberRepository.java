@@ -58,6 +58,34 @@ public interface BandMemberRepository extends JpaRepository<BandMember, Long> {
             @Param("status") BandMemberStatus status
     );
 
+    // 공동 진행 후보 조회용 - 밴드의 정회원 목록을 유저 정보(이름)까지 한 번에 조회
+    @Query("""
+        SELECT bm
+        FROM BandMember bm
+        JOIN FETCH bm.user
+        WHERE bm.band.id = :bandId
+          AND bm.status = :status
+    """)
+    List<BandMember> findWithUserByBand_IdAndStatus(
+            @Param("bandId") Long bandId,
+            @Param("status") BandMemberStatus status
+    );
+
+    // 라이브 방 멤버 프로필 조회용 - 라이브 생성 시점에 확정된 밴드 기준으로 멤버 프로필까지 한 번에 조회
+    // 밴드 멤버 프로필이 지정되지 않은 멤버(JOIN FETCH bm.bandMemberProfile)는 자동으로 제외됨
+    @Query("""
+        SELECT bm
+        FROM BandMember bm
+        JOIN FETCH bm.band
+        JOIN FETCH bm.bandMemberProfile
+        WHERE bm.band.id = :bandId
+          AND bm.user.id IN :userIds
+    """)
+    List<BandMember> findWithBandAndProfileByBand_IdAndUser_IdIn(
+            @Param("bandId") Long bandId,
+            @Param("userIds") Collection<Long> userIds
+    );
+
     @Query("""
         SELECT bm
         FROM BandMember bm
