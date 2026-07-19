@@ -26,3 +26,15 @@ scrape_configs:
       - source_labels: ['__meta_docker_container_name']
         regex: '/(.*)'
         target_label: 'container'
+    pipeline_stages:
+      # Spring Boot 기본 로그 형태는 "yyyy-MM-dd T HH:mm:ss.SSSSSS... 로 시작
+      # 유효한 값(Stack Trace, Caused By 등)을 직전 로그에 병합
+      - multiline:
+          firstline: '^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}'
+          max_wait_time: 3s
+          max_lines: 500
+      # 로그 레벨을 label로 추출
+      - regexp:
+          expression: '^\S+\s+(?P<level>ERROR|WARN|INFO|DEBUG|TRACE)'
+      - labels:
+          level:
