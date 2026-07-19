@@ -23,7 +23,10 @@ public enum PermitAllUri {
     OAUTH_EXCHANGE("/auth/oauth/exchange"),
 
     GENRES("/genres"),
-    REGIONS("/regions");
+    REGIONS("/regions"),
+
+    SPRING_ACTUATOR("/actuator/**"),
+    ;
 
     private final String uri;
 }
