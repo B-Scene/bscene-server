@@ -1,8 +1,8 @@
 package com.umc.bscene.domain.stream.config;
 
-import com.umc.bscene.domain.stream.dto.request.DiscordWebhookRequest;
 import com.umc.bscene.domain.stream.port.*;
 import com.umc.bscene.domain.stream.repository.*;
+import com.umc.bscene.domain.stream.scheduler.DiscordNotifyRetryScheduler;
 import com.umc.bscene.domain.stream.scheduler.StreamCleanupScheduler;
 import com.umc.bscene.domain.stream.scheduler.StreamReminderScheduler;
 import com.umc.bscene.domain.stream.service.*;
@@ -59,8 +59,20 @@ public class StreamConfig {
     }
 
     @Bean
-    public DiscordMessageSender discordMessageSender(DiscordWebhookPort discordWebhookPort) {
-        return new DiscordMessageSender(discordWebhookPort);
+    public DiscordMessageSender discordMessageSender(
+            DiscordWebhookPort discordWebhookPort,
+            ReportHistoryRepository reportHistoryRepository
+    ) {
+        return new DiscordMessageSender(discordWebhookPort, reportHistoryRepository);
+    }
+
+    // 즉시 발송에 실패한 디스코드 신고 알림을 재발송하는 안전망 스케줄러
+    @Bean
+    public DiscordNotifyRetryScheduler discordNotifyRetryScheduler(
+            ReportHistoryRepository reportHistoryRepository,
+            DiscordMessageSender discordMessageSender
+    ) {
+        return new DiscordNotifyRetryScheduler(reportHistoryRepository, discordMessageSender);
     }
 
     @Bean
