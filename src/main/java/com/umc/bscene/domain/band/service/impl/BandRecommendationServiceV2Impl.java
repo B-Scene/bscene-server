@@ -8,6 +8,8 @@ import com.umc.bscene.domain.band.entity.Band;
 import com.umc.bscene.domain.band.repository.BandRepository;
 import com.umc.bscene.domain.band.service.BandRecommendationService;
 import com.umc.bscene.domain.follow.repository.FollowRepository;
+import com.umc.bscene.domain.performance.enums.PerformanceStatus;
+import com.umc.bscene.domain.performance.repository.PerformanceRepository;
 import com.umc.bscene.domain.post.repository.PostRepository;
 import com.umc.bscene.domain.recommendation.entity.BandSimilarity;
 import com.umc.bscene.domain.recommendation.event.BandRecommendationExposedEvent;
@@ -26,6 +28,7 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -81,6 +84,7 @@ public class BandRecommendationServiceV2Impl implements BandRecommendationServic
     private final UserGenresRepository userGenresRepository;
     private final UserRegionsRepository userRegionsRepository;
     private final PostRepository postRepository;
+    private final PerformanceRepository performanceRepository;
     private final BandSimilarityRepository bandSimilarityRepository;
     private final ApplicationEventPublisher eventPublisher;
     private final BandInteractionRepository bandInteractionRepository;
@@ -137,10 +141,15 @@ public class BandRecommendationServiceV2Impl implements BandRecommendationServic
 
         List<Long> candidateIds = new ArrayList<>(candidateBands.keySet());
 
-        LocalDateTime activitySince = LocalDateTime.now().minusDays(RECENT_ACTIVITY_DAYS);
-        Set<Long> recentActivityBandIds = candidateIds.isEmpty()
-                ? Set.of()
-                : new HashSet<>(postRepository.findBandIdsWithRecentPost(candidateIds, activitySince));
+        // 최근 활동 = 최근 포스트 작성 OR 최근/예정 공연 (둘 중 하나만 있어도 활동 있는 것으로 취급)
+        LocalDateTime postActivitySince = LocalDateTime.now().minusDays(RECENT_ACTIVITY_DAYS);
+        LocalDate performanceActivitySince = LocalDate.now().minusDays(RECENT_ACTIVITY_DAYS);
+        Set<Long> recentActivityBandIds = new HashSet<>();
+        if (!candidateIds.isEmpty()) {
+            recentActivityBandIds.addAll(postRepository.findBandIdsWithRecentPost(candidateIds, postActivitySince));
+            recentActivityBandIds.addAll(performanceRepository.findBandIdsWithRecentPerformance(
+                    candidateIds, PerformanceStatus.ACTIVE, performanceActivitySince));
+        }
 
         Map<Long, LocalDateTime> latestActivityAtByBandId = candidateIds.isEmpty()
                 ? Map.of()

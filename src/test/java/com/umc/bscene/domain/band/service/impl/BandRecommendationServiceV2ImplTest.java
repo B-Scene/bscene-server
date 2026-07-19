@@ -7,6 +7,8 @@ import com.umc.bscene.domain.band.dto.response.BandRecommendResponse;
 import com.umc.bscene.domain.band.entity.Band;
 import com.umc.bscene.domain.band.repository.BandRepository;
 import com.umc.bscene.domain.follow.repository.FollowRepository;
+import com.umc.bscene.domain.performance.enums.PerformanceStatus;
+import com.umc.bscene.domain.performance.repository.PerformanceRepository;
 import com.umc.bscene.domain.post.repository.PostRepository;
 import com.umc.bscene.domain.recommendation.entity.BandInteraction;
 import com.umc.bscene.domain.recommendation.entity.BandSimilarity;
@@ -55,6 +57,8 @@ class BandRecommendationServiceV2ImplTest {
     @Mock
     private PostRepository postRepository;
     @Mock
+    private PerformanceRepository performanceRepository;
+    @Mock
     private BandSimilarityRepository bandSimilarityRepository;
     @Mock
     private ApplicationEventPublisher eventPublisher;
@@ -70,7 +74,7 @@ class BandRecommendationServiceV2ImplTest {
         service = new BandRecommendationServiceV2Impl(
                 bandRepository, followRepository, userRepository,
                 userGenresRepository, userRegionsRepository,
-                postRepository, bandSimilarityRepository, eventPublisher,
+                postRepository, performanceRepository, bandSimilarityRepository, eventPublisher,
                 bandInteractionRepository
         );
         when(userRepository.getReferenceById(USER_ID)).thenReturn(User.builder().id(USER_ID).build());
@@ -247,6 +251,27 @@ class BandRecommendationServiceV2ImplTest {
 
         assertEquals(1, response.bands().size());
         assertEquals(20L, response.bands().get(0).bandId());
+    }
+
+    @Test
+    void recentPerformanceCountsAsActivityEvenWithoutRecentPost() {
+        // 최근 포스트가 없어도 최근/예정 공연이 있으면 활동 점수를 받아야 한다 (V1엔 있었는데 V2엔 빠져있던 신호).
+        when(followRepository.findBandIdsByUserId(USER_ID)).thenReturn(List.of());
+        when(userGenresRepository.findAllByUser(any(User.class)))
+                .thenReturn(List.of(UserGenres.builder().genre(Genre.ROCK).build()));
+        when(userRegionsRepository.findAllByUser(any(User.class))).thenReturn(List.of());
+
+        Band candidate = band(1L, Genre.ROCK, Region.SEOUL);
+        when(bandRepository.findByGenreIn(any())).thenReturn(List.of(candidate));
+        when(postRepository.findBandIdsWithRecentPost(anyList(), any())).thenReturn(List.of());
+        when(postRepository.findLatestActivityAtByBandIds(anyList())).thenReturn(List.of());
+        when(performanceRepository.findBandIdsWithRecentPerformance(anyList(), eq(PerformanceStatus.ACTIVE), any()))
+                .thenReturn(List.of(1L));
+
+        BandRecommendResponse response = service.getRecommendedBands(USER_ID, null, null);
+
+        BandRecommendItem item = response.bands().get(0);
+        assertEquals(4.0, item.score(), 1e-9); // genre(3) + activity(1)
     }
 
     @Test
