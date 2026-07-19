@@ -110,3 +110,8 @@ notification:
     credentials-base64: ${FCM_CREDENTIALS_BASE64:}
   terms:
     live-id: ${NOTIFICATION_TERMS_LIVE_ID:4}
+
+# discord
+discord:
+  name: discord-feign-client
+  webhook-url: ${DISCORD_WEBHOOK_URL}
