@@ -9,12 +9,8 @@ import org.springframework.data.repository.query.Param;
 
 import java.time.LocalDateTime;
 import java.util.List;
-import java.util.Optional;
 
 public interface BandInteractionRepository extends JpaRepository<BandInteraction, Long> {
-
-    // 특정 유저-밴드 쌍의 상호작용 단건 조회
-    Optional<BandInteraction> findByUser_IdAndBand_Id(Long userId, Long bandId);
 
     // 유저의 클릭 수 상위 N개 밴드 조회 (limit은 Pageable로 전달)
     List<BandInteraction> findByUser_IdOrderByClickCountDesc(Long userId, Pageable pageable);
