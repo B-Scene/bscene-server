@@ -2,7 +2,6 @@ package com.umc.bscene.domain.stream.service;
 
 import com.umc.bscene.domain.chat.service.LiveChatRoomCloser;
 import com.umc.bscene.domain.stream.dto.StreamPushMessage;
-import com.umc.bscene.domain.stream.dto.request.DiscordWebhookRequest;
 import com.umc.bscene.domain.stream.dto.request.ReportUserRequest;
 import com.umc.bscene.domain.stream.dto.request.ReservationPatchRequest;
 import com.umc.bscene.domain.stream.dto.request.StreamCreateRequest;
@@ -26,7 +25,6 @@ import com.umc.bscene.domain.stream.entity.LiveAlarm;
 import com.umc.bscene.domain.stream.entity.StreamReplay;
 import com.umc.bscene.domain.stream.entity.mapper.ReportHistory;
 import com.umc.bscene.domain.stream.entity.mapper.StreamMember;
-import com.umc.bscene.domain.stream.enums.DiscordEventMessage;
 import com.umc.bscene.domain.stream.enums.StreamMemberStatus;
 import com.umc.bscene.domain.stream.enums.StreamStatus;
 import com.umc.bscene.domain.stream.enums.code.error.StreamErrorCode;
@@ -1026,7 +1024,7 @@ public class StreamServiceImpl implements StreamService {
                 .findFirst()
                 .orElseThrow(() -> new StreamException(StreamErrorCode.REPORT_TARGET_NOT_FOUND));
 
-        reportHistoryRepository.save(
+        ReportHistory savedReport = reportHistoryRepository.save(
                 ReportHistory.builder()
                         .targetUser(targetUser)
                         .audioStream(stream)
@@ -1037,20 +1035,11 @@ public class StreamServiceImpl implements StreamService {
                         .build()
         );
 
-        // 신고 이력이 저장되면, Discord Webhook으로 메시지 발신하는 로직
+        // 신고 이력이 커밋되면 Discord Webhook으로 알림을 즉시 발송 시도한다 (비동기, 실패 시 스케줄러가 재발송)
         TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
             @Override
             public void afterCommit() {
-                discordMessageSender.send(
-                        DiscordWebhookRequest.of(
-                                DiscordEventMessage.USER_REPORT_EVENT,
-                                reporter.getId(),
-                                targetUser.getId(),
-                                request.reportType(),
-                                request.chatMessage(),
-                                request.comment()
-                        )
-                );
+                discordMessageSender.sendReportNotificationAsync(savedReport.getId());
             }
         });
     }
