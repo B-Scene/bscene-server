@@ -281,11 +281,21 @@ public class NotificationService {
 
         if (result.isInvalidToken()) {
             pushTokenRepository.delete(pushToken);
-        } else if (result.isFailed()) {
+
             log.warn(
-                    "FCM 발송 실패: tokenId={}, userId={}",
+                    "FCM 무효 토큰 삭제: tokenId={}, userId={}, errorCode={}, errorMessage={}",
                     pushToken.getId(),
-                    pushToken.getUser().getId()
+                    pushToken.getUser().getId(),
+                    result.errorCode(),
+                    result.errorMessage()
+            );
+        } else if (result.isFailed()) {
+            log.error(
+                    "FCM 발송 실패: tokenId={}, userId={}, errorCode={}, errorMessage={}",
+                    pushToken.getId(),
+                    pushToken.getUser().getId(),
+                    result.errorCode(),
+                    result.errorMessage()
             );
         }
 
