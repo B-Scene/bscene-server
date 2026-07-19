@@ -1,4 +1,8 @@
 package com.umc.bscene.domain.stream.dto.request;
 
-public record DiscordWebhookRequest() {
+import com.umc.bscene.domain.stream.enums.DiscordEventMessage;
+
+public record DiscordWebhookRequest(
+        DiscordEventMessage message
+) {
 }
