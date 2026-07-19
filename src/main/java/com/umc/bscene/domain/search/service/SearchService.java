@@ -11,6 +11,7 @@ import com.umc.bscene.domain.search.dto.response.ExploreSearchResponse.BandItem;
 import com.umc.bscene.domain.search.dto.response.ExploreSearchResponse.PerformanceItem;
 import com.umc.bscene.domain.search.dto.response.ExploreSearchResponse.SearchSection;
 import com.umc.bscene.domain.search.dto.response.ExploreSearchResponse.PostItem;
+import com.umc.bscene.domain.search.enums.SearchSortType;
 import com.umc.bscene.domain.search.enums.SearchType;
 import com.umc.bscene.domain.search.exception.SearchException;
 import com.umc.bscene.domain.search.port.FollowPort;
@@ -31,7 +32,8 @@ import java.util.Set;
 /**
  * 탐색 통합검색.
  * - 검색어(must, multi_match)는 필수, 장르·지역(filter, term)은 선택
- * - 정렬 : 정확도(_score) → 최신순(날짜) → docId — 결정적 정렬이라 search_after 커서의 전제가 된다
+ * - 정렬 : 정확도 = _score → 날짜 → docId / 인기 = popularity → _score → docId
+ *   — 결정적 정렬이라 search_after 커서의 전제가 된다
  * - should 가점 : 구문 일치(match_phrase) + 완전 일치(term, raw) 문서를 상위로
  * - ALL : 섹션별 상위 SECTION_SIZE개 (multiSearch 한 번)
  * - 단일 타입 : search_after 커서 기반 무한스크롤 (size+1개 조회로 hasNext 판정)
@@ -63,7 +65,7 @@ public class SearchService {
     private final FollowPort followPort;
 
     public ExploreSearchResponse search(
-            Long userId, String keyword, SearchType type,
+            Long userId, String keyword, SearchType type, SearchSortType sort,
             Genre genre, Region region, String cursor, int size
     ) {
         if (keyword == null || keyword.isBlank()) {
@@ -73,10 +75,10 @@ public class SearchService {
 
         try {
             return switch (type) {
-                case ALL -> searchAll(userId, trimmed, genre, region);
-                case BAND -> searchBandsOnly(userId, trimmed, genre, region, cursor, size);
-                case PERFORMANCE -> searchPerformancesOnly(trimmed, genre, region, cursor, size);
-                case POST -> searchPostsOnly(trimmed, genre, region, cursor, size);
+                case ALL -> searchAll(userId, trimmed, sort, genre, region);
+                case BAND -> searchBandsOnly(userId, trimmed, sort, genre, region, cursor, size);
+                case PERFORMANCE -> searchPerformancesOnly(trimmed, sort, genre, region, cursor, size);
+                case POST -> searchPostsOnly(trimmed, sort, genre, region, cursor, size);
             };
         } catch (SearchException e) {
             throw e;    // 잘못된 커서(400) 등 의도된 예외는 그대로 전달
@@ -88,13 +90,13 @@ public class SearchService {
     }
 
     // 통합 모드 : 쿼리 3개를 multiSearch(_msearch) 한 번으로 실행, 섹션별 상위 SECTION_SIZE개 + 전체 건수 합산
-    private ExploreSearchResponse searchAll(Long userId, String keyword, Genre genre, Region region) {
+    private ExploreSearchResponse searchAll(Long userId, String keyword, SearchSortType sort, Genre genre, Region region) {
         NativeQuery bandQuery = buildQuery(keyword, BAND_FUZZY_FIELDS, BAND_EXACT_FIELDS, BAND_PREFIX_FIELDS,
-                "name", genre, region, "createdAt", SECTION_SIZE, null);
+                "name", genre, region, "createdAt", sort, SECTION_SIZE, null);
         NativeQuery performanceQuery = buildQuery(keyword, PERFORMANCE_FUZZY_FIELDS, PERFORMANCE_EXACT_FIELDS, PERFORMANCE_PREFIX_FIELDS,
-                "title", genre, region, "performanceDate", SECTION_SIZE, null);
+                "title", genre, region, "performanceDate", sort, SECTION_SIZE, null);
         NativeQuery postQuery = buildQuery(keyword, POST_FUZZY_FIELDS, POST_EXACT_FIELDS, POST_PREFIX_FIELDS,
-                "title", genre, region, "uploadedAt", SECTION_SIZE, null);
+                "title", genre, region, "uploadedAt", sort, SECTION_SIZE, null);
 
         List<SearchHits<?>> results = elasticsearchOperations.multiSearch(
                 List.of(bandQuery, performanceQuery, postQuery),
@@ -122,11 +124,11 @@ public class SearchService {
     }
 
     // 단일 모드 : 밴드만 커서 기반 무한스크롤
-    private ExploreSearchResponse searchBandsOnly(Long userId, String keyword, Genre genre, Region region, String cursor, int size) {
+    private ExploreSearchResponse searchBandsOnly(Long userId, String keyword, SearchSortType sort, Genre genre, Region region, String cursor, int size) {
         int pageSize = clampSize(size);
         NativeQuery query = buildQuery(keyword, BAND_FUZZY_FIELDS, BAND_EXACT_FIELDS, BAND_PREFIX_FIELDS,
-                "name", genre, region, "createdAt", pageSize + 1, SearchCursor.decode(cursor));
-        CursorSlice<BandDocument> slice = searchSlice(query, BandDocument.class, pageSize);
+                "name", genre, region, "createdAt", sort, pageSize + 1, SearchCursor.decode(cursor, sort));
+        CursorSlice<BandDocument> slice = searchSlice(query, BandDocument.class, pageSize, sort);
 
         return new ExploreSearchResponse(
                 slice.totalHits(), SearchType.BAND,
@@ -136,11 +138,11 @@ public class SearchService {
     }
 
     // 단일 모드 : 공연만 커서 기반 무한스크롤
-    private ExploreSearchResponse searchPerformancesOnly(String keyword, Genre genre, Region region, String cursor, int size) {
+    private ExploreSearchResponse searchPerformancesOnly(String keyword, SearchSortType sort, Genre genre, Region region, String cursor, int size) {
         int pageSize = clampSize(size);
         NativeQuery query = buildQuery(keyword, PERFORMANCE_FUZZY_FIELDS, PERFORMANCE_EXACT_FIELDS, PERFORMANCE_PREFIX_FIELDS,
-                "title", genre, region, "performanceDate", pageSize + 1, SearchCursor.decode(cursor));
-        CursorSlice<PerformanceDocument> slice = searchSlice(query, PerformanceDocument.class, pageSize);
+                "title", genre, region, "performanceDate", sort, pageSize + 1, SearchCursor.decode(cursor, sort));
+        CursorSlice<PerformanceDocument> slice = searchSlice(query, PerformanceDocument.class, pageSize, sort);
 
         return new ExploreSearchResponse(
                 slice.totalHits(), SearchType.PERFORMANCE,
@@ -150,11 +152,11 @@ public class SearchService {
     }
 
     // 단일 모드 : 게시물(영상/사진/글)만 커서 기반 무한스크롤
-    private ExploreSearchResponse searchPostsOnly(String keyword, Genre genre, Region region, String cursor, int size) {
+    private ExploreSearchResponse searchPostsOnly(String keyword, SearchSortType sort, Genre genre, Region region, String cursor, int size) {
         int pageSize = clampSize(size);
         NativeQuery query = buildQuery(keyword, POST_FUZZY_FIELDS, POST_EXACT_FIELDS, POST_PREFIX_FIELDS,
-                "title", genre, region, "uploadedAt", pageSize + 1, SearchCursor.decode(cursor));
-        CursorSlice<PostDocument> slice = searchSlice(query, PostDocument.class, pageSize);
+                "title", genre, region, "uploadedAt", sort, pageSize + 1, SearchCursor.decode(cursor, sort));
+        CursorSlice<PostDocument> slice = searchSlice(query, PostDocument.class, pageSize, sort);
 
         return new ExploreSearchResponse(
                 slice.totalHits(), SearchType.POST,
@@ -168,11 +170,11 @@ public class SearchService {
      * must   : multi_match — 검색어를 타입별 필드·가중치로 매칭 (점수 계산)
      * should : match_phrase(구문 일치) + term(raw 완전 일치) 가점 → 더 비슷한 제목이 위로
      * filter : 장르·지역 선택 시에만 추가 (점수 무관, 캐싱)
-     * sort   : _score → 날짜 최신순 → docId — search_after가 요구하는 결정적 정렬
+     * sort   : 정확도 = _score → 날짜 → docId / 인기 = popularity → _score → docId — search_after가 요구하는 결정적 정렬
      */
     private NativeQuery buildQuery(
             String keyword, List<String> fuzzyFields, List<String> exactFields, List<String> prefixFields,
-            String titleField, Genre genre, Region region, String dateSortField,
+            String titleField, Genre genre, Region region, String dateSortField, SearchSortType sort,
             int size, List<Object> searchAfter
     ) {
         var builder = NativeQuery.builder()
@@ -197,10 +199,18 @@ public class SearchService {
                         b.filter(f -> f.term(t -> t.field("region").value(region.name())));
                     }
                     return b;
-                }))
-                .withSort(s -> s.score(sc -> sc.order(SortOrder.Desc)))
-                .withSort(s -> s.field(f -> f.field(dateSortField).order(SortOrder.Desc)))
-                .withSort(s -> s.field(f -> f.field("docId").order(SortOrder.Desc)))
+                }));
+
+        // 정렬 : 모드별 1·2순위 + 공통 tie-breaker docId(PK 내림차순 ≈ 최신순 겸용)
+        //  - 인기순 2순위가 score인 이유 : 팔로워 0~N 동점 구간이 넓어서, 동점 안에서는 관련도가 순서를 결정해야 품질 유지
+        if (sort == SearchSortType.POPULAR) {
+            builder.withSort(s -> s.field(f -> f.field("popularity").order(SortOrder.Desc)))
+                    .withSort(s -> s.score(sc -> sc.order(SortOrder.Desc)));
+        } else {
+            builder.withSort(s -> s.score(sc -> sc.order(SortOrder.Desc)))
+                    .withSort(s -> s.field(f -> f.field(dateSortField).order(SortOrder.Desc)));
+        }
+        builder.withSort(s -> s.field(f -> f.field("docId").order(SortOrder.Desc)))
                 .withPageable(PageRequest.of(0, size))
                 .withTrackTotalHits(true);  // "검색 결과 N개" 표시용 total을 1만 건 상한 없이 정확하게
 
@@ -211,14 +221,14 @@ public class SearchService {
     }
 
     // size+1개를 조회해 hasNext를 판정하고, 마지막 문서의 정렬값으로 다음 커서를 만든다
-    private <T> CursorSlice<T> searchSlice(NativeQuery query, Class<T> documentClass, int pageSize) {
+    private <T> CursorSlice<T> searchSlice(NativeQuery query, Class<T> documentClass, int pageSize, SearchSortType sort) {
         SearchHits<T> hits = elasticsearchOperations.search(query, documentClass);
         List<SearchHit<T>> searchHits = hits.getSearchHits();
 
         boolean hasNext = searchHits.size() > pageSize;
         List<SearchHit<T>> pageHits = hasNext ? searchHits.subList(0, pageSize) : searchHits;
         String nextCursor = hasNext
-                ? SearchCursor.encode(pageHits.get(pageHits.size() - 1).getSortValues())
+                ? SearchCursor.encode(pageHits.get(pageHits.size() - 1).getSortValues(), sort)
                 : null;
 
         return new CursorSlice<>(hits.getTotalHits(), contentsOf(pageHits), hasNext, nextCursor);
