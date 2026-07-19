@@ -2,6 +2,7 @@ package com.umc.bscene.domain.session.service.impl;
 
 import com.umc.bscene.domain.session.dto.SessionPushMessage;
 import com.umc.bscene.domain.session.dto.application.request.MySessionApplicationUpdateRequest;
+import com.umc.bscene.domain.session.dto.application.request.MySessionApplicationCreateRequest;
 import com.umc.bscene.domain.session.dto.application.request.SessionApplicationVisibilityRequest;
 import com.umc.bscene.domain.session.dto.application.response.MySessionApplicationResponse;
 import com.umc.bscene.domain.session.dto.application.response.SessionApplicationSubmitResponse;
@@ -9,6 +10,7 @@ import com.umc.bscene.domain.session.dto.application.response.SessionApplication
 import com.umc.bscene.domain.session.entity.SessionApplication;
 import com.umc.bscene.domain.session.entity.SessionApplicationLink;
 import com.umc.bscene.domain.session.entity.SessionApplicationSubmission;
+import com.umc.bscene.domain.session.entity.SessionApplicationCareer;
 import com.umc.bscene.domain.session.entity.SessionRecruitment;
 import com.umc.bscene.domain.session.enums.ApplicationStatus;
 import com.umc.bscene.domain.session.enums.code.SessionErrorCode;
@@ -48,7 +50,7 @@ public class SessionApplicationCommandServiceImpl implements SessionApplicationC
     @Override
     public MySessionApplicationResponse createSessionApplication(
             Long userId,
-            MySessionApplicationUpdateRequest request
+            MySessionApplicationCreateRequest request
     ) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new BaseException(GeneralErrorCode.UNAUTHORIZED_ERROR));
@@ -58,7 +60,7 @@ public class SessionApplicationCommandServiceImpl implements SessionApplicationC
                 .nickname(user.getName())
                 .title(request.getTitle())
                 .purpose(request.getPurpose())
-                .profileImageUrl(request.getProfileImageUrl())
+                .oneLineIntro(request.getOneLineIntro())
                 .part(request.getPart())
                 .skillLevel(request.getSkillLevel())
                 .genre(request.getGenre())
@@ -66,6 +68,9 @@ public class SessionApplicationCommandServiceImpl implements SessionApplicationC
                 .intro(request.getIntro())
                 .build();
 
+        sessionApplication.updateVisibility(request.getIsPublic());
+        sessionApplication.replaceAvailableActivities(request.getAvailableActivities());
+        addCareers(sessionApplication, request);
         addPortfolioLinks(sessionApplication, request);
 
         SessionApplication savedSessionApplication = sessionApplicationRepository.save(sessionApplication);
@@ -88,6 +93,7 @@ public class SessionApplicationCommandServiceImpl implements SessionApplicationC
         sessionApplication.updateApplication(
                 request.getTitle(),
                 request.getPurpose(),
+                request.getOneLineIntro(),
                 request.getProfileImageUrl(),
                 request.getPart(),
                 request.getSkillLevel(),
@@ -95,8 +101,12 @@ public class SessionApplicationCommandServiceImpl implements SessionApplicationC
                 request.getRegion(),
                 request.getIntro()
         );
+        sessionApplication.updateVisibility(request.getIsPublic());
+        sessionApplication.replaceAvailableActivities(request.getAvailableActivities());
 
         sessionApplication.clearPortfolioLinks();
+        sessionApplication.clearCareers();
+        addCareers(sessionApplication, request);
         addPortfolioLinks(sessionApplication, request);
 
         SessionApplication savedSessionApplication =
@@ -275,6 +285,55 @@ public class SessionApplicationCommandServiceImpl implements SessionApplicationC
                         notifyPort.notify(receiverIds, message);
                     }
                 }
+        );
+    }
+
+    private void addCareers(
+            SessionApplication sessionApplication,
+            MySessionApplicationUpdateRequest request
+    ) {
+        if (request.getCareers() == null) {
+            return;
+        }
+        request.getCareers().forEach(career ->
+                sessionApplication.addCareer(SessionApplicationCareer.builder()
+                        .sessionApplication(sessionApplication)
+                        .name(career.getName())
+                        .period(career.getPeriod())
+                        .description(career.getDescription())
+                        .build())
+        );
+    }
+
+    private void addCareers(
+            SessionApplication sessionApplication,
+            MySessionApplicationCreateRequest request
+    ) {
+        if (request.getCareers() == null) {
+            return;
+        }
+        request.getCareers().forEach(career ->
+                sessionApplication.addCareer(SessionApplicationCareer.builder()
+                        .sessionApplication(sessionApplication)
+                        .name(career.getName())
+                        .period(career.getPeriod())
+                        .description(career.getDescription())
+                        .build())
+        );
+    }
+
+    private void addPortfolioLinks(
+            SessionApplication sessionApplication,
+            MySessionApplicationCreateRequest request
+    ) {
+        if (request.getPortfolioLinks() == null) {
+            return;
+        }
+        request.getPortfolioLinks().forEach(link ->
+                sessionApplication.addPortfolioLink(SessionApplicationLink.builder()
+                        .sessionApplication(sessionApplication)
+                        .url(link.getUrl())
+                        .build())
         );
     }
 }

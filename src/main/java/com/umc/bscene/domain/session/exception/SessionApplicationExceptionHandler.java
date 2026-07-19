@@ -2,6 +2,7 @@ package com.umc.bscene.domain.session.exception;
 
 import com.umc.bscene.domain.session.controller.SessionApplicationController;
 import com.umc.bscene.domain.session.dto.application.request.MySessionApplicationUpdateRequest;
+import com.umc.bscene.domain.session.dto.application.request.MySessionApplicationCreateRequest;
 import com.umc.bscene.domain.session.dto.application.request.SessionApplicationVisibilityRequest;
 import com.umc.bscene.domain.session.dto.profile.request.SessionBasicProfileUpdateRequest;
 import com.umc.bscene.domain.session.controller.SessionRecruitmentController;
@@ -38,7 +39,8 @@ public class SessionApplicationExceptionHandler {
         SessionErrorCode errorCode;
         if (target instanceof SessionBasicProfileUpdateRequest) {
             errorCode = SessionErrorCode.INVALID_SESSION_BASIC_PROFILE_REQUEST;
-        } else if (target instanceof MySessionApplicationUpdateRequest
+        } else if (target instanceof MySessionApplicationCreateRequest
+                        || target instanceof MySessionApplicationUpdateRequest
                         || target instanceof SessionApplicationVisibilityRequest
         ) {
             errorCode = SessionErrorCode.INVALID_SESSION_APPLICATION_REQUEST;

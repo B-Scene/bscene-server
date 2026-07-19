@@ -1,6 +1,7 @@
 package com.umc.bscene.domain.session.controller;
 
 import com.umc.bscene.domain.session.dto.application.request.MySessionApplicationUpdateRequest;
+import com.umc.bscene.domain.session.dto.application.request.MySessionApplicationCreateRequest;
 import com.umc.bscene.domain.session.dto.application.request.SessionApplicationVisibilityRequest;
 import com.umc.bscene.domain.session.dto.application.response.MySessionApplicationResponse;
 import com.umc.bscene.domain.session.dto.application.response.SessionApplicationSearchResponse;
@@ -29,6 +30,8 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.ResponseStatus;
+import org.springframework.http.HttpStatus;
 
 import java.util.List;
 
@@ -170,9 +173,10 @@ public class SessionApplicationController {
     }
 
     @PostMapping
+    @ResponseStatus(HttpStatus.CREATED)
     public SuccessResponse<MySessionApplicationResponse> createSessionApplication(
             @AuthenticationPrincipal AuthMember authMember,
-            @Valid @RequestBody MySessionApplicationUpdateRequest request
+            @Valid @RequestBody MySessionApplicationCreateRequest request
     ) {
         Long userId = authMember.getUser().getId();
 

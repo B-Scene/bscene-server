@@ -4,16 +4,20 @@ import com.umc.bscene.domain.session.enums.Part;
 import com.umc.bscene.domain.session.enums.SessionGenre;
 import com.umc.bscene.domain.session.enums.SessionRegion;
 import com.umc.bscene.domain.session.enums.SkillLevel;
+import com.umc.bscene.domain.session.enums.AvailableActivity;
 import com.umc.bscene.global.entity.BaseEntity;
 import jakarta.persistence.CascadeType;
+import jakarta.persistence.CollectionTable;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.ElementCollection;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.OneToMany;
+import jakarta.persistence.JoinColumn;
 import jakarta.persistence.Table;
 import lombok.AccessLevel;
 import lombok.Builder;
@@ -47,6 +51,9 @@ public class SessionApplication extends BaseEntity {
     @Column(name = "purpose", nullable = false, length = 20)
     private String purpose;
 
+    @Column(name = "one_line_intro", length = 100)
+    private String oneLineIntro;
+
     @Column(name = "profile_image_url", length = 500)
     private String profileImageUrl;
 
@@ -72,6 +79,16 @@ public class SessionApplication extends BaseEntity {
     @Column(name = "intro", length = 500)
     private String intro;
 
+    @ElementCollection(targetClass = AvailableActivity.class)
+    @CollectionTable(name = "session_application_activities",
+            joinColumns = @JoinColumn(name = "session_application_id"))
+    @Enumerated(EnumType.STRING)
+    @Column(name = "activity", nullable = false, length = 30)
+    private List<AvailableActivity> availableActivities = new ArrayList<>();
+
+    @OneToMany(mappedBy = "sessionApplication", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<SessionApplicationCareer> careers = new ArrayList<>();
+
     @Column(name = "deleted_at")
     private LocalDateTime deletedAt;
 
@@ -84,6 +101,7 @@ public class SessionApplication extends BaseEntity {
             String nickname,
             String title,
             String purpose,
+            String oneLineIntro,
             String profileImageUrl,
             Part part,
             SkillLevel skillLevel,
@@ -95,6 +113,7 @@ public class SessionApplication extends BaseEntity {
         this.nickname = nickname;
         this.title = title;
         this.purpose = purpose;
+        this.oneLineIntro = oneLineIntro;
         this.isPublic = true;
         if (profileImageUrl != null) {
             this.profileImageUrl = profileImageUrl;
@@ -109,6 +128,7 @@ public class SessionApplication extends BaseEntity {
     public void updateApplication(
             String title,
             String purpose,
+            String oneLineIntro,
             String profileImageUrl,
             Part part,
             SkillLevel skillLevel,
@@ -118,6 +138,7 @@ public class SessionApplication extends BaseEntity {
     ) {
         this.title = title;
         this.purpose = purpose;
+        this.oneLineIntro = oneLineIntro;
         if (profileImageUrl != null) {
             this.profileImageUrl = profileImageUrl;
         }
@@ -134,6 +155,19 @@ public class SessionApplication extends BaseEntity {
 
     public void updateVisibility(boolean isPublic) {
         this.isPublic = isPublic;
+    }
+
+    public void replaceAvailableActivities(List<AvailableActivity> activities) {
+        this.availableActivities.clear();
+        this.availableActivities.addAll(activities);
+    }
+
+    public void clearCareers() {
+        this.careers.clear();
+    }
+
+    public void addCareer(SessionApplicationCareer career) {
+        this.careers.add(career);
     }
 
     public void addPortfolioLink(SessionApplicationLink portfolioLink) {

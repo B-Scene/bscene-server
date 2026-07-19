@@ -77,7 +77,7 @@ public interface SessionApplicationRepository extends JpaRepository<SessionAppli
           AND (:keyword IS NULL
                OR LOWER(COALESCE(u.name, sa.nickname)) LIKE LOWER(CONCAT('%', :keyword, '%'))
                OR LOWER(sa.title) LIKE LOWER(CONCAT('%', :keyword, '%'))
-               OR LOWER(sa.intro) LIKE LOWER(CONCAT('%', :keyword, '%')))
+               OR LOWER(sa.oneLineIntro) LIKE LOWER(CONCAT('%', :keyword, '%')))
           AND (:cursorId IS NULL OR sa.sessionApplicationId < :cursorId)
         ORDER BY sa.sessionApplicationId DESC
     """)

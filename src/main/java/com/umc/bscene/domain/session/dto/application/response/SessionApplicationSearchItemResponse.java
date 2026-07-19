@@ -21,7 +21,7 @@ import lombok.Getter;
         "genre",
         "region",
         "title",
-        "intro"
+        "oneLineIntro"
 })
 public class SessionApplicationSearchItemResponse {
 
@@ -34,7 +34,7 @@ public class SessionApplicationSearchItemResponse {
     private SessionGenre genre;
     private SessionRegion region;
     private String title;
-    private String intro;
+    private String oneLineIntro;
 
     public static SessionApplicationSearchItemResponse from(
             SessionApplication application,
@@ -53,7 +53,7 @@ public class SessionApplicationSearchItemResponse {
                 .genre(application.getGenre())
                 .region(application.getRegion())
                 .title(application.getTitle())
-                .intro(application.getIntro())
+                .oneLineIntro(application.getOneLineIntro())
                 .build();
     }
 }
