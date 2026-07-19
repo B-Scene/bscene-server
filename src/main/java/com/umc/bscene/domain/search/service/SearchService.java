@@ -63,6 +63,7 @@ public class SearchService {
 
     private final ElasticsearchOperations elasticsearchOperations;
     private final FollowPort followPort;
+    private final RecentSearchService recentSearchService;
 
     public ExploreSearchResponse search(
             Long userId, String keyword, SearchType type, SearchSortType sort,
@@ -74,18 +75,32 @@ public class SearchService {
         String trimmed = keyword.trim();
 
         try {
-            return switch (type) {
+            ExploreSearchResponse response = switch (type) {
                 case ALL -> searchAll(userId, trimmed, sort, genre, region);
                 case BAND -> searchBandsOnly(userId, trimmed, sort, genre, region, cursor, size);
                 case PERFORMANCE -> searchPerformancesOnly(trimmed, sort, genre, region, cursor, size);
                 case POST -> searchPostsOnly(trimmed, sort, genre, region, cursor, size);
             };
+            // 커서 없는 첫 페이지만 "새로운 검색" — 무한스크롤 다음 페이지 요청은 기록하지 않는다
+            if (cursor == null || cursor.isBlank()) {
+                recordRecentSearch(userId, trimmed);
+            }
+            return response;
         } catch (SearchException e) {
             throw e;    // 잘못된 커서(400) 등 의도된 예외는 그대로 전달
         } catch (RuntimeException e) {
             // ES 연결 실패 등 검색 인프라 장애를 503으로 격리 (검색만 실패하고 서비스는 유지)
             log.error("검색 실패 - keyword: {}, type: {}", trimmed, type, e);
             throw new SearchException(SearchErrorCode.SEARCH_UNAVAILABLE);
+        }
+    }
+
+    // 최근 검색어 기록은 부가 기능 — 실패(동시 검색 유니크 충돌 등)해도 검색 응답은 정상 반환
+    private void recordRecentSearch(Long userId, String keyword) {
+        try {
+            recentSearchService.record(userId, keyword);
+        } catch (RuntimeException e) {
+            log.warn("최근 검색어 기록 실패 - userId: {}, keyword: {}", userId, keyword, e);
         }
     }
 
