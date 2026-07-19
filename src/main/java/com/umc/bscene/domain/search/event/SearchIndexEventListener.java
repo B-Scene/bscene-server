@@ -45,9 +45,9 @@ public class SearchIndexEventListener {
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void handlePostChanged(PostChangedEvent event) {
         try {
-            searchIndexService.indexVideo(event.postId());
+            searchIndexService.indexPost(event.postId());
         } catch (RuntimeException e) {
-            log.error("영상 색인 동기화 실패 - postId: {}", event.postId(), e);
+            log.error("게시물 색인 동기화 실패 - postId: {}", event.postId(), e);
         }
     }
 }

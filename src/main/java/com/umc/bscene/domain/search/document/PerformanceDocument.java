@@ -76,6 +76,10 @@ public class PerformanceDocument {
     @Field(type = FieldType.Date, format = DateFormat.date)
     private LocalDate performanceDate;
 
+    // 인기순 정렬용 관심 등록 수 (정렬 전용이라 역색인 제외) — 색인 시점 스냅샷, 새벽 전체 재색인이 하루 1회 갱신
+    @Field(type = FieldType.Long, index = false)
+    private Long popularity;
+
     // 검색 대상 (장소명 검색 : "롤링홀", "이태원" 등. 가중치 최하위) + 표시용
     @Field(type = FieldType.Text, analyzer = "korean", searchAnalyzer = "korean_search")
     private String venue;
@@ -92,11 +96,12 @@ public class PerformanceDocument {
     private Long bandId;
 
     // band는 반드시 fetch join으로 함께 조회된 상태여야 한다 (LAZY 프록시 추가 쿼리 방지)
-    public static PerformanceDocument from(Performance performance) {
+    public static PerformanceDocument from(Performance performance, long interestCount) {
         Band band = performance.getBand();
         return PerformanceDocument.builder()
                 .id(performance.getId())
                 .docId(performance.getId())
+                .popularity(interestCount)
                 .title(performance.getTitle())
                 .bandName(band.getName())
                 .description(performance.getDescription())

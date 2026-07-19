@@ -43,15 +43,15 @@ public interface PostRepository extends JpaRepository<Post, Long> {
     @Query("SELECT t FROM PostTag t WHERE t.post.id IN :postIds")
     List<PostTag> findTagsByPostIds(@Param("postIds") List<Long> postIds);
 
-    // SearchAdapter에서 사용 : 검색 전체 색인용 VIDEO 게시물 (band·tags fetch join → 밴드명·태그 비정규화)
-    @Query("SELECT DISTINCT p FROM Post p JOIN FETCH p.band LEFT JOIN FETCH p.tagList WHERE p.type = :type")
-    List<Post> findAllByTypeWithBandAndTags(@Param("type") PostType type);
+    // SearchAdapter에서 사용 : 검색 전체 색인용 게시물 (band·tags fetch join → 밴드명·태그 비정규화)
+    @Query("SELECT DISTINCT p FROM Post p JOIN FETCH p.band LEFT JOIN FETCH p.tagList")
+    List<Post> findAllWithBandAndTags();
 
     // SearchAdapter에서 사용 : 검색 단건 색인용 (band·tags fetch join)
-    @Query("SELECT p FROM Post p JOIN FETCH p.band LEFT JOIN FETCH p.tagList WHERE p.id = :id AND p.type = :type")
-    Optional<Post> findByIdAndTypeWithBandAndTags(@Param("id") Long id, @Param("type") PostType type);
+    @Query("SELECT p FROM Post p JOIN FETCH p.band LEFT JOIN FETCH p.tagList WHERE p.id = :id")
+    Optional<Post> findByIdWithBandAndTags(@Param("id") Long id);
 
     // SearchAdapter에서 사용 : 밴드 정보 변경 시 연쇄 재색인용 (band·tags fetch join)
-    @Query("SELECT DISTINCT p FROM Post p JOIN FETCH p.band b LEFT JOIN FETCH p.tagList WHERE b.id = :bandId AND p.type = :type")
-    List<Post> findAllByBandIdAndTypeWithBandAndTags(@Param("bandId") Long bandId, @Param("type") PostType type);
+    @Query("SELECT DISTINCT p FROM Post p JOIN FETCH p.band b LEFT JOIN FETCH p.tagList WHERE b.id = :bandId")
+    List<Post> findAllByBandIdWithBandAndTags(@Param("bandId") Long bandId);
 }

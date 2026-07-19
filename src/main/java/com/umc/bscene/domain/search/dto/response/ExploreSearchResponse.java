@@ -2,7 +2,7 @@ package com.umc.bscene.domain.search.dto.response;
 
 import com.umc.bscene.domain.search.document.BandDocument;
 import com.umc.bscene.domain.search.document.PerformanceDocument;
-import com.umc.bscene.domain.search.document.VideoDocument;
+import com.umc.bscene.domain.search.document.PostDocument;
 import com.umc.bscene.domain.search.enums.SearchType;
 
 import java.time.LocalDate;
@@ -13,7 +13,7 @@ import java.util.Set;
 
 /**
  * 탐색 통합검색 응답.
- * - ALL(통합 모드) : bands/performances/videos 세 섹션 모두 채움 (섹션별 최대 4개), 커서 필드는 null
+ * - ALL(통합 모드) : bands/performances/posts 세 섹션 모두 채움 (섹션별 최대 3개), 커서 필드는 null
  * - 단일 모드 : 해당 타입 섹션만 채우고 나머지는 null, nextCursor/hasNext로 커서 기반 무한스크롤
  */
 public record ExploreSearchResponse(
@@ -21,7 +21,7 @@ public record ExploreSearchResponse(
         SearchType type,                            // 적용된 콘텐츠 필터 echo
         SearchSection<BandItem> bands,
         SearchSection<PerformanceItem> performances,
-        SearchSection<VideoItem> videos,
+        SearchSection<PostItem> posts,
         String nextCursor,                          // 단일 모드에서만 — 다음 요청에 그대로 전달 (마지막 페이지면 null)
         Boolean hasNext                             // 단일 모드에서만
 ) {
@@ -78,19 +78,25 @@ public record ExploreSearchResponse(
         }
     }
 
-    public record VideoItem(
-            Long postId,        // 영상 게시물(Post)의 PK — 게시물 상세 이동 시 그대로 사용
+    public record PostItem(
+            Long postId,        // 게시물(Post)의 PK — 게시물 상세 이동 시 그대로 사용
+            String postType,    // VIDEO/PHOTO/TEXT — 카드 표시 분기용
             String title,
             String bandName,
+            String bandProfileImageUrl,
+            String description,
             List<String> tags,
-            String thumbnailUrl,
+            String thumbnailUrl,    // VIDEO=썸네일, PHOTO=첫 사진, TEXT=null
             LocalDateTime uploadedAt
     ) {
-        public static VideoItem from(VideoDocument document) {
-            return new VideoItem(
+        public static PostItem from(PostDocument document) {
+            return new PostItem(
                     document.getId(),
+                    document.getPostType(),
                     document.getTitle(),
                     document.getBandName(),
+                    document.getBandProfileImageUrl(),
+                    document.getDescription(),
                     document.getTags(),
                     document.getThumbnailUrl(),
                     document.getUploadedAt()
