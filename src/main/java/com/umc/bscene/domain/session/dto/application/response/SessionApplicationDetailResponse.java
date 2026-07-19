@@ -28,6 +28,8 @@ import java.util.List;
         "genre",
         "region",
         "intro",
+        "availableActivities",
+        "careers",
         "portfolioLinks"
 })
 public class SessionApplicationDetailResponse {
