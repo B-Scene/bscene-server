@@ -34,7 +34,7 @@ scrape_configs:
           max_wait_time: 3s
           max_lines: 500
       # 로그 레벨을 label로 추출
-      - regexp:
+      - regex:
           expression: '^\S+\s+(?P<level>ERROR|WARN|INFO|DEBUG|TRACE)'
       - labels:
           level:
