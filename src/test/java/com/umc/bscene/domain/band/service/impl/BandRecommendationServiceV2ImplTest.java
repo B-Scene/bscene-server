@@ -8,7 +8,9 @@ import com.umc.bscene.domain.band.entity.Band;
 import com.umc.bscene.domain.band.repository.BandRepository;
 import com.umc.bscene.domain.follow.repository.FollowRepository;
 import com.umc.bscene.domain.post.repository.PostRepository;
+import com.umc.bscene.domain.recommendation.entity.BandInteraction;
 import com.umc.bscene.domain.recommendation.entity.BandSimilarity;
+import com.umc.bscene.domain.recommendation.repository.BandInteractionRepository;
 import com.umc.bscene.domain.recommendation.repository.BandSimilarityRepository;
 import com.umc.bscene.domain.user.entity.User;
 import com.umc.bscene.domain.user.entity.UserGenres;
@@ -27,9 +29,12 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyList;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -53,6 +58,8 @@ class BandRecommendationServiceV2ImplTest {
     private BandSimilarityRepository bandSimilarityRepository;
     @Mock
     private ApplicationEventPublisher eventPublisher;
+    @Mock
+    private BandInteractionRepository bandInteractionRepository;
 
     private BandRecommendationServiceV2Impl service;
 
@@ -63,13 +70,27 @@ class BandRecommendationServiceV2ImplTest {
         service = new BandRecommendationServiceV2Impl(
                 bandRepository, followRepository, userRepository,
                 userGenresRepository, userRegionsRepository,
-                postRepository, bandSimilarityRepository, eventPublisher
+                postRepository, bandSimilarityRepository, eventPublisher,
+                bandInteractionRepository
         );
         when(userRepository.getReferenceById(USER_ID)).thenReturn(User.builder().id(USER_ID).build());
     }
 
     private Band band(Long id, Genre genre, Region region) {
         return Band.builder().id(id).name("band-" + id).genre(genre).region(region).build();
+    }
+
+    @Test
+    void unknownPreferredRegionIsIgnoredAndNeverQueried() {
+        when(followRepository.findBandIdsByUserId(USER_ID)).thenReturn(List.of());
+        when(userGenresRepository.findAllByUser(any(User.class))).thenReturn(List.of());
+        when(userRegionsRepository.findAllByUser(any(User.class)))
+                .thenReturn(List.of(UserRegions.builder().region(Region.UNKNOWN).build()));
+
+        BandRecommendResponse response = service.getRecommendedBands(USER_ID, null, null);
+
+        assertEquals(0, response.bands().size());
+        verify(bandRepository, never()).findByRegionIn(any());
     }
 
     @Test
@@ -99,10 +120,11 @@ class BandRecommendationServiceV2ImplTest {
         when(userRegionsRepository.findAllByUser(any(User.class))).thenReturn(List.of());
 
         Band similarBand = band(50L, Genre.JAZZ, Region.BUSAN);
+        // score는 ml-server가 코사인 유사도로 계산해 저장하는 실제 스케일(threshold 0.55 ~ 최대 1.0)을 반영한 값.
         List<BandSimilarity> similarities = List.of(
-                BandSimilarity.builder().band(band(100L, Genre.ROCK, Region.SEOUL)).similarBand(similarBand).score(15.0).build(),
-                BandSimilarity.builder().band(band(200L, Genre.ROCK, Region.SEOUL)).similarBand(similarBand).score(15.0).build(),
-                BandSimilarity.builder().band(band(300L, Genre.ROCK, Region.SEOUL)).similarBand(similarBand).score(15.0).build()
+                BandSimilarity.builder().band(band(100L, Genre.ROCK, Region.SEOUL)).similarBand(similarBand).score(0.9).build(),
+                BandSimilarity.builder().band(band(200L, Genre.ROCK, Region.SEOUL)).similarBand(similarBand).score(0.9).build(),
+                BandSimilarity.builder().band(band(300L, Genre.ROCK, Region.SEOUL)).similarBand(similarBand).score(0.9).build()
         );
         when(bandSimilarityRepository.findByBandIdIn(followedBandIds)).thenReturn(similarities);
         when(bandRepository.findAllById(any())).thenReturn(List.of(similarBand));
@@ -112,13 +134,13 @@ class BandRecommendationServiceV2ImplTest {
         BandRecommendResponse response = service.getRecommendedBands(USER_ID, null, null);
 
         assertEquals(1, response.bands().size());
-        // raw sum 45.0 / followedCount 3 = avg 15.0 -> capped at 10.0 -> normalized 1.0 -> IMPLICIT_WEIGHT(0.4) * SCORE_SCALE(10) = 4.0
+        // raw sum 2.7 / followedCount 3 = avg 0.9 -> capped at 0.8 -> normalized 1.0 -> IMPLICIT_WEIGHT(0.4) * SCORE_SCALE(10) = 4.0
         assertEquals(4.0, response.bands().get(0).score(), 1e-9);
     }
 
     @Test
     void similarityScoreIsSameAcrossDifferentFollowedCountsGivenSameAverage() {
-        // 팔로우 3개짜리 유저와 비교해, 팔로우 1개인데 유사도가 같은 유저도 동일한 평균(8.0)이면 동일 점수를 받아야 한다.
+        // 팔로우 3개짜리 유저와 비교해, 팔로우 1개인데 유사도가 같은 유저도 동일한 평균이면 동일 점수를 받아야 한다.
         // (기존 구현은 팔로우 개수만큼 유사도를 단순 합산해서, 팔로우가 많을수록 유리한 편향이 있었다.)
         when(followRepository.findBandIdsByUserId(USER_ID)).thenReturn(List.of(100L));
         when(userGenresRepository.findAllByUser(any(User.class))).thenReturn(List.of());
@@ -126,7 +148,7 @@ class BandRecommendationServiceV2ImplTest {
 
         Band similarBand = band(50L, Genre.JAZZ, Region.BUSAN);
         when(bandSimilarityRepository.findByBandIdIn(List.of(100L))).thenReturn(List.of(
-                BandSimilarity.builder().band(band(100L, Genre.ROCK, Region.SEOUL)).similarBand(similarBand).score(8.0).build()
+                BandSimilarity.builder().band(band(100L, Genre.ROCK, Region.SEOUL)).similarBand(similarBand).score(0.4).build()
         ));
         when(bandRepository.findAllById(any())).thenReturn(List.of(similarBand));
         when(postRepository.findBandIdsWithRecentPost(anyList(), any())).thenReturn(List.of());
@@ -134,8 +156,77 @@ class BandRecommendationServiceV2ImplTest {
 
         BandRecommendResponse response = service.getRecommendedBands(USER_ID, null, null);
 
-        // avg 8.0 -> normalized 0.8 -> IMPLICIT_WEIGHT(0.4) * SCORE_SCALE(10) = 3.2
-        assertEquals(3.2, response.bands().get(0).score(), 1e-9);
+        assertEquals(2.0, response.bands().get(0).score(), 1e-9);
+    }
+
+    @Test
+    void frequentlyClickedBandContributesToSimilaritySeeds() {
+        // 팔로우는 안 했지만 자주 클릭한(관심 있는) 밴드도 유사도 조회 시드로 쓰여야 한다.
+        when(followRepository.findBandIdsByUserId(USER_ID)).thenReturn(List.of());
+        when(userGenresRepository.findAllByUser(any(User.class))).thenReturn(List.of());
+        when(userRegionsRepository.findAllByUser(any(User.class))).thenReturn(List.of());
+
+        Band clickedBand = band(100L, Genre.ROCK, Region.SEOUL);
+        BandInteraction interaction = BandInteraction.builder()
+                .user(User.builder().id(USER_ID).build())
+                .band(clickedBand)
+                .clickCount(5)
+                .build();
+        when(bandInteractionRepository.findByUser_IdOrderByClickCountDesc(eq(USER_ID), any()))
+                .thenReturn(List.of(interaction));
+
+        Band similarBand = band(50L, Genre.JAZZ, Region.BUSAN);
+        when(bandSimilarityRepository.findByBandIdIn(List.of(100L))).thenReturn(List.of(
+                BandSimilarity.builder().band(clickedBand).similarBand(similarBand).score(0.8).build()
+        ));
+        when(bandRepository.findAllById(any())).thenReturn(List.of(similarBand));
+        when(postRepository.findBandIdsWithRecentPost(anyList(), any())).thenReturn(List.of());
+        when(postRepository.findLatestActivityAtByBandIds(anyList())).thenReturn(List.of());
+
+        BandRecommendResponse response = service.getRecommendedBands(USER_ID, null, null);
+
+        assertEquals(1, response.bands().size());
+        assertEquals(50L, response.bands().get(0).bandId());
+        // 클릭 전용 시드라 raw 0.8 * CLICK_SEED_WEIGHT(0.5) = 0.4 -> 시드 1개로 나눠 avg 0.4
+        // -> normalized 0.4/0.8=0.5 -> IMPLICIT_WEIGHT(0.4) * SCORE_SCALE(10) * 0.5 = 2.0
+        assertEquals(2.0, response.bands().get(0).score(), 1e-9);
+        assertEquals("관심 있게 본 밴드와 유사한 스타일", response.bands().get(0).reason());
+    }
+
+    @Test
+    void unrelatedClickedBandsDoNotDiluteFollowBasedSimilarity() {
+        // 후보와 무관한 클릭 시드가 여러 개 있어도, 실제 매칭된 팔로우 시드 기준 평균은 그대로여야 한다
+        // (분모가 유저의 전체 시드 개수라면 클릭이 많을수록 이 평균이 부당하게 희석된다).
+        when(followRepository.findBandIdsByUserId(USER_ID)).thenReturn(List.of(100L));
+        when(userGenresRepository.findAllByUser(any(User.class))).thenReturn(List.of());
+        when(userRegionsRepository.findAllByUser(any(User.class))).thenReturn(List.of());
+
+        List<BandInteraction> unrelatedClicks = List.of(200L, 201L, 202L, 203L, 204L).stream()
+                .map(id -> BandInteraction.builder()
+                        .user(User.builder().id(USER_ID).build())
+                        .band(band(id, Genre.JAZZ, Region.BUSAN))
+                        .clickCount(3)
+                        .build())
+                .toList();
+        when(bandInteractionRepository.findByUser_IdOrderByClickCountDesc(eq(USER_ID), any()))
+                .thenReturn(unrelatedClicks);
+
+        Band similarBand = band(50L, Genre.JAZZ, Region.BUSAN);
+        // 클릭한 200~204번 밴드는 이 후보와 유사도 행 자체가 없다 (findByBandIdIn 결과에 안 잡힘) - 팔로우 100번만 매칭.
+        when(bandSimilarityRepository.findByBandIdIn(anyList())).thenReturn(List.of(
+                BandSimilarity.builder().band(band(100L, Genre.ROCK, Region.SEOUL)).similarBand(similarBand).score(0.6).build()
+        ));
+        when(bandRepository.findAllById(any())).thenReturn(List.of(similarBand));
+        when(postRepository.findBandIdsWithRecentPost(anyList(), any())).thenReturn(List.of());
+        when(postRepository.findLatestActivityAtByBandIds(anyList())).thenReturn(List.of());
+
+        BandRecommendResponse response = service.getRecommendedBands(USER_ID, null, null);
+
+        // avg 0.6 (매칭된 시드는 팔로우 1개뿐 - 클릭 5개는 분모에 안 들어감) -> normalized 0.6/0.8=0.75
+        // -> IMPLICIT_WEIGHT(0.4) * SCORE_SCALE(10) * 0.75 = 3.0
+        assertEquals(1, response.bands().size());
+        assertEquals(3.0, response.bands().get(0).score(), 1e-9);
+        assertEquals("팔로우한 밴드와 유사한 스타일", response.bands().get(0).reason());
     }
 
     @Test
@@ -221,5 +312,38 @@ class BandRecommendationServiceV2ImplTest {
 
         assertTrue(response.bands().size() <= 10);
         assertEquals(10, response.bands().size());
+    }
+
+    @Test
+    void cursorPaginatesThroughFullSortedResultSet() {
+        when(followRepository.findBandIdsByUserId(USER_ID)).thenReturn(List.of());
+        when(userGenresRepository.findAllByUser(any(User.class)))
+                .thenReturn(List.of(UserGenres.builder().genre(Genre.ROCK).build()));
+        when(userRegionsRepository.findAllByUser(any(User.class))).thenReturn(List.of());
+
+        List<Band> candidates = java.util.stream.IntStream.rangeClosed(1, 15)
+                .mapToObj(i -> band((long) i, Genre.ROCK, Region.SEOUL))
+                .toList();
+        when(bandRepository.findByGenreIn(any())).thenReturn(candidates);
+        when(postRepository.findBandIdsWithRecentPost(anyList(), any())).thenReturn(List.of());
+        when(postRepository.findLatestActivityAtByBandIds(anyList())).thenReturn(List.of());
+
+        BandRecommendResponse firstPage = service.getRecommendedBands(USER_ID, null, 5);
+        assertEquals(5, firstPage.bands().size());
+        assertTrue(firstPage.hasNext());
+        assertEquals(5L, firstPage.nextCursor());
+        assertEquals(1L, firstPage.bands().get(0).bandId());
+
+        BandRecommendResponse secondPage = service.getRecommendedBands(USER_ID, firstPage.nextCursor(), 5);
+        assertEquals(5, secondPage.bands().size());
+        assertTrue(secondPage.hasNext());
+        assertEquals(10L, secondPage.nextCursor());
+        assertEquals(6L, secondPage.bands().get(0).bandId());
+
+        BandRecommendResponse thirdPage = service.getRecommendedBands(USER_ID, secondPage.nextCursor(), 5);
+        assertEquals(5, thirdPage.bands().size());
+        assertFalse(thirdPage.hasNext());
+        assertNull(thirdPage.nextCursor());
+        assertEquals(11L, thirdPage.bands().get(0).bandId());
     }
 }
