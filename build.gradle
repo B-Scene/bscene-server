@@ -64,6 +64,9 @@ dependencies {
 
 	// Elasticsearch
 	implementation 'org.springframework.boot:spring-boot-starter-data-elasticsearch'
+
+	// Discord WebHook to Reporting
+	implementation 'org.springframework.cloud:spring-cloud-starter-openfeign'
 }
 
 tasks.named('test') {
