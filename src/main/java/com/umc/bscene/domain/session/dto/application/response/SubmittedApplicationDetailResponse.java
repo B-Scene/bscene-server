@@ -7,6 +7,7 @@ import com.umc.bscene.domain.session.enums.Part;
 import com.umc.bscene.domain.session.enums.SessionGenre;
 import com.umc.bscene.domain.session.enums.SessionRegion;
 import com.umc.bscene.domain.session.enums.SkillLevel;
+import com.umc.bscene.domain.session.enums.AvailableActivity;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -14,37 +15,51 @@ import java.util.List;
 @JsonPropertyOrder({
         "applicationSubmissionId",
         "checkedAt",
-        "userId",
-        "nickname",
-        "profileImageUrl",
         "sessionRecruitmentId",
         "recruitmentTitle",
         "bandId",
         "bandName",
         "deadlineAt",
-        "intro",
+        "sessionApplicationId",
+        "userId",
+        "nickname",
+        "profileImageUrl",
+        "isPublic",
+        "title",
+        "purpose",
+        "oneLineIntro",
         "part",
         "skillLevel",
         "genre",
         "region",
+        "intro",
+        "availableActivities",
+        "careers",
         "portfolioLinks"
 })
 public record SubmittedApplicationDetailResponse(
         Long applicationSubmissionId,
         LocalDateTime checkedAt,
-        Long userId,
-        String nickname,
-        String profileImageUrl,
         Long sessionRecruitmentId,
         String recruitmentTitle,
         Long bandId,
         String bandName,
         LocalDateTime deadlineAt,
-        String intro,
+        Long sessionApplicationId,
+        Long userId,
+        String nickname,
+        String profileImageUrl,
+        Boolean isPublic,
+        String title,
+        String purpose,
+        String oneLineIntro,
         Part part,
         SkillLevel skillLevel,
         SessionGenre genre,
         SessionRegion region,
+        String intro,
+        List<AvailableActivity> availableActivities,
+        List<MySessionApplicationResponse.CareerResponse> careers,
         List<SessionApplicationDetailResponse.PortfolioLinkResponse> portfolioLinks
 ) {
     public static SubmittedApplicationDetailResponse of(
@@ -55,19 +70,26 @@ public record SubmittedApplicationDetailResponse(
         return new SubmittedApplicationDetailResponse(
                 submission.getApplicationSubmissionId(),
                 submission.getCheckedAt(),
-                application.getUserId(),
-                application.getNickname(),
-                application.getProfileImageUrl(),
                 recruitment.getSessionRecruitmentId(),
                 recruitment.getRecruitmentTitle(),
                 recruitment.getBand().getId(),
                 recruitment.getBand().getName(),
                 recruitment.getDeadlineAt(),
-                application.getIntro(),
+                application.getSessionApplicationId(),
+                application.getUserId(),
+                application.getNickname(),
+                application.getProfileImageUrl(),
+                application.getIsPublic(),
+                application.getTitle(),
+                application.getPurpose(),
+                application.getOneLineIntro(),
                 application.getPart(),
                 application.getSkillLevel(),
                 application.getGenre(),
                 application.getRegion(),
+                application.getIntro(),
+                application.getAvailableActivities(),
+                application.getCareers(),
                 application.getPortfolioLinks()
         );
     }
