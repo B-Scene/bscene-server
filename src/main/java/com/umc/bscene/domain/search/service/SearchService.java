@@ -41,7 +41,7 @@ import java.util.Set;
 @RequiredArgsConstructor
 public class SearchService {
 
-    private static final int SECTION_SIZE = 4;      // 통합 모드 섹션별 표시 개수
+    private static final int SECTION_SIZE = 3;      // 통합 모드 섹션별 표시 개수
     private static final int MAX_PAGE_SIZE = 30;    // 단일 모드 페이지 크기 상한
 
     // 타입별 검색 대상 필드와 가중치 (제목·이름 > 밴드명·태그 > 장소·설명)
