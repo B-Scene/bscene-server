@@ -5,10 +5,7 @@ import com.umc.bscene.domain.stream.port.*;
 import com.umc.bscene.domain.stream.repository.*;
 import com.umc.bscene.domain.stream.scheduler.StreamCleanupScheduler;
 import com.umc.bscene.domain.stream.scheduler.StreamReminderScheduler;
-import com.umc.bscene.domain.stream.service.MediaMtxLivePoller;
-import com.umc.bscene.domain.stream.service.StreamReminderService;
-import com.umc.bscene.domain.stream.service.StreamService;
-import com.umc.bscene.domain.stream.service.StreamServiceImpl;
+import com.umc.bscene.domain.stream.service.*;
 import com.umc.bscene.domain.stream.sse.ViewerSsePresence;
 import com.umc.bscene.domain.stream.sse.ViewerSseRegistry;
 import com.umc.bscene.domain.chat.service.LiveChatRoomCloser;
@@ -62,6 +59,11 @@ public class StreamConfig {
     }
 
     @Bean
+    public DiscordMessageSender discordMessageSender(DiscordWebhookPort discordWebhookPort) {
+        return new DiscordMessageSender(discordWebhookPort);
+    }
+
+    @Bean
     public StreamService streamService(
             JwtUtil jwtUtil,
             AudioStreamRepository audioStreamRepository,
@@ -78,6 +80,7 @@ public class StreamConfig {
             RestClient mtxRestClient,
             ViewerSsePresence viewerSsePresence,
             LiveChatRoomCloser liveChatRoomCloser,
+            DiscordMessageSender discordMessageSender,
             @Value("${mediamtx.hls-url}") String hlsUrl,
             @Value("${mediamtx.webrtc-url}") String webrtcUrl
     ) {
@@ -97,6 +100,7 @@ public class StreamConfig {
                 mtxRestClient,
                 viewerSsePresence,
                 liveChatRoomCloser,
+                discordMessageSender,
                 hlsUrl,
                 webrtcUrl
         );
