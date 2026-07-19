@@ -3,8 +3,9 @@ package com.umc.bscene.domain.session.dto.recruitment.response;
 import com.umc.bscene.domain.session.entity.SessionRecruitment;
 import com.umc.bscene.domain.session.entity.SessionRecruitmentView;
 import com.umc.bscene.domain.session.enums.Part;
-import com.umc.bscene.domain.session.enums.SessionRegion;
+import com.umc.bscene.domain.session.enums.SessionGenre;
 import com.umc.bscene.domain.session.enums.SkillLevel;
+import com.umc.bscene.domain.auth.enums.onboarding.Region;
 
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
@@ -12,36 +13,36 @@ import java.time.temporal.ChronoUnit;
 public record RecentRecruitmentItemResponse(
         Long viewId,
         Long sessionRecruitmentId,
+        long dDay,
         boolean isClosed,
         String recruitmentTitle,
+        String bandName,
+        Region bandRegion,
+        long viewedAgo,
         Part part,
         SkillLevel skillLevel,
-        String practiceSchedule,
-        String bandName,
-        SessionRegion region,
-        long viewedAgo,
-        String applicationTitle
+        SessionGenre genre
 ) {
-    public static RecentRecruitmentItemResponse of(
-            SessionRecruitmentView view,
-            String applicationTitle
-    ) {
+    public static RecentRecruitmentItemResponse from(SessionRecruitmentView view) {
         SessionRecruitment recruitment = view.getSessionRecruitment();
         return new RecentRecruitmentItemResponse(
                 view.getSessionRecruitmentViewId(),
                 recruitment.getSessionRecruitmentId(),
+                ChronoUnit.DAYS.between(
+                        LocalDateTime.now().toLocalDate(),
+                        recruitment.getDeadlineAt().toLocalDate()
+                ),
                 !recruitment.getDeadlineAt().isAfter(LocalDateTime.now()),
                 recruitment.getRecruitmentTitle(),
-                recruitment.getPart(),
-                recruitment.getSkillLevel(),
-                recruitment.getPracticeSchedule(),
                 recruitment.getBand().getName(),
-                recruitment.getRegion(),
+                recruitment.getBand().getRegion(),
                 Math.max(0, ChronoUnit.DAYS.between(
                         view.getCreatedAt().toLocalDate(),
                         LocalDateTime.now().toLocalDate()
                 )),
-                applicationTitle
+                recruitment.getPart(),
+                recruitment.getSkillLevel(),
+                recruitment.getGenre()
         );
     }
 }

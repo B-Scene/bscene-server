@@ -6,7 +6,6 @@ import com.umc.bscene.domain.session.dto.recruitment.response.SessionRecruitment
 import com.umc.bscene.domain.session.dto.recruitment.response.RecentRecruitmentItemResponse;
 import com.umc.bscene.domain.session.dto.recruitment.response.RecentRecruitmentListResponse;
 import com.umc.bscene.domain.session.entity.SessionRecruitmentView;
-import com.umc.bscene.domain.session.entity.SessionApplicationSubmission;
 import com.umc.bscene.domain.session.entity.SessionRecruitment;
 import com.umc.bscene.domain.session.enums.Part;
 import com.umc.bscene.domain.session.enums.SessionGenre;
@@ -18,7 +17,6 @@ import com.umc.bscene.domain.session.exception.SessionException;
 import com.umc.bscene.domain.session.repository.SessionRecruitmentRepository;
 import com.umc.bscene.domain.session.repository.SessionRecruitmentInterestRepository;
 import com.umc.bscene.domain.session.repository.SessionRecruitmentViewRepository;
-import com.umc.bscene.domain.session.repository.SessionApplicationSubmissionRepository;
 import com.umc.bscene.domain.user.repository.UserRepository;
 import com.umc.bscene.domain.session.service.SessionRecruitmentQueryService;
 import com.umc.bscene.domain.session.service.SessionRecruitmentSearchKeywordService;
@@ -32,8 +30,6 @@ import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.Set;
-import java.util.Map;
-import java.util.function.Function;
 import java.util.stream.Collectors;
 
 @Service
@@ -44,7 +40,6 @@ public class SessionRecruitmentQueryServiceImpl implements SessionRecruitmentQue
     private final SessionRecruitmentRepository sessionRecruitmentRepository;
     private final SessionRecruitmentInterestRepository interestRepository;
     private final SessionRecruitmentViewRepository viewRepository;
-    private final SessionApplicationSubmissionRepository submissionRepository;
     private final UserRepository userRepository;
     private final SessionRecruitmentSearchKeywordService searchKeywordService;
 
@@ -203,31 +198,8 @@ public class SessionRecruitmentQueryServiceImpl implements SessionRecruitmentQue
         List<SessionRecruitmentView> sliced = hasNext
                 ? views.subList(0, pageSize)
                 : views;
-        List<Long> recruitmentIds = sliced.stream()
-                .map(view -> view.getSessionRecruitment().getSessionRecruitmentId())
-                .toList();
-        Map<Long, SessionApplicationSubmission> submissions = recruitmentIds.isEmpty()
-                ? Map.of()
-                : submissionRepository
-                        .findActiveSubmissionsForRecruitments(userId, recruitmentIds)
-                        .stream()
-                        .collect(Collectors.toMap(
-                                submission -> submission.getSessionRecruitment()
-                                        .getSessionRecruitmentId(),
-                                Function.identity(),
-                                (latest, ignored) -> latest
-                        ));
         List<RecentRecruitmentItemResponse> content = sliced.stream()
-                .map(view -> {
-                    Long recruitmentId = view.getSessionRecruitment()
-                            .getSessionRecruitmentId();
-                    SessionApplicationSubmission submission = submissions.get(recruitmentId);
-                    return RecentRecruitmentItemResponse.of(
-                            view,
-                            submission == null ? null
-                                    : submission.getSessionApplication().getTitle()
-                    );
-                })
+                .map(RecentRecruitmentItemResponse::from)
                 .toList();
         Long nextCursor = hasNext && !sliced.isEmpty()
                 ? sliced.get(sliced.size() - 1).getSessionRecruitmentViewId()
