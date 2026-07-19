@@ -24,7 +24,7 @@ import org.springframework.web.service.registry.ImportHttpServices;
 
 @EnableAsync
 @EnableScheduling
-@ImportHttpServices(group = "discord", types = DiscordWebhookRequest.class)
+@ImportHttpServices(group = "discord", types = DiscordWebhookPort.class)
 @Configuration
 public class StreamConfig {
 
