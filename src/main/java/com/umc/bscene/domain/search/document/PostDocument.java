@@ -86,6 +86,10 @@ public class PostDocument {
     @Field(type = FieldType.Date, format = DateFormat.date_hour_minute_second)
     private LocalDateTime uploadedAt;
 
+    // 인기순 정렬용 — 게시물의 인기 지표는 "올린 밴드의 팔로워 수" (기획 확정). 색인 시점 스냅샷, 새벽 재색인이 갱신
+    @Field(type = FieldType.Long, index = false)
+    private Long popularity;
+
     // 표시용 미리보기 이미지 (검색 대상 아님) : VIDEO=썸네일, PHOTO=첫 사진, TEXT=없음
     @Field(type = FieldType.Keyword, index = false)
     private String thumbnailUrl;
@@ -99,11 +103,12 @@ public class PostDocument {
     private Long bandId;
 
     // band는 반드시 fetch join으로 함께 조회된 상태여야 한다 (LAZY 프록시 추가 쿼리 방지)
-    public static PostDocument from(Post post) {
+    public static PostDocument from(Post post, long bandFollowerCount) {
         Band band = post.getBand();
         return PostDocument.builder()
                 .id(post.getId())
                 .docId(post.getId())
+                .popularity(bandFollowerCount)
                 .postType(post.getType().name())
                 .title(post.getTitle())
                 .bandName(band.getName())

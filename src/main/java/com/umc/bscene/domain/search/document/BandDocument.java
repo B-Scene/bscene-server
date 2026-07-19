@@ -64,14 +64,19 @@ public class BandDocument {
     @Field(type = FieldType.Date, format = DateFormat.date_hour_minute_second)
     private LocalDateTime createdAt;
 
+    // 인기순 정렬용 팔로워 수 (정렬 전용이라 역색인 제외) — 색인 시점 스냅샷, 새벽 전체 재색인이 하루 1회 갱신
+    @Field(type = FieldType.Long, index = false)
+    private Long popularity;
+
     // 표시용 (검색 대상 아님)
     @Field(type = FieldType.Keyword, index = false)
     private String profileImageUrl;
 
-    public static BandDocument from(Band band) {
+    public static BandDocument from(Band band, long followerCount) {
         return BandDocument.builder()
                 .id(band.getId())
                 .docId(band.getId())
+                .popularity(followerCount)
                 .name(band.getName())
                 .description(band.getDescription())
                 .genre(band.getGenre().name())
