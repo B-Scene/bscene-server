@@ -5,12 +5,12 @@ import com.umc.bscene.domain.auth.enums.onboarding.Genre;
 import com.umc.bscene.domain.auth.enums.onboarding.Region;
 import com.umc.bscene.domain.search.document.BandDocument;
 import com.umc.bscene.domain.search.document.PerformanceDocument;
-import com.umc.bscene.domain.search.document.VideoDocument;
+import com.umc.bscene.domain.search.document.PostDocument;
 import com.umc.bscene.domain.search.dto.response.ExploreSearchResponse;
 import com.umc.bscene.domain.search.dto.response.ExploreSearchResponse.BandItem;
 import com.umc.bscene.domain.search.dto.response.ExploreSearchResponse.PerformanceItem;
 import com.umc.bscene.domain.search.dto.response.ExploreSearchResponse.SearchSection;
-import com.umc.bscene.domain.search.dto.response.ExploreSearchResponse.VideoItem;
+import com.umc.bscene.domain.search.dto.response.ExploreSearchResponse.PostItem;
 import com.umc.bscene.domain.search.enums.SearchType;
 import com.umc.bscene.domain.search.exception.SearchException;
 import com.umc.bscene.domain.search.port.FollowPort;
@@ -51,13 +51,13 @@ public class SearchService {
     private static final List<String> BAND_EXACT_FIELDS = List.of("description");
     private static final List<String> PERFORMANCE_FUZZY_FIELDS = List.of("title^3", "bandName^2", "venue");
     private static final List<String> PERFORMANCE_EXACT_FIELDS = List.of("description");
-    private static final List<String> VIDEO_FUZZY_FIELDS = List.of("title^3", "bandName^2");
-    private static final List<String> VIDEO_EXACT_FIELDS = List.of("tags^2", "description");
+    private static final List<String> POST_FUZZY_FIELDS = List.of("title^3", "bandName^2");
+    private static final List<String> POST_EXACT_FIELDS = List.of("tags^2", "description");
 
     // 접두어(부분 입력) 검색 : "블루" → 블루문. edge_ngram(2~10자)으로 색인된 서브필드 (가중치 없음 — 완성어 매칭보다 항상 아래)
     private static final List<String> BAND_PREFIX_FIELDS = List.of("name.prefix");
     private static final List<String> PERFORMANCE_PREFIX_FIELDS = List.of("title.prefix", "bandName.prefix");
-    private static final List<String> VIDEO_PREFIX_FIELDS = List.of("title.prefix", "bandName.prefix");
+    private static final List<String> POST_PREFIX_FIELDS = List.of("title.prefix", "bandName.prefix");
 
     private final ElasticsearchOperations elasticsearchOperations;
     private final FollowPort followPort;
@@ -76,7 +76,7 @@ public class SearchService {
                 case ALL -> searchAll(userId, trimmed, genre, region);
                 case BAND -> searchBandsOnly(userId, trimmed, genre, region, cursor, size);
                 case PERFORMANCE -> searchPerformancesOnly(trimmed, genre, region, cursor, size);
-                case VIDEO -> searchVideosOnly(trimmed, genre, region, cursor, size);
+                case POST -> searchPostsOnly(trimmed, genre, region, cursor, size);
             };
         } catch (SearchException e) {
             throw e;    // 잘못된 커서(400) 등 의도된 예외는 그대로 전달
@@ -87,18 +87,18 @@ public class SearchService {
         }
     }
 
-    // 통합 모드 : 쿼리 3개를 multiSearch(_msearch) 한 번으로 실행, 섹션별 상위 4개 + 전체 건수 합산
+    // 통합 모드 : 쿼리 3개를 multiSearch(_msearch) 한 번으로 실행, 섹션별 상위 SECTION_SIZE개 + 전체 건수 합산
     private ExploreSearchResponse searchAll(Long userId, String keyword, Genre genre, Region region) {
         NativeQuery bandQuery = buildQuery(keyword, BAND_FUZZY_FIELDS, BAND_EXACT_FIELDS, BAND_PREFIX_FIELDS,
                 "name", genre, region, "createdAt", SECTION_SIZE, null);
         NativeQuery performanceQuery = buildQuery(keyword, PERFORMANCE_FUZZY_FIELDS, PERFORMANCE_EXACT_FIELDS, PERFORMANCE_PREFIX_FIELDS,
                 "title", genre, region, "performanceDate", SECTION_SIZE, null);
-        NativeQuery videoQuery = buildQuery(keyword, VIDEO_FUZZY_FIELDS, VIDEO_EXACT_FIELDS, VIDEO_PREFIX_FIELDS,
+        NativeQuery postQuery = buildQuery(keyword, POST_FUZZY_FIELDS, POST_EXACT_FIELDS, POST_PREFIX_FIELDS,
                 "title", genre, region, "uploadedAt", SECTION_SIZE, null);
 
         List<SearchHits<?>> results = elasticsearchOperations.multiSearch(
-                List.of(bandQuery, performanceQuery, videoQuery),
-                List.of(BandDocument.class, PerformanceDocument.class, VideoDocument.class)
+                List.of(bandQuery, performanceQuery, postQuery),
+                List.of(BandDocument.class, PerformanceDocument.class, PostDocument.class)
         );
 
         @SuppressWarnings("unchecked")
@@ -106,16 +106,16 @@ public class SearchService {
         @SuppressWarnings("unchecked")
         SearchHits<PerformanceDocument> performanceHits = (SearchHits<PerformanceDocument>) results.get(1);
         @SuppressWarnings("unchecked")
-        SearchHits<VideoDocument> videoHits = (SearchHits<VideoDocument>) results.get(2);
+        SearchHits<PostDocument> postHits = (SearchHits<PostDocument>) results.get(2);
 
-        long totalCount = bandHits.getTotalHits() + performanceHits.getTotalHits() + videoHits.getTotalHits();
+        long totalCount = bandHits.getTotalHits() + performanceHits.getTotalHits() + postHits.getTotalHits();
 
         return new ExploreSearchResponse(
                 totalCount,
                 SearchType.ALL,
                 toBandSection(userId, contentsOf(bandHits.getSearchHits()), bandHits.getTotalHits()),
                 toPerformanceSection(contentsOf(performanceHits.getSearchHits()), performanceHits.getTotalHits()),
-                toVideoSection(contentsOf(videoHits.getSearchHits()), videoHits.getTotalHits()),
+                toPostSection(contentsOf(postHits.getSearchHits()), postHits.getTotalHits()),
                 null,
                 null
         );
@@ -149,16 +149,16 @@ public class SearchService {
         );
     }
 
-    // 단일 모드 : 영상만 커서 기반 무한스크롤
-    private ExploreSearchResponse searchVideosOnly(String keyword, Genre genre, Region region, String cursor, int size) {
+    // 단일 모드 : 게시물(영상/사진/글)만 커서 기반 무한스크롤
+    private ExploreSearchResponse searchPostsOnly(String keyword, Genre genre, Region region, String cursor, int size) {
         int pageSize = clampSize(size);
-        NativeQuery query = buildQuery(keyword, VIDEO_FUZZY_FIELDS, VIDEO_EXACT_FIELDS, VIDEO_PREFIX_FIELDS,
+        NativeQuery query = buildQuery(keyword, POST_FUZZY_FIELDS, POST_EXACT_FIELDS, POST_PREFIX_FIELDS,
                 "title", genre, region, "uploadedAt", pageSize + 1, SearchCursor.decode(cursor));
-        CursorSlice<VideoDocument> slice = searchSlice(query, VideoDocument.class, pageSize);
+        CursorSlice<PostDocument> slice = searchSlice(query, PostDocument.class, pageSize);
 
         return new ExploreSearchResponse(
-                slice.totalHits(), SearchType.VIDEO,
-                null, null, toVideoSection(slice.contents(), slice.totalHits()),
+                slice.totalHits(), SearchType.POST,
+                null, null, toPostSection(slice.contents(), slice.totalHits()),
                 slice.nextCursor(), slice.hasNext()
         );
     }
@@ -242,8 +242,8 @@ public class SearchService {
         return new SearchSection<>(totalHits, documents.stream().map(PerformanceItem::from).toList());
     }
 
-    private SearchSection<VideoItem> toVideoSection(List<VideoDocument> documents, long totalHits) {
-        return new SearchSection<>(totalHits, documents.stream().map(VideoItem::from).toList());
+    private SearchSection<PostItem> toPostSection(List<PostDocument> documents, long totalHits) {
+        return new SearchSection<>(totalHits, documents.stream().map(PostItem::from).toList());
     }
 
     private static <T> List<T> contentsOf(List<SearchHit<T>> searchHits) {
