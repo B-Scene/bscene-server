@@ -16,6 +16,8 @@ import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
+
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
@@ -31,6 +33,12 @@ public class PerformanceAlarmService {
     public PerformanceAlarmResponse setAlarm(Long userId, Long performanceId) {
         // 대상 공연이 존재하는지 확인 (없거나 삭제된 경우 404 반환)
         Performance performance = getActivePerformance(performanceId);
+
+        // 이미 시작된 공연은 알림 설정 불가 (참여 확인 모달 응답 후 재등록 방지 포함)
+        LocalDateTime performanceStartAt = LocalDateTime.of(performance.getPerformanceDate(), performance.getStartTime());
+        if (!performanceStartAt.isAfter(LocalDateTime.now())) {
+            throw new PerformanceException(PerformanceErrorCode.ALREADY_STARTED_PERFORMANCE);
+        }
 
         // 이미 참여 기록(예정/완료)이 있는 경우 중복 저장 방지
         if (performanceParticipationRepository.existsByPerformance_IdAndUser_Id(performanceId, userId)) {
