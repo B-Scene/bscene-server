@@ -8,6 +8,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 public interface FollowRepository extends JpaRepository<Follow, Long> {
@@ -57,7 +58,15 @@ public interface FollowRepository extends JpaRepository<Follow, Long> {
     @Query("SELECT f FROM Follow f JOIN FETCH f.band b WHERE f.user.id = :userId ORDER BY b.name ASC, f.id ASC")
     Slice<Follow> findFollowedBands(@Param("userId") Long userId, Pageable pageable);
 
-    // UserAdapter에서 사용 : 조회된 밴드들의 전체 팔로워 수 일괄 집계 (목록 아이템 followerCount용, [bandId, count] 행)
+    // UserAdapter / 밴드 추천(인기도 항목)에서 사용 : 조회된 밴드들의 전체 팔로워 수 일괄 집계 ([bandId, count] 행)
     @Query("SELECT f.band.id, COUNT(f) FROM Follow f WHERE f.band.id IN :bandIds GROUP BY f.band.id")
     List<Object[]> countFollowersByBandIds(@Param("bandIds") List<Long> bandIds);
+
+    // 후보 밴드들의 최근 N일 신규 팔로워 수를 일괄 조회 (밴드ID, 증가수) - 추천 스코어의 인기도 항목용
+    @Query("SELECT f.band.id, COUNT(f) FROM Follow f " +
+            "WHERE f.band.id IN :bandIds AND f.createdAt >= :since GROUP BY f.band.id")
+    List<Object[]> countRecentFollowersByBandIdIn(
+            @Param("bandIds") List<Long> bandIds,
+            @Param("since") LocalDateTime since
+    );
 }

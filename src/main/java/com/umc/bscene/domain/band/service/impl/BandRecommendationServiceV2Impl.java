@@ -71,6 +71,16 @@ public class BandRecommendationServiceV2Impl implements BandRecommendationServic
     private static final double SCORE_SCALE = 10.0;
     private static final String ALGORITHM_VERSION = "rule-v2";
 
+    // 인기도(팔로워) 항목. 절대 팔로워수는 로그로 압축해 신인/인기 밴드 간 격차를 완만하게 만들고,
+    // 최근 성장세(신규 팔로워)에 더 큰 비중을 두었다.
+    // 로그 캡은 고정값이 아니라 이번 추천 후보군 내 최댓값 기준으로 매 요청마다 동적으로 잡는다.
+    private static final int RECENT_FOLLOWER_GROWTH_DAYS = 7;
+    private static final long POPULARITY_TOTAL_FLOOR = 20;
+    private static final long POPULARITY_GROWTH_FLOOR = 5;
+    private static final double POPULARITY_TOTAL_RATIO = 0.3;
+    private static final double POPULARITY_GROWTH_RATIO = 0.7;
+    private static final double POPULARITY_WEIGHT = 0.5;
+
     // reason 우선순위 : 유사도 > 장르 > 지역 > 최근 활동 (배점 GENRE(3) > REGION(2) > ACTIVITY(1) 순이라 동점은 거의 안 생김)
     private static final String REASON_SIMILARITY_FOLLOW = "팔로우한 밴드와 유사한 스타일";
     private static final String REASON_SIMILARITY_CLICK = "관심 있게 본 밴드와 유사한 스타일";
@@ -156,11 +166,28 @@ public class BandRecommendationServiceV2Impl implements BandRecommendationServic
                 : postRepository.findLatestActivityAtByBandIds(candidateIds).stream()
                         .collect(Collectors.toMap(row -> (Long) row[0], row -> (LocalDateTime) row[1]));
 
+        LocalDateTime followGrowthSince = LocalDateTime.now().minusDays(RECENT_FOLLOWER_GROWTH_DAYS);
+        Map<Long, Long> followerCountByBandId = candidateIds.isEmpty()
+                ? Map.of()
+                : followRepository.countFollowersByBandIds(candidateIds).stream()
+                        .collect(Collectors.toMap(row -> (Long) row[0], row -> (Long) row[1]));
+        Map<Long, Long> recentFollowerCountByBandId = candidateIds.isEmpty()
+                ? Map.of()
+                : followRepository.countRecentFollowersByBandIdIn(candidateIds, followGrowthSince).stream()
+                        .collect(Collectors.toMap(row -> (Long) row[0], row -> (Long) row[1]));
+
+        // 이번 추천 후보군 내 최댓값 기준으로 인기도 로그 캡을 동적으로 산출 (팔로우 데이터 규모에 따라 자동 스케일)
+        long maxFollowerCount = followerCountByBandId.values().stream().mapToLong(Long::longValue).max().orElse(0L);
+        long maxRecentFollowerCount = recentFollowerCountByBandId.values().stream().mapToLong(Long::longValue).max().orElse(0L);
+        double totalLogCap = Math.log(Math.max(maxFollowerCount, POPULARITY_TOTAL_FLOOR) + 1);
+        double growthLogCap = Math.log(Math.max(maxRecentFollowerCount, POPULARITY_GROWTH_FLOOR) + 1);
+
         List<ScoredBand> scored = candidateBands.values().stream()
                 .map(band -> score(
                         band, preferredGenres, preferredRegions, recentActivityBandIds,
                         similarityWeightedSumByBandId, similarityMatchCountByBandId, followSimilarBandIds,
-                        latestActivityAtByBandId))
+                        latestActivityAtByBandId, followerCountByBandId, recentFollowerCountByBandId,
+                        totalLogCap, growthLogCap))
                 .sorted(Comparator.comparingDouble(ScoredBand::score).reversed()
                         .thenComparing(ScoredBand::lastActivityAt, Comparator.nullsLast(Comparator.reverseOrder())))
                 .toList();
@@ -214,7 +241,11 @@ public class BandRecommendationServiceV2Impl implements BandRecommendationServic
             Map<Long, Double> similarityWeightedSumByBandId,
             Map<Long, Long> similarityMatchCountByBandId,
             Set<Long> followSimilarBandIds,
-            Map<Long, LocalDateTime> latestActivityAtByBandId
+            Map<Long, LocalDateTime> latestActivityAtByBandId,
+            Map<Long, Long> followerCountByBandId,
+            Map<Long, Long> recentFollowerCountByBandId,
+            double totalLogCap,
+            double growthLogCap
     ) {
         double genreScore = preferredGenres.contains(band.getGenre()) ? GENRE_MATCH_SCORE : 0;
         double regionScore = preferredRegions.contains(band.getRegion()) ? REGION_MATCH_SCORE : 0;
@@ -228,6 +259,13 @@ public class BandRecommendationServiceV2Impl implements BandRecommendationServic
 
         double totalScore = (EXPLICIT_WEIGHT * explicitNorm + IMPLICIT_WEIGHT * implicitNorm)
                 / (EXPLICIT_WEIGHT + IMPLICIT_WEIGHT) * SCORE_SCALE;
+
+        long followerCount = followerCountByBandId.getOrDefault(band.getId(), 0L);
+        long recentFollowerCount = recentFollowerCountByBandId.getOrDefault(band.getId(), 0L);
+        double totalNorm = Math.min(Math.log(followerCount + 1) / totalLogCap, 1.0);
+        double growthNorm = Math.min(Math.log(recentFollowerCount + 1) / growthLogCap, 1.0);
+        double popularityNorm = totalNorm * POPULARITY_TOTAL_RATIO + growthNorm * POPULARITY_GROWTH_RATIO;
+        totalScore += popularityNorm * POPULARITY_WEIGHT;
 
         double genreContribution = EXPLICIT_WEIGHT * (genreScore / EXPLICIT_MAX_SCORE);
         double regionContribution = EXPLICIT_WEIGHT * (regionScore / EXPLICIT_MAX_SCORE);
