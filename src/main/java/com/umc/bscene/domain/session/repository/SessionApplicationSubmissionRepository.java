@@ -7,12 +7,28 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 import java.util.Collection;
 
 public interface SessionApplicationSubmissionRepository
         extends JpaRepository<SessionApplicationSubmission, Long> {
+
+    // 활성화된 공고에 지원한 지원자 수를 세는 쿼리
+    @Query("""
+select count(submission)
+from SessionApplicationSubmission submission
+join submission.sessionRecruitment recruitment
+where recruitment.band.id = :bandId
+    and recruitment.deletedAt IS NULL
+    and recruitment.deadlineAt > :now
+    and submission.status <> com.umc.bscene.domain.session.enums.ApplicationStatus.CANCELED
+""")
+    long countActiveApplicantsByBandId(
+            @Param("bandId") Long bandId,
+            @Param("now") LocalDateTime now
+    );
 
     long countBySessionApplication_UserId(Long userId);
 
