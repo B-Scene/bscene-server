@@ -3,9 +3,12 @@ package com.umc.bscene.domain.performance.dto.response;
 import com.umc.bscene.domain.auth.enums.onboarding.Genre;
 import com.umc.bscene.domain.auth.enums.onboarding.Region;
 import com.umc.bscene.domain.performance.entity.Performance;
+import com.umc.bscene.domain.performance.entity.PerformanceTag;
+import com.umc.bscene.domain.performance.enums.AgeRating;
 
 import java.time.LocalDate;
 import java.time.LocalTime;
+import java.util.List;
 
 public record PerformanceResponse(
         Long performanceId,
@@ -19,6 +22,8 @@ public record PerformanceResponse(
         Integer ticketPrice,
         String ticketLink,
         String posterImageUrl,
+        AgeRating ageRating,
+        List<String> tags,
         Long interestCount,
         boolean isInterested
 ) {
@@ -35,6 +40,8 @@ public record PerformanceResponse(
                 performance.getTicketPrice(),
                 performance.getTicketLink(),
                 performance.getPosterImageUrl(),
+                performance.getAgeRating(),
+                performance.getTagList().stream().map(PerformanceTag::getTagName).toList(),
                 interestCount,
                 isInterested
         );

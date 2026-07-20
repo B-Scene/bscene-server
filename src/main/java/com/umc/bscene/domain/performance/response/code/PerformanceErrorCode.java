@@ -16,6 +16,8 @@ public enum PerformanceErrorCode implements BaseResponseCode {
 
     PERFORMANCE_NOT_STARTED(BAD_REQUEST, "SHOW400_3", "아직 시작하지 않은 공연이에요."),
 
+    TAG_LIMIT_EXCEEDED(BAD_REQUEST, "SHOW400_4", "태그는 최대 8개까지 입력할 수 있어요."),
+
     NOT_PERFORMANCE_BAND_MEMBER(FORBIDDEN, "SHOW403_1", "공연에 대한 권한이 없어요."),
 
     PERFORMANCE_NOT_FOUND(NOT_FOUND, "SHOW404_1", "존재하지 않는 공연이에요."),
