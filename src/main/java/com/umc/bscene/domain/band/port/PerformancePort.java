@@ -18,5 +18,5 @@ public interface PerformancePort {
      * @param status ACTIVE
      * @return 현재까지 진행한 공연의 수
      */
-    Long countPerformancesByBandIdAndStatus(Long bandId, PerformanceStatus status);
+    Long countPerformancesByBandIdAndStatus(Long bandId);
 }

@@ -21,7 +21,7 @@ public class BandAdapter implements PerformancePort {
     }
 
     @Override
-    public Long countPerformancesByBandIdAndStatus(Long bandId, PerformanceStatus status) {
-        return performanceRepository.countByBand_IdAndStatusAndPerformanceDateBefore(bandId, status, LocalDate.now());
+    public Long countPerformancesByBandIdAndStatus(Long bandId) {
+        return performanceRepository.countByBand_IdAndStatusAndPerformanceDateBefore(bandId, PerformanceStatus.ACTIVE, LocalDate.now());
     }
 }
