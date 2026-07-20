@@ -6,6 +6,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 public interface FollowRepository extends JpaRepository<Follow, Long> {
@@ -40,5 +41,18 @@ public interface FollowRepository extends JpaRepository<Follow, Long> {
     List<Long> findBandIdsByUserIdAndBandIdIn(
             @Param("userId") Long userId,
             @Param("bandIds") List<Long> bandIds
+    );
+
+    // 후보 밴드들의 누적 팔로워 수를 일괄 조회 (밴드ID, 팔로워수) - 추천 스코어의 인기도 항목용
+    @Query("SELECT f.band.id, COUNT(f) FROM Follow f " +
+            "WHERE f.band.id IN :bandIds GROUP BY f.band.id")
+    List<Object[]> countFollowersByBandIdIn(@Param("bandIds") List<Long> bandIds);
+
+    // 후보 밴드들의 최근 N일 신규 팔로워 수를 일괄 조회 (밴드ID, 증가수) - 추천 스코어의 인기도 항목용
+    @Query("SELECT f.band.id, COUNT(f) FROM Follow f " +
+            "WHERE f.band.id IN :bandIds AND f.createdAt >= :since GROUP BY f.band.id")
+    List<Object[]> countRecentFollowersByBandIdIn(
+            @Param("bandIds") List<Long> bandIds,
+            @Param("since") LocalDateTime since
     );
 }
