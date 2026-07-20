@@ -3,17 +3,7 @@ package com.umc.bscene.domain.stream.controller;
 import com.umc.bscene.domain.stream.dto.request.ReportUserRequest;
 import com.umc.bscene.domain.stream.dto.request.ReservationPatchRequest;
 import com.umc.bscene.domain.stream.dto.request.StreamCreateRequest;
-import com.umc.bscene.domain.stream.dto.response.LiveAlarmToggleResponse;
-import com.umc.bscene.domain.stream.dto.response.LiveHomeResponse;
-import com.umc.bscene.domain.stream.dto.response.LiveMembersResponse;
-import com.umc.bscene.domain.stream.dto.response.LiveStreamResponse;
-import com.umc.bscene.domain.stream.dto.response.ReplayResponse;
-import com.umc.bscene.domain.stream.dto.response.ReservationEditResponse;
-import com.umc.bscene.domain.stream.dto.response.StreamCreateResponse;
-import com.umc.bscene.domain.stream.dto.response.StreamReplayResponse;
-import com.umc.bscene.domain.stream.dto.response.StreamRoomResponse;
-import com.umc.bscene.domain.stream.dto.response.StreamSummaryResponse;
-import com.umc.bscene.domain.stream.dto.response.UpcomingLiveResponse;
+import com.umc.bscene.domain.stream.dto.response.*;
 import com.umc.bscene.domain.stream.enums.ReplaySort;
 import com.umc.bscene.domain.stream.enums.code.success.StreamSuccessCode;
 import com.umc.bscene.domain.stream.service.StreamReplayService;
@@ -262,7 +252,7 @@ public class StreamController {
     }
 
     @PostMapping("/{liveId}/reports")
-    public ResponseEntity<SuccessResponse<Void>> reportUser(
+    public ResponseEntity<SuccessResponse<ReportUserResponse>> reportUser(
             @AuthenticationPrincipal AuthMember authMember,
             @PathVariable Long liveId,
             @Valid @RequestBody ReportUserRequest request
@@ -271,7 +261,9 @@ public class StreamController {
 
         return ResponseEntity
                 .status(HttpStatus.CREATED)
-                .body(new SuccessResponse<>(null, StreamSuccessCode.LIVE_REPORT_SUCCESS));
+                .body(new SuccessResponse<>(
+                        new ReportUserResponse(request.targetUserId()
+                        ), StreamSuccessCode.LIVE_REPORT_SUCCESS));
     }
 
     @GetMapping("/{liveId}/reservation")
