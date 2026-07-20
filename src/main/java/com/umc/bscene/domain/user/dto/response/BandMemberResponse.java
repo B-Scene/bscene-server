@@ -9,6 +9,7 @@ public record BandMemberResponse(
         List<String> parts,
         Integer follower,
         Integer applicant,
-        Integer performance
+        Integer performance,
+        Boolean isBandMember
 ) {
 }
