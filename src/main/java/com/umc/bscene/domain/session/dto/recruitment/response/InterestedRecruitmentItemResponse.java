@@ -4,7 +4,8 @@ import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 import com.umc.bscene.domain.session.entity.SessionRecruitment;
 import com.umc.bscene.domain.session.entity.SessionRecruitmentInterest;
 import com.umc.bscene.domain.session.enums.Part;
-import com.umc.bscene.domain.session.enums.SessionRegion;
+import com.umc.bscene.domain.auth.enums.onboarding.Region;
+import com.umc.bscene.domain.session.converter.SessionRegionFormat;
 import com.umc.bscene.domain.session.enums.SkillLevel;
 
 import java.time.LocalDateTime;
@@ -24,7 +25,7 @@ public record InterestedRecruitmentItemResponse(
         SkillLevel skillLevel,
         String practiceSchedule,
         String bandName,
-        SessionRegion region,
+        @SessionRegionFormat Region region,
         long postedAgo,
         String applicationTitle
 ) {

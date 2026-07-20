@@ -140,18 +140,18 @@ public class ChatRoomService {
                     ? room.getSessionRecruitment().getPart().getDescription()
                     : counterpartApplication.getPart().getDescription();
             genre = viewerIsSender
-                    ? room.getSessionRecruitment().getGenre().getDescription()
-                    : counterpartApplication.getGenre().getDescription();
+                    ? room.getSessionRecruitment().getGenre().getName()
+                    : counterpartApplication.getGenre().getName();
             region = viewerIsSender
-                    ? room.getSessionRecruitment().getRegion().getDescription()
-                    : counterpartApplication.getRegion().getDescription();
+                    ? room.getSessionRecruitment().getRegion().getName()
+                    : counterpartApplication.getRegion().getName();
         } else {
             applicationId = counterpartApplication.getSessionApplicationId();
             opponentName = viewerIsSender
                     ? room.getRecipient().getName() : room.getSender().getName();
             part = counterpartApplication.getPart().getDescription();
-            genre = counterpartApplication.getGenre().getDescription();
-            region = counterpartApplication.getRegion().getDescription();
+            genre = counterpartApplication.getGenre().getName();
+            region = counterpartApplication.getRegion().getName();
         }
 
         return new ChatRoomDetailResponse(

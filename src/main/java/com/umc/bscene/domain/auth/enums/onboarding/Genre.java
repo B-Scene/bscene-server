@@ -7,15 +7,19 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public enum Genre {
 
-    ROCK("록"),
-    INDIE_POP("인디팝"),
-    PUNK("펑크"),
     METAL("메탈"),
-    JAZZ("재즈"),
     BLUES("블루스"),
-    RNB("R&B"),
-    ACOUSTIC("어쿠스틱"),
-    FOLK("포크");
+    PSYCHEDELIC_ROCK("사이키델릭록"),
+    ALTERNATIVE_ROCK("얼터너티브록"),
+    INDIE("인디"),
+    ELECTRONIC_ROCK("일렉트로닉록"),
+    JAZZ("재즈"),
+    POP("팝"),
+    POP_ROCK("팝록"),
+    PUNK_ROCK("펑크록"),
+    FOLK_ROCK("포크록"),
+    HARD_ROCK("하드록"),
+    ETC("기타");
 
     private final String name;
 }

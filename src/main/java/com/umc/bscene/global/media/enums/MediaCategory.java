@@ -9,5 +9,6 @@ public enum MediaCategory {
     PERFORMANCE_POSTER,
     USER_PROFILE,
     SESSION_PROFILE,
+    SESSION_PORTFOLIO,
     ETC
 }

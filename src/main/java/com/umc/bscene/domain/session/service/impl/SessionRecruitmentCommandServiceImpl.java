@@ -2,7 +2,6 @@ package com.umc.bscene.domain.session.service.impl;
 
 import com.umc.bscene.domain.band.entity.Band;
 import com.umc.bscene.domain.band.entity.BandMember;
-import com.umc.bscene.domain.band.enums.BandMemberStatus;
 import com.umc.bscene.domain.band.exception.BandException;
 import com.umc.bscene.domain.band.repository.BandMemberRepository;
 import com.umc.bscene.domain.band.response.code.BandErrorCode;
@@ -33,12 +32,7 @@ public class SessionRecruitmentCommandServiceImpl implements SessionRecruitmentC
             Long userId,
             SessionRecruitmentCreateRequest request
     ) {
-        BandMember bandMember = bandMemberRepository
-                .findByIdAndUser_IdAndStatus(
-                        request.getBandMemberId(),
-                        userId,
-                        BandMemberStatus.ACCEPTED
-                )
+        BandMember bandMember = bandMemberRepository.findById(request.getBandMemberId())
                 .orElseThrow(() -> new BandException(BandErrorCode.BAND_MEMBER_NOT_FOUND));
 
         Band band = bandMember.getBand();
@@ -48,6 +42,7 @@ public class SessionRecruitmentCommandServiceImpl implements SessionRecruitmentC
         SessionRecruitment recruitment = SessionRecruitment.builder()
                 .band(band)
                 .recruitmentTitle(request.getRecruitmentTitle())
+                .summary(request.getSummary())
                 .content(request.getContent())
                 .part(request.getPart())
                 .skillLevel(request.getSkillLevel())
@@ -81,6 +76,7 @@ public class SessionRecruitmentCommandServiceImpl implements SessionRecruitmentC
 
         recruitment.update(
                 request.getRecruitmentTitle(),
+                request.getSummary(),
                 request.getContent(),
                 request.getPart(),
                 request.getSkillLevel(),

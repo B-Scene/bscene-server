@@ -22,7 +22,7 @@ import com.fasterxml.jackson.annotation.JsonPropertyOrder;
         "bandName",
         "bandGenre",
         "bandRegion",
-        "content",
+        "summary",
         "part",
         "skillLevel",
         "practiceSchedule"
@@ -35,7 +35,7 @@ public class SessionRecruitmentListItemResponse {
     private String bandName;
     private String bandGenre;
     private String bandRegion;
-    private String content;
+    private String summary;
     private Part part;
     private SkillLevel skillLevel;
     private String practiceSchedule;

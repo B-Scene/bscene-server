@@ -12,7 +12,8 @@ import com.umc.bscene.domain.session.entity.SessionApplicationSubmission;
 import com.umc.bscene.domain.session.entity.SessionApplication;
 import com.umc.bscene.domain.session.entity.SessionBasicProfile;
 import com.umc.bscene.domain.session.enums.Part;
-import com.umc.bscene.domain.session.enums.SessionRegion;
+import com.umc.bscene.domain.auth.enums.onboarding.Genre;
+import com.umc.bscene.domain.auth.enums.onboarding.Region;
 import com.umc.bscene.domain.session.enums.SkillLevel;
 import com.umc.bscene.domain.session.enums.code.SessionErrorCode;
 import com.umc.bscene.domain.session.enums.ApplicationStatus;
@@ -25,6 +26,7 @@ import com.umc.bscene.domain.user.repository.UserRepository;
 import com.umc.bscene.global.exception.BaseException;
 import com.umc.bscene.global.response.code.GeneralErrorCode;
 import com.umc.bscene.domain.session.service.SessionApplicationQueryService;
+import com.umc.bscene.domain.session.service.SessionRecruitmentSearchKeywordService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
@@ -46,6 +48,7 @@ public class SessionApplicationQueryServiceImpl implements SessionApplicationQue
     private final SessionApplicationSubmissionRepository submissionRepository;
     private final SessionBasicProfileRepository sessionBasicProfileRepository;
     private final UserRepository userRepository;
+    private final SessionRecruitmentSearchKeywordService searchKeywordService;
 
     @Override
     public List<MySessionApplicationResponse> getMySessionApplications(Long userId) {
@@ -125,11 +128,11 @@ public class SessionApplicationQueryServiceImpl implements SessionApplicationQue
     @Override
     @Transactional
     public SubmittedApplicationDetailResponse getSubmittedApplication(
-            Long ownerId,
+            Long viewerId,
             Long applicationSubmissionId
     ) {
         SessionApplicationSubmission submission = submissionRepository
-                .findForRecruitmentOwner(applicationSubmissionId, ownerId)
+                .findForRecruitmentMember(applicationSubmissionId, viewerId)
                 .orElseThrow(() -> new SessionApplicationException(
                         SessionErrorCode.APPLICATION_SUBMISSION_NOT_FOUND
                 ));
@@ -202,11 +205,13 @@ public class SessionApplicationQueryServiceImpl implements SessionApplicationQue
     }
 
     @Override
+    @Transactional
     public SessionApplicationSearchResponse searchDefaultApplications(
             Long viewerUserId,
-            SessionRegion region,
+            Region region,
             SkillLevel skillLevel,
             Part part,
+            Genre genre,
             String keyword,
             Long cursorId,
             Integer size
@@ -215,10 +220,12 @@ public class SessionApplicationQueryServiceImpl implements SessionApplicationQue
         String normalizedKeyword = keyword == null || keyword.isBlank()
                 ? null
                 : keyword.trim();
+        searchKeywordService.record(viewerUserId, normalizedKeyword);
 
         boolean explicitCondition = region != null
                 || skillLevel != null
                 || part != null
+                || genre != null
                 || normalizedKeyword != null;
         SessionApplication myDefaultApplication = explicitCondition
                 ? null
@@ -243,6 +250,7 @@ public class SessionApplicationQueryServiceImpl implements SessionApplicationQue
                         region,
                         skillLevel,
                         part,
+                        genre,
                         recommendationEnabled,
                         recommendationEnabled ? myDefaultApplication.getGenre() : null,
                         recommendationEnabled ? myDefaultApplication.getRegion() : null,

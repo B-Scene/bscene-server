@@ -7,7 +7,8 @@ import com.umc.bscene.domain.session.dto.application.response.MySessionApplicati
 import com.umc.bscene.domain.session.dto.application.response.MyApplicationSubmissionListResponse;
 import com.umc.bscene.domain.session.dto.application.response.SubmittedApplicationDetailResponse;
 import com.umc.bscene.domain.session.enums.Part;
-import com.umc.bscene.domain.session.enums.SessionRegion;
+import com.umc.bscene.domain.auth.enums.onboarding.Genre;
+import com.umc.bscene.domain.auth.enums.onboarding.Region;
 import com.umc.bscene.domain.session.enums.SkillLevel;
 
 import java.util.List;
@@ -25,7 +26,7 @@ public interface SessionApplicationQueryService {
     );
 
     SubmittedApplicationDetailResponse getSubmittedApplication(
-            Long ownerId,
+            Long viewerId,
             Long applicationSubmissionId
     );
 
@@ -38,9 +39,10 @@ public interface SessionApplicationQueryService {
 
     SessionApplicationSearchResponse searchDefaultApplications(
             Long viewerUserId,
-            SessionRegion region,
+            Region region,
             SkillLevel skillLevel,
             Part part,
+            Genre genre,
             String keyword,
             Long cursorId,
             Integer size

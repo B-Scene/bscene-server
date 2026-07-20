@@ -1,6 +1,7 @@
 package com.umc.bscene.domain.session.service;
 
 import com.umc.bscene.domain.session.dto.application.request.MySessionApplicationUpdateRequest;
+import com.umc.bscene.domain.session.dto.application.request.MySessionApplicationCreateRequest;
 import com.umc.bscene.domain.session.dto.application.request.SessionApplicationVisibilityRequest;
 import com.umc.bscene.domain.session.dto.application.response.MySessionApplicationResponse;
 import com.umc.bscene.domain.session.dto.application.response.SessionApplicationVisibilityResponse;
@@ -10,7 +11,7 @@ public interface SessionApplicationCommandService {
 
     MySessionApplicationResponse createSessionApplication(
             Long userId,
-            MySessionApplicationUpdateRequest request
+            MySessionApplicationCreateRequest request
     );
 
     MySessionApplicationResponse updateSessionApplication(

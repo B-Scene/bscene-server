@@ -16,16 +16,20 @@ import com.umc.bscene.domain.session.service.SessionApplicationQueryService;
 import com.umc.bscene.global.response.SuccessResponse;
 import com.umc.bscene.global.security.entity.AuthMember;
 import com.umc.bscene.domain.session.dto.recruitment.response.SessionRecruitmentListResponse;
+import com.umc.bscene.domain.session.converter.SessionGenreJsonDeserializer;
+import com.umc.bscene.domain.session.converter.SessionRegionJsonDeserializer;
 import com.umc.bscene.domain.session.enums.Part;
-import com.umc.bscene.domain.session.enums.SessionGenre;
-import com.umc.bscene.domain.session.enums.SessionRegion;
 import com.umc.bscene.domain.session.enums.SkillLevel;
+import com.umc.bscene.domain.session.enums.SessionRecruitmentSortType;
 import com.umc.bscene.domain.session.service.SessionRecruitmentQueryService;
+import com.umc.bscene.domain.session.service.SessionRecruitmentSearchKeywordService;
+import com.umc.bscene.domain.session.dto.recruitment.response.RecruitmentSearchKeywordResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 import com.umc.bscene.domain.session.dto.recruitment.response.SessionRecruitmentDetailResponse;
+import java.util.List;
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/sessions/recruitments")
@@ -36,6 +40,29 @@ public class SessionRecruitmentController {
     private final SessionApplicationQueryService sessionApplicationQueryService;
     private final SessionRecruitmentInterestService sessionRecruitmentInterestService;
     private final SessionRecruitmentQueryService sessionRecruitmentQueryService;
+    private final SessionRecruitmentSearchKeywordService searchKeywordService;
+
+    @GetMapping("/search-history")
+    public SuccessResponse<List<RecruitmentSearchKeywordResponse>> getSearchHistory(
+            @AuthenticationPrincipal AuthMember authMember
+    ) {
+        return SuccessResponse.of(
+                searchKeywordService.getAll(authMember.getUser().getId()),
+                SessionSuccessCode.SESSION_RECRUITMENT_SEARCH_HISTORY_SUCCESS
+        );
+    }
+
+    @DeleteMapping("/search-history/{keywordId}")
+    public SuccessResponse<Void> deleteSearchHistory(
+            @AuthenticationPrincipal AuthMember authMember,
+            @PathVariable Long keywordId
+    ) {
+        searchKeywordService.delete(authMember.getUser().getId(), keywordId);
+        return new SuccessResponse<>(
+                null,
+                SessionSuccessCode.SESSION_RECRUITMENT_SEARCH_HISTORY_DELETE_SUCCESS
+        );
+    }
     @PostMapping
     public SuccessResponse<SessionRecruitmentCreateResponse> createSessionRecruitment(
             @AuthenticationPrincipal AuthMember authMember,
@@ -122,9 +149,10 @@ public class SessionRecruitmentController {
             @AuthenticationPrincipal AuthMember authMember,
             @RequestParam(required = false) Part part,
             @RequestParam(required = false) SkillLevel skillLevel,
-            @RequestParam(required = false) SessionGenre genre,
-            @RequestParam(required = false) SessionRegion region,
+            @RequestParam(required = false) String genre,
+            @RequestParam(required = false) String region,
             @RequestParam(required = false) String keyword,
+            @RequestParam(defaultValue = "LATEST") SessionRecruitmentSortType sort,
             @RequestParam(required = false) Long cursorId,
             @RequestParam(defaultValue = "10") Integer size
     ) {
@@ -133,9 +161,10 @@ public class SessionRecruitmentController {
                         authMember.getUser().getId(),
                         part,
                         skillLevel,
-                        genre,
-                        region,
+                        SessionGenreJsonDeserializer.fromKorean(genre),
+                        SessionRegionJsonDeserializer.fromKorean(region),
                         keyword,
+                        sort,
                         cursorId,
                         size
                 );

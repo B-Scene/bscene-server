@@ -71,11 +71,20 @@ public interface SessionApplicationSubmissionRepository
         JOIN FETCH submission.sessionApplication application
         LEFT JOIN FETCH application.portfolioLinks
         WHERE submission.applicationSubmissionId = :submissionId
-          AND band.owner.id = :ownerId
+          AND (
+              band.owner.id = :viewerId
+              OR EXISTS (
+                  SELECT bm.id
+                  FROM BandMember bm
+                  WHERE bm.band = band
+                    AND bm.user.id = :viewerId
+                    AND bm.status = com.umc.bscene.domain.band.enums.BandMemberStatus.ACCEPTED
+              )
+          )
     """)
-    Optional<SessionApplicationSubmission> findForRecruitmentOwner(
+    Optional<SessionApplicationSubmission> findForRecruitmentMember(
             @Param("submissionId") Long submissionId,
-            @Param("ownerId") Long ownerId
+            @Param("viewerId") Long viewerId
     );
 
     @Query("""
