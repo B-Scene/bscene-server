@@ -22,6 +22,7 @@ import com.umc.bscene.domain.user.repository.UserRepository;
 import com.umc.bscene.domain.user.exception.UserException;
 import com.umc.bscene.domain.user.response.code.UserErrorCode;
 import lombok.RequiredArgsConstructor;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -131,6 +132,14 @@ public class MyPageService {
             throw new UserException(UserErrorCode.DUPLICATE_NICKNAME);
         }
         fanProfile.updateNickname(nickname);
+
+        // 검사와 커밋 사이에 다른 유저가 같은 닉네임을 저장하는 race 대비 :
+        // 닉네임 UPDATE를 미리 flush해서 unique 제약 위반이면 500 대신 409로 응답
+        try {
+            fanProfileRepository.flush();
+        } catch (DataIntegrityViolationException e) {
+            throw new UserException(UserErrorCode.DUPLICATE_NICKNAME);
+        }
 
         // 장르/지역은 온보딩과 동일하게 전체 삭제 후 재저장
         // (user, genre) unique 제약이 있는데 Hibernate는 insert를 delete보다 먼저 실행하므로 삭제를 먼저 flush
