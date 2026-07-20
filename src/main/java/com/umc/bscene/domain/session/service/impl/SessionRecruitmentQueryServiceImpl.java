@@ -129,17 +129,20 @@ public class SessionRecruitmentQueryServiceImpl implements SessionRecruitmentQue
 
         return SessionRecruitmentDetailResponse.builder()
                 .sessionRecruitmentId(recruitment.getSessionRecruitmentId())
+                .isNew(isNewRecruitment(recruitment.getCreatedAt(), LocalDateTime.now()))
                 .recruitmentTitle(recruitment.getRecruitmentTitle())
                 .deadlineAt(recruitment.getDeadlineAt())
                 .dDay(calculateDDay(recruitment.getDeadlineAt().toLocalDate()))
 
-                // createdAt 기준 3일 이내면 true
-                .isNew(isNewRecruitment(recruitment.getCreatedAt(), LocalDateTime.now()))
-                .isInterested(interestRepository
-                        .existsBySessionRecruitment_SessionRecruitmentIdAndUser_Id(
-                                recruitmentId,
-                                userId
-                        ))
+                // 모집 상세 정보
+                .content(recruitment.getContent())
+                .part(recruitment.getPart().getDescription())
+                .skillLevel(recruitment.getSkillLevel().getDescription())
+                .genre(recruitment.getGenre().getName())
+                .region(recruitment.getRegion())
+                .practiceSchedule(recruitment.getPracticeSchedule())
+                .practicePlace(recruitment.getPracticePlace())
+                .qualification(recruitment.getQualification())
 
                 // 밴드 프로필 정보
                 .bandId(recruitment.getBand().getId())
@@ -147,17 +150,6 @@ public class SessionRecruitmentQueryServiceImpl implements SessionRecruitmentQue
                 .bandProfileImageUrl(recruitment.getBand().getProfileImageUrl())
                 .bandGenre(recruitment.getBand().getGenre().getName())
                 .bandRegion(recruitment.getBand().getRegion().getName())
-
-
-                // 모집 상세 정보
-                .summary(recruitment.getSummary())
-                .content(recruitment.getContent())
-                .part(recruitment.getPart().getDescription())
-                .genre(recruitment.getGenre().getName())
-                .region(recruitment.getRegion())
-                .practiceSchedule(recruitment.getPracticeSchedule())
-                .practicePlace(recruitment.getPracticePlace())
-                .qualification(recruitment.getQualification())
                 .build();
     }
 
