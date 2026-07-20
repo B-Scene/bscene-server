@@ -52,7 +52,7 @@ public class MyPageService {
                 .map(FanProfile::getNickname)
                 .orElseThrow(() -> new UserException(UserErrorCode.FAN_PROFILE_NOT_FOUND));
 
-        // 온보딩 장르는 선택 순서(PK순)로 조회 — 폴백과 동점 처리 기준으로 사용
+        // 등록한 관심장르를 선택 순서(PK순)로 조회 — 대표 장르 후보 목록이자 동점 처리 기준
         List<Genre> onboardingGenres = userGenresRepository.findAllByUserOrderByIdAsc(user).stream()
                 .map(UserGenres::getGenre)
                 .toList();
