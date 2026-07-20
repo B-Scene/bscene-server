@@ -18,7 +18,7 @@ public record PerformanceCreateRequest(
         @NotNull Region region,
         @NotBlank String venue,
         @NotNull String description,
-        @NotNull Integer ticketPrice,
+        @NotBlank String ticketPrice,
         String ticketLink,
         String posterImageUrl,
         @NotNull AgeRating ageRating,

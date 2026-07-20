@@ -58,8 +58,8 @@ public class Performance extends BaseEntity {
     @Enumerated(EnumType.STRING)
     private AgeRating ageRating;
 
-    @Column(nullable = false)
-    private Integer ticketPrice;
+    @Column(nullable = false, length = 100)
+    private String ticketPrice;
 
     @Column(length = 500)
     private String ticketLink;
@@ -83,7 +83,7 @@ public class Performance extends BaseEntity {
             LocalDate performanceDate,
             LocalTime startTime,
             String venue,
-            Integer ticketPrice,
+            String ticketPrice,
             String ticketLink,
             String posterImageUrl,
             AgeRating ageRating

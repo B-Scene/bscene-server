@@ -13,7 +13,7 @@ public record PerformanceUpdateRequest(
         LocalDate performanceDate,
         LocalTime startTime,
         String venue,
-        Integer ticketPrice,
+        String ticketPrice,
         String ticketLink,
         String posterImageUrl,
         AgeRating ageRating,

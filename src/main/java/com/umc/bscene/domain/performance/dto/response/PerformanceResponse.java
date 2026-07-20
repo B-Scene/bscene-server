@@ -19,7 +19,7 @@ public record PerformanceResponse(
         Region region,
         String venue,
         String description,
-        Integer ticketPrice,
+        String ticketPrice,
         String ticketLink,
         String posterImageUrl,
         AgeRating ageRating,
