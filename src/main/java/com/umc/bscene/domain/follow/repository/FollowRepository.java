@@ -45,4 +45,8 @@ public interface FollowRepository extends JpaRepository<Follow, Long> {
     // SearchAdapter에서 사용 : 밴드별 팔로워 수 일괄 집계 (검색 인기순 popularity 색인용, [bandId, count] 행)
     @Query("SELECT f.band.id, COUNT(f) FROM Follow f GROUP BY f.band.id")
     List<Object[]> countGroupedByBand();
+
+    // UserAdapter에서 사용 : 사용자가 팔로우한 밴드들의 장르별 밴드 수 집계 (마이페이지 대표 장르용, [genre, count] 행)
+    @Query("SELECT f.band.genre, COUNT(f) FROM Follow f WHERE f.user.id = :userId GROUP BY f.band.genre")
+    List<Object[]> countGroupedByGenre(@Param("userId") Long userId);
 }
