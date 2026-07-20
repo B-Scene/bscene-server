@@ -85,6 +85,31 @@ public interface PerformanceParticipationRepository extends JpaRepository<Perfor
             @Param("toTime") LocalTime toTime
     );
 
+    // 참여 확인 대기 목록 : 알림 설정(SCHEDULED) 상태이고 공연 시작시간이 이미 지난 공연 조회 (삭제된 공연 제외)
+    @Query("""
+        SELECT pp
+        FROM PerformanceParticipation pp
+        JOIN FETCH pp.performance p
+        WHERE pp.user.id = :userId
+          AND pp.status = :participationStatus
+          AND p.status = :performanceStatus
+          AND (
+                p.performanceDate < :nowDate
+                OR (
+                    p.performanceDate = :nowDate
+                    AND p.startTime <= :nowTime
+                )
+          )
+        ORDER BY p.performanceDate ASC, p.startTime ASC, p.id ASC
+        """)
+    List<PerformanceParticipation> findPendingConfirmations(
+            @Param("userId") Long userId,
+            @Param("participationStatus") ParticipationStatus participationStatus,
+            @Param("performanceStatus") PerformanceStatus performanceStatus,
+            @Param("nowDate") LocalDate nowDate,
+            @Param("nowTime") LocalTime nowTime
+    );
+
     // 해당 공연의 알림을 설정한 사용자 ID 조회
     @Query("""
         SELECT pp.user.id

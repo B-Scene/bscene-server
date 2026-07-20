@@ -1,5 +1,6 @@
 package com.umc.bscene.domain.performance.controller;
 
+import com.umc.bscene.domain.performance.dto.response.PendingParticipationResponse;
 import com.umc.bscene.domain.performance.dto.response.PerformanceParticipationResponse;
 import com.umc.bscene.domain.performance.response.code.PerformanceSuccessCode;
 import com.umc.bscene.domain.performance.service.PerformanceAlarmService;
@@ -12,13 +13,28 @@ import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequiredArgsConstructor
-@RequestMapping("/performances/{performanceId}/participation")
+@RequestMapping("/performances")
 public class PerformanceParticipationController {
 
     private final PerformanceAlarmService performanceAlarmService;
 
+    // 참여 확인 대기 공연 목록 조회 API (팬모드 홈 '공연은 어떠셨나요?' 모달용)
+    @GetMapping("/participation/pending")
+    public ResponseEntity<SuccessResponse<PendingParticipationResponse>> getPendingParticipations(
+            @AuthenticationPrincipal AuthMember authMember
+    ) {
+        PendingParticipationResponse response = performanceAlarmService.getPendingParticipations(
+                authMember.getUser().getId());
+        SuccessResponse<PendingParticipationResponse> successResponse = SuccessResponse.of(
+                response,
+                PerformanceSuccessCode.PERFORMANCE_PENDING_PARTICIPATION_GET_SUCCESS
+        );
+
+        return ResponseEntity.status(successResponse.getStatus()).body(successResponse);
+    }
+
     // 공연 참여 완료 API (참여 예정 → 참여 완료)
-    @PatchMapping("/complete")
+    @PatchMapping("/{performanceId}/participation/complete")
     public ResponseEntity<SuccessResponse<PerformanceParticipationResponse>> completeParticipation(
             @AuthenticationPrincipal AuthMember authMember,
             @PathVariable Long performanceId

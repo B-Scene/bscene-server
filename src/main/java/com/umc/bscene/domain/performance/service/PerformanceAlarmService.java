@@ -1,5 +1,6 @@
 package com.umc.bscene.domain.performance.service;
 
+import com.umc.bscene.domain.performance.dto.response.PendingParticipationResponse;
 import com.umc.bscene.domain.performance.dto.response.PerformanceAlarmResponse;
 import com.umc.bscene.domain.performance.dto.response.PerformanceParticipationResponse;
 import com.umc.bscene.domain.performance.entity.Performance;
@@ -17,6 +18,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Service
 @RequiredArgsConstructor
@@ -70,6 +72,16 @@ public class PerformanceAlarmService {
                 performanceId, userId, ParticipationStatus.SCHEDULED);
 
         return PerformanceAlarmResponse.of(performanceId, false);
+    }
+
+    // 참여 확인 대기 공연 목록 조회 → 알림 설정(SCHEDULED) 상태로 시작시간이 지난 공연 (팬모드 홈 모달 노출용)
+    public PendingParticipationResponse getPendingParticipations(Long userId) {
+        LocalDateTime now = LocalDateTime.now();
+        List<PerformanceParticipation> pendingParticipations = performanceParticipationRepository
+                .findPendingConfirmations(userId, ParticipationStatus.SCHEDULED, PerformanceStatus.ACTIVE,
+                        now.toLocalDate(), now.toLocalTime());
+
+        return PendingParticipationResponse.from(pendingParticipations);
     }
 
     // 사용자가 공연 참여를 완료 처리 → 참여 예정(SCHEDULED) 기록을 참여 완료(COMPLETED)로 전이
