@@ -2,9 +2,11 @@ package com.umc.bscene.domain.user.service;
 
 import com.umc.bscene.domain.auth.enums.onboarding.Genre;
 import com.umc.bscene.domain.auth.enums.onboarding.Region;
+import com.umc.bscene.domain.user.dto.request.MyInfoUpdateRequest;
 import com.umc.bscene.domain.user.dto.response.FanMyPageResponse;
 import com.umc.bscene.domain.user.dto.response.FollowedBandResponse;
 import com.umc.bscene.domain.user.dto.response.InterestedPerformanceResponse;
+import com.umc.bscene.domain.user.dto.response.MyInfoResponse;
 import com.umc.bscene.domain.user.dto.response.ParticipationHistoryResponse;
 import com.umc.bscene.domain.user.enums.HistoryYearFilter;
 import com.umc.bscene.domain.user.entity.FanProfile;
@@ -16,6 +18,7 @@ import com.umc.bscene.domain.user.port.PerformancePort;
 import com.umc.bscene.domain.user.repository.FanProfileRepository;
 import com.umc.bscene.domain.user.repository.UserGenresRepository;
 import com.umc.bscene.domain.user.repository.UserRegionsRepository;
+import com.umc.bscene.domain.user.repository.UserRepository;
 import com.umc.bscene.domain.user.exception.UserException;
 import com.umc.bscene.domain.user.response.code.UserErrorCode;
 import lombok.RequiredArgsConstructor;
@@ -34,6 +37,7 @@ public class MyPageService {
 
     private static final int MAX_PAGE_SIZE = 30;   // 목록 조회(참여 기록·관심 공연) 페이지 크기 상한
 
+    private final UserRepository userRepository;
     private final FanProfileRepository fanProfileRepository;
     private final UserGenresRepository userGenresRepository;
     private final UserRegionsRepository userRegionsRepository;
@@ -101,6 +105,65 @@ public class MyPageService {
     private int onboardingRank(List<Genre> onboardingGenres, Genre genre) {
         int index = onboardingGenres.indexOf(genre);
         return (index == -1) ? Integer.MAX_VALUE : index;
+    }
+
+    // 내 정보 조회 (내 정보 수정 화면 초기값 : 닉네임/관심 장르/활동 지역)
+    public MyInfoResponse getMyInfo(User user) {
+        FanProfile fanProfile = fanProfileRepository.findByUser(user)
+                .orElseThrow(() -> new UserException(UserErrorCode.FAN_PROFILE_NOT_FOUND));
+
+        return buildMyInfo(fanProfile, user);
+    }
+
+    // 내 정보 수정 (온보딩에서 설정한 닉네임/관심 장르/활동 지역을 통째로 교체)
+    @Transactional
+    public MyInfoResponse updateMyInfo(Long userId, MyInfoUpdateRequest request) {
+        // 인증 필터에서 로드된 User는 detached 상태 → 변경 감지를 위해 트랜잭션 내에서 재조회
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new UserException(UserErrorCode.USER_NOT_FOUND));
+
+        FanProfile fanProfile = fanProfileRepository.findByUser(user)
+                .orElseThrow(() -> new UserException(UserErrorCode.FAN_PROFILE_NOT_FOUND));
+
+        // 닉네임 중복 검사는 본인 프로필 제외 (본인이 쓰던 닉네임 그대로 저장하는 건 허용)
+        String nickname = request.nickname();
+        if (fanProfileRepository.existsByNicknameAndUser_IdNot(nickname, userId)) {
+            throw new UserException(UserErrorCode.DUPLICATE_NICKNAME);
+        }
+        fanProfile.updateNickname(nickname);
+
+        // 장르/지역은 온보딩과 동일하게 전체 삭제 후 재저장
+        // (user, genre) unique 제약이 있는데 Hibernate는 insert를 delete보다 먼저 실행하므로 삭제를 먼저 flush
+        userGenresRepository.deleteAllByUser(user);
+        userGenresRepository.flush();
+        List<UserGenres> genres = request.genres().stream()
+                .distinct()
+                .map(genre -> UserGenres.builder().user(user).genre(genre).build())
+                .toList();
+        userGenresRepository.saveAll(genres);
+
+        userRegionsRepository.deleteAllByUser(user);
+        userRegionsRepository.flush();
+        List<UserRegions> regions = request.regions().stream()
+                .distinct()
+                .map(region -> UserRegions.builder().user(user).region(region).build())
+                .toList();
+        userRegionsRepository.saveAll(regions);
+
+        return buildMyInfo(fanProfile, user);
+    }
+
+    // 장르/지역은 enum code만 내려줌 (한글명 매칭은 /genres, /regions 목록 조회 응답 사용)
+    private MyInfoResponse buildMyInfo(FanProfile fanProfile, User user) {
+        List<String> genres = userGenresRepository.findAllByUserOrderByIdAsc(user).stream()
+                .map(userGenre -> userGenre.getGenre().name())
+                .toList();
+
+        List<String> regions = userRegionsRepository.findAllByUserOrderByIdAsc(user).stream()
+                .map(userRegion -> userRegion.getRegion().name())
+                .toList();
+
+        return new MyInfoResponse(fanProfile.getNickname(), fanProfile.getProfileImageUrl(), genres, regions);
     }
 
     // 공연 참여 기록 조회 (참여 완료 공연, 연도 필터, offset 무한스크롤)

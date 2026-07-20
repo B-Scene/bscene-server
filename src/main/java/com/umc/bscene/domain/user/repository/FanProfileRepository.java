@@ -11,4 +11,7 @@ public interface FanProfileRepository extends JpaRepository<FanProfile, Long> {
     Optional<FanProfile> findByUser(User user);
 
     boolean existsByNickname(String nickname);
+
+    // 내 정보 수정의 닉네임 중복 검사 : 본인 프로필은 제외 (collation이 대소문자를 구분하지 않아도 본인 닉네임에 안 걸리게)
+    boolean existsByNicknameAndUser_IdNot(String nickname, Long userId);
 }
