@@ -2,6 +2,8 @@ package com.umc.bscene.domain.user.service;
 
 import com.umc.bscene.domain.auth.enums.onboarding.Genre;
 import com.umc.bscene.domain.auth.enums.onboarding.Region;
+import com.umc.bscene.domain.user.dto.response.BandMemberResponse;
+import com.umc.bscene.domain.user.dto.response.mypage.BandMyPageResponse;
 import com.umc.bscene.domain.user.dto.response.mypage.FanMyPageResponse;
 import com.umc.bscene.domain.user.dto.response.FollowedBandResponse;
 import com.umc.bscene.domain.user.dto.response.InterestedPerformanceResponse;
@@ -11,6 +13,7 @@ import com.umc.bscene.domain.user.entity.FanProfile;
 import com.umc.bscene.domain.user.entity.User;
 import com.umc.bscene.domain.user.entity.UserGenres;
 import com.umc.bscene.domain.user.entity.UserRegions;
+import com.umc.bscene.domain.user.port.BandPort;
 import com.umc.bscene.domain.user.port.FollowPort;
 import com.umc.bscene.domain.user.port.PerformancePort;
 import com.umc.bscene.domain.user.repository.FanProfileRepository;
@@ -39,6 +42,7 @@ public class MyPageService {
     private final UserRegionsRepository userRegionsRepository;
     private final FollowPort followPort;
     private final PerformancePort performancePort;
+    private final BandPort bandPort;
 
     // 팬모드 마이페이지 조회
     public FanMyPageResponse getFanMyPage(User user) {
@@ -83,6 +87,20 @@ public class MyPageService {
                 followingCount,
                 interestedPerformanceCount,
                 participatedPerformanceCount
+        );
+    }
+
+    public BandMyPageResponse getBandMyPage(User user) {
+        BandMemberResponse result = bandPort.getActiveBandMemberProfile(user.getId());
+        return new BandMyPageResponse(
+                result.nickname(),
+                result.bandName(),
+                result.parts(),
+                user.getCurrentMode(),
+                result.follower().longValue(),
+                result.applicant().longValue(),
+                result.performance().longValue(),
+                result.isBandMember()
         );
     }
 
