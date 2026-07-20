@@ -68,6 +68,9 @@ public class PerformanceAlarmService {
     // 사용자가 공연 알림을 해제 → 참여 예정(SCHEDULED) 기록만 삭제 (참여완료 이력·관심 등록은 유지)
     @Transactional
     public PerformanceAlarmResponse unsetAlarm(Long userId, Long performanceId) {
+        // 대상 공연이 존재하는지 확인 (없거나 삭제된 경우 404 반환)
+        getActivePerformance(performanceId);
+
         // 참여 예정 기록이 있으면 삭제, 없으면 이미 해제 상태이므로 그대로 둠(멱등 처리)
         performanceParticipationRepository.deleteByPerformance_IdAndUser_IdAndStatus(
                 performanceId, userId, ParticipationStatus.SCHEDULED);
