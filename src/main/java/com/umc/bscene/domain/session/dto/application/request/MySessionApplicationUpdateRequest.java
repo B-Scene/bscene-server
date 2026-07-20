@@ -1,8 +1,10 @@
 package com.umc.bscene.domain.session.dto.application.request;
 
 import com.umc.bscene.domain.session.enums.Part;
-import com.umc.bscene.domain.session.enums.SessionGenre;
-import com.umc.bscene.domain.session.enums.SessionRegion;
+import com.umc.bscene.domain.auth.enums.onboarding.Genre;
+import com.umc.bscene.domain.auth.enums.onboarding.Region;
+import com.umc.bscene.domain.session.converter.SessionGenreFormat;
+import com.umc.bscene.domain.session.converter.SessionRegionFormat;
 import com.umc.bscene.domain.session.enums.SkillLevel;
 import com.umc.bscene.domain.session.enums.AvailableActivity;
 import jakarta.validation.Valid;
@@ -46,10 +48,12 @@ public class MySessionApplicationUpdateRequest {
     private SkillLevel skillLevel;
 
     @NotNull(message = "장르는 필수입니다.")
-    private SessionGenre genre;
+    @SessionGenreFormat
+    private Genre genre;
 
     @NotNull(message = "활동 지역은 필수입니다.")
-    private SessionRegion region;
+    @SessionRegionFormat
+    private Region region;
 
     @NotBlank(message = "세션 소개글은 필수입니다.")
     @Size(max = 500, message = "세션 소개글은 500자 이하여야 합니다.")

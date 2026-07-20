@@ -9,9 +9,9 @@ import com.umc.bscene.domain.session.dto.application.response.SessionApplication
 import com.umc.bscene.domain.session.dto.application.response.MySessionApplicationSummaryResponse;
 import com.umc.bscene.domain.session.dto.application.response.SessionApplicationVisibilityResponse;
 import com.umc.bscene.domain.session.dto.application.response.MyApplicationSubmissionListResponse;
+import com.umc.bscene.domain.session.converter.SessionGenreJsonDeserializer;
+import com.umc.bscene.domain.session.converter.SessionRegionJsonDeserializer;
 import com.umc.bscene.domain.session.enums.Part;
-import com.umc.bscene.domain.session.enums.SessionGenre;
-import com.umc.bscene.domain.session.enums.SessionRegion;
 import com.umc.bscene.domain.session.enums.SkillLevel;
 import com.umc.bscene.domain.session.enums.code.SessionSuccessCode;
 import com.umc.bscene.domain.session.service.SessionApplicationCommandService;
@@ -124,10 +124,10 @@ public class SessionApplicationController {
     @GetMapping("/search")
     public SuccessResponse<SessionApplicationSearchResponse> searchSessionApplications(
             @AuthenticationPrincipal AuthMember authMember,
-            @RequestParam(required = false) SessionRegion region,
+            @RequestParam(required = false) String region,
             @RequestParam(required = false) SkillLevel skillLevel,
             @RequestParam(required = false) Part part,
-            @RequestParam(required = false) SessionGenre genre,
+            @RequestParam(required = false) String genre,
             @RequestParam(required = false) String keyword,
             @RequestParam(required = false) Long cursorId,
             @RequestParam(defaultValue = "10") Integer size
@@ -135,10 +135,10 @@ public class SessionApplicationController {
         SessionApplicationSearchResponse response = sessionApplicationQueryService
                 .searchDefaultApplications(
                         authMember.getUser().getId(),
-                        region,
+                        SessionRegionJsonDeserializer.fromKorean(region),
                         skillLevel,
                         part,
-                        genre,
+                        SessionGenreJsonDeserializer.fromKorean(genre),
                         keyword,
                         cursorId,
                         size

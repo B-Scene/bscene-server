@@ -16,9 +16,9 @@ import com.umc.bscene.domain.session.service.SessionApplicationQueryService;
 import com.umc.bscene.global.response.SuccessResponse;
 import com.umc.bscene.global.security.entity.AuthMember;
 import com.umc.bscene.domain.session.dto.recruitment.response.SessionRecruitmentListResponse;
+import com.umc.bscene.domain.session.converter.SessionGenreJsonDeserializer;
+import com.umc.bscene.domain.session.converter.SessionRegionJsonDeserializer;
 import com.umc.bscene.domain.session.enums.Part;
-import com.umc.bscene.domain.session.enums.SessionGenre;
-import com.umc.bscene.domain.session.enums.SessionRegion;
 import com.umc.bscene.domain.session.enums.SkillLevel;
 import com.umc.bscene.domain.session.enums.SessionRecruitmentSortType;
 import com.umc.bscene.domain.session.service.SessionRecruitmentQueryService;
@@ -149,8 +149,8 @@ public class SessionRecruitmentController {
             @AuthenticationPrincipal AuthMember authMember,
             @RequestParam(required = false) Part part,
             @RequestParam(required = false) SkillLevel skillLevel,
-            @RequestParam(required = false) SessionGenre genre,
-            @RequestParam(required = false) SessionRegion region,
+            @RequestParam(required = false) String genre,
+            @RequestParam(required = false) String region,
             @RequestParam(required = false) String keyword,
             @RequestParam(defaultValue = "LATEST") SessionRecruitmentSortType sort,
             @RequestParam(required = false) Long cursorId,
@@ -161,8 +161,8 @@ public class SessionRecruitmentController {
                         authMember.getUser().getId(),
                         part,
                         skillLevel,
-                        genre,
-                        region,
+                        SessionGenreJsonDeserializer.fromKorean(genre),
+                        SessionRegionJsonDeserializer.fromKorean(region),
                         keyword,
                         sort,
                         cursorId,

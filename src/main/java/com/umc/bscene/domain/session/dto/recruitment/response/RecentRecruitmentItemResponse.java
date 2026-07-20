@@ -3,7 +3,9 @@ package com.umc.bscene.domain.session.dto.recruitment.response;
 import com.umc.bscene.domain.session.entity.SessionRecruitment;
 import com.umc.bscene.domain.session.entity.SessionRecruitmentView;
 import com.umc.bscene.domain.session.enums.Part;
-import com.umc.bscene.domain.session.enums.SessionGenre;
+import com.umc.bscene.domain.auth.enums.onboarding.Genre;
+import com.umc.bscene.domain.session.converter.SessionGenreFormat;
+import com.umc.bscene.domain.session.converter.SessionRegionFormat;
 import com.umc.bscene.domain.session.enums.SkillLevel;
 import com.umc.bscene.domain.auth.enums.onboarding.Region;
 
@@ -17,11 +19,11 @@ public record RecentRecruitmentItemResponse(
         boolean isClosed,
         String recruitmentTitle,
         String bandName,
-        Region bandRegion,
+        @SessionRegionFormat Region bandRegion,
         long viewedAgo,
         Part part,
         SkillLevel skillLevel,
-        SessionGenre genre
+        @SessionGenreFormat Genre genre
 ) {
     public static RecentRecruitmentItemResponse from(SessionRecruitmentView view) {
         SessionRecruitment recruitment = view.getSessionRecruitment();

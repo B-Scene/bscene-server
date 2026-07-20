@@ -2,8 +2,8 @@ package com.umc.bscene.domain.session.repository;
 
 import com.umc.bscene.domain.session.entity.SessionApplication;
 import com.umc.bscene.domain.session.enums.Part;
-import com.umc.bscene.domain.session.enums.SessionGenre;
-import com.umc.bscene.domain.session.enums.SessionRegion;
+import com.umc.bscene.domain.auth.enums.onboarding.Genre;
+import com.umc.bscene.domain.auth.enums.onboarding.Region;
 import com.umc.bscene.domain.session.enums.SkillLevel;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -84,13 +84,13 @@ public interface SessionApplicationRepository extends JpaRepository<SessionAppli
     List<SessionApplication> searchDefaultApplications(
             @Param("viewerUserId") Long viewerUserId,
             @Param("purpose") String purpose,
-            @Param("region") SessionRegion region,
+            @Param("region") Region region,
             @Param("skillLevel") SkillLevel skillLevel,
             @Param("part") Part part,
-            @Param("genre") SessionGenre genre,
+            @Param("genre") Genre genre,
             @Param("recommendationEnabled") boolean recommendationEnabled,
-            @Param("recommendedGenre") SessionGenre recommendedGenre,
-            @Param("recommendedRegion") SessionRegion recommendedRegion,
+            @Param("recommendedGenre") Genre recommendedGenre,
+            @Param("recommendedRegion") Region recommendedRegion,
             @Param("keyword") String keyword,
             @Param("cursorId") Long cursorId,
             Pageable pageable
@@ -114,7 +114,7 @@ public interface SessionApplicationRepository extends JpaRepository<SessionAppli
     boolean existsRecommendedApplications(
             @Param("viewerUserId") Long viewerUserId,
             @Param("purpose") String purpose,
-            @Param("genre") SessionGenre genre,
-            @Param("region") SessionRegion region
+            @Param("genre") Genre genre,
+            @Param("region") Region region
     );
 }

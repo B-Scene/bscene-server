@@ -101,10 +101,10 @@ class BandRecommendationServiceV2ImplTest {
     void similarityBonusIsZeroWhenUserFollowsNoBand() {
         when(followRepository.findBandIdsByUserId(USER_ID)).thenReturn(List.of());
         when(userGenresRepository.findAllByUser(any(User.class)))
-                .thenReturn(List.of(UserGenres.builder().genre(Genre.ROCK).build()));
+                .thenReturn(List.of(UserGenres.builder().genre(Genre.HARD_ROCK).build()));
         when(userRegionsRepository.findAllByUser(any(User.class))).thenReturn(List.of());
 
-        Band candidate = band(10L, Genre.ROCK, Region.SEOUL);
+        Band candidate = band(10L, Genre.HARD_ROCK, Region.SEOUL);
         when(bandRepository.findByGenreIn(any())).thenReturn(List.of(candidate));
         when(postRepository.findBandIdsWithRecentPost(anyList(), any())).thenReturn(List.of());
         when(postRepository.findLatestActivityAtByBandIds(anyList())).thenReturn(List.of());
@@ -126,9 +126,9 @@ class BandRecommendationServiceV2ImplTest {
         Band similarBand = band(50L, Genre.JAZZ, Region.BUSAN);
         // score는 ml-server가 코사인 유사도로 계산해 저장하는 실제 스케일(threshold 0.55 ~ 최대 1.0)을 반영한 값.
         List<BandSimilarity> similarities = List.of(
-                BandSimilarity.builder().band(band(100L, Genre.ROCK, Region.SEOUL)).similarBand(similarBand).score(0.9).build(),
-                BandSimilarity.builder().band(band(200L, Genre.ROCK, Region.SEOUL)).similarBand(similarBand).score(0.9).build(),
-                BandSimilarity.builder().band(band(300L, Genre.ROCK, Region.SEOUL)).similarBand(similarBand).score(0.9).build()
+                BandSimilarity.builder().band(band(100L, Genre.HARD_ROCK, Region.SEOUL)).similarBand(similarBand).score(0.9).build(),
+                BandSimilarity.builder().band(band(200L, Genre.HARD_ROCK, Region.SEOUL)).similarBand(similarBand).score(0.9).build(),
+                BandSimilarity.builder().band(band(300L, Genre.HARD_ROCK, Region.SEOUL)).similarBand(similarBand).score(0.9).build()
         );
         when(bandSimilarityRepository.findByBandIdIn(followedBandIds)).thenReturn(similarities);
         when(bandRepository.findAllById(any())).thenReturn(List.of(similarBand));
@@ -152,7 +152,7 @@ class BandRecommendationServiceV2ImplTest {
 
         Band similarBand = band(50L, Genre.JAZZ, Region.BUSAN);
         when(bandSimilarityRepository.findByBandIdIn(List.of(100L))).thenReturn(List.of(
-                BandSimilarity.builder().band(band(100L, Genre.ROCK, Region.SEOUL)).similarBand(similarBand).score(0.4).build()
+                BandSimilarity.builder().band(band(100L, Genre.HARD_ROCK, Region.SEOUL)).similarBand(similarBand).score(0.4).build()
         ));
         when(bandRepository.findAllById(any())).thenReturn(List.of(similarBand));
         when(postRepository.findBandIdsWithRecentPost(anyList(), any())).thenReturn(List.of());
@@ -170,7 +170,7 @@ class BandRecommendationServiceV2ImplTest {
         when(userGenresRepository.findAllByUser(any(User.class))).thenReturn(List.of());
         when(userRegionsRepository.findAllByUser(any(User.class))).thenReturn(List.of());
 
-        Band clickedBand = band(100L, Genre.ROCK, Region.SEOUL);
+        Band clickedBand = band(100L, Genre.HARD_ROCK, Region.SEOUL);
         BandInteraction interaction = BandInteraction.builder()
                 .user(User.builder().id(USER_ID).build())
                 .band(clickedBand)
@@ -218,7 +218,7 @@ class BandRecommendationServiceV2ImplTest {
         Band similarBand = band(50L, Genre.JAZZ, Region.BUSAN);
         // 클릭한 200~204번 밴드는 이 후보와 유사도 행 자체가 없다 (findByBandIdIn 결과에 안 잡힘) - 팔로우 100번만 매칭.
         when(bandSimilarityRepository.findByBandIdIn(anyList())).thenReturn(List.of(
-                BandSimilarity.builder().band(band(100L, Genre.ROCK, Region.SEOUL)).similarBand(similarBand).score(0.6).build()
+                BandSimilarity.builder().band(band(100L, Genre.HARD_ROCK, Region.SEOUL)).similarBand(similarBand).score(0.6).build()
         ));
         when(bandRepository.findAllById(any())).thenReturn(List.of(similarBand));
         when(postRepository.findBandIdsWithRecentPost(anyList(), any())).thenReturn(List.of());
@@ -237,11 +237,11 @@ class BandRecommendationServiceV2ImplTest {
     void alreadyFollowedBandIsExcludedFromResult() {
         when(followRepository.findBandIdsByUserId(USER_ID)).thenReturn(List.of(10L));
         when(userGenresRepository.findAllByUser(any(User.class)))
-                .thenReturn(List.of(UserGenres.builder().genre(Genre.ROCK).build()));
+                .thenReturn(List.of(UserGenres.builder().genre(Genre.HARD_ROCK).build()));
         when(userRegionsRepository.findAllByUser(any(User.class))).thenReturn(List.of());
 
-        Band followedBand = band(10L, Genre.ROCK, Region.SEOUL);
-        Band otherBand = band(20L, Genre.ROCK, Region.BUSAN);
+        Band followedBand = band(10L, Genre.HARD_ROCK, Region.SEOUL);
+        Band otherBand = band(20L, Genre.HARD_ROCK, Region.BUSAN);
         when(bandRepository.findByGenreIn(any())).thenReturn(List.of(followedBand, otherBand));
         when(bandSimilarityRepository.findByBandIdIn(List.of(10L))).thenReturn(List.of());
         when(postRepository.findBandIdsWithRecentPost(anyList(), any())).thenReturn(List.of());
@@ -258,10 +258,10 @@ class BandRecommendationServiceV2ImplTest {
         // 최근 포스트가 없어도 최근/예정 공연이 있으면 활동 점수를 받아야 한다 (V1엔 있었는데 V2엔 빠져있던 신호).
         when(followRepository.findBandIdsByUserId(USER_ID)).thenReturn(List.of());
         when(userGenresRepository.findAllByUser(any(User.class)))
-                .thenReturn(List.of(UserGenres.builder().genre(Genre.ROCK).build()));
+                .thenReturn(List.of(UserGenres.builder().genre(Genre.HARD_ROCK).build()));
         when(userRegionsRepository.findAllByUser(any(User.class))).thenReturn(List.of());
 
-        Band candidate = band(1L, Genre.ROCK, Region.SEOUL);
+        Band candidate = band(1L, Genre.HARD_ROCK, Region.SEOUL);
         when(bandRepository.findByGenreIn(any())).thenReturn(List.of(candidate));
         when(postRepository.findBandIdsWithRecentPost(anyList(), any())).thenReturn(List.of());
         when(postRepository.findLatestActivityAtByBandIds(anyList())).thenReturn(List.of());
@@ -278,11 +278,11 @@ class BandRecommendationServiceV2ImplTest {
     void reasonPicksHighestPriorityFactorWhenGenreRegionAndActivityAllMatch() {
         when(followRepository.findBandIdsByUserId(USER_ID)).thenReturn(List.of());
         when(userGenresRepository.findAllByUser(any(User.class)))
-                .thenReturn(List.of(UserGenres.builder().genre(Genre.ROCK).build()));
+                .thenReturn(List.of(UserGenres.builder().genre(Genre.HARD_ROCK).build()));
         when(userRegionsRepository.findAllByUser(any(User.class)))
                 .thenReturn(List.of(UserRegions.builder().region(Region.SEOUL).build()));
 
-        Band candidate = band(1L, Genre.ROCK, Region.SEOUL);
+        Band candidate = band(1L, Genre.HARD_ROCK, Region.SEOUL);
         when(bandRepository.findByGenreIn(any())).thenReturn(List.of(candidate));
         when(bandRepository.findByRegionIn(any())).thenReturn(List.of(candidate));
         when(postRepository.findBandIdsWithRecentPost(anyList(), any())).thenReturn(List.of(1L));
@@ -303,7 +303,7 @@ class BandRecommendationServiceV2ImplTest {
         when(userRegionsRepository.findAllByUser(any(User.class)))
                 .thenReturn(List.of(UserRegions.builder().region(Region.SEOUL).build()));
 
-        Band older = band(1L, Genre.ROCK, Region.SEOUL);
+        Band older = band(1L, Genre.HARD_ROCK, Region.SEOUL);
         Band newer = band(2L, Genre.JAZZ, Region.SEOUL);
         when(bandRepository.findByRegionIn(any())).thenReturn(List.of(older, newer));
         when(postRepository.findBandIdsWithRecentPost(anyList(), any())).thenReturn(List.of());
@@ -323,11 +323,11 @@ class BandRecommendationServiceV2ImplTest {
     void resultNeverExceedsTenBands() {
         when(followRepository.findBandIdsByUserId(USER_ID)).thenReturn(List.of());
         when(userGenresRepository.findAllByUser(any(User.class)))
-                .thenReturn(List.of(UserGenres.builder().genre(Genre.ROCK).build()));
+                .thenReturn(List.of(UserGenres.builder().genre(Genre.HARD_ROCK).build()));
         when(userRegionsRepository.findAllByUser(any(User.class))).thenReturn(List.of());
 
         List<Band> manyCandidates = java.util.stream.IntStream.rangeClosed(1, 15)
-                .mapToObj(i -> band((long) i, Genre.ROCK, Region.SEOUL))
+                .mapToObj(i -> band((long) i, Genre.HARD_ROCK, Region.SEOUL))
                 .toList();
         when(bandRepository.findByGenreIn(any())).thenReturn(manyCandidates);
         when(postRepository.findBandIdsWithRecentPost(anyList(), any())).thenReturn(List.of());
@@ -343,11 +343,11 @@ class BandRecommendationServiceV2ImplTest {
     void cursorPaginatesThroughFullSortedResultSet() {
         when(followRepository.findBandIdsByUserId(USER_ID)).thenReturn(List.of());
         when(userGenresRepository.findAllByUser(any(User.class)))
-                .thenReturn(List.of(UserGenres.builder().genre(Genre.ROCK).build()));
+                .thenReturn(List.of(UserGenres.builder().genre(Genre.HARD_ROCK).build()));
         when(userRegionsRepository.findAllByUser(any(User.class))).thenReturn(List.of());
 
         List<Band> candidates = java.util.stream.IntStream.rangeClosed(1, 15)
-                .mapToObj(i -> band((long) i, Genre.ROCK, Region.SEOUL))
+                .mapToObj(i -> band((long) i, Genre.HARD_ROCK, Region.SEOUL))
                 .toList();
         when(bandRepository.findByGenreIn(any())).thenReturn(candidates);
         when(postRepository.findBandIdsWithRecentPost(anyList(), any())).thenReturn(List.of());

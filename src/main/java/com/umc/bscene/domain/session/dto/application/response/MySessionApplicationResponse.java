@@ -3,8 +3,10 @@ package com.umc.bscene.domain.session.dto.application.response;
 import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 import com.umc.bscene.domain.session.entity.SessionApplication;
 import com.umc.bscene.domain.session.enums.Part;
-import com.umc.bscene.domain.session.enums.SessionGenre;
-import com.umc.bscene.domain.session.enums.SessionRegion;
+import com.umc.bscene.domain.auth.enums.onboarding.Genre;
+import com.umc.bscene.domain.auth.enums.onboarding.Region;
+import com.umc.bscene.domain.session.converter.SessionGenreFormat;
+import com.umc.bscene.domain.session.converter.SessionRegionFormat;
 import com.umc.bscene.domain.session.enums.SkillLevel;
 import com.umc.bscene.domain.session.enums.AvailableActivity;
 import lombok.Builder;
@@ -46,8 +48,10 @@ public class MySessionApplicationResponse {
 
     private Part part;
     private SkillLevel skillLevel;
-    private SessionGenre genre;
-    private SessionRegion region;
+    @SessionGenreFormat
+    private Genre genre;
+    @SessionRegionFormat
+    private Region region;
 
     private String intro;
     private List<AvailableActivity> availableActivities;

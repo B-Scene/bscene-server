@@ -4,8 +4,10 @@ import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 import com.umc.bscene.domain.session.entity.SessionApplicationSubmission;
 import com.umc.bscene.domain.session.entity.SessionRecruitment;
 import com.umc.bscene.domain.session.enums.Part;
-import com.umc.bscene.domain.session.enums.SessionGenre;
-import com.umc.bscene.domain.session.enums.SessionRegion;
+import com.umc.bscene.domain.auth.enums.onboarding.Genre;
+import com.umc.bscene.domain.auth.enums.onboarding.Region;
+import com.umc.bscene.domain.session.converter.SessionGenreFormat;
+import com.umc.bscene.domain.session.converter.SessionRegionFormat;
 import com.umc.bscene.domain.session.enums.SkillLevel;
 import com.umc.bscene.domain.session.enums.AvailableActivity;
 
@@ -55,8 +57,8 @@ public record SubmittedApplicationDetailResponse(
         String oneLineIntro,
         Part part,
         SkillLevel skillLevel,
-        SessionGenre genre,
-        SessionRegion region,
+        @SessionGenreFormat Genre genre,
+        @SessionRegionFormat Region region,
         String intro,
         List<AvailableActivity> availableActivities,
         List<MySessionApplicationResponse.CareerResponse> careers,

@@ -12,8 +12,8 @@ import com.umc.bscene.domain.session.entity.SessionApplicationSubmission;
 import com.umc.bscene.domain.session.entity.SessionApplication;
 import com.umc.bscene.domain.session.entity.SessionBasicProfile;
 import com.umc.bscene.domain.session.enums.Part;
-import com.umc.bscene.domain.session.enums.SessionGenre;
-import com.umc.bscene.domain.session.enums.SessionRegion;
+import com.umc.bscene.domain.auth.enums.onboarding.Genre;
+import com.umc.bscene.domain.auth.enums.onboarding.Region;
 import com.umc.bscene.domain.session.enums.SkillLevel;
 import com.umc.bscene.domain.session.enums.code.SessionErrorCode;
 import com.umc.bscene.domain.session.enums.ApplicationStatus;
@@ -208,10 +208,10 @@ public class SessionApplicationQueryServiceImpl implements SessionApplicationQue
     @Transactional
     public SessionApplicationSearchResponse searchDefaultApplications(
             Long viewerUserId,
-            SessionRegion region,
+            Region region,
             SkillLevel skillLevel,
             Part part,
-            SessionGenre genre,
+            Genre genre,
             String keyword,
             Long cursorId,
             Integer size

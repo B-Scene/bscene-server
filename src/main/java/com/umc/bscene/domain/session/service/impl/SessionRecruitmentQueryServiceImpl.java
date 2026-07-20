@@ -8,8 +8,8 @@ import com.umc.bscene.domain.session.dto.recruitment.response.RecentRecruitmentL
 import com.umc.bscene.domain.session.entity.SessionRecruitmentView;
 import com.umc.bscene.domain.session.entity.SessionRecruitment;
 import com.umc.bscene.domain.session.enums.Part;
-import com.umc.bscene.domain.session.enums.SessionGenre;
-import com.umc.bscene.domain.session.enums.SessionRegion;
+import com.umc.bscene.domain.auth.enums.onboarding.Genre;
+import com.umc.bscene.domain.auth.enums.onboarding.Region;
 import com.umc.bscene.domain.session.enums.SkillLevel;
 import com.umc.bscene.domain.session.enums.SessionRecruitmentSortType;
 import com.umc.bscene.domain.session.enums.code.SessionErrorCode;
@@ -49,8 +49,8 @@ public class SessionRecruitmentQueryServiceImpl implements SessionRecruitmentQue
             Long userId,
             Part part,
             SkillLevel skillLevel,
-            SessionGenre genre,
-            SessionRegion region,
+            Genre genre,
+            Region region,
             String keyword,
             SessionRecruitmentSortType sort,
             Long cursorId,
@@ -153,7 +153,7 @@ public class SessionRecruitmentQueryServiceImpl implements SessionRecruitmentQue
                 .summary(recruitment.getSummary())
                 .content(recruitment.getContent())
                 .part(recruitment.getPart().getDescription())
-                .genre(recruitment.getGenre().getDescription())
+                .genre(recruitment.getGenre().getName())
                 .region(recruitment.getRegion())
                 .practiceSchedule(recruitment.getPracticeSchedule())
                 .practicePlace(recruitment.getPracticePlace())

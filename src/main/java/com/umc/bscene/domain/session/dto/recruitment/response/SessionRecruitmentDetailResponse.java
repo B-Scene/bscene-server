@@ -3,7 +3,8 @@ package com.umc.bscene.domain.session.dto.recruitment.response;
 import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 import lombok.Builder;
 import lombok.Getter;
-import com.umc.bscene.domain.session.enums.SessionRegion;
+import com.umc.bscene.domain.auth.enums.onboarding.Region;
+import com.umc.bscene.domain.session.converter.SessionRegionFormat;
 
 import java.time.LocalDateTime;
 
@@ -54,7 +55,8 @@ public class SessionRecruitmentDetailResponse {
 
     private String part;
     private String genre;
-    private SessionRegion region;
+    @SessionRegionFormat
+    private Region region;
     private String practiceSchedule;
     private String practicePlace;
 

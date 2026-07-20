@@ -1,5 +1,9 @@
 package com.umc.bscene.domain.session.dto.application.request;
 
+import com.umc.bscene.domain.auth.enums.onboarding.Genre;
+import com.umc.bscene.domain.auth.enums.onboarding.Region;
+import com.umc.bscene.domain.session.converter.SessionGenreFormat;
+import com.umc.bscene.domain.session.converter.SessionRegionFormat;
 import com.umc.bscene.domain.session.enums.*;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.*;
@@ -35,9 +39,11 @@ public class MySessionApplicationCreateRequest {
     @NotNull(message = "실력대는 필수입니다.")
     private SkillLevel skillLevel;
     @NotNull(message = "선호 장르는 필수입니다.")
-    private SessionGenre genre;
+    @SessionGenreFormat
+    private Genre genre;
     @NotNull(message = "활동 지역은 필수입니다.")
-    private SessionRegion region;
+    @SessionRegionFormat
+    private Region region;
 
     @NotEmpty(message = "가능한 활동을 하나 이상 선택해주세요.")
     private List<@NotNull AvailableActivity> availableActivities;

@@ -1,8 +1,8 @@
 package com.umc.bscene.domain.session.entity;
 
 import com.umc.bscene.domain.session.enums.Part;
-import com.umc.bscene.domain.session.enums.SessionGenre;
-import com.umc.bscene.domain.session.enums.SessionRegion;
+import com.umc.bscene.domain.auth.enums.onboarding.Genre;
+import com.umc.bscene.domain.auth.enums.onboarding.Region;
 import com.umc.bscene.domain.session.enums.SkillLevel;
 import com.umc.bscene.domain.session.enums.AvailableActivity;
 import com.umc.bscene.global.entity.BaseEntity;
@@ -70,11 +70,11 @@ public class SessionApplication extends BaseEntity {
 
     @Enumerated(EnumType.STRING)
     @Column(name = "genre", nullable = false, length = 30)
-    private SessionGenre genre;
+    private Genre genre;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "region", nullable = false, length = 30)
-    private SessionRegion region;
+    private Region region;
 
     @Column(name = "intro", length = 500)
     private String intro;
@@ -105,8 +105,8 @@ public class SessionApplication extends BaseEntity {
             String profileImageUrl,
             Part part,
             SkillLevel skillLevel,
-            SessionGenre genre,
-            SessionRegion region,
+            Genre genre,
+            Region region,
             String intro
     ) {
         this.userId = userId;
@@ -132,8 +132,8 @@ public class SessionApplication extends BaseEntity {
             String profileImageUrl,
             Part part,
             SkillLevel skillLevel,
-            SessionGenre genre,
-            SessionRegion region,
+            Genre genre,
+            Region region,
             String intro
     ) {
         this.title = title;

@@ -2,7 +2,8 @@ package com.umc.bscene.domain.session.dto.recruitment.response;
 
 import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 import com.umc.bscene.domain.session.entity.SessionRecruitment;
-import com.umc.bscene.domain.session.enums.SessionRegion;
+import com.umc.bscene.domain.auth.enums.onboarding.Region;
+import com.umc.bscene.domain.session.converter.SessionRegionFormat;
 import lombok.Builder;
 import lombok.Getter;
 
@@ -36,7 +37,8 @@ public class SessionRecruitmentCreateResponse {
     private String part;
     private String skillLevel;
     private String genre;
-    private SessionRegion region;
+    @SessionRegionFormat
+    private Region region;
     private String practiceSchedule;
     private String practicePlace;
     private LocalDateTime deadlineAt;
@@ -55,7 +57,7 @@ public class SessionRecruitmentCreateResponse {
                 // 한글 응답
                 .part(recruitment.getPart().getDescription())
                 .skillLevel(recruitment.getSkillLevel().getDescription())
-                .genre(recruitment.getGenre().getDescription())
+                .genre(recruitment.getGenre().getName())
 
                 // enum 유지(@JsonValue로 한글 직렬화)
                 .region(recruitment.getRegion())

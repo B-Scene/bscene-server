@@ -2,8 +2,8 @@ package com.umc.bscene.domain.session.repository;
 
 import com.umc.bscene.domain.session.entity.SessionRecruitment;
 import com.umc.bscene.domain.session.enums.Part;
-import com.umc.bscene.domain.session.enums.SessionGenre;
-import com.umc.bscene.domain.session.enums.SessionRegion;
+import com.umc.bscene.domain.auth.enums.onboarding.Genre;
+import com.umc.bscene.domain.auth.enums.onboarding.Region;
 import com.umc.bscene.domain.session.enums.SkillLevel;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -38,8 +38,8 @@ public interface SessionRecruitmentRepository extends JpaRepository<SessionRecru
             @Param("now") LocalDateTime now,
             @Param("part") Part part,
             @Param("skillLevel") SkillLevel skillLevel,
-            @Param("genre") SessionGenre genre,
-            @Param("region") SessionRegion region,
+            @Param("genre") Genre genre,
+            @Param("region") Region region,
             @Param("keyword") String keyword,
             @Param("cursorId") Long cursorId,
             Pageable pageable
@@ -74,8 +74,8 @@ public interface SessionRecruitmentRepository extends JpaRepository<SessionRecru
             @Param("now") LocalDateTime now,
             @Param("part") Part part,
             @Param("skillLevel") SkillLevel skillLevel,
-            @Param("genre") SessionGenre genre,
-            @Param("region") SessionRegion region,
+            @Param("genre") Genre genre,
+            @Param("region") Region region,
             @Param("keyword") String keyword,
             @Param("cursorId") Long cursorId,
             Pageable pageable

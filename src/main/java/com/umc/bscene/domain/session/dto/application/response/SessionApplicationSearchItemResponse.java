@@ -3,8 +3,10 @@ package com.umc.bscene.domain.session.dto.application.response;
 import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 import com.umc.bscene.domain.session.entity.SessionApplication;
 import com.umc.bscene.domain.session.enums.Part;
-import com.umc.bscene.domain.session.enums.SessionGenre;
-import com.umc.bscene.domain.session.enums.SessionRegion;
+import com.umc.bscene.domain.auth.enums.onboarding.Genre;
+import com.umc.bscene.domain.auth.enums.onboarding.Region;
+import com.umc.bscene.domain.session.converter.SessionGenreFormat;
+import com.umc.bscene.domain.session.converter.SessionRegionFormat;
 import com.umc.bscene.domain.session.enums.SkillLevel;
 import lombok.Builder;
 import lombok.Getter;
@@ -31,8 +33,10 @@ public class SessionApplicationSearchItemResponse {
     private String profileImageUrl;
     private SkillLevel skillLevel;
     private Part part;
-    private SessionGenre genre;
-    private SessionRegion region;
+    @SessionGenreFormat
+    private Genre genre;
+    @SessionRegionFormat
+    private Region region;
     private String title;
     private String oneLineIntro;
 

@@ -2,8 +2,8 @@ package com.umc.bscene.domain.session.entity;
 
 import com.umc.bscene.domain.band.entity.Band;
 import com.umc.bscene.domain.session.enums.Part;
-import com.umc.bscene.domain.session.enums.SessionGenre;
-import com.umc.bscene.domain.session.enums.SessionRegion;
+import com.umc.bscene.domain.auth.enums.onboarding.Genre;
+import com.umc.bscene.domain.auth.enums.onboarding.Region;
 import com.umc.bscene.domain.session.enums.SkillLevel;
 import com.umc.bscene.global.entity.BaseEntity;
 import jakarta.persistence.*;
@@ -43,11 +43,11 @@ public class SessionRecruitment extends BaseEntity {
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
-    private SessionGenre genre;
+    private Genre genre;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
-    private SessionRegion region;
+    private Region region;
 
     @Column(length = 100)
     private String practiceSchedule;
@@ -80,8 +80,8 @@ public class SessionRecruitment extends BaseEntity {
             String content,
             Part part,
             SkillLevel skillLevel,
-            SessionGenre genre,
-            SessionRegion region,
+            Genre genre,
+            Region region,
             String practiceSchedule,
             String practicePlace,
             LocalDateTime deadlineAt,
