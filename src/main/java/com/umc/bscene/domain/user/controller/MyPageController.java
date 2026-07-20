@@ -1,15 +1,19 @@
 package com.umc.bscene.domain.user.controller;
 
+import com.umc.bscene.domain.user.dto.response.mypage.BandMyPageResponse;
 import com.umc.bscene.domain.user.dto.response.mypage.FanMyPageResponse;
 import com.umc.bscene.domain.user.dto.response.FollowedBandResponse;
 import com.umc.bscene.domain.user.dto.response.InterestedPerformanceResponse;
 import com.umc.bscene.domain.user.dto.response.ParticipationHistoryResponse;
+import com.umc.bscene.domain.user.dto.response.mypage.MyPageResponse;
 import com.umc.bscene.domain.user.enums.HistoryYearFilter;
+import com.umc.bscene.domain.user.enums.UserMode;
 import com.umc.bscene.domain.user.response.code.UserSuccessCode;
 import com.umc.bscene.domain.user.service.MyPageService;
 import com.umc.bscene.global.response.SuccessResponse;
 import com.umc.bscene.global.security.entity.AuthMember;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -24,16 +28,27 @@ public class MyPageController {
 
     // 마이페이지 조회 API (팬/밴드 모드 공용 엔드포인트)
     @GetMapping("/users/me")
-    public ResponseEntity<SuccessResponse<FanMyPageResponse>> getFanMyPage(
+    public ResponseEntity<SuccessResponse<MyPageResponse>> getMyPage(
             @AuthenticationPrincipal AuthMember authMember
     ) {
-        FanMyPageResponse response = myPageService.getFanMyPage(authMember.getUser());
-        SuccessResponse<FanMyPageResponse> successResponse = SuccessResponse.of(
-                response,
-                UserSuccessCode.FAN_MYPAGE_GET_SUCCESS
-        );
+        UserMode currentMode = authMember.getUser().getCurrentMode();
 
-        return ResponseEntity.status(successResponse.getStatus()).body(successResponse);
+        ResponseEntity<SuccessResponse<MyPageResponse>> response;
+
+        if (currentMode.equals(UserMode.FAN)) {
+            FanMyPageResponse resDto = myPageService.getFanMyPage(authMember.getUser());
+            SuccessResponse<MyPageResponse> successResponse = SuccessResponse.of(
+                    resDto,
+                    UserSuccessCode.FAN_MYPAGE_GET_SUCCESS
+            );
+            response = ResponseEntity.status(successResponse.getStatus()).body(successResponse);
+        } else {
+            // FIXME: 서비스 구현 이후 수정
+            BandMyPageResponse resDto = new BandMyPageResponse(null, null, null, null, null, null, null);
+            response = ResponseEntity.status(HttpStatus.OK).body(SuccessResponse.ok(resDto));
+        }
+
+        return response;
     }
 
     // 공연 참여 기록 조회 API (참여 완료 공연, 연도 필터, offset 무한스크롤)
