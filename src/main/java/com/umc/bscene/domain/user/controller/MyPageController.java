@@ -43,9 +43,10 @@ public class MyPageController {
             );
             response = ResponseEntity.status(successResponse.getStatus()).body(successResponse);
         } else {
-            // FIXME: 서비스 구현 이후 수정
-            BandMyPageResponse resDto = new BandMyPageResponse(null, null, null, null, null, null, null);
-            response = ResponseEntity.status(HttpStatus.OK).body(SuccessResponse.ok(resDto));
+            BandMyPageResponse resDto = myPageService.getBandMyPage(authMember.getUser());
+            response = ResponseEntity
+                    .status(HttpStatus.OK)
+                    .body(SuccessResponse.ok(resDto));
         }
 
         return response;
