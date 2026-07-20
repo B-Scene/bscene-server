@@ -12,6 +12,8 @@ import com.umc.bscene.domain.band.repository.BandMemberProfileRepository;
 import com.umc.bscene.domain.band.repository.BandMemberRepository;
 import com.umc.bscene.domain.band.response.code.BandErrorCode;
 import com.umc.bscene.domain.user.dto.response.BandMemberResponse;
+import com.umc.bscene.domain.user.dto.response.MyBandProfile;
+import com.umc.bscene.domain.user.dto.response.MyProfileResponse;
 import com.umc.bscene.domain.user.port.BandPort;
 import lombok.RequiredArgsConstructor;
 
@@ -44,6 +46,12 @@ public class UserAdapter implements BandPort {
         Band band = bandMember.getBand();
 
         return buildBandMemberResponse(band, profile, bandMember.isMember());
+    }
+
+    @Override
+    public List<MyBandProfile> getAssociatedBandProfiles(Long userId) {
+        bandMemberRepository.getMyBandProfiles(userId, BandMemberStatus.ACCEPTED);
+        return List.of();
     }
 
     private BandMemberResponse buildBandMemberResponse(Band band, BandMemberProfile profile, boolean isMember) {

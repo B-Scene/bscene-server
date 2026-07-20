@@ -3,6 +3,8 @@ package com.umc.bscene.domain.band.repository;
 import com.umc.bscene.domain.band.entity.BandMember;
 import com.umc.bscene.domain.band.enums.BandMemberStatus;
 import com.umc.bscene.domain.band.enums.BandMemberType;
+import com.umc.bscene.domain.user.dto.response.MyBandProfile;
+import com.umc.bscene.domain.user.dto.response.MyProfileResponse;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -12,6 +14,27 @@ import java.util.List;
 import java.util.Optional;
 
 public interface BandMemberRepository extends JpaRepository<BandMember, Long> {
+
+    // userId를 기반으로 BandMember를 조회, 관련 있는 Band를 dto projection
+    @Query("""
+select new com.umc.bscene.domain.user.dto.response.MyBandProfile(
+b.id,
+b.profileImageUrl,
+b.name,
+b.genre,
+b.region,
+bm.bandMemberProfile.active
+)
+from BandMember bm
+join bm.band b
+where bm.user.id = :userId
+    and bm.status = :status
+order by bm.id ASC
+""")
+    List<MyBandProfile> getMyBandProfiles(
+            @Param("userId") Long userId,
+            @Param("status") BandMemberStatus status
+    );
 
     boolean existsByBand_IdAndUser_Id(Long bandId, Long userId);
 
