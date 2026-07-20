@@ -4,7 +4,6 @@ import com.umc.bscene.domain.performance.dto.request.PerformanceCreateRequest;
 import com.umc.bscene.domain.performance.dto.request.PerformanceUpdateRequest;
 import com.umc.bscene.domain.performance.dto.response.PerformanceListResponse;
 import com.umc.bscene.domain.performance.dto.response.PerformanceResponse;
-import com.umc.bscene.domain.performance.dto.response.PerformanceSummaryResponse;
 import com.umc.bscene.domain.performance.response.code.PerformanceSuccessCode;
 import com.umc.bscene.domain.performance.service.PerformanceService;
 import com.umc.bscene.global.response.SuccessResponse;
@@ -23,13 +22,13 @@ public class PerformanceController {
 
     // 공연 등록 API (밴드 멤버만 가능)
     @PostMapping("/bands/{bandId}/performances")
-    public ResponseEntity<SuccessResponse<PerformanceSummaryResponse>> createPerformance(
+    public ResponseEntity<SuccessResponse<PerformanceResponse>> createPerformance(
             @AuthenticationPrincipal AuthMember authMember,
             @PathVariable Long bandId,
             @Valid @RequestBody PerformanceCreateRequest request
     ) {
-        PerformanceSummaryResponse response = performanceService.createPerformance(authMember.getUser().getId(), bandId, request);
-        SuccessResponse<PerformanceSummaryResponse> successResponse = SuccessResponse.of(
+        PerformanceResponse response = performanceService.createPerformance(authMember.getUser().getId(), bandId, request);
+        SuccessResponse<PerformanceResponse> successResponse = SuccessResponse.of(
                 response,
                 PerformanceSuccessCode.PERFORMANCE_CREATE_SUCCESS
         );
