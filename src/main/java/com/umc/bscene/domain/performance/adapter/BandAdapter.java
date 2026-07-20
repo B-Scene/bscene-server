@@ -5,6 +5,8 @@ import com.umc.bscene.domain.performance.enums.PerformanceStatus;
 import com.umc.bscene.domain.performance.repository.PerformanceRepository;
 import lombok.RequiredArgsConstructor;
 
+import java.time.LocalDate;
+
 @RequiredArgsConstructor
 public class BandAdapter implements PerformancePort {
 
@@ -16,5 +18,10 @@ public class BandAdapter implements PerformancePort {
                 bandId,
                 PerformanceStatus.ACTIVE
         );
+    }
+
+    @Override
+    public Long countPerformancesByBandIdAndStatus(Long bandId, PerformanceStatus status) {
+        return performanceRepository.countByBand_IdAndStatusAndPerformanceDateBefore(bandId, status, LocalDate.now());
     }
 }
