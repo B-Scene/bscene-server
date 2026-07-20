@@ -34,17 +34,19 @@ public class UserAdapter implements BandPort {
                 .orElseThrow(() -> new BandException(BandErrorCode.BAND_MEMBER_PROFILE_NOT_FOUND));
 
         // 활성 프로필로 활동 중인 소속 밴드 조회 - 소속 밴드가 없으면 밴드 정보는 null로 응답
-        Band band = bandMemberRepository
+        BandMember bandMember = bandMemberRepository
                 .findWithBandByUser_IdInAndStatus(Set.of(userId), BandMemberStatus.ACCEPTED)
                 .stream()
                 .findFirst()
-                .map(BandMember::getBand)
                 .orElse(null);
 
-        return buildBandMemberResponse(band, profile);
+        assert bandMember != null;
+        Band band = bandMember.getBand();
+
+        return buildBandMemberResponse(band, profile, bandMember.isMember());
     }
 
-    private BandMemberResponse buildBandMemberResponse(Band band, BandMemberProfile profile) {
+    private BandMemberResponse buildBandMemberResponse(Band band, BandMemberProfile profile, boolean isMember) {
         if (band != null) {
             return new BandMemberResponse(
                     band.getProfileImageUrl(),
@@ -53,7 +55,8 @@ public class UserAdapter implements BandPort {
                     List.of(profile.getPart().getDescription()),
                     Math.toIntExact(followPort.countFollowersByBandId(band.getId())),
                     Math.toIntExact(sessionPort.getActiveSessionApplicantCount(band.getId())),
-                    Math.toIntExact(performancePort.countPerformancesByBandIdAndStatus(band.getId()))
+                    Math.toIntExact(performancePort.countPerformancesByBandIdAndStatus(band.getId())),
+                    isMember
             );
         } else {
             return new BandMemberResponse(
@@ -63,7 +66,8 @@ public class UserAdapter implements BandPort {
                     List.of(profile.getPart().getDescription()),
                     null,
                     null,
-                    null
+                    null,
+                    isMember
             );
         }
     }
