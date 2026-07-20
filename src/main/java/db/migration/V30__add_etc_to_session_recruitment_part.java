@@ -8,7 +8,7 @@ import java.sql.ResultSet;
 import java.sql.Statement;
 import java.util.Locale;
 
-public class V26__add_etc_to_session_recruitment_part extends BaseJavaMigration {
+public class V30__add_etc_to_session_recruitment_part extends BaseJavaMigration {
 
     @Override
     public void migrate(Context context) throws Exception {

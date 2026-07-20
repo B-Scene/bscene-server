@@ -7,7 +7,7 @@ import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.Statement;
 
-public class V25__add_session_recruitment_summary extends BaseJavaMigration {
+public class V29__add_session_recruitment_summary extends BaseJavaMigration {
 
     @Override
     public void migrate(Context context) throws Exception {

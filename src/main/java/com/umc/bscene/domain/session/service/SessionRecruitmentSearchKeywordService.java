@@ -14,6 +14,7 @@ import java.util.List;
 @RequiredArgsConstructor
 public class SessionRecruitmentSearchKeywordService {
 
+    private static final int MAX_RECENT_SEARCHES = 10;
     private static final int MAX_KEYWORD_LENGTH = 100;
 
     private final SessionRecruitmentSearchKeywordRepository repository;
@@ -26,17 +27,21 @@ public class SessionRecruitmentSearchKeywordService {
         repository.findByUserIdAndKeyword(userId, normalizedKeyword)
                 .ifPresentOrElse(
                         SessionRecruitmentSearchKeyword::refresh,
-                        () -> repository.save(SessionRecruitmentSearchKeyword.builder()
-                                .userId(userId)
-                                .keyword(normalizedKeyword)
-                                .searchedAt(LocalDateTime.now())
-                                .build())
+                        () -> {
+                            repository.save(SessionRecruitmentSearchKeyword.builder()
+                                    .userId(userId)
+                                    .keyword(normalizedKeyword)
+                                    .searchedAt(LocalDateTime.now())
+                                    .build());
+                            trimToLimit(userId);
+                        }
                 );
     }
 
     @Transactional(readOnly = true)
     public List<RecruitmentSearchKeywordResponse> getAll(Long userId) {
         return repository.findAllByUserIdOrderBySearchedAtDesc(userId).stream()
+                .limit(MAX_RECENT_SEARCHES)
                 .map(RecruitmentSearchKeywordResponse::from)
                 .toList();
     }
@@ -44,6 +49,16 @@ public class SessionRecruitmentSearchKeywordService {
     @Transactional
     public void delete(Long userId, Long keywordId) {
         repository.deleteBySessionRecruitmentSearchKeywordIdAndUserId(keywordId, userId);
+    }
+
+    private void trimToLimit(Long userId) {
+        List<SessionRecruitmentSearchKeyword> searchKeywords =
+                repository.findAllByUserIdOrderBySearchedAtDesc(userId);
+        if (searchKeywords.size() > MAX_RECENT_SEARCHES) {
+            repository.deleteAll(
+                    searchKeywords.subList(MAX_RECENT_SEARCHES, searchKeywords.size())
+            );
+        }
     }
 
     private String normalize(String keyword) {
