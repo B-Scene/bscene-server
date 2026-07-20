@@ -2,6 +2,7 @@ package com.umc.bscene.domain.performance.service;
 
 import com.umc.bscene.domain.performance.dto.response.PendingParticipationResponse;
 import com.umc.bscene.domain.performance.dto.response.PerformanceAlarmResponse;
+import com.umc.bscene.domain.performance.dto.response.PerformanceParticipationDeclineResponse;
 import com.umc.bscene.domain.performance.dto.response.PerformanceParticipationResponse;
 import com.umc.bscene.domain.performance.entity.Performance;
 import com.umc.bscene.domain.performance.entity.PerformanceParticipation;
@@ -97,9 +98,33 @@ public class PerformanceAlarmService {
             throw new PerformanceException(PerformanceErrorCode.PERFORMANCE_NOT_FOUND);
         }
 
+        // 시작 전 공연은 참여완료 불가 (참여 확인 모달은 시작시간이 지난 공연에만 노출됨)
+        Performance performance = participation.getPerformance();
+        LocalDateTime performanceStartAt = LocalDateTime.of(performance.getPerformanceDate(), performance.getStartTime());
+        if (performanceStartAt.isAfter(LocalDateTime.now())) {
+            throw new PerformanceException(PerformanceErrorCode.PERFORMANCE_NOT_STARTED);
+        }
+
         participation.complete();
 
         return PerformanceParticipationResponse.of(performanceId, participation.getStatus());
+    }
+
+    // 사용자가 공연 불참 처리 → 참여 예정(SCHEDULED) 기록을 삭제 (관심 공연 등록은 유지)
+    // 알림을 설정한 공연(참여 기록 존재)만 불참 가능. 없으면 404, 이미 참여 완료 상태면 이력 보호를 위해 409
+    @Transactional
+    public PerformanceParticipationDeclineResponse declineParticipation(Long userId, Long performanceId) {
+        PerformanceParticipation participation = performanceParticipationRepository
+                .findByPerformance_IdAndUser_Id(performanceId, userId)
+                .orElseThrow(() -> new PerformanceException(PerformanceErrorCode.PARTICIPATION_NOT_FOUND));
+
+        if (participation.getStatus() == ParticipationStatus.COMPLETED) {
+            throw new PerformanceException(PerformanceErrorCode.ALREADY_COMPLETED_PARTICIPATION);
+        }
+
+        performanceParticipationRepository.delete(participation);
+
+        return PerformanceParticipationDeclineResponse.of(performanceId);
     }
 
     // TODO : PerformanceService와 중복되는 로직. 통합 고려

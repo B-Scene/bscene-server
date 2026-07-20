@@ -1,6 +1,7 @@
 package com.umc.bscene.domain.performance.controller;
 
 import com.umc.bscene.domain.performance.dto.response.PendingParticipationResponse;
+import com.umc.bscene.domain.performance.dto.response.PerformanceParticipationDeclineResponse;
 import com.umc.bscene.domain.performance.dto.response.PerformanceParticipationResponse;
 import com.umc.bscene.domain.performance.response.code.PerformanceSuccessCode;
 import com.umc.bscene.domain.performance.service.PerformanceAlarmService;
@@ -44,6 +45,22 @@ public class PerformanceParticipationController {
         SuccessResponse<PerformanceParticipationResponse> successResponse = SuccessResponse.of(
                 response,
                 PerformanceSuccessCode.PERFORMANCE_PARTICIPATION_COMPLETE_SUCCESS
+        );
+
+        return ResponseEntity.status(successResponse.getStatus()).body(successResponse);
+    }
+
+    // 공연 불참 처리 API (참여 예정 기록 삭제, 관심 공연은 유지)
+    @DeleteMapping("/{performanceId}/participation")
+    public ResponseEntity<SuccessResponse<PerformanceParticipationDeclineResponse>> declineParticipation(
+            @AuthenticationPrincipal AuthMember authMember,
+            @PathVariable Long performanceId
+    ) {
+        PerformanceParticipationDeclineResponse response = performanceAlarmService.declineParticipation(
+                authMember.getUser().getId(), performanceId);
+        SuccessResponse<PerformanceParticipationDeclineResponse> successResponse = SuccessResponse.of(
+                response,
+                PerformanceSuccessCode.PERFORMANCE_PARTICIPATION_DECLINE_SUCCESS
         );
 
         return ResponseEntity.status(successResponse.getStatus()).body(successResponse);
