@@ -1,8 +1,7 @@
-package com.umc.bscene.domain.user.dto.response;
+package com.umc.bscene.domain.user.dto.response.mypage;
 
 import com.umc.bscene.domain.auth.enums.onboarding.Genre;
 import com.umc.bscene.domain.auth.enums.onboarding.Region;
-import com.umc.bscene.domain.user.dto.response.mypage.MyPageResponse;
 import com.umc.bscene.domain.user.enums.UserMode;
 
 import java.util.List;

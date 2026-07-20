@@ -1,6 +1,6 @@
 package com.umc.bscene.domain.user.controller;
 
-import com.umc.bscene.domain.user.dto.response.FanMyPageResponse;
+import com.umc.bscene.domain.user.dto.response.mypage.FanMyPageResponse;
 import com.umc.bscene.domain.user.dto.response.FollowedBandResponse;
 import com.umc.bscene.domain.user.dto.response.InterestedPerformanceResponse;
 import com.umc.bscene.domain.user.dto.response.ParticipationHistoryResponse;
