@@ -17,17 +17,19 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
+@RequestMapping("/users")
 @RequiredArgsConstructor
-public class MyPageController {
+public class UserController {
 
     private final MyPageService myPageService;
 
     // 마이페이지 조회 API (팬/밴드 모드 공용 엔드포인트)
-    @GetMapping("/users/me")
+    @GetMapping("/me")
     public ResponseEntity<SuccessResponse<MyPageResponse>> getMyPage(
             @AuthenticationPrincipal AuthMember authMember
     ) {
@@ -53,7 +55,7 @@ public class MyPageController {
     }
 
     // 공연 참여 기록 조회 API (참여 완료 공연, 연도 필터, offset 무한스크롤)
-    @GetMapping("/users/me/performance/history")
+    @GetMapping("/me/performance/history")
     public ResponseEntity<SuccessResponse<ParticipationHistoryResponse>> getPerformanceHistory(
             @AuthenticationPrincipal AuthMember authMember,
             @RequestParam(defaultValue = "ALL") HistoryYearFilter filter,
@@ -71,7 +73,7 @@ public class MyPageController {
     }
 
     // 관심 공연 목록 조회 API (알림/참여 상태 포함, offset 무한스크롤)
-    @GetMapping("/users/me/performance/interest")
+    @GetMapping("/me/performance/interest")
     public ResponseEntity<SuccessResponse<InterestedPerformanceResponse>> getInterestedPerformances(
             @AuthenticationPrincipal AuthMember authMember,
             @RequestParam(defaultValue = "0") int page,
@@ -88,7 +90,7 @@ public class MyPageController {
     }
 
     // 팔로우한 밴드 목록 조회 API (밴드명 가나다순, offset 무한스크롤)
-    @GetMapping("/users/me/follows")
+    @GetMapping("/me/follows")
     public ResponseEntity<SuccessResponse<FollowedBandResponse>> getFollowedBands(
             @AuthenticationPrincipal AuthMember authMember,
             @RequestParam(defaultValue = "0") int page,
