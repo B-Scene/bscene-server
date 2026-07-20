@@ -5,6 +5,9 @@ import com.umc.bscene.domain.band.entity.BandMember;
 import com.umc.bscene.domain.band.entity.BandMemberProfile;
 import com.umc.bscene.domain.band.enums.BandMemberStatus;
 import com.umc.bscene.domain.band.exception.BandException;
+import com.umc.bscene.domain.band.port.FollowPort;
+import com.umc.bscene.domain.band.port.PerformancePort;
+import com.umc.bscene.domain.band.port.SessionPort;
 import com.umc.bscene.domain.band.repository.BandMemberProfileRepository;
 import com.umc.bscene.domain.band.repository.BandMemberRepository;
 import com.umc.bscene.domain.band.response.code.BandErrorCode;
@@ -20,6 +23,9 @@ public class UserAdapter implements BandPort {
 
     private final BandMemberProfileRepository bandMemberProfileRepository;
     private final BandMemberRepository bandMemberRepository;
+    private final FollowPort followPort;
+    private final SessionPort sessionPort;
+    private final PerformancePort performancePort;
 
     @Override
     public BandMemberResponse getActiveBandMemberProfile(Long userId) {
@@ -35,12 +41,30 @@ public class UserAdapter implements BandPort {
                 .map(BandMember::getBand)
                 .orElse(null);
 
-        return new BandMemberResponse(
-                band == null ? null : band.getId(),
-                band == null ? null : band.getProfileImageUrl(),
-                profile.getNickname(),
-                band == null ? null : band.getName(),
-                List.of(profile.getPart().getDescription())
-        );
+        return buildBandMemberResponse(band, profile);
+    }
+
+    private BandMemberResponse buildBandMemberResponse(Band band, BandMemberProfile profile) {
+        if (band != null) {
+            return new BandMemberResponse(
+                    band.getProfileImageUrl(),
+                    profile.getNickname(),
+                    band.getName(),
+                    List.of(profile.getPart().getDescription()),
+                    Math.toIntExact(followPort.countFollowersByBandId(band.getId())),
+                    Math.toIntExact(sessionPort.getActiveSessionApplicantCount(band.getId())),
+                    Math.toIntExact(performancePort.countPerformancesByBandIdAndStatus(band.getId()))
+            );
+        } else {
+            return new BandMemberResponse(
+                    null,
+                    profile.getNickname(),
+                    null,
+                    List.of(profile.getPart().getDescription()),
+                    null,
+                    null,
+                    null
+            );
+        }
     }
 }
