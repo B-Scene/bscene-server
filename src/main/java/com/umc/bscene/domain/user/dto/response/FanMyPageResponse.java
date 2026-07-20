@@ -2,6 +2,7 @@ package com.umc.bscene.domain.user.dto.response;
 
 import com.umc.bscene.domain.auth.enums.onboarding.Genre;
 import com.umc.bscene.domain.auth.enums.onboarding.Region;
+import com.umc.bscene.domain.user.dto.response.mypage.MyPageResponse;
 import com.umc.bscene.domain.user.enums.UserMode;
 
 import java.util.List;
@@ -15,7 +16,7 @@ public record FanMyPageResponse(
         long followingCount,                  // 팔로우한 밴드 수
         long interestedPerformanceCount,      // 관심 등록한 공연 수
         long participatedPerformanceCount     // 참여 공연 수 (참여 완료 처리한 공연)
-) {
+) implements MyPageResponse {
     public static FanMyPageResponse of(
             String nickname,
             Genre genre,

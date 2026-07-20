@@ -1,5 +1,6 @@
 package com.umc.bscene.domain.user.dto.response;
 
+import com.umc.bscene.domain.user.dto.response.mypage.MyPageResponse;
 import com.umc.bscene.domain.user.enums.UserMode;
 
 import java.util.List;
@@ -12,5 +13,5 @@ public record BandMyPageResponse(
         Long follower,
         Long applicant,
         Long performanceCount
-) {
+) implements MyPageResponse {
 }
