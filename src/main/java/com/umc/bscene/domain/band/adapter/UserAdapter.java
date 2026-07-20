@@ -50,8 +50,7 @@ public class UserAdapter implements BandPort {
 
     @Override
     public List<MyBandProfile> getAssociatedBandProfiles(Long userId) {
-        bandMemberRepository.getMyBandProfiles(userId, BandMemberStatus.ACCEPTED);
-        return List.of();
+        return bandMemberRepository.getMyBandProfiles(userId, BandMemberStatus.ACCEPTED);
     }
 
     private BandMemberResponse buildBandMemberResponse(Band band, BandMemberProfile profile, boolean isMember) {
