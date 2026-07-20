@@ -63,17 +63,11 @@ public class MyPageService {
 
         Long userId = user.getId();
 
-        // 대표 장르 : 팔로우한 밴드들의 최다 장르 / 팔로우가 없으면 온보딩 첫 장르로 폴백
-        Map<Genre, Long> genreCounts = followPort.countFollowedBandsGroupedByGenre(userId);
-        Genre genre;
-        int additionalGenreCount;
-        if (genreCounts.isEmpty()) {
-            genre = onboardingGenres.isEmpty() ? null : onboardingGenres.getFirst();
-            additionalGenreCount = onboardingGenres.isEmpty() ? 0 : onboardingGenres.size() - 1;
-        } else {
-            genre = pickRepresentativeGenre(genreCounts, onboardingGenres);
-            additionalGenreCount = genreCounts.size() - 1;
-        }
+        // 대표 장르 : 사용자가 등록한 관심장르 중에서 선정 (등록하지 않은 장르는 팔로우한 밴드가 많아도 후보에서 제외)
+        // additionalGenreCount는 대표를 제외한 나머지 관심장르 수 → 화면의 "○○ 외 N개"
+        Map<Genre, Long> followedGenreCounts = followPort.countFollowedBandsGroupedByGenre(userId);
+        Genre genre = pickRepresentativeGenre(onboardingGenres, followedGenreCounts);
+        int additionalGenreCount = Math.max(onboardingGenres.size() - 1, 0);
 
         long followingCount = followPort.countFollowing(userId);
         long interestedPerformanceCount = performancePort.countInterested(userId);
@@ -91,21 +85,13 @@ public class MyPageService {
         );
     }
 
-    // 밴드 수 최다 장르 → 동점이면 온보딩에서 먼저 고른 장르 → 그것도 아니면 이름순 (조회마다 값이 흔들리지 않게 결정적 선택)
-    private Genre pickRepresentativeGenre(Map<Genre, Long> genreCounts, List<Genre> onboardingGenres) {
-        return genreCounts.entrySet().stream()
+    // 관심장르 중 팔로우한 밴드가 많은 장르 → 동점이거나 팔로우가 없으면 먼저 고른 관심장르 (조회마다 값이 흔들리지 않게 결정적 선택)
+    private Genre pickRepresentativeGenre(List<Genre> onboardingGenres, Map<Genre, Long> followedGenreCounts) {
+        return onboardingGenres.stream()
                 .min(Comparator
-                        .comparingLong((Map.Entry<Genre, Long> entry) -> -entry.getValue())
-                        .thenComparingInt(entry -> onboardingRank(onboardingGenres, entry.getKey()))
-                        .thenComparing(entry -> entry.getKey().name()))
-                .map(Map.Entry::getKey)
-                .orElseThrow();     // 호출부에서 빈 Map은 폴백으로 걸러지므로 도달하지 않음
-    }
-
-    // 온보딩에서 고른 순서 (없는 장르는 맨 뒤)
-    private int onboardingRank(List<Genre> onboardingGenres, Genre genre) {
-        int index = onboardingGenres.indexOf(genre);
-        return (index == -1) ? Integer.MAX_VALUE : index;
+                        .comparingLong((Genre genre) -> -followedGenreCounts.getOrDefault(genre, 0L))
+                        .thenComparingInt(onboardingGenres::indexOf))
+                .orElse(null);      // 관심장르가 비어있으면 대표 장르 없음 (온보딩 필수라 정상 흐름에선 도달하지 않음)
     }
 
     // 내 정보 조회 (내 정보 수정 화면 초기값 : 닉네임/관심 장르/활동 지역)
