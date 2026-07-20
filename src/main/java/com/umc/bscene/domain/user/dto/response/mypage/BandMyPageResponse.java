@@ -11,6 +11,7 @@ public record BandMyPageResponse(
         UserMode currentMode,
         Long follower,
         Long applicant,
-        Long performanceCount
+        Long performanceCount,
+        Boolean isBandMember
 ) implements MyPageResponse {
 }
