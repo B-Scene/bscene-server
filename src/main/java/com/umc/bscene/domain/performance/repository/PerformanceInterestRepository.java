@@ -48,4 +48,13 @@ public interface PerformanceInterestRepository extends JpaRepository<Performance
 
     // 사용자와 공연 사이의 관심 등록을 삭제
     void deleteByPerformance_IdAndUser_Id(Long performanceId, Long userId);
+
+    // SearchAdapter에서 사용 : 공연별 관심 등록 수 일괄 집계 (검색 인기순 popularity 색인용, [performanceId, count] 행)
+    @Query("SELECT pi.performance.id, COUNT(pi) FROM PerformanceInterest pi GROUP BY pi.performance.id")
+    List<Object[]> countGroupedByPerformance();
+
+    // SearchAdapter에서 사용 : 지정한 공연들의 관심 등록 수 일괄 집계 (밴드 연쇄 재색인용)
+    @Query("SELECT pi.performance.id, COUNT(pi) FROM PerformanceInterest pi " +
+            "WHERE pi.performance.id IN :performanceIds GROUP BY pi.performance.id")
+    List<Object[]> countGroupedByPerformanceIds(@Param("performanceIds") List<Long> performanceIds);
 }

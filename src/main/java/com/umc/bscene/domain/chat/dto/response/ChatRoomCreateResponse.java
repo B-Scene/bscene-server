@@ -18,7 +18,7 @@ public record ChatRoomCreateResponse(
         var recruitment = room.getSessionRecruitment();
         return new ChatRoomCreateResponse(room.getChatRoomId(), room.getContextType(),
                 recruitment.getSessionRecruitmentId(), recruitment.getRecruitmentTitle(),
-                recruitment.getGenre().getDescription(), recruitment.getPart().getDescription(),
+                recruitment.getGenre().getName(), recruitment.getPart().getDescription(),
                 room.getRecipient().getId(), recruitment.getBand().getName(), created);
     }
 
@@ -26,7 +26,7 @@ public record ChatRoomCreateResponse(
         var application = room.getSessionApplication();
         return new ChatRoomCreateResponse(room.getChatRoomId(), room.getContextType(),
                 application.getSessionApplicationId(), application.getNickname(),
-                application.getGenre().getDescription(), application.getPart().getDescription(),
+                application.getGenre().getName(), application.getPart().getDescription(),
                 room.getRecipient().getId(), application.getNickname(), created);
     }
 }

@@ -2,6 +2,8 @@ package com.umc.bscene.domain.follow.repository;
 
 import com.umc.bscene.domain.follow.entity.Follow;
 import com.umc.bscene.domain.user.enums.UserStatus;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Slice;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -43,10 +45,22 @@ public interface FollowRepository extends JpaRepository<Follow, Long> {
             @Param("bandIds") List<Long> bandIds
     );
 
-    // 후보 밴드들의 누적 팔로워 수를 일괄 조회 (밴드ID, 팔로워수) - 추천 스코어의 인기도 항목용
-    @Query("SELECT f.band.id, COUNT(f) FROM Follow f " +
-            "WHERE f.band.id IN :bandIds GROUP BY f.band.id")
-    List<Object[]> countFollowersByBandIdIn(@Param("bandIds") List<Long> bandIds);
+    // SearchAdapter에서 사용 : 밴드별 팔로워 수 일괄 집계 (검색 인기순 popularity 색인용, [bandId, count] 행)
+    @Query("SELECT f.band.id, COUNT(f) FROM Follow f GROUP BY f.band.id")
+    List<Object[]> countGroupedByBand();
+
+    // UserAdapter에서 사용 : 사용자가 팔로우한 밴드들의 장르별 밴드 수 집계 (마이페이지 대표 장르용, [genre, count] 행)
+    @Query("SELECT f.band.genre, COUNT(f) FROM Follow f WHERE f.user.id = :userId GROUP BY f.band.genre")
+    List<Object[]> countGroupedByGenre(@Param("userId") Long userId);
+
+    // UserAdapter에서 사용 : 사용자가 팔로우한 밴드 목록 (마이페이지, 밴드명 가나다순, f.id로 정렬 결정성 보장)
+    // 밴드 정보를 함께 쓰므로 JOIN FETCH로 N+1 방지 (band는 ManyToOne이라 페이징과 함께 안전)
+    @Query("SELECT f FROM Follow f JOIN FETCH f.band b WHERE f.user.id = :userId ORDER BY b.name ASC, f.id ASC")
+    Slice<Follow> findFollowedBands(@Param("userId") Long userId, Pageable pageable);
+
+    // UserAdapter / 밴드 추천(인기도 항목)에서 사용 : 조회된 밴드들의 전체 팔로워 수 일괄 집계 ([bandId, count] 행)
+    @Query("SELECT f.band.id, COUNT(f) FROM Follow f WHERE f.band.id IN :bandIds GROUP BY f.band.id")
+    List<Object[]> countFollowersByBandIds(@Param("bandIds") List<Long> bandIds);
 
     // 후보 밴드들의 최근 N일 신규 팔로워 수를 일괄 조회 (밴드ID, 증가수) - 추천 스코어의 인기도 항목용
     @Query("SELECT f.band.id, COUNT(f) FROM Follow f " +

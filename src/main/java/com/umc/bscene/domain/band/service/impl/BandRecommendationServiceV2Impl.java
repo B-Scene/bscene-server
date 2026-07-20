@@ -169,7 +169,7 @@ public class BandRecommendationServiceV2Impl implements BandRecommendationServic
         LocalDateTime followGrowthSince = LocalDateTime.now().minusDays(RECENT_FOLLOWER_GROWTH_DAYS);
         Map<Long, Long> followerCountByBandId = candidateIds.isEmpty()
                 ? Map.of()
-                : followRepository.countFollowersByBandIdIn(candidateIds).stream()
+                : followRepository.countFollowersByBandIds(candidateIds).stream()
                         .collect(Collectors.toMap(row -> (Long) row[0], row -> (Long) row[1]));
         Map<Long, Long> recentFollowerCountByBandId = candidateIds.isEmpty()
                 ? Map.of()

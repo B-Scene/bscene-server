@@ -3,9 +3,12 @@ package com.umc.bscene.domain.session.dto.application.response;
 import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 import com.umc.bscene.domain.session.entity.SessionApplication;
 import com.umc.bscene.domain.session.enums.Part;
-import com.umc.bscene.domain.session.enums.SessionGenre;
-import com.umc.bscene.domain.session.enums.SessionRegion;
+import com.umc.bscene.domain.auth.enums.onboarding.Genre;
+import com.umc.bscene.domain.auth.enums.onboarding.Region;
+import com.umc.bscene.domain.session.converter.SessionGenreFormat;
+import com.umc.bscene.domain.session.converter.SessionRegionFormat;
 import com.umc.bscene.domain.session.enums.SkillLevel;
+import com.umc.bscene.domain.session.enums.AvailableActivity;
 import lombok.Builder;
 import lombok.Getter;
 
@@ -21,11 +24,14 @@ import java.util.List;
         "isPublic",
         "title",
         "purpose",
+        "oneLineIntro",
         "part",
         "skillLevel",
         "genre",
         "region",
         "intro",
+        "availableActivities",
+        "careers",
         "portfolioLinks"
 })
 public class SessionApplicationDetailResponse {
@@ -37,11 +43,16 @@ public class SessionApplicationDetailResponse {
     private Boolean isPublic;
     private String title;
     private String purpose;
+    private String oneLineIntro;
     private Part part;
     private SkillLevel skillLevel;
-    private SessionGenre genre;
-    private SessionRegion region;
+    @SessionGenreFormat
+    private Genre genre;
+    @SessionRegionFormat
+    private Region region;
     private String intro;
+    private List<AvailableActivity> availableActivities;
+    private List<MySessionApplicationResponse.CareerResponse> careers;
     private List<PortfolioLinkResponse> portfolioLinks;
 
     public static SessionApplicationDetailResponse from(
@@ -59,11 +70,20 @@ public class SessionApplicationDetailResponse {
                 .isPublic(application.getIsPublic())
                 .title(application.getTitle())
                 .purpose(application.getPurpose())
+                .oneLineIntro(application.getOneLineIntro())
                 .part(application.getPart())
                 .skillLevel(application.getSkillLevel())
                 .genre(application.getGenre())
                 .region(application.getRegion())
                 .intro(application.getIntro())
+                .availableActivities(List.copyOf(application.getAvailableActivities()))
+                .careers(application.getCareers().stream()
+                        .map(career -> new MySessionApplicationResponse.CareerResponse(
+                                career.getSessionApplicationCareerId(),
+                                career.getName(),
+                                career.getPeriod(),
+                                career.getDescription()))
+                        .toList())
                 .portfolioLinks(application.getPortfolioLinks().stream()
                         .filter(link -> link.getDeletedAt() == null)
                         .map(link -> PortfolioLinkResponse.builder()

@@ -3,9 +3,12 @@ package com.umc.bscene.domain.session.dto.application.response;
 import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 import com.umc.bscene.domain.session.entity.SessionApplication;
 import com.umc.bscene.domain.session.enums.Part;
-import com.umc.bscene.domain.session.enums.SessionGenre;
-import com.umc.bscene.domain.session.enums.SessionRegion;
+import com.umc.bscene.domain.auth.enums.onboarding.Genre;
+import com.umc.bscene.domain.auth.enums.onboarding.Region;
+import com.umc.bscene.domain.session.converter.SessionGenreFormat;
+import com.umc.bscene.domain.session.converter.SessionRegionFormat;
 import com.umc.bscene.domain.session.enums.SkillLevel;
+import com.umc.bscene.domain.session.enums.AvailableActivity;
 import lombok.Builder;
 import lombok.Getter;
 
@@ -20,6 +23,7 @@ import java.util.List;
         "nickname",
         "title",
         "purpose",
+        "oneLineIntro",
         "profileImageUrl",
         "isPublic",
         "part",
@@ -38,15 +42,20 @@ public class MySessionApplicationResponse {
     private String nickname;
     private String title;
     private String purpose;
+    private String oneLineIntro;
     private String profileImageUrl;
     private Boolean isPublic;
 
     private Part part;
     private SkillLevel skillLevel;
-    private SessionGenre genre;
-    private SessionRegion region;
+    @SessionGenreFormat
+    private Genre genre;
+    @SessionRegionFormat
+    private Region region;
 
     private String intro;
+    private List<AvailableActivity> availableActivities;
+    private List<CareerResponse> careers;
 
     private List<PortfolioLinkResponse> portfolioLinks;
 
@@ -58,6 +67,7 @@ public class MySessionApplicationResponse {
                 .nickname(null)
                 .title(null)
                 .purpose(null)
+                .oneLineIntro(null)
                 .profileImageUrl(null)
                 .isPublic(null)
                 .part(null)
@@ -65,6 +75,8 @@ public class MySessionApplicationResponse {
                 .genre(null)
                 .region(null)
                 .intro(null)
+                .availableActivities(List.of())
+                .careers(List.of())
                 .portfolioLinks(List.of())
                 .build();
     }
@@ -77,6 +89,7 @@ public class MySessionApplicationResponse {
                 .nickname(sessionApplication.getNickname())
                 .title(sessionApplication.getTitle())
                 .purpose(sessionApplication.getPurpose())
+                .oneLineIntro(sessionApplication.getOneLineIntro())
                 .profileImageUrl(sessionApplication.getProfileImageUrl())
                 .isPublic(sessionApplication.getIsPublic())
                 .part(sessionApplication.getPart())
@@ -84,6 +97,10 @@ public class MySessionApplicationResponse {
                 .genre(sessionApplication.getGenre())
                 .region(sessionApplication.getRegion())
                 .intro(sessionApplication.getIntro())
+                .availableActivities(List.copyOf(sessionApplication.getAvailableActivities()))
+                .careers(sessionApplication.getCareers().stream()
+                        .map(CareerResponse::from)
+                        .toList())
                 .portfolioLinks(
                         sessionApplication.getPortfolioLinks().stream()
                                 .filter(link -> link.getDeletedAt() == null)
@@ -106,5 +123,19 @@ public class MySessionApplicationResponse {
 
         private Long sessionApplicationLinkId;
         private String url;
+    }
+
+    public record CareerResponse(
+            Long sessionApplicationCareerId,
+            String name,
+            String period,
+            String description
+    ) {
+        private static CareerResponse from(
+                com.umc.bscene.domain.session.entity.SessionApplicationCareer career
+        ) {
+            return new CareerResponse(career.getSessionApplicationCareerId(), career.getName(),
+                    career.getPeriod(), career.getDescription());
+        }
     }
 }

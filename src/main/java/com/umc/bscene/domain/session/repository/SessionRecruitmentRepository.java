@@ -2,8 +2,8 @@ package com.umc.bscene.domain.session.repository;
 
 import com.umc.bscene.domain.session.entity.SessionRecruitment;
 import com.umc.bscene.domain.session.enums.Part;
-import com.umc.bscene.domain.session.enums.SessionGenre;
-import com.umc.bscene.domain.session.enums.SessionRegion;
+import com.umc.bscene.domain.auth.enums.onboarding.Genre;
+import com.umc.bscene.domain.auth.enums.onboarding.Region;
 import com.umc.bscene.domain.session.enums.SkillLevel;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -34,12 +34,48 @@ public interface SessionRecruitmentRepository extends JpaRepository<SessionRecru
           AND (:cursorId IS NULL OR sr.sessionRecruitmentId < :cursorId)
         ORDER BY sr.sessionRecruitmentId DESC
     """)
-    List<SessionRecruitment> findRecruitments(
+    List<SessionRecruitment> findLatestRecruitments(
             @Param("now") LocalDateTime now,
             @Param("part") Part part,
             @Param("skillLevel") SkillLevel skillLevel,
-            @Param("genre") SessionGenre genre,
-            @Param("region") SessionRegion region,
+            @Param("genre") Genre genre,
+            @Param("region") Region region,
+            @Param("keyword") String keyword,
+            @Param("cursorId") Long cursorId,
+            Pageable pageable
+    );
+
+    @Query("""
+        SELECT sr
+        FROM SessionRecruitment sr
+        JOIN FETCH sr.band
+        WHERE sr.deletedAt IS NULL
+          AND sr.deadlineAt > :now
+          AND (:part IS NULL OR sr.part = :part)
+          AND (:skillLevel IS NULL OR sr.skillLevel = :skillLevel)
+          AND (:genre IS NULL OR sr.genre = :genre)
+          AND (:region IS NULL OR sr.region = :region)
+          AND (:keyword IS NULL OR LOWER(sr.recruitmentTitle)
+              LIKE LOWER(CONCAT('%', :keyword, '%')))
+          AND (:cursorId IS NULL
+              OR sr.deadlineAt > (
+                  SELECT cursor.deadlineAt
+                  FROM SessionRecruitment cursor
+                  WHERE cursor.sessionRecruitmentId = :cursorId
+              )
+              OR (sr.deadlineAt = (
+                  SELECT cursor.deadlineAt
+                  FROM SessionRecruitment cursor
+                  WHERE cursor.sessionRecruitmentId = :cursorId
+              ) AND sr.sessionRecruitmentId < :cursorId))
+        ORDER BY sr.deadlineAt ASC, sr.sessionRecruitmentId DESC
+    """)
+    List<SessionRecruitment> findImminentRecruitments(
+            @Param("now") LocalDateTime now,
+            @Param("part") Part part,
+            @Param("skillLevel") SkillLevel skillLevel,
+            @Param("genre") Genre genre,
+            @Param("region") Region region,
             @Param("keyword") String keyword,
             @Param("cursorId") Long cursorId,
             Pageable pageable

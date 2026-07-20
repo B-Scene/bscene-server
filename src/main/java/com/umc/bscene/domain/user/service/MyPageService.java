@@ -3,6 +3,7 @@ package com.umc.bscene.domain.user.service;
 import com.umc.bscene.domain.auth.enums.onboarding.Genre;
 import com.umc.bscene.domain.auth.enums.onboarding.Region;
 import com.umc.bscene.domain.user.dto.response.FanMyPageResponse;
+import com.umc.bscene.domain.user.dto.response.FollowedBandResponse;
 import com.umc.bscene.domain.user.dto.response.InterestedPerformanceResponse;
 import com.umc.bscene.domain.user.dto.response.ParticipationHistoryResponse;
 import com.umc.bscene.domain.user.enums.HistoryYearFilter;
@@ -22,7 +23,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
+import java.util.Comparator;
 import java.util.List;
+import java.util.Map;
 
 @Service
 @RequiredArgsConstructor
@@ -44,7 +47,8 @@ public class MyPageService {
                 .map(FanProfile::getNickname)
                 .orElseThrow(() -> new UserException(UserErrorCode.FAN_PROFILE_NOT_FOUND));
 
-        List<Genre> genres = userGenresRepository.findAllByUser(user).stream()
+        // 온보딩 장르는 선택 순서(PK순)로 조회 — 폴백과 동점 처리 기준으로 사용
+        List<Genre> onboardingGenres = userGenresRepository.findAllByUserOrderByIdAsc(user).stream()
                 .map(UserGenres::getGenre)
                 .toList();
 
@@ -53,19 +57,50 @@ public class MyPageService {
                 .toList();
 
         Long userId = user.getId();
+
+        // 대표 장르 : 팔로우한 밴드들의 최다 장르 / 팔로우가 없으면 온보딩 첫 장르로 폴백
+        Map<Genre, Long> genreCounts = followPort.countFollowedBandsGroupedByGenre(userId);
+        Genre genre;
+        int additionalGenreCount;
+        if (genreCounts.isEmpty()) {
+            genre = onboardingGenres.isEmpty() ? null : onboardingGenres.getFirst();
+            additionalGenreCount = onboardingGenres.isEmpty() ? 0 : onboardingGenres.size() - 1;
+        } else {
+            genre = pickRepresentativeGenre(genreCounts, onboardingGenres);
+            additionalGenreCount = genreCounts.size() - 1;
+        }
+
         long followingCount = followPort.countFollowing(userId);
         long interestedPerformanceCount = performancePort.countInterested(userId);
         long participatedPerformanceCount = performancePort.countParticipated(userId);
 
         return FanMyPageResponse.of(
                 nickname,
-                genres,
+                genre,
+                additionalGenreCount,
                 regions,
                 user.getCurrentMode(),
                 followingCount,
                 interestedPerformanceCount,
                 participatedPerformanceCount
         );
+    }
+
+    // 밴드 수 최다 장르 → 동점이면 온보딩에서 먼저 고른 장르 → 그것도 아니면 이름순 (조회마다 값이 흔들리지 않게 결정적 선택)
+    private Genre pickRepresentativeGenre(Map<Genre, Long> genreCounts, List<Genre> onboardingGenres) {
+        return genreCounts.entrySet().stream()
+                .min(Comparator
+                        .comparingLong((Map.Entry<Genre, Long> entry) -> -entry.getValue())
+                        .thenComparingInt(entry -> onboardingRank(onboardingGenres, entry.getKey()))
+                        .thenComparing(entry -> entry.getKey().name()))
+                .map(Map.Entry::getKey)
+                .orElseThrow();     // 호출부에서 빈 Map은 폴백으로 걸러지므로 도달하지 않음
+    }
+
+    // 온보딩에서 고른 순서 (없는 장르는 맨 뒤)
+    private int onboardingRank(List<Genre> onboardingGenres, Genre genre) {
+        int index = onboardingGenres.indexOf(genre);
+        return (index == -1) ? Integer.MAX_VALUE : index;
     }
 
     // 공연 참여 기록 조회 (참여 완료 공연, 연도 필터, offset 무한스크롤)
@@ -102,5 +137,12 @@ public class MyPageService {
         int pageNumber = Math.max(page, 0);
         int pageSize = Math.min(Math.max(size, 1), MAX_PAGE_SIZE);
         return performancePort.findInterestedPerformances(userId, pageNumber, pageSize);
+    }
+
+    // 팔로우한 밴드 목록 조회 (밴드명 가나다순, offset 무한스크롤)
+    public FollowedBandResponse getFollowedBands(Long userId, int page, int size) {
+        int pageNumber = Math.max(page, 0);
+        int pageSize = Math.min(Math.max(size, 1), MAX_PAGE_SIZE);
+        return followPort.findFollowedBands(userId, pageNumber, pageSize);
     }
 }

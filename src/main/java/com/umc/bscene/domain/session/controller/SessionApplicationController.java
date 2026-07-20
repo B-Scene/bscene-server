@@ -1,6 +1,7 @@
 package com.umc.bscene.domain.session.controller;
 
 import com.umc.bscene.domain.session.dto.application.request.MySessionApplicationUpdateRequest;
+import com.umc.bscene.domain.session.dto.application.request.MySessionApplicationCreateRequest;
 import com.umc.bscene.domain.session.dto.application.request.SessionApplicationVisibilityRequest;
 import com.umc.bscene.domain.session.dto.application.response.MySessionApplicationResponse;
 import com.umc.bscene.domain.session.dto.application.response.SessionApplicationSearchResponse;
@@ -8,8 +9,9 @@ import com.umc.bscene.domain.session.dto.application.response.SessionApplication
 import com.umc.bscene.domain.session.dto.application.response.MySessionApplicationSummaryResponse;
 import com.umc.bscene.domain.session.dto.application.response.SessionApplicationVisibilityResponse;
 import com.umc.bscene.domain.session.dto.application.response.MyApplicationSubmissionListResponse;
+import com.umc.bscene.domain.session.converter.SessionGenreJsonDeserializer;
+import com.umc.bscene.domain.session.converter.SessionRegionJsonDeserializer;
 import com.umc.bscene.domain.session.enums.Part;
-import com.umc.bscene.domain.session.enums.SessionRegion;
 import com.umc.bscene.domain.session.enums.SkillLevel;
 import com.umc.bscene.domain.session.enums.code.SessionSuccessCode;
 import com.umc.bscene.domain.session.service.SessionApplicationCommandService;
@@ -28,6 +30,8 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.ResponseStatus;
+import org.springframework.http.HttpStatus;
 
 import java.util.List;
 
@@ -120,9 +124,10 @@ public class SessionApplicationController {
     @GetMapping("/search")
     public SuccessResponse<SessionApplicationSearchResponse> searchSessionApplications(
             @AuthenticationPrincipal AuthMember authMember,
-            @RequestParam(required = false) SessionRegion region,
+            @RequestParam(required = false) String region,
             @RequestParam(required = false) SkillLevel skillLevel,
             @RequestParam(required = false) Part part,
+            @RequestParam(required = false) String genre,
             @RequestParam(required = false) String keyword,
             @RequestParam(required = false) Long cursorId,
             @RequestParam(defaultValue = "10") Integer size
@@ -130,9 +135,10 @@ public class SessionApplicationController {
         SessionApplicationSearchResponse response = sessionApplicationQueryService
                 .searchDefaultApplications(
                         authMember.getUser().getId(),
-                        region,
+                        SessionRegionJsonDeserializer.fromKorean(region),
                         skillLevel,
                         part,
+                        SessionGenreJsonDeserializer.fromKorean(genre),
                         keyword,
                         cursorId,
                         size
@@ -167,9 +173,10 @@ public class SessionApplicationController {
     }
 
     @PostMapping
+    @ResponseStatus(HttpStatus.CREATED)
     public SuccessResponse<MySessionApplicationResponse> createSessionApplication(
             @AuthenticationPrincipal AuthMember authMember,
-            @Valid @RequestBody MySessionApplicationUpdateRequest request
+            @Valid @RequestBody MySessionApplicationCreateRequest request
     ) {
         Long userId = authMember.getUser().getId();
 

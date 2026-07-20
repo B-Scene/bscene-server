@@ -3,8 +3,10 @@ package com.umc.bscene.domain.session.dto.application.response;
 import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 import com.umc.bscene.domain.session.entity.SessionApplication;
 import com.umc.bscene.domain.session.enums.Part;
-import com.umc.bscene.domain.session.enums.SessionGenre;
-import com.umc.bscene.domain.session.enums.SessionRegion;
+import com.umc.bscene.domain.auth.enums.onboarding.Genre;
+import com.umc.bscene.domain.auth.enums.onboarding.Region;
+import com.umc.bscene.domain.session.converter.SessionGenreFormat;
+import com.umc.bscene.domain.session.converter.SessionRegionFormat;
 import com.umc.bscene.domain.session.enums.SkillLevel;
 import lombok.Builder;
 import lombok.Getter;
@@ -21,7 +23,7 @@ import lombok.Getter;
         "genre",
         "region",
         "title",
-        "intro"
+        "oneLineIntro"
 })
 public class SessionApplicationSearchItemResponse {
 
@@ -31,10 +33,12 @@ public class SessionApplicationSearchItemResponse {
     private String profileImageUrl;
     private SkillLevel skillLevel;
     private Part part;
-    private SessionGenre genre;
-    private SessionRegion region;
+    @SessionGenreFormat
+    private Genre genre;
+    @SessionRegionFormat
+    private Region region;
     private String title;
-    private String intro;
+    private String oneLineIntro;
 
     public static SessionApplicationSearchItemResponse from(
             SessionApplication application,
@@ -53,7 +57,7 @@ public class SessionApplicationSearchItemResponse {
                 .genre(application.getGenre())
                 .region(application.getRegion())
                 .title(application.getTitle())
-                .intro(application.getIntro())
+                .oneLineIntro(application.getOneLineIntro())
                 .build();
     }
 }

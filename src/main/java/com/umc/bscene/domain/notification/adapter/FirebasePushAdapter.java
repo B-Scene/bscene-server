@@ -33,13 +33,35 @@ public class FirebasePushAdapter implements PushPort {
             firebaseMessaging.send(message);
             return PushSendResult.success();
         } catch (FirebaseMessagingException exception) {
+            String errorCode = resolveErrorCode(exception);
+
             if (MessagingErrorCode.UNREGISTERED.equals(
                     exception.getMessagingErrorCode()
             )) {
-                return PushSendResult.invalidToken(exception.getMessage());
+                return PushSendResult.invalidToken(
+                        errorCode,
+                        exception.getMessage()
+                );
             }
 
-            return PushSendResult.failed(exception.getMessage());
+            return PushSendResult.failed(
+                    errorCode,
+                    exception.getMessage()
+            );
         }
+    }
+
+    private String resolveErrorCode(
+            FirebaseMessagingException exception
+    ) {
+        if (exception.getMessagingErrorCode() != null) {
+            return exception.getMessagingErrorCode().name();
+        }
+
+        if (exception.getErrorCode() != null) {
+            return exception.getErrorCode().name();
+        }
+
+        return "UNKNOWN";
     }
 }

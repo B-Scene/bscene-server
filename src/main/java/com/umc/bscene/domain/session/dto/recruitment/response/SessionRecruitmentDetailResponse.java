@@ -3,6 +3,8 @@ package com.umc.bscene.domain.session.dto.recruitment.response;
 import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 import lombok.Builder;
 import lombok.Getter;
+import com.umc.bscene.domain.auth.enums.onboarding.Region;
+import com.umc.bscene.domain.session.converter.SessionRegionFormat;
 
 import java.time.LocalDateTime;
 
@@ -22,6 +24,7 @@ import java.time.LocalDateTime;
         "bandGenre",
         "bandRegion",
 
+        "summary",
         "content",
 
         "part",
@@ -47,11 +50,13 @@ public class SessionRecruitmentDetailResponse {
     private String bandGenre;
     private String bandRegion;
 
+    private String summary;
     private String content;
 
     private String part;
     private String genre;
-    private String region;
+    @SessionRegionFormat
+    private Region region;
     private String practiceSchedule;
     private String practicePlace;
 

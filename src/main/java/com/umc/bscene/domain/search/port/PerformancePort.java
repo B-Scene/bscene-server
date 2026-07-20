@@ -3,6 +3,7 @@ package com.umc.bscene.domain.search.port;
 import com.umc.bscene.domain.performance.entity.Performance;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 /**
@@ -19,4 +20,13 @@ public interface PerformancePort {
 
     // 연쇄 재색인용 : 특정 밴드의 ACTIVE 공연 전체 (band fetch join)
     List<Performance> findAllActiveByBandIdWithBand(Long bandId);
+
+    // 전체 색인용 : 공연별 관심 등록 수 일괄 집계 (GROUP BY 한 번 — 공연별 COUNT N번 방지)
+    Map<Long, Long> countInterestsGroupedByPerformance();
+
+    // 연쇄 재색인용 : 지정한 공연들의 관심 등록 수 일괄 집계
+    Map<Long, Long> countInterestsByPerformanceIds(List<Long> performanceIds);
+
+    // 단건 색인용 : 특정 공연의 관심 등록 수
+    long countInterests(Long performanceId);
 }

@@ -2,7 +2,8 @@ package com.umc.bscene.domain.session.dto.recruitment.response;
 
 import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 import com.umc.bscene.domain.session.entity.SessionRecruitment;
-import com.umc.bscene.domain.session.enums.SessionRegion;
+import com.umc.bscene.domain.auth.enums.onboarding.Region;
+import com.umc.bscene.domain.session.converter.SessionRegionFormat;
 import lombok.Builder;
 import lombok.Getter;
 
@@ -14,6 +15,7 @@ import java.time.LocalDateTime;
         "sessionRecruitmentId",
         "bandId",
         "recruitmentTitle",
+        "summary",
         "content",
         "part",
         "skillLevel",
@@ -30,11 +32,13 @@ public class SessionRecruitmentCreateResponse {
     private Long sessionRecruitmentId;
     private Long bandId;
     private String recruitmentTitle;
+    private String summary;
     private String content;
     private String part;
     private String skillLevel;
     private String genre;
-    private SessionRegion region;
+    @SessionRegionFormat
+    private Region region;
     private String practiceSchedule;
     private String practicePlace;
     private LocalDateTime deadlineAt;
@@ -47,12 +51,13 @@ public class SessionRecruitmentCreateResponse {
                 .sessionRecruitmentId(recruitment.getSessionRecruitmentId())
                 .bandId(recruitment.getBand().getId())
                 .recruitmentTitle(recruitment.getRecruitmentTitle())
+                .summary(recruitment.getSummary())
                 .content(recruitment.getContent())
 
                 // 한글 응답
                 .part(recruitment.getPart().getDescription())
                 .skillLevel(recruitment.getSkillLevel().getDescription())
-                .genre(recruitment.getGenre().getDescription())
+                .genre(recruitment.getGenre().getName())
 
                 // enum 유지(@JsonValue로 한글 직렬화)
                 .region(recruitment.getRegion())

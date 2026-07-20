@@ -6,20 +6,20 @@ import com.umc.bscene.domain.session.dto.recruitment.response.SessionRecruitment
 import com.umc.bscene.domain.session.dto.recruitment.response.RecentRecruitmentItemResponse;
 import com.umc.bscene.domain.session.dto.recruitment.response.RecentRecruitmentListResponse;
 import com.umc.bscene.domain.session.entity.SessionRecruitmentView;
-import com.umc.bscene.domain.session.entity.SessionApplicationSubmission;
 import com.umc.bscene.domain.session.entity.SessionRecruitment;
 import com.umc.bscene.domain.session.enums.Part;
-import com.umc.bscene.domain.session.enums.SessionGenre;
-import com.umc.bscene.domain.session.enums.SessionRegion;
+import com.umc.bscene.domain.auth.enums.onboarding.Genre;
+import com.umc.bscene.domain.auth.enums.onboarding.Region;
 import com.umc.bscene.domain.session.enums.SkillLevel;
+import com.umc.bscene.domain.session.enums.SessionRecruitmentSortType;
 import com.umc.bscene.domain.session.enums.code.SessionErrorCode;
 import com.umc.bscene.domain.session.exception.SessionException;
 import com.umc.bscene.domain.session.repository.SessionRecruitmentRepository;
 import com.umc.bscene.domain.session.repository.SessionRecruitmentInterestRepository;
 import com.umc.bscene.domain.session.repository.SessionRecruitmentViewRepository;
-import com.umc.bscene.domain.session.repository.SessionApplicationSubmissionRepository;
 import com.umc.bscene.domain.user.repository.UserRepository;
 import com.umc.bscene.domain.session.service.SessionRecruitmentQueryService;
+import com.umc.bscene.domain.session.service.SessionRecruitmentSearchKeywordService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
@@ -30,8 +30,6 @@ import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.Set;
-import java.util.Map;
-import java.util.function.Function;
 import java.util.stream.Collectors;
 
 @Service
@@ -42,17 +40,19 @@ public class SessionRecruitmentQueryServiceImpl implements SessionRecruitmentQue
     private final SessionRecruitmentRepository sessionRecruitmentRepository;
     private final SessionRecruitmentInterestRepository interestRepository;
     private final SessionRecruitmentViewRepository viewRepository;
-    private final SessionApplicationSubmissionRepository submissionRepository;
     private final UserRepository userRepository;
+    private final SessionRecruitmentSearchKeywordService searchKeywordService;
 
     @Override
+    @Transactional
     public SessionRecruitmentListResponse getSessionRecruitments(
             Long userId,
             Part part,
             SkillLevel skillLevel,
-            SessionGenre genre,
-            SessionRegion region,
+            Genre genre,
+            Region region,
             String keyword,
+            SessionRecruitmentSortType sort,
             Long cursorId,
             Integer size
     ) {
@@ -63,17 +63,19 @@ public class SessionRecruitmentQueryServiceImpl implements SessionRecruitmentQue
         String normalizedKeyword = keyword == null || keyword.isBlank()
                 ? null
                 : keyword.trim();
+        searchKeywordService.record(userId, normalizedKeyword);
 
-        List<SessionRecruitment> recruitments = sessionRecruitmentRepository.findRecruitments(
-                now,
-                part,
-                skillLevel,
-                genre,
-                region,
-                normalizedKeyword,
-                cursorId,
-                pageRequest
-        );
+        SessionRecruitmentSortType sortType = sort == null
+                ? SessionRecruitmentSortType.LATEST
+                : sort;
+        List<SessionRecruitment> recruitments = switch (sortType) {
+            case LATEST -> sessionRecruitmentRepository.findLatestRecruitments(
+                    now, part, skillLevel, genre, region, normalizedKeyword, cursorId, pageRequest
+            );
+            case IMMINENT -> sessionRecruitmentRepository.findImminentRecruitments(
+                    now, part, skillLevel, genre, region, normalizedKeyword, cursorId, pageRequest
+            );
+        };
 
         boolean hasNext = recruitments.size() > pageSize;
 
@@ -148,10 +150,11 @@ public class SessionRecruitmentQueryServiceImpl implements SessionRecruitmentQue
 
 
                 // 모집 상세 정보
+                .summary(recruitment.getSummary())
                 .content(recruitment.getContent())
                 .part(recruitment.getPart().getDescription())
-                .genre(recruitment.getGenre().getDescription())
-                .region(recruitment.getRegion().getDescription())
+                .genre(recruitment.getGenre().getName())
+                .region(recruitment.getRegion())
                 .practiceSchedule(recruitment.getPracticeSchedule())
                 .practicePlace(recruitment.getPracticePlace())
                 .qualification(recruitment.getQualification())
@@ -170,7 +173,7 @@ public class SessionRecruitmentQueryServiceImpl implements SessionRecruitmentQue
                 .bandName(recruitment.getBand().getName())
                 .bandGenre(recruitment.getBand().getGenre().getName())
                 .bandRegion(recruitment.getBand().getRegion().getName())
-                .content(recruitment.getContent())
+                .summary(recruitment.getSummary())
                 .part(recruitment.getPart())
                 .skillLevel(recruitment.getSkillLevel())
                 .practiceSchedule(recruitment.getPracticeSchedule())
@@ -195,31 +198,8 @@ public class SessionRecruitmentQueryServiceImpl implements SessionRecruitmentQue
         List<SessionRecruitmentView> sliced = hasNext
                 ? views.subList(0, pageSize)
                 : views;
-        List<Long> recruitmentIds = sliced.stream()
-                .map(view -> view.getSessionRecruitment().getSessionRecruitmentId())
-                .toList();
-        Map<Long, SessionApplicationSubmission> submissions = recruitmentIds.isEmpty()
-                ? Map.of()
-                : submissionRepository
-                        .findActiveSubmissionsForRecruitments(userId, recruitmentIds)
-                        .stream()
-                        .collect(Collectors.toMap(
-                                submission -> submission.getSessionRecruitment()
-                                        .getSessionRecruitmentId(),
-                                Function.identity(),
-                                (latest, ignored) -> latest
-                        ));
         List<RecentRecruitmentItemResponse> content = sliced.stream()
-                .map(view -> {
-                    Long recruitmentId = view.getSessionRecruitment()
-                            .getSessionRecruitmentId();
-                    SessionApplicationSubmission submission = submissions.get(recruitmentId);
-                    return RecentRecruitmentItemResponse.of(
-                            view,
-                            submission == null ? null
-                                    : submission.getSessionApplication().getTitle()
-                    );
-                })
+                .map(RecentRecruitmentItemResponse::from)
                 .toList();
         Long nextCursor = hasNext && !sliced.isEmpty()
                 ? sliced.get(sliced.size() - 1).getSessionRecruitmentViewId()

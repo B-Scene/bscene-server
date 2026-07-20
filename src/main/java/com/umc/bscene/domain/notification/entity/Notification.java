@@ -59,6 +59,10 @@ public class Notification extends BaseEntity {
     }
 
     public void markAsRead() {
+        if (Boolean.TRUE.equals(this.isRead)) {
+            return;
+        }
+
         this.isRead = true;
         this.readAt = LocalDateTime.now();
     }

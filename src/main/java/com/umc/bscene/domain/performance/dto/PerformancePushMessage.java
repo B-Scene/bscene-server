@@ -1,10 +1,12 @@
 package com.umc.bscene.domain.performance.dto;
 
+import com.umc.bscene.global.notification.enums.NotificationSettingType;
 import com.umc.bscene.global.notification.enums.NotificationType;
 import com.umc.bscene.global.notification.message.PushMessage;
 
 public record PerformancePushMessage(
         NotificationType type,
+        NotificationSettingType settingType,
         String title,
         String body,
         String deepLink,
@@ -19,6 +21,7 @@ public record PerformancePushMessage(
     ) {
         return new PerformancePushMessage(
                 NotificationType.PERFORMANCE,
+                NotificationSettingType.FAN_FOLLOWED_BAND_PERFORMANCE,
                 bandName + "의 새로운 공연이 등록됐어요",
                 "'" + performanceTitle + "' 공연 정보를 확인해보세요.",
                 "/performances/" + performanceId,
@@ -34,6 +37,7 @@ public record PerformancePushMessage(
     ) {
         return new PerformancePushMessage(
                 NotificationType.PERFORMANCE,
+                NotificationSettingType.FAN_PERFORMANCE_REMINDER,
                 "공연 시작 1시간 전이에요",
                 bandName + "의 '" + performanceTitle + "' 공연이 곧 시작돼요.",
                 "/performances/" + performanceId,
@@ -49,6 +53,7 @@ public record PerformancePushMessage(
     ) {
         return new PerformancePushMessage(
                 NotificationType.PERFORMANCE,
+                NotificationSettingType.FAN_PERFORMANCE_UPDATE,
                 "공연 정보가 변경됐어요",
                 bandName + "의 '" + performanceTitle + "' 공연 정보를 다시 확인해주세요.",
                 "/performances/" + performanceId,

@@ -10,7 +10,11 @@ import static com.umc.bscene.global.constant.StaticValue.OK;
 @RequiredArgsConstructor
 public enum SearchSuccessCode implements BaseResponseCode {
 
-    SEARCH_SUCCESS(OK, "SEARCH200_1", "검색 결과를 조회했습니다.");
+    SEARCH_SUCCESS(OK, "SEARCH200_1", "검색 결과를 조회했습니다."),
+
+    RECENT_SEARCH_LIST_SUCCESS(OK, "SEARCH200_2", "최근 검색어를 조회했습니다."),
+    RECENT_SEARCH_DELETE_SUCCESS(OK, "SEARCH200_3", "최근 검색어를 삭제했습니다."),
+    RECENT_SEARCH_DELETE_ALL_SUCCESS(OK, "SEARCH200_4", "최근 검색어를 전체 삭제했습니다.");
 
     private final int status;
     private final String code;

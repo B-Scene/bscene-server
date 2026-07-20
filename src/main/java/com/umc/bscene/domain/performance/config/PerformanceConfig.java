@@ -40,10 +40,13 @@ public class PerformanceConfig {
         return new UserAdapter(performanceInterestRepository, performanceParticipationRepository);
     }
 
-    // 검색 색인 PerformancePort 구현 어댑터
+    // 검색 색인 PerformancePort 구현 어댑터 (색인 조회 + 인기순 관심수 집계)
     @Bean
-    public SearchAdapter searchPerformanceAdapter(PerformanceRepository performanceRepository) {
-        return new SearchAdapter(performanceRepository);
+    public SearchAdapter searchPerformanceAdapter(
+            PerformanceRepository performanceRepository,
+            PerformanceInterestRepository performanceInterestRepository
+    ) {
+        return new SearchAdapter(performanceRepository, performanceInterestRepository);
     }
 
     // 공연 시작 1시간 전 알림 발송 스케줄러
