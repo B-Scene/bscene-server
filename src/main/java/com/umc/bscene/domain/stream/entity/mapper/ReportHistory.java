@@ -7,6 +7,8 @@ import com.umc.bscene.global.entity.BaseEntity;
 import jakarta.persistence.*;
 import lombok.*;
 
+import java.time.LocalDateTime;
+
 /**
  * 라이브 내 유저 신고 이력. 언제(BaseEntity.createdAt) 어느 라이브에서 어떤 유저가
  * 어떤 사유로 신고당했는지, 어떤 채팅을 쳤었는지를 보관한다.
@@ -46,4 +48,8 @@ public class ReportHistory extends BaseEntity {
     // 신고자가 작성한 상세 코멘트
     @Column(length = 500)
     private String comment;
+
+    // 디스코드 알림 발송 완료 시각. null이면 미발송으로 간주되어 재발송 스캔 대상이 된다
+    @Column
+    private LocalDateTime discordNotifiedAt;
 }

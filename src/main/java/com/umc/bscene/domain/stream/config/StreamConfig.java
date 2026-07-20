@@ -2,12 +2,10 @@ package com.umc.bscene.domain.stream.config;
 
 import com.umc.bscene.domain.stream.port.*;
 import com.umc.bscene.domain.stream.repository.*;
+import com.umc.bscene.domain.stream.scheduler.DiscordNotifyRetryScheduler;
 import com.umc.bscene.domain.stream.scheduler.StreamCleanupScheduler;
 import com.umc.bscene.domain.stream.scheduler.StreamReminderScheduler;
-import com.umc.bscene.domain.stream.service.MediaMtxLivePoller;
-import com.umc.bscene.domain.stream.service.StreamReminderService;
-import com.umc.bscene.domain.stream.service.StreamService;
-import com.umc.bscene.domain.stream.service.StreamServiceImpl;
+import com.umc.bscene.domain.stream.service.*;
 import com.umc.bscene.domain.stream.sse.ViewerSsePresence;
 import com.umc.bscene.domain.stream.sse.ViewerSseRegistry;
 import com.umc.bscene.domain.chat.service.LiveChatRoomCloser;
@@ -19,9 +17,11 @@ import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.scheduling.annotation.EnableAsync;
 import org.springframework.scheduling.annotation.EnableScheduling;
 import org.springframework.web.client.RestClient;
+import org.springframework.web.service.registry.ImportHttpServices;
 
 @EnableAsync
 @EnableScheduling
+@ImportHttpServices(group = "discord", types = DiscordWebhookPort.class)
 @Configuration
 public class StreamConfig {
 
@@ -59,6 +59,23 @@ public class StreamConfig {
     }
 
     @Bean
+    public DiscordMessageSender discordMessageSender(
+            DiscordWebhookPort discordWebhookPort,
+            ReportHistoryRepository reportHistoryRepository
+    ) {
+        return new DiscordMessageSender(discordWebhookPort, reportHistoryRepository);
+    }
+
+    // 즉시 발송에 실패한 디스코드 신고 알림을 재발송하는 안전망 스케줄러
+    @Bean
+    public DiscordNotifyRetryScheduler discordNotifyRetryScheduler(
+            ReportHistoryRepository reportHistoryRepository,
+            DiscordMessageSender discordMessageSender
+    ) {
+        return new DiscordNotifyRetryScheduler(reportHistoryRepository, discordMessageSender);
+    }
+
+    @Bean
     public StreamService streamService(
             JwtUtil jwtUtil,
             AudioStreamRepository audioStreamRepository,
@@ -75,6 +92,7 @@ public class StreamConfig {
             RestClient mtxRestClient,
             ViewerSsePresence viewerSsePresence,
             LiveChatRoomCloser liveChatRoomCloser,
+            DiscordMessageSender discordMessageSender,
             @Value("${mediamtx.hls-url}") String hlsUrl,
             @Value("${mediamtx.webrtc-url}") String webrtcUrl
     ) {
@@ -94,6 +112,7 @@ public class StreamConfig {
                 mtxRestClient,
                 viewerSsePresence,
                 liveChatRoomCloser,
+                discordMessageSender,
                 hlsUrl,
                 webrtcUrl
         );
