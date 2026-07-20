@@ -27,7 +27,7 @@ import java.util.stream.Collectors;
  * - countInterested             : 사용자가 관심 등록한 공연 수
  * - countParticipated           : 참여 완료(COMPLETED)한 공연 수 (참여 공연)
  * - findParticipationHistory    : 참여 완료한 공연 목록 (연도 필터, 날짜/시간 빠른 순)
- * - findInterestedPerformances  : 관심 공연 목록 (알림/참여 상태 포함, 날짜/시간 빠른 순)
+ * - findInterestedPerformances  : 관심 공연 목록 (알림/참여 상태 포함, 연도 필터, 날짜/시간 빠른 순)
  */
 @RequiredArgsConstructor
 public class UserAdapter implements PerformancePort {
@@ -50,10 +50,10 @@ public class UserAdapter implements PerformancePort {
     public ParticipationHistoryResponse findParticipationHistory(
             Long userId, HistoryYearFilter appliedFilter, int baseYear,
             LocalDate startDate, LocalDate endDate, int page, int size) {
-        // 총 참여 공연 수(연도 필터 무관 전체)는 상단 "총 참여 공연 N회"용 → 첫 페이지에서만 조회, 이후 페이지는 생략
+        // 총 참여 공연 수(연도 필터 적용)는 상단 "총 참여 공연 N회"용 → 첫 페이지에서만 조회, 이후 페이지는 생략
         Long totalCount = (page == 0)
-                ? performanceParticipationRepository.countByUser_IdAndStatusAndPerformance_Status(
-                        userId, ParticipationStatus.COMPLETED, PerformanceStatus.ACTIVE)
+                ? performanceParticipationRepository.countCompletedHistory(
+                        userId, ParticipationStatus.COMPLETED, PerformanceStatus.ACTIVE, startDate, endDate)
                 : null;
 
         Slice<PerformanceParticipation> slice = performanceParticipationRepository.findCompletedHistory(
@@ -68,9 +68,16 @@ public class UserAdapter implements PerformancePort {
     }
 
     @Override
-    public InterestedPerformanceResponse findInterestedPerformances(Long userId, int page, int size) {
+    public InterestedPerformanceResponse findInterestedPerformances(
+            Long userId, HistoryYearFilter appliedFilter, int baseYear,
+            LocalDate startDate, LocalDate endDate, int page, int size) {
+        // 총 관심 공연 수(연도 필터 적용)는 상단 "관심 공연 N개"용 → 첫 페이지에서만 조회, 이후 페이지는 생략
+        Long totalCount = (page == 0)
+                ? performanceInterestRepository.countInterestList(userId, PerformanceStatus.ACTIVE, startDate, endDate)
+                : null;
+
         Slice<PerformanceInterest> slice = performanceInterestRepository.findInterestList(
-                userId, PerformanceStatus.ACTIVE, PageRequest.of(page, size));
+                userId, PerformanceStatus.ACTIVE, startDate, endDate, PageRequest.of(page, size));
 
         // 페이지에 담긴 공연들의 참여 기록(알림 설정/참여 완료)을 IN 쿼리 한 번으로 조회 → 공연 id별 상태 매핑 (N+1 방지)
         List<Long> performanceIds = slice.getContent().stream()
@@ -88,7 +95,7 @@ public class UserAdapter implements PerformancePort {
                 .map(interest -> toInterestedItem(interest, statusByPerformanceId))
                 .toList();
 
-        return new InterestedPerformanceResponse(items, page, slice.hasNext());
+        return new InterestedPerformanceResponse(totalCount, appliedFilter, baseYear, items, page, slice.hasNext());
     }
 
     private InterestedPerformanceItem toInterestedItem(

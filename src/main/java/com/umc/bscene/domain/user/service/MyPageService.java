@@ -109,34 +109,39 @@ public class MyPageService {
             Long userId, HistoryYearFilter filter, int page, int size) {
         HistoryYearFilter appliedFilter = (filter == null) ? HistoryYearFilter.ALL : filter;
         int baseYear = LocalDate.now().getYear();
-
-        LocalDate startDate = null;
-        LocalDate endDate = null;
-        switch (appliedFilter) {
-            case THIS_YEAR -> {
-                startDate = LocalDate.of(baseYear, 1, 1);
-                endDate = LocalDate.of(baseYear, 12, 31);
-            }
-            case LAST_YEAR -> {
-                startDate = LocalDate.of(baseYear - 1, 1, 1);
-                endDate = LocalDate.of(baseYear - 1, 12, 31);
-            }
-            case BEFORE -> endDate = LocalDate.of(baseYear - 2, 12, 31);
-            case ALL -> { /* 연도 제한 없음 */ }
-            default -> throw new IllegalStateException("Unhandled HistoryYearFilter: " + appliedFilter);
-        }
+        YearDateRange range = resolveYearDateRange(appliedFilter, baseYear);
 
         int pageNumber = Math.max(page, 0);
         int pageSize = Math.min(Math.max(size, 1), MAX_PAGE_SIZE);
         return performancePort.findParticipationHistory(
-                userId, appliedFilter, baseYear, startDate, endDate, pageNumber, pageSize);
+                userId, appliedFilter, baseYear, range.startDate(), range.endDate(), pageNumber, pageSize);
     }
 
-    // 관심 공연 목록 조회 (알림/참여 상태 포함, offset 무한스크롤)
-    public InterestedPerformanceResponse getInterestedPerformances(Long userId, int page, int size) {
+    // 관심 공연 목록 조회 (알림/참여 상태 포함, 연도 필터, offset 무한스크롤)
+    // 필터는 참여 기록 조회와 동일 : THIS_YEAR(올해) / LAST_YEAR(작년) / BEFORE(재작년 이전) / ALL(전체)
+    public InterestedPerformanceResponse getInterestedPerformances(
+            Long userId, HistoryYearFilter filter, int page, int size) {
+        HistoryYearFilter appliedFilter = (filter == null) ? HistoryYearFilter.ALL : filter;
+        int baseYear = LocalDate.now().getYear();
+        YearDateRange range = resolveYearDateRange(appliedFilter, baseYear);
+
         int pageNumber = Math.max(page, 0);
         int pageSize = Math.min(Math.max(size, 1), MAX_PAGE_SIZE);
-        return performancePort.findInterestedPerformances(userId, pageNumber, pageSize);
+        return performancePort.findInterestedPerformances(
+                userId, appliedFilter, baseYear, range.startDate(), range.endDate(), pageNumber, pageSize);
+    }
+
+    // 연도 필터 → 조회 날짜 범위 (null이면 해당 방향 제한 없음)
+    private record YearDateRange(LocalDate startDate, LocalDate endDate) {
+    }
+
+    private YearDateRange resolveYearDateRange(HistoryYearFilter filter, int baseYear) {
+        return switch (filter) {
+            case THIS_YEAR -> new YearDateRange(LocalDate.of(baseYear, 1, 1), LocalDate.of(baseYear, 12, 31));
+            case LAST_YEAR -> new YearDateRange(LocalDate.of(baseYear - 1, 1, 1), LocalDate.of(baseYear - 1, 12, 31));
+            case BEFORE -> new YearDateRange(null, LocalDate.of(baseYear - 2, 12, 31));
+            case ALL -> new YearDateRange(null, null);
+        };
     }
 
     // 팔로우한 밴드 목록 조회 (밴드명 가나다순, offset 무한스크롤)
