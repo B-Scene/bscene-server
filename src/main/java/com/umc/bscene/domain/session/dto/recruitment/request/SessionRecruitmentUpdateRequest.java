@@ -24,6 +24,7 @@ public class SessionRecruitmentUpdateRequest {
     @Size(max = 50, message = "공고 한 줄 소개는 50자 이하여야 합니다.")
     private String summary;
     @NotNull(message = "모집 공고 제목은 필수입니다.")
+    @Size(max = 50, message = "모집 공고 제목은 50자 이하여야 합니다.")
     private String recruitmentTitle;
     @NotNull(message = "모집 파트는 필수입니다.")
     private Part part;
@@ -40,9 +41,11 @@ public class SessionRecruitmentUpdateRequest {
     private Region region;
 
     @NotNull(message = "연습 일정은 필수입니다.")
+    @Size(max = 50, message = "연습 일정은 50자 이하여야 합니다.")
     private String practiceSchedule;
 
     @NotNull(message = "연습 장소는 필수입니다.")
+    @Size(max = 50, message = "연습 장소는 50자 이하여야 합니다.")
     private String practicePlace;
 
     @NotNull(message = "모집 마감일은 필수입니다.")
