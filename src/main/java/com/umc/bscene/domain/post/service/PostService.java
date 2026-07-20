@@ -39,7 +39,7 @@ import java.util.List;
 @Transactional(readOnly = true)
 public class PostService {
 
-    private static final int MAX_TAG_COUNT = 6;
+    private static final int MAX_TAG_COUNT = 8;
     private static final int DEFAULT_PAGE_SIZE = 10;
 
     private final PostRepository postRepository;
