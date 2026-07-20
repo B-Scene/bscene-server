@@ -54,15 +54,16 @@ public class MyPageController {
         return ResponseEntity.status(successResponse.getStatus()).body(successResponse);
     }
 
-    // 관심 공연 목록 조회 API (알림/참여 상태 포함, offset 무한스크롤)
+    // 관심 공연 목록 조회 API (알림/참여 상태 포함, 연도 필터, offset 무한스크롤)
     @GetMapping("/users/me/performance/interest")
     public ResponseEntity<SuccessResponse<InterestedPerformanceResponse>> getInterestedPerformances(
             @AuthenticationPrincipal AuthMember authMember,
+            @RequestParam(defaultValue = "ALL") HistoryYearFilter filter,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size
     ) {
         InterestedPerformanceResponse response = myPageService.getInterestedPerformances(
-                authMember.getUser().getId(), page, size);
+                authMember.getUser().getId(), filter, page, size);
         SuccessResponse<InterestedPerformanceResponse> successResponse = SuccessResponse.of(
                 response,
                 UserSuccessCode.FAN_PERFORMANCE_INTEREST_GET_SUCCESS
