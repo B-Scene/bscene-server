@@ -1,6 +1,8 @@
 package com.umc.bscene.domain.performance.service;
 
+import com.umc.bscene.domain.performance.dto.response.PendingParticipationResponse;
 import com.umc.bscene.domain.performance.dto.response.PerformanceAlarmResponse;
+import com.umc.bscene.domain.performance.dto.response.PerformanceParticipationDeclineResponse;
 import com.umc.bscene.domain.performance.dto.response.PerformanceParticipationResponse;
 import com.umc.bscene.domain.performance.entity.Performance;
 import com.umc.bscene.domain.performance.entity.PerformanceParticipation;
@@ -15,6 +17,9 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.time.LocalDateTime;
+import java.util.List;
 
 @Service
 @RequiredArgsConstructor
@@ -31,6 +36,12 @@ public class PerformanceAlarmService {
     public PerformanceAlarmResponse setAlarm(Long userId, Long performanceId) {
         // 대상 공연이 존재하는지 확인 (없거나 삭제된 경우 404 반환)
         Performance performance = getActivePerformance(performanceId);
+
+        // 이미 시작된 공연은 알림 설정 불가 (참여 확인 모달 응답 후 재등록 방지 포함)
+        LocalDateTime performanceStartAt = LocalDateTime.of(performance.getPerformanceDate(), performance.getStartTime());
+        if (!performanceStartAt.isAfter(LocalDateTime.now())) {
+            throw new PerformanceException(PerformanceErrorCode.ALREADY_STARTED_PERFORMANCE);
+        }
 
         // 이미 참여 기록(예정/완료)이 있는 경우 중복 저장 방지
         if (performanceParticipationRepository.existsByPerformance_IdAndUser_Id(performanceId, userId)) {
@@ -64,6 +75,16 @@ public class PerformanceAlarmService {
         return PerformanceAlarmResponse.of(performanceId, false);
     }
 
+    // 참여 확인 대기 공연 목록 조회 → 알림 설정(SCHEDULED) 상태로 시작시간이 지난 공연 (팬모드 홈 모달 노출용)
+    public PendingParticipationResponse getPendingParticipations(Long userId) {
+        LocalDateTime now = LocalDateTime.now();
+        List<PerformanceParticipation> pendingParticipations = performanceParticipationRepository
+                .findPendingConfirmations(userId, ParticipationStatus.SCHEDULED, PerformanceStatus.ACTIVE,
+                        now.toLocalDate(), now.toLocalTime());
+
+        return PendingParticipationResponse.from(pendingParticipations);
+    }
+
     // 사용자가 공연 참여를 완료 처리 → 참여 예정(SCHEDULED) 기록을 참여 완료(COMPLETED)로 전이
     // 알림을 설정한 공연(참여 기록 존재)만 완료 가능. 없으면 404. (이미 완료 상태면 멱등)
     @Transactional
@@ -77,9 +98,33 @@ public class PerformanceAlarmService {
             throw new PerformanceException(PerformanceErrorCode.PERFORMANCE_NOT_FOUND);
         }
 
+        // 시작 전 공연은 참여완료 불가 (참여 확인 모달은 시작시간이 지난 공연에만 노출됨)
+        Performance performance = participation.getPerformance();
+        LocalDateTime performanceStartAt = LocalDateTime.of(performance.getPerformanceDate(), performance.getStartTime());
+        if (performanceStartAt.isAfter(LocalDateTime.now())) {
+            throw new PerformanceException(PerformanceErrorCode.PERFORMANCE_NOT_STARTED);
+        }
+
         participation.complete();
 
         return PerformanceParticipationResponse.of(performanceId, participation.getStatus());
+    }
+
+    // 사용자가 공연 불참 처리 → 참여 예정(SCHEDULED) 기록을 삭제 (관심 공연 등록은 유지)
+    // 알림을 설정한 공연(참여 기록 존재)만 불참 가능. 없으면 404, 이미 참여 완료 상태면 이력 보호를 위해 409
+    @Transactional
+    public PerformanceParticipationDeclineResponse declineParticipation(Long userId, Long performanceId) {
+        PerformanceParticipation participation = performanceParticipationRepository
+                .findByPerformance_IdAndUser_Id(performanceId, userId)
+                .orElseThrow(() -> new PerformanceException(PerformanceErrorCode.PARTICIPATION_NOT_FOUND));
+
+        if (participation.getStatus() == ParticipationStatus.COMPLETED) {
+            throw new PerformanceException(PerformanceErrorCode.ALREADY_COMPLETED_PARTICIPATION);
+        }
+
+        performanceParticipationRepository.delete(participation);
+
+        return PerformanceParticipationDeclineResponse.of(performanceId);
     }
 
     // TODO : PerformanceService와 중복되는 로직. 통합 고려
