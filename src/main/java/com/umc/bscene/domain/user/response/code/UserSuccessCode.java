@@ -11,7 +11,8 @@ public enum UserSuccessCode implements BaseResponseCode {
     FAN_MYPAGE_GET_SUCCESS(OK, "USER200_1", "팬 모드 마이페이지에 성공했습니다."),
     FAN_PERFORMANCE_HISTORY_GET_SUCCESS(OK, "USER200_2", "공연 참여 기록을 조회했습니다."),
     FAN_PERFORMANCE_INTEREST_GET_SUCCESS(OK, "USER200_3", "관심 공연 목록을 조회했습니다."),
-    USER_BLOCK_SUCCESS(OK, "USER200_4", "사용자를 차단했습니다.");
+    USER_BLOCK_SUCCESS(OK, "USER200_4", "사용자를 차단했습니다."),
+    FAN_FOLLOWED_BANDS_GET_SUCCESS(OK, "USER200_6", "팔로우한 밴드 목록을 조회했습니다.");
 
     private final int status;
     private final String code;

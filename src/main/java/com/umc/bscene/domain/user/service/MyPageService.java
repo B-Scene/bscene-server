@@ -3,6 +3,7 @@ package com.umc.bscene.domain.user.service;
 import com.umc.bscene.domain.auth.enums.onboarding.Genre;
 import com.umc.bscene.domain.auth.enums.onboarding.Region;
 import com.umc.bscene.domain.user.dto.response.FanMyPageResponse;
+import com.umc.bscene.domain.user.dto.response.FollowedBandResponse;
 import com.umc.bscene.domain.user.dto.response.InterestedPerformanceResponse;
 import com.umc.bscene.domain.user.dto.response.ParticipationHistoryResponse;
 import com.umc.bscene.domain.user.enums.HistoryYearFilter;
@@ -136,5 +137,12 @@ public class MyPageService {
         int pageNumber = Math.max(page, 0);
         int pageSize = Math.min(Math.max(size, 1), MAX_PAGE_SIZE);
         return performancePort.findInterestedPerformances(userId, pageNumber, pageSize);
+    }
+
+    // 팔로우한 밴드 목록 조회 (밴드명 가나다순, offset 무한스크롤)
+    public FollowedBandResponse getFollowedBands(Long userId, int page, int size) {
+        int pageNumber = Math.max(page, 0);
+        int pageSize = Math.min(Math.max(size, 1), MAX_PAGE_SIZE);
+        return followPort.findFollowedBands(userId, pageNumber, pageSize);
     }
 }

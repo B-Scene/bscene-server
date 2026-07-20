@@ -1,6 +1,7 @@
 package com.umc.bscene.domain.user.controller;
 
 import com.umc.bscene.domain.user.dto.response.FanMyPageResponse;
+import com.umc.bscene.domain.user.dto.response.FollowedBandResponse;
 import com.umc.bscene.domain.user.dto.response.InterestedPerformanceResponse;
 import com.umc.bscene.domain.user.dto.response.ParticipationHistoryResponse;
 import com.umc.bscene.domain.user.enums.HistoryYearFilter;
@@ -65,6 +66,23 @@ public class MyPageController {
         SuccessResponse<InterestedPerformanceResponse> successResponse = SuccessResponse.of(
                 response,
                 UserSuccessCode.FAN_PERFORMANCE_INTEREST_GET_SUCCESS
+        );
+
+        return ResponseEntity.status(successResponse.getStatus()).body(successResponse);
+    }
+
+    // 팔로우한 밴드 목록 조회 API (밴드명 가나다순, offset 무한스크롤)
+    @GetMapping("/users/me/follows")
+    public ResponseEntity<SuccessResponse<FollowedBandResponse>> getFollowedBands(
+            @AuthenticationPrincipal AuthMember authMember,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size
+    ) {
+        FollowedBandResponse response = myPageService.getFollowedBands(
+                authMember.getUser().getId(), page, size);
+        SuccessResponse<FollowedBandResponse> successResponse = SuccessResponse.of(
+                response,
+                UserSuccessCode.FAN_FOLLOWED_BANDS_GET_SUCCESS
         );
 
         return ResponseEntity.status(successResponse.getStatus()).body(successResponse);
