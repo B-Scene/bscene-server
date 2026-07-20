@@ -25,7 +25,7 @@ public class SessionRecruitmentCreateRequest {
     @NotBlank(message = "공고 한 줄 소개는 필수입니다.")
     @Size(max = 50, message = "공고 한 줄 소개는 50자 이하여야 합니다.")
     private String summary;
-    @NotNull(message = "모집 공고 제목은 필수입니다.")
+    @NotBlank(message = "모집 공고 제목은 필수입니다.")
     @Size(max = 50, message = "모집 공고 제목은 50자 이하여야 합니다.")
     private String recruitmentTitle;
 
@@ -55,5 +55,6 @@ public class SessionRecruitmentCreateRequest {
     private LocalDateTime deadlineAt;
 
     @NotBlank(message = "지원 자격은 필수입니다.")
+    @Size(max = 500, message = "지원 자격은 500자 이하여야 합니다.")
     private String qualification;
 }
