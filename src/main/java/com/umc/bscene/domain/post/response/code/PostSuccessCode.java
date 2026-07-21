@@ -10,12 +10,12 @@ import static com.umc.bscene.global.constant.StaticValue.OK;
 @RequiredArgsConstructor
 public enum PostSuccessCode implements BaseResponseCode {
 
-    POST_CREATE_SUCCESS(OK, "POST2011", "콘텐츠가 업로드됐어요."),
+    POST_CREATE_SUCCESS(OK, "POST201_1", "콘텐츠가 업로드됐어요."),
 
-    POST_LIST_GET_SUCCESS(OK, "POST2001", "콘텐츠 목록을 조회했습니다."),
-    POST_DETAIL_GET_SUCCESS(OK, "POST2002", "콘텐츠를 조회했습니다."),
-    POST_UPDATE_SUCCESS(OK, "POST2012", "콘텐츠가 수정됐어요."),
-    POST_DELETE_SUCCESS(OK, "POST2013", "콘텐츠가 삭제됐어요.");
+    POST_LIST_GET_SUCCESS(OK, "POST200_1", "콘텐츠 목록을 조회했습니다."),
+    POST_DETAIL_GET_SUCCESS(OK, "POST200_2", "콘텐츠를 조회했습니다."),
+    POST_UPDATE_SUCCESS(OK, "POST201_2", "콘텐츠가 수정됐어요."),
+    POST_DELETE_SUCCESS(OK, "POST201_3", "콘텐츠가 삭제됐어요.");
 
     private final int status;
     private final String code;
