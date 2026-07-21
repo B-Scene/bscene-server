@@ -2,24 +2,23 @@ package com.umc.bscene.domain.user.service;
 
 import com.umc.bscene.domain.auth.enums.onboarding.Genre;
 import com.umc.bscene.domain.auth.enums.onboarding.Region;
-import com.umc.bscene.domain.user.dto.response.BandMemberResponse;
+import com.umc.bscene.domain.user.dto.response.*;
 import com.umc.bscene.domain.user.dto.response.mypage.BandMyPageResponse;
 import com.umc.bscene.domain.user.dto.response.mypage.FanMyPageResponse;
-import com.umc.bscene.domain.user.dto.response.FollowedBandResponse;
-import com.umc.bscene.domain.user.dto.response.InterestedPerformanceResponse;
-import com.umc.bscene.domain.user.dto.response.ParticipationHistoryResponse;
-import com.umc.bscene.domain.user.enums.HistoryYearFilter;
 import com.umc.bscene.domain.user.entity.FanProfile;
 import com.umc.bscene.domain.user.entity.User;
 import com.umc.bscene.domain.user.entity.UserGenres;
 import com.umc.bscene.domain.user.entity.UserRegions;
+import com.umc.bscene.domain.user.enums.HistoryYearFilter;
+import com.umc.bscene.domain.user.enums.UserMode;
+import com.umc.bscene.domain.user.exception.UserException;
+import com.umc.bscene.domain.user.port.AuthPort;
 import com.umc.bscene.domain.user.port.BandPort;
 import com.umc.bscene.domain.user.port.FollowPort;
 import com.umc.bscene.domain.user.port.PerformancePort;
 import com.umc.bscene.domain.user.repository.FanProfileRepository;
 import com.umc.bscene.domain.user.repository.UserGenresRepository;
 import com.umc.bscene.domain.user.repository.UserRegionsRepository;
-import com.umc.bscene.domain.user.exception.UserException;
 import com.umc.bscene.domain.user.response.code.UserErrorCode;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -29,6 +28,7 @@ import java.time.LocalDate;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
@@ -43,6 +43,7 @@ public class MyPageService {
     private final FollowPort followPort;
     private final PerformancePort performancePort;
     private final BandPort bandPort;
+    private final AuthPort authPort;
 
     // 팬모드 마이페이지 조회
     public FanMyPageResponse getFanMyPage(User user) {
@@ -162,5 +163,42 @@ public class MyPageService {
         int pageNumber = Math.max(page, 0);
         int pageSize = Math.min(Math.max(size, 1), MAX_PAGE_SIZE);
         return followPort.findFollowedBands(userId, pageNumber, pageSize);
+    }
+
+    public MyProfileResponse findMyProfiles(User user, String type) {
+
+        // 온보딩 미완료 유저는 currentMode가 null → 아래 모드 비교 전에 차단
+        if (user.getCurrentMode() == null) {
+            throw new UserException(UserErrorCode.ONBOARDING_NOT_COMPLETED);
+        }
+
+        List<MyBandProfile> bandProfiles = bandPort.getAssociatedBandProfiles(user.getId());
+
+        MyProfileResponse response;
+
+        if (type.equals("all")) {
+            FanProfile fanProfile = fanProfileRepository.findByUser(user)
+                    .orElseThrow(() -> new UserException(UserErrorCode.FAN_PROFILE_NOT_FOUND));
+
+            // 로컬 자격증명 우선, 없으면 소셜 계정 이메일로 전달
+            String email = null;
+            if (authPort.hasLocalCredential(user.getId())) {
+                email = authPort.getEmailToLocalCredential(user.getId());
+            } else if (authPort.hasOauthAccount(user.getId())) {
+                email = authPort.getEmailToOauthAccount(user.getId());
+            }
+
+            response =  new MyProfileResponse(bandProfiles,
+                    new MyProfileResponse.MyFanProfile(
+                            fanProfile.getId(),
+                            fanProfile.getProfileImageUrl(),
+                            fanProfile.getNickname(),
+                            email,
+                            user.getCurrentMode().equals(UserMode.FAN)
+                    ));
+        } else {
+            response = new MyProfileResponse(bandProfiles, null);
+        }
+        return response;
     }
 }
