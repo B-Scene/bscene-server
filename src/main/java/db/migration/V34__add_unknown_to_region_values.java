@@ -21,16 +21,16 @@ public class V34__add_unknown_to_region_values extends BaseJavaMigration {
         Connection connection = context.getConnection();
         if (!isMysql(connection)) return;
 
-        migrateTable(connection, "UserRegions", "region");
-        migrateTable(connection, "Band", "region");
-        migrateTable(connection, "Performance", "region");
-        migrateTable(connection, "session_recruitment", "region");
-        migrateTable(connection, "session_applications", "region");
+        migrateTable(connection, "region", "user_regions", "UserRegions");
+        migrateTable(connection, "region", "band", "Band");
+        migrateTable(connection, "region", "performance", "Performance");
+        migrateTable(connection, "region", "session_recruitment");
+        migrateTable(connection, "region", "session_applications");
     }
 
-    private void migrateTable(Connection connection, String expectedTable, String expectedColumn)
+    private void migrateTable(Connection connection, String expectedColumn, String... expectedTables)
             throws Exception {
-        String table = findTable(connection, expectedTable);
+        String table = findTable(connection, expectedTables);
         String column = table == null ? null : findColumn(connection, table, expectedColumn);
         if (column == null) return;
 
@@ -59,12 +59,14 @@ public class V34__add_unknown_to_region_values extends BaseJavaMigration {
         }
     }
 
-    private String findTable(Connection connection, String expected) throws Exception {
+    private String findTable(Connection connection, String... expectedNames) throws Exception {
         try (ResultSet tables = connection.getMetaData().getTables(
                 connection.getCatalog(), connection.getSchema(), "%", new String[]{"TABLE"})) {
             while (tables.next()) {
                 String name = tables.getString("TABLE_NAME");
-                if (expected.equalsIgnoreCase(name)) return name;
+                for (String expected : expectedNames) {
+                    if (expected.equalsIgnoreCase(name)) return name;
+                }
             }
         }
         return null;
