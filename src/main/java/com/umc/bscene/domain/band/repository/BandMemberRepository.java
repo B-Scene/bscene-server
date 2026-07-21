@@ -19,6 +19,7 @@ public interface BandMemberRepository extends JpaRepository<BandMember, Long> {
     @Query("""
 select new com.umc.bscene.domain.user.dto.response.MyBandProfile(
 b.id,
+bm.bandMemberProfile.id,
 b.profileImageUrl,
 b.name,
 b.genre,

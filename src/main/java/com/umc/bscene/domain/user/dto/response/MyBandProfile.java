@@ -5,6 +5,7 @@ import com.umc.bscene.domain.auth.enums.onboarding.Region;
 
 public record MyBandProfile(
         Long bandId,
+        Long bandMemberProfileId,
         String profileImageUrl,
         String bandName,
         Genre genre,       // Genre enum에서 String 변환 필요
