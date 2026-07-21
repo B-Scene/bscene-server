@@ -9,21 +9,21 @@ import java.time.temporal.ChronoUnit;
         "applicationSubmissionId",
         "sessionRecruitmentId",
         "sessionApplicationId",
+        "checkedAt",
         "status",
         "recruitmentTitle",
         "bandName",
-        "appliedAgo",
-        "checkedAt"
+        "appliedAgo"
 })
 public record MyApplicationSubmissionItemResponse(
         Long applicationSubmissionId,
         Long sessionRecruitmentId,
         Long sessionApplicationId,
+        LocalDateTime checkedAt,
         String status,
         String recruitmentTitle,
         String bandName,
-        long appliedAgo,
-        LocalDateTime checkedAt
+        long appliedAgo
 ) {
     public static MyApplicationSubmissionItemResponse from(
             SessionApplicationSubmission submission
@@ -32,11 +32,11 @@ public record MyApplicationSubmissionItemResponse(
                 submission.getApplicationSubmissionId(),
                 submission.getSessionRecruitment().getSessionRecruitmentId(),
                 submission.getSessionApplication().getSessionApplicationId(),
+                submission.getCheckedAt(),
                 statusLabel(submission),
                 submission.getSessionRecruitment().getRecruitmentTitle(),
                 submission.getSessionRecruitment().getBand().getName(),
-                appliedAgo(submission.getCreatedAt()),
-                submission.getCheckedAt()
+                appliedAgo(submission.getCreatedAt())
         );
     }
 
