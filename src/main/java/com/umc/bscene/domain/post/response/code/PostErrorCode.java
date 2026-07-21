@@ -16,8 +16,12 @@ public enum PostErrorCode implements BaseResponseCode {
     TEXT_MEDIA_NOT_ALLOWED(BAD_REQUEST, "POST4004", "글 콘텐츠는 미디어 URL을 입력할 수 없어요."),
 
     NOT_POST_BAND_MEMBER(FORBIDDEN, "POST4031", "콘텐츠를 수정할 권한이 없어요."),
+    NOT_COMMENT_OWNER(FORBIDDEN, "POST403_2", "본인이 작성한 댓글만 수정/삭제할 수 있어요."),
 
-    POST_NOT_FOUND(NOT_FOUND, "POST4041", "존재하지 않는 콘텐츠예요.");
+    POST_NOT_FOUND(NOT_FOUND, "POST4041", "존재하지 않는 콘텐츠예요."),
+    COMMENT_NOT_FOUND(NOT_FOUND, "POST404_2", "존재하지 않는 댓글이에요."),
+
+    ALREADY_LIKED(CONFLICT, "POST409_1", "이미 좋아요한 콘텐츠예요.");
 
     private final int status;
     private final String code;
