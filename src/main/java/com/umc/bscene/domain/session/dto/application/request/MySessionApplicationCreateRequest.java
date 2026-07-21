@@ -69,7 +69,6 @@ public class MySessionApplicationCreateRequest {
     public static class PortfolioLinkRequest {
         @NotBlank(message = "포트폴리오 URL은 비어 있을 수 없습니다.")
         @URL(message = "올바른 URL 형식이어야 합니다.")
-        @Size(max = 500, message = "포트폴리오 URL은 500자 이하여야 합니다.")
         private String url;
     }
 }

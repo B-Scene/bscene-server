@@ -34,13 +34,6 @@ public class MySessionApplicationUpdateRequest {
     @Size(max = 50, message = "세션 한줄소개는 50자 이하여야 합니다.")
     private String oneLineIntro;
 
-    @URL(message = "프로필 이미지는 올바른 URL 형식이어야 합니다.")
-    @Size(max = 500, message = "프로필 이미지 URL은 500자 이하여야 합니다.")
-    private String profileImageUrl;
-
-    @NotNull(message = "지원서 공개 여부는 필수입니다.")
-    private Boolean isPublic;
-
     @NotNull(message = "세션 파트는 필수입니다.")
     private Part part;
 
@@ -72,6 +65,7 @@ public class MySessionApplicationUpdateRequest {
     @NoArgsConstructor
     public static class PortfolioLinkRequest {
 
+        @NotBlank(message = "포트폴리오 URL은 비어 있을 수 없습니다.")
         @URL(message = "올바른 URL 형식이어야 합니다.")
         private String url;
     }

@@ -102,7 +102,6 @@ public class SessionApplication extends BaseEntity {
             String title,
             String purpose,
             String oneLineIntro,
-            String profileImageUrl,
             Part part,
             SkillLevel skillLevel,
             Genre genre,
@@ -115,9 +114,6 @@ public class SessionApplication extends BaseEntity {
         this.purpose = purpose;
         this.oneLineIntro = oneLineIntro;
         this.isPublic = true;
-        if (profileImageUrl != null) {
-            this.profileImageUrl = profileImageUrl;
-        }
         this.part = part;
         this.skillLevel = skillLevel;
         this.genre = genre;
@@ -129,7 +125,6 @@ public class SessionApplication extends BaseEntity {
             String title,
             String purpose,
             String oneLineIntro,
-            String profileImageUrl,
             Part part,
             SkillLevel skillLevel,
             Genre genre,
@@ -139,9 +134,6 @@ public class SessionApplication extends BaseEntity {
         this.title = title;
         this.purpose = purpose;
         this.oneLineIntro = oneLineIntro;
-        if (profileImageUrl != null) {
-            this.profileImageUrl = profileImageUrl;
-        }
         this.part = part;
         this.skillLevel = skillLevel;
         this.genre = genre;

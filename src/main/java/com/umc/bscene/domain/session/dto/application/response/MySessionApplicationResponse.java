@@ -87,7 +87,7 @@ public class MySessionApplicationResponse {
         return from(sessionApplication, true);
     }
 
-    public static MySessionApplicationResponse fromForCreate(
+    public static MySessionApplicationResponse fromWithoutVisibility(
             SessionApplication sessionApplication
     ) {
         return from(sessionApplication, false);

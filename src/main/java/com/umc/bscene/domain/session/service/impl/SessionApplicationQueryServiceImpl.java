@@ -1,6 +1,6 @@
 package com.umc.bscene.domain.session.service.impl;
 
-import com.umc.bscene.domain.session.dto.application.response.MySessionApplicationResponse;
+import com.umc.bscene.domain.session.dto.application.response.MySessionApplicationDetailResponse;
 import com.umc.bscene.domain.session.dto.application.response.SessionApplicationSearchItemResponse;
 import com.umc.bscene.domain.session.dto.application.response.SessionApplicationSearchResponse;
 import com.umc.bscene.domain.session.dto.application.response.SessionApplicationDetailResponse;
@@ -51,10 +51,17 @@ public class SessionApplicationQueryServiceImpl implements SessionApplicationQue
     private final SessionRecruitmentSearchKeywordService searchKeywordService;
 
     @Override
-    public List<MySessionApplicationResponse> getMySessionApplications(Long userId) {
-        return sessionApplicationRepository.findAllByUserIdWithPortfolioLinks(userId).stream()
-                .map(MySessionApplicationResponse::from)
-                .toList();
+    public MySessionApplicationDetailResponse getMySessionApplicationDetail(
+            Long userId,
+            Long sessionApplicationId
+    ) {
+        SessionApplication application = sessionApplicationRepository
+                .findByIdAndUserIdWithPortfolioLinks(sessionApplicationId, userId)
+                .orElseThrow(() -> new SessionApplicationException(
+                        SessionErrorCode.SESSION_APPLICATION_NOT_FOUND
+                ));
+
+        return MySessionApplicationDetailResponse.from(application);
     }
 
     @Override

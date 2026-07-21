@@ -79,7 +79,7 @@ public class SessionApplicationCommandServiceImpl implements SessionApplicationC
 
         SessionApplication savedSessionApplication = sessionApplicationRepository.save(sessionApplication);
 
-        return MySessionApplicationResponse.fromForCreate(savedSessionApplication);
+        return MySessionApplicationResponse.fromWithoutVisibility(savedSessionApplication);
     }
 
     @Override
@@ -104,14 +104,12 @@ public class SessionApplicationCommandServiceImpl implements SessionApplicationC
                 request.getTitle(),
                 request.getPurpose(),
                 request.getOneLineIntro(),
-                request.getProfileImageUrl(),
                 request.getPart(),
                 request.getSkillLevel(),
                 request.getGenre(),
                 request.getRegion(),
                 request.getIntro()
         );
-        sessionApplication.updateVisibility(request.getIsPublic());
         sessionApplication.replaceAvailableActivities(request.getAvailableActivities());
 
         sessionApplication.clearPortfolioLinks();
@@ -122,7 +120,7 @@ public class SessionApplicationCommandServiceImpl implements SessionApplicationC
         SessionApplication savedSessionApplication =
                 sessionApplicationRepository.saveAndFlush(sessionApplication);
 
-        return MySessionApplicationResponse.from(savedSessionApplication);
+        return MySessionApplicationResponse.fromWithoutVisibility(savedSessionApplication);
     }
 
     @Override

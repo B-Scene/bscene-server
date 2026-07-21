@@ -20,16 +20,10 @@ public enum SessionSuccessCode implements BaseResponseCode {
             "세션 기본 정보 수정에 성공했습니다."
     ),
 
-    MY_SESSION_APPLICATION_GET_SUCCESS(
+    MY_SESSION_APPLICATION_DETAIL_SUCCESS(
             HttpStatus.OK.value(),
-            "MY_SESSION_APPLICATION_GET_SUCCESS",
-            "내 지원서 조회에 성공했습니다."
-    ),
-
-    MY_SESSION_APPLICATION_EMPTY(
-            HttpStatus.OK.value(),
-            "MY_SESSION_APPLICATION_EMPTY",
-            "등록된 지원서가 없습니다."
+            "MY_SESSION_APPLICATION_DETAIL_SUCCESS",
+            "내 지원서 상세 조회에 성공했습니다."
     ),
 
     MY_SESSION_APPLICATION_UPDATE_SUCCESS(

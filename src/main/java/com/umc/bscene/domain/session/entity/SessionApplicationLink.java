@@ -32,7 +32,7 @@ public class SessionApplicationLink extends BaseEntity {
     @JoinColumn(name = "session_application_id", nullable = false)
     private SessionApplication sessionApplication;
 
-    @Column(name = "url", nullable = false, length = 500)
+    @Column(name = "url", nullable = false, columnDefinition = "TEXT")
     private String url;
 
     @Column(name = "deleted_at")
