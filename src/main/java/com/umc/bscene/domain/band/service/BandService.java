@@ -5,6 +5,7 @@ import com.umc.bscene.domain.band.dto.request.BandMemberAcceptRequest;
 import com.umc.bscene.domain.band.dto.request.BandMemberInviteRequest;
 import com.umc.bscene.domain.band.dto.request.BandUpdateRequest;
 import com.umc.bscene.domain.band.dto.request.MusicLinkSaveRequest;
+import com.umc.bscene.domain.band.dto.response.BandDetailResponse;
 import com.umc.bscene.domain.band.dto.response.BandMemberAcceptResponse;
 import com.umc.bscene.domain.band.dto.response.BandMemberResponse;
 import com.umc.bscene.domain.band.dto.response.BandMemberSearchItem;
@@ -22,6 +23,7 @@ import com.umc.bscene.domain.band.enums.BandMemberType;
 import com.umc.bscene.domain.band.exception.BandException;
 import com.umc.bscene.domain.band.port.FollowPort;
 import com.umc.bscene.domain.band.port.PerformancePort;
+import com.umc.bscene.domain.band.port.StreamPort;
 import com.umc.bscene.domain.band.repository.BandMemberProfileRepository;
 import com.umc.bscene.domain.band.repository.BandMemberRepository;
 import com.umc.bscene.domain.band.repository.BandRepository;
@@ -49,6 +51,7 @@ public class BandService {
     private final UserRepository userRepository;
     private final FollowPort followPort;
     private final PerformancePort performancePort;
+    private final StreamPort streamPort;
     private final ApplicationEventPublisher eventPublisher;
 
     // 밴드 개설 (요청자가 오너가 됨, 이 밴드에서 사용할 멤버 프로필 선택)
@@ -99,6 +102,17 @@ public class BandService {
         Long performanceCount = performancePort.countPerformancesByBandId(bandId);
 
         return BandProfileResponse.of(band, followerCount, memberCount, performanceCount);
+    }
+
+    // 팬모드 밴드 상세 조회 : 밴드 기본 정보 + 팔로우 여부 + 라이브 진행 여부/입장용 라이브 ID
+    public BandDetailResponse getBandDetail(Long userId, Long bandId) {
+        Band band = getBand(bandId);
+
+        Long followerCount = followPort.countFollowersByBandId(bandId);
+        boolean isFollowing = followPort.isFollowing(userId, bandId);
+        Long liveId = streamPort.findOpenLiveId(bandId).orElse(null);
+
+        return BandDetailResponse.of(band, followerCount, isFollowing, liveId);
     }
 
     // 밴드 프로필 수정

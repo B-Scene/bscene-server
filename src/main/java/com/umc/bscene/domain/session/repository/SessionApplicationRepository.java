@@ -17,6 +17,10 @@ public interface SessionApplicationRepository extends JpaRepository<SessionAppli
 
     long countByUserIdAndDeletedAtIsNull(Long userId);
 
+    List<SessionApplication> findAllByUserIdAndDeletedAtIsNullOrderBySessionApplicationIdAsc(
+            Long userId
+    );
+
     Optional<SessionApplication> findBySessionApplicationIdAndUserIdAndDeletedAtIsNull(
             Long sessionApplicationId,
             Long userId

@@ -65,7 +65,8 @@ public class SessionRecruitmentCommandServiceImpl implements SessionRecruitmentC
             Long sessionRecruitmentId,
             SessionRecruitmentUpdateRequest request
     ) {
-        SessionRecruitment recruitment = sessionRecruitmentRepository.findById(sessionRecruitmentId)
+        SessionRecruitment recruitment = sessionRecruitmentRepository
+                .findBySessionRecruitmentIdAndDeletedAtIsNull(sessionRecruitmentId)
                 .orElseThrow(() -> new SessionException(SessionErrorCode.SESSION_RECRUITMENT_NOT_FOUND));
 
         Band band = recruitment.getBand();
@@ -96,14 +97,15 @@ public class SessionRecruitmentCommandServiceImpl implements SessionRecruitmentC
             Long userId,
             Long sessionRecruitmentId
     ) {
-        SessionRecruitment recruitment = sessionRecruitmentRepository.findById(sessionRecruitmentId)
+        SessionRecruitment recruitment = sessionRecruitmentRepository
+                .findBySessionRecruitmentIdAndDeletedAtIsNull(sessionRecruitmentId)
                 .orElseThrow(() -> new SessionException(SessionErrorCode.SESSION_RECRUITMENT_NOT_FOUND));
 
         Band band = recruitment.getBand();
 
         validateBandOwner(band, userId);
 
-        sessionRecruitmentRepository.delete(recruitment);
+        recruitment.delete();
     }
 
     private void validateDeadlineAt(LocalDateTime deadlineAt) {

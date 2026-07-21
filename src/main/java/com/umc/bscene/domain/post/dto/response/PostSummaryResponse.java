@@ -9,6 +9,7 @@ public record PostSummaryResponse(
         Long postId,
         PostType type,
         String title,
+        String description,
         String thumbnailUrl,
         LocalDateTime createdAt
 ) {
@@ -21,6 +22,7 @@ public record PostSummaryResponse(
                 post.getId(),
                 post.getType(),
                 post.getTitle(),
+                post.getDescription(),
                 thumbnailUrl,
                 post.getCreatedAt()
         );

@@ -9,6 +9,7 @@ import com.umc.bscene.domain.band.response.code.BandErrorCode;
 import com.umc.bscene.domain.performance.dto.PerformancePushMessage;
 import com.umc.bscene.domain.performance.dto.request.PerformanceCreateRequest;
 import com.umc.bscene.domain.performance.dto.request.PerformanceUpdateRequest;
+import com.umc.bscene.domain.performance.dto.response.PerformanceDetailResponse;
 import com.umc.bscene.domain.performance.dto.response.PerformanceListResponse;
 import com.umc.bscene.domain.performance.dto.response.PerformanceResponse;
 import com.umc.bscene.domain.performance.dto.response.PerformanceSummaryResponse;
@@ -130,6 +131,22 @@ public class PerformanceService {
         boolean isInterested = performanceInterestRepository.existsByPerformance_IdAndUser_Id(performanceId, userId);
 
         return PerformanceResponse.of(performance, interestCount, isInterested);
+    }
+
+    // 팬모드 공연 상세페이지 조회 : 공연정보/공연소개/캐스팅 + 관심·알림 버튼 상태
+    public PerformanceDetailResponse getPerformanceDetailPage(Long userId, Long performanceId) {
+        Performance performance = getActivePerformance(performanceId);
+
+        long interestCount = performanceInterestRepository.countByPerformance_Id(performanceId);
+        boolean isInterested = performanceInterestRepository.existsByPerformance_IdAndUser_Id(performanceId, userId);
+
+        // 알림 종 아이콘 상태 : 참여 기록이 없으면 null (알림 미설정)
+        String participationStatus = performanceParticipationRepository
+                .findByPerformance_IdAndUser_Id(performanceId, userId)
+                .map(participation -> participation.getStatus().name())
+                .orElse(null);
+
+        return PerformanceDetailResponse.of(performance, interestCount, isInterested, participationStatus);
     }
 
     // 공연 정보 수정 (등록한 밴드의 멤버만 가능)

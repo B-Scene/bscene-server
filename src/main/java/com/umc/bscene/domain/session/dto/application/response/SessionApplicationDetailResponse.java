@@ -18,40 +18,48 @@ import java.util.List;
 @Builder
 @JsonPropertyOrder({
         "sessionApplicationId",
+        "title",
+        "purpose",
+
         "userId",
         "nickname",
         "profileImageUrl",
         "isPublic",
-        "title",
-        "purpose",
+
         "oneLineIntro",
+        "intro",
+
         "part",
         "skillLevel",
         "genre",
         "region",
-        "intro",
         "availableActivities",
+
         "careers",
         "portfolioLinks"
 })
 public class SessionApplicationDetailResponse {
 
     private Long sessionApplicationId;
+    private String title;
+    private String purpose;
+
     private Long userId;
     private String nickname;
     private String profileImageUrl;
     private Boolean isPublic;
-    private String title;
-    private String purpose;
+
     private String oneLineIntro;
+    private String intro;
+
     private Part part;
     private SkillLevel skillLevel;
     @SessionGenreFormat
     private Genre genre;
     @SessionRegionFormat
     private Region region;
-    private String intro;
     private List<AvailableActivity> availableActivities;
+
     private List<MySessionApplicationResponse.CareerResponse> careers;
     private List<PortfolioLinkResponse> portfolioLinks;
 

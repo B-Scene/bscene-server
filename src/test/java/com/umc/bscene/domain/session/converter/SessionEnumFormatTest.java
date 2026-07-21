@@ -4,13 +4,11 @@ import com.umc.bscene.domain.auth.enums.onboarding.Genre;
 import com.umc.bscene.domain.auth.enums.onboarding.Region;
 import com.umc.bscene.domain.session.dto.application.request.MySessionApplicationCreateRequest;
 import org.junit.jupiter.api.Test;
-import tools.jackson.core.JacksonException;
 import tools.jackson.databind.ObjectMapper;
 
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 class SessionEnumFormatTest {
 
@@ -73,16 +71,16 @@ class SessionEnumFormatTest {
     }
 
     @Test
-    void sessionFormatRejectsEnglishCodes() {
-        assertThatThrownBy(() -> readSessionPayload(
+    void sessionFormatAcceptsEnglishCodes() throws Exception {
+        SessionPayload payload = objectMapper.readValue(
                 """
                         {"genre":"METAL","region":"SEOUL"}
-                        """
-        )).isInstanceOf(JacksonException.class);
-    }
+                        """,
+                SessionPayload.class
+        );
 
-    private SessionPayload readSessionPayload(String json) throws JacksonException {
-        return objectMapper.readValue(json, SessionPayload.class);
+        assertThat(payload.genre()).isEqualTo(Genre.METAL);
+        assertThat(payload.region()).isEqualTo(Region.SEOUL);
     }
 
     private record SessionPayload(
