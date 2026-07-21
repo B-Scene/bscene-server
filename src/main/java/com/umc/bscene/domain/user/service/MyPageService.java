@@ -178,7 +178,7 @@ public class MyPageService {
 
         if (type.equals("all")) {
             FanProfile fanProfile = fanProfileRepository.findByUser(user)
-                    .orElseThrow(() -> new UserException(UserErrorCode.FAN_PROFILE_NOT_FOUND));
+                    .orElse(null);
 
             // 로컬 자격증명 우선, 없으면 소셜 계정 이메일로 전달
             String email = null;
@@ -189,7 +189,7 @@ public class MyPageService {
             }
 
             response =  new MyProfileResponse(bandProfiles,
-                    new MyProfileResponse.MyFanProfile(
+                    fanProfile == null ? null : new MyProfileResponse.MyFanProfile(
                             fanProfile.getId(),
                             fanProfile.getProfileImageUrl(),
                             fanProfile.getNickname(),
