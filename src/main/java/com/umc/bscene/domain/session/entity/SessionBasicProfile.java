@@ -55,7 +55,6 @@ public class SessionBasicProfile extends BaseEntity {
     public void update(
             String email,
             Gender gender,
-            LocalDate birthDate,
             String profileImageUrl
     ) {
         if (email != null) {
@@ -63,9 +62,6 @@ public class SessionBasicProfile extends BaseEntity {
         }
         if (gender != null) {
             this.gender = gender;
-        }
-        if (birthDate != null) {
-            this.birthDate = birthDate;
         }
         if (profileImageUrl != null) {
             this.profileImageUrl = normalizeNullable(profileImageUrl);

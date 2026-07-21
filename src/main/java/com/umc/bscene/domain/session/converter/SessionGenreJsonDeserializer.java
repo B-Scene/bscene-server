@@ -20,7 +20,8 @@ public class SessionGenreJsonDeserializer extends ValueDeserializer<Genre> {
         if (value == null || value.isBlank()) return null;
         String normalized = value.trim();
         return Arrays.stream(Genre.values())
-                .filter(genre -> genre.getName().equals(normalized))
+                .filter(genre -> genre.getName().equals(normalized)
+                        || genre.name().equals(normalized))
                 .findFirst()
                 .orElseThrow(() -> new IllegalArgumentException(
                         "유효하지 않은 세션 장르입니다: " + value));

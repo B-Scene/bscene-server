@@ -8,7 +8,7 @@ import java.sql.ResultSet;
 import java.sql.Statement;
 import java.util.Locale;
 
-public class V33__add_unknown_to_region_values extends BaseJavaMigration {
+public class V34__add_unknown_to_region_values extends BaseJavaMigration {
 
     private static final String EXPANDED_REGIONS = """
             ENUM('SEOUL','GYEONGGI','INCHEON','BUSAN','DAEGU','GWANGJU','DAEJEON','ULSAN',\

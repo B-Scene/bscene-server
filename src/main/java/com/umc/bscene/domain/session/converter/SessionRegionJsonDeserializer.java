@@ -20,7 +20,8 @@ public class SessionRegionJsonDeserializer extends ValueDeserializer<Region> {
         if (value == null || value.isBlank()) return null;
         String normalized = value.trim();
         return Arrays.stream(Region.values())
-                .filter(region -> region.getName().equals(normalized))
+                .filter(region -> region.getName().equals(normalized)
+                        || region.name().equals(normalized))
                 .findFirst()
                 .orElseThrow(() -> new IllegalArgumentException(
                         "유효하지 않은 세션 활동 지역입니다: " + value));
