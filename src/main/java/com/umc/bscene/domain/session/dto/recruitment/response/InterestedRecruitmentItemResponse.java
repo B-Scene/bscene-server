@@ -14,7 +14,7 @@ import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
 
 @JsonPropertyOrder({
-        "interestId", "sessionRecruitmentId", "dDay", "isClosed",
+        "interestId", "sessionRecruitmentId", "dDay", "isClosed", "isInterested",
         "recruitmentTitle", "bandName", "bandGenre", "bandRegion",
         "postedAgo", "summary", "part", "skillLevel"
 })
@@ -23,6 +23,7 @@ public record InterestedRecruitmentItemResponse(
         Long sessionRecruitmentId,
         long dDay,
         boolean isClosed,
+        boolean isInterested,
         String recruitmentTitle,
         String bandName,
         @SessionGenreFormat Genre bandGenre,
@@ -44,6 +45,7 @@ public record InterestedRecruitmentItemResponse(
                         recruitment.getDeadlineAt().toLocalDate()
                 ),
                 !recruitment.getDeadlineAt().isAfter(LocalDateTime.now()),
+                true,
                 recruitment.getRecruitmentTitle(),
                 recruitment.getBand().getName(),
                 recruitment.getBand().getGenre(),

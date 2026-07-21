@@ -189,8 +189,19 @@ public class SessionRecruitmentQueryServiceImpl implements SessionRecruitmentQue
         List<SessionRecruitmentView> sliced = hasNext
                 ? views.subList(0, pageSize)
                 : views;
+        List<Long> recruitmentIds = sliced.stream()
+                .map(view -> view.getSessionRecruitment().getSessionRecruitmentId())
+                .toList();
+        Set<Long> interestedIds = recruitmentIds.isEmpty()
+                ? Set.of()
+                : interestRepository.findInterestedRecruitmentIds(userId, recruitmentIds);
         List<RecentRecruitmentItemResponse> content = sliced.stream()
-                .map(RecentRecruitmentItemResponse::from)
+                .map(view -> RecentRecruitmentItemResponse.from(
+                        view,
+                        interestedIds.contains(
+                                view.getSessionRecruitment().getSessionRecruitmentId()
+                        )
+                ))
                 .toList();
         Long nextCursor = hasNext && !sliced.isEmpty()
                 ? sliced.get(sliced.size() - 1).getSessionRecruitmentViewId()
