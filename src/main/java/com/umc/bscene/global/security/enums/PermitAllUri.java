@@ -31,7 +31,7 @@ public enum PermitAllUri {
     INTERNAL_MEDIAMTX("/internal/mediamtx/**"),
 
     // 검색 색인 관리용 내부 API
-    INTERNAL_SEARCH("/internal/search/**"),;
+    INTERNAL_SEARCH("/internal/search/**"),
 
     SPRING_ACTUATOR("/actuator/**"),
     ;
