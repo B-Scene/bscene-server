@@ -80,6 +80,8 @@ public class SessionApplicationQueryServiceImpl implements SessionApplicationQue
                         userId,
                         ApplicationStatus.PENDING
                 );
+        List<SessionApplication> applications = sessionApplicationRepository
+                .findAllByUserIdAndDeletedAtIsNullOrderBySessionApplicationIdAsc(userId);
 
         return MySessionApplicationSummaryResponse.of(
                 defaultApplication,
@@ -87,7 +89,8 @@ public class SessionApplicationQueryServiceImpl implements SessionApplicationQue
                 sessionProfile == null ? null : sessionProfile.getProfileImageUrl(),
                 applicationCount,
                 submissionCount,
-                inProgressCount
+                inProgressCount,
+                applications
         );
     }
 

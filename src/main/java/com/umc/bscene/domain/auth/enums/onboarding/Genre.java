@@ -19,7 +19,7 @@ public enum Genre {
     PUNK_ROCK("펑크록"),
     FOLK_ROCK("포크록"),
     HARD_ROCK("하드록"),
-    ETC("기타");
+    ETC("etc");
 
     private final String name;
 }
