@@ -2,6 +2,7 @@ package com.umc.bscene.domain.performance.controller;
 
 import com.umc.bscene.domain.performance.dto.request.PerformanceCreateRequest;
 import com.umc.bscene.domain.performance.dto.request.PerformanceUpdateRequest;
+import com.umc.bscene.domain.performance.dto.response.PerformanceDetailResponse;
 import com.umc.bscene.domain.performance.dto.response.PerformanceListResponse;
 import com.umc.bscene.domain.performance.dto.response.PerformanceResponse;
 import com.umc.bscene.domain.performance.response.code.PerformanceSuccessCode;
@@ -60,6 +61,22 @@ public class PerformanceController {
         SuccessResponse<PerformanceResponse> successResponse = SuccessResponse.of(
                 response,
                 PerformanceSuccessCode.PERFORMANCE_DETAIL_GET_SUCCESS
+        );
+
+        return ResponseEntity.status(successResponse.getStatus()).body(successResponse);
+    }
+
+    // 팬모드 공연 상세페이지 조회 API (공연정보/공연소개/캐스팅 + 관심·알림 버튼 상태)
+    @GetMapping("/performances/{performanceId}/detail")
+    public ResponseEntity<SuccessResponse<PerformanceDetailResponse>> getPerformanceDetailPage(
+            @AuthenticationPrincipal AuthMember authMember,
+            @PathVariable Long performanceId
+    ) {
+        PerformanceDetailResponse response = performanceService.getPerformanceDetailPage(
+                authMember.getUser().getId(), performanceId);
+        SuccessResponse<PerformanceDetailResponse> successResponse = SuccessResponse.of(
+                response,
+                PerformanceSuccessCode.PERFORMANCE_DETAIL_PAGE_GET_SUCCESS
         );
 
         return ResponseEntity.status(successResponse.getStatus()).body(successResponse);
