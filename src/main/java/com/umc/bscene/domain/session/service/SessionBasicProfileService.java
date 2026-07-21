@@ -48,7 +48,6 @@ public class SessionBasicProfileService {
         profile.update(
                 request.getEmail(),
                 request.getGender(),
-                request.getBirthDate(),
                 request.getProfileImageUrl()
         );
 
