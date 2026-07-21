@@ -45,13 +45,13 @@ public class SessionApplication extends BaseEntity {
     @Column(name = "nickname", nullable = false, length = 30)
     private String nickname;
 
-    @Column(name = "title", nullable = false, length = 30)
+    @Column(name = "title", nullable = false, length = 50)
     private String title;
 
-    @Column(name = "purpose", nullable = false, length = 20)
+    @Column(name = "purpose", nullable = false, length = 50)
     private String purpose;
 
-    @Column(name = "one_line_intro", length = 100)
+    @Column(name = "one_line_intro", length = 50)
     private String oneLineIntro;
 
     @Column(name = "profile_image_url", length = 500)

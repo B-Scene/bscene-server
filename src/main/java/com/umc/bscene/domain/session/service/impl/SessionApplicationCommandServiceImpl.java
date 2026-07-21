@@ -39,6 +39,8 @@ import java.util.List;
 @Transactional
 public class SessionApplicationCommandServiceImpl implements SessionApplicationCommandService {
 
+    private static final String DEFAULT_PURPOSE = "기본";
+
     private final SessionApplicationRepository sessionApplicationRepository;
     private final SessionApplicationSubmissionRepository submissionRepository;
     private final SessionRecruitmentRepository sessionRecruitmentRepository;
@@ -52,6 +54,8 @@ public class SessionApplicationCommandServiceImpl implements SessionApplicationC
             Long userId,
             MySessionApplicationCreateRequest request
     ) {
+        validateDefaultApplicationCreation(userId, request.getPurpose());
+
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new BaseException(GeneralErrorCode.UNAUTHORIZED_ERROR));
 
@@ -68,14 +72,14 @@ public class SessionApplicationCommandServiceImpl implements SessionApplicationC
                 .intro(request.getIntro())
                 .build();
 
-        sessionApplication.updateVisibility(request.getIsPublic());
+        sessionApplication.updateVisibility(DEFAULT_PURPOSE.equals(request.getPurpose()));
         sessionApplication.replaceAvailableActivities(request.getAvailableActivities());
         addCareers(sessionApplication, request);
         addPortfolioLinks(sessionApplication, request);
 
         SessionApplication savedSessionApplication = sessionApplicationRepository.save(sessionApplication);
 
-        return MySessionApplicationResponse.from(savedSessionApplication);
+        return MySessionApplicationResponse.fromForCreate(savedSessionApplication);
     }
 
     @Override
@@ -89,6 +93,12 @@ public class SessionApplicationCommandServiceImpl implements SessionApplicationC
                 .orElseThrow(() -> new SessionApplicationException(
                         SessionErrorCode.SESSION_APPLICATION_NOT_FOUND
                 ));
+
+        validateDefaultApplicationUpdate(
+                userId,
+                sessionApplicationId,
+                request.getPurpose()
+        );
 
         sessionApplication.updateApplication(
                 request.getTitle(),
@@ -129,6 +139,34 @@ public class SessionApplicationCommandServiceImpl implements SessionApplicationC
         submissionRepository
                 .deleteAllBySessionApplication_SessionApplicationId(sessionApplicationId);
         sessionApplicationRepository.delete(sessionApplication);
+    }
+
+    private void validateDefaultApplicationCreation(Long userId, String purpose) {
+        if (DEFAULT_PURPOSE.equals(purpose)
+                && sessionApplicationRepository
+                .existsByUserIdAndPurposeAndDeletedAtIsNull(userId, DEFAULT_PURPOSE)) {
+            throw new SessionApplicationException(
+                    SessionErrorCode.DEFAULT_SESSION_APPLICATION_ALREADY_EXISTS
+            );
+        }
+    }
+
+    private void validateDefaultApplicationUpdate(
+            Long userId,
+            Long sessionApplicationId,
+            String purpose
+    ) {
+        if (DEFAULT_PURPOSE.equals(purpose)
+                && sessionApplicationRepository
+                .existsByUserIdAndPurposeAndDeletedAtIsNullAndSessionApplicationIdNot(
+                        userId,
+                        DEFAULT_PURPOSE,
+                        sessionApplicationId
+                )) {
+            throw new SessionApplicationException(
+                    SessionErrorCode.DEFAULT_SESSION_APPLICATION_ALREADY_EXISTS
+            );
+        }
     }
 
     @Override

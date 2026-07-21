@@ -23,15 +23,15 @@ import java.util.List;
 public class MySessionApplicationUpdateRequest {
 
     @NotBlank(message = "지원서 제목은 필수입니다.")
-    @Size(max = 30, message = "지원서 제목은 30자 이하여야 합니다.")
+    @Size(max = 50, message = "지원서 제목은 50자 이하여야 합니다.")
     private String title;
 
     @NotBlank(message = "지원서 용도는 필수입니다.")
-    @Size(max = 20, message = "지원서 용도는 20자 이하여야 합니다.")
+    @Size(max = 50, message = "지원서 용도는 50자 이하여야 합니다.")
     private String purpose;
 
     @NotBlank(message = "세션 한줄소개는 필수입니다.")
-    @Size(max = 100, message = "세션 한줄소개는 100자 이하여야 합니다.")
+    @Size(max = 50, message = "세션 한줄소개는 50자 이하여야 합니다.")
     private String oneLineIntro;
 
     @URL(message = "프로필 이미지는 올바른 URL 형식이어야 합니다.")
@@ -80,14 +80,14 @@ public class MySessionApplicationUpdateRequest {
     @NoArgsConstructor
     public static class CareerRequest {
         @NotBlank(message = "경력명은 필수입니다.")
-        @Size(max = 100, message = "경력명은 100자 이하여야 합니다.")
+        @Size(max = 50, message = "경력명은 50자 이하여야 합니다.")
         private String name;
 
         @NotBlank(message = "경력 기간은 필수입니다.")
-        @Size(max = 100, message = "경력 기간은 100자 이하여야 합니다.")
+        @Size(max = 50, message = "경력 기간은 50자 이하여야 합니다.")
         private String period;
 
-        @Size(max = 500, message = "경력 상세내용은 500자 이하여야 합니다.")
+        @Size(max = 50, message = "경력 상세내용은 50자 이하여야 합니다.")
         private String description;
     }
 }

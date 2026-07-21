@@ -1,6 +1,7 @@
 package com.umc.bscene.domain.session.dto.application.response;
 
 import com.fasterxml.jackson.annotation.JsonPropertyOrder;
+import com.fasterxml.jackson.annotation.JsonInclude;
 import com.umc.bscene.domain.session.entity.SessionApplication;
 import com.umc.bscene.domain.session.enums.Part;
 import com.umc.bscene.domain.auth.enums.onboarding.Genre;
@@ -44,6 +45,7 @@ public class MySessionApplicationResponse {
     private String purpose;
     private String oneLineIntro;
     private String profileImageUrl;
+    @JsonInclude(JsonInclude.Include.NON_NULL)
     private Boolean isPublic;
 
     private Part part;
@@ -82,6 +84,19 @@ public class MySessionApplicationResponse {
     }
 
     public static MySessionApplicationResponse from(SessionApplication sessionApplication) {
+        return from(sessionApplication, true);
+    }
+
+    public static MySessionApplicationResponse fromForCreate(
+            SessionApplication sessionApplication
+    ) {
+        return from(sessionApplication, false);
+    }
+
+    private static MySessionApplicationResponse from(
+            SessionApplication sessionApplication,
+            boolean includeVisibility
+    ) {
         return MySessionApplicationResponse.builder()
                 .hasApplication(true)
                 .sessionApplicationId(sessionApplication.getSessionApplicationId())
@@ -91,7 +106,7 @@ public class MySessionApplicationResponse {
                 .purpose(sessionApplication.getPurpose())
                 .oneLineIntro(sessionApplication.getOneLineIntro())
                 .profileImageUrl(sessionApplication.getProfileImageUrl())
-                .isPublic(sessionApplication.getIsPublic())
+                .isPublic(includeVisibility ? sessionApplication.getIsPublic() : null)
                 .part(sessionApplication.getPart())
                 .skillLevel(sessionApplication.getSkillLevel())
                 .genre(sessionApplication.getGenre())

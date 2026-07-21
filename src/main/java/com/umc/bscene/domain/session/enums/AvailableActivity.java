@@ -6,7 +6,7 @@ import com.fasterxml.jackson.annotation.JsonValue;
 public enum AvailableActivity {
     REGULAR_REHEARSAL("정기 합주"),
     LIVE_PERFORMANCE("라이브 공연"),
-    RECORDING("앨범·음원 작업"),
+    RECORDING("앨범 및 음원 작업"),
     COMPETITION("경연"),
     MEMBER_TRANSITION("멤버 전환");
 
