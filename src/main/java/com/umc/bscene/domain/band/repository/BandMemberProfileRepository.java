@@ -19,4 +19,10 @@ public interface BandMemberProfileRepository extends JpaRepository<BandMemberPro
 
     // 활성 프로필 보유 여부 (신규 생성 시 최초 자동 활성화 판단용)
     boolean existsByUser_IdAndActiveTrue(Long userId);
+
+    // 닉네임 중복 여부 (전체 서비스 유일)
+    boolean existsByNickname(String nickname);
+
+    // 닉네임 중복 여부 (수정 시 본인 프로필은 제외)
+    boolean existsByNicknameAndIdNot(String nickname, Long id);
 }
