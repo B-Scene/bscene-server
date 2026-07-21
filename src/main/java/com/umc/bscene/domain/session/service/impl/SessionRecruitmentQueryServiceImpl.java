@@ -165,11 +165,10 @@ public class SessionRecruitmentQueryServiceImpl implements SessionRecruitmentQue
                 .bandName(recruitment.getBand().getName())
                 .bandGenre(recruitment.getBand().getGenre().getName())
                 .bandRegion(recruitment.getBand().getRegion().getName())
+                .postedAgo(calculatePostedAgo(recruitment.getCreatedAt(), now))
                 .summary(recruitment.getSummary())
                 .part(recruitment.getPart())
                 .skillLevel(recruitment.getSkillLevel())
-                .practiceSchedule(recruitment.getPracticeSchedule())
-                .deadlineAt(recruitment.getDeadlineAt())
                 .dDay(calculateDDay(recruitment.getDeadlineAt().toLocalDate()))
                 .isNew(isNewRecruitment(recruitment.getCreatedAt(), now))
                 .isInterested(interestedIds.contains(recruitment.getSessionRecruitmentId()))
@@ -207,5 +206,12 @@ public class SessionRecruitmentQueryServiceImpl implements SessionRecruitmentQue
 
     private Long calculateDDay(LocalDate deadlineDate) {
         return ChronoUnit.DAYS.between(LocalDate.now(), deadlineDate);
+    }
+
+    private Long calculatePostedAgo(LocalDateTime createdAt, LocalDateTime now) {
+        return Math.max(0, ChronoUnit.DAYS.between(
+                createdAt.toLocalDate(),
+                now.toLocalDate()
+        ));
     }
 }
