@@ -12,12 +12,49 @@ services:
     logging: *default-logging
     restart: always
     env_file: ./.env
+    environment:
+      - TZ=Asia/Seoul  # 로그·S3 key 타임스탬프를 KST로 통일
     expose:
       - "8080"
+    volumes:
+      - recordings:/recordings  # mediamtx 녹화본 S3 업로드용 공유 볼륨
+      - ./certs/ca.crt:/app/config/certs/es-ca.crt:ro  # ES TLS 신뢰용 CA 공개 인증서 (개인키 아님)
     ports:
       - "8081:8081"
     depends_on:
       - redis
+      - elasticsearch  # 기동 순서만 보장 (ES 장애 시에도 spring은 뜨고 검색만 503)
+    networks:
+      - bscene
+
+  # 탐색 통합검색용 Elasticsearch (nori 포함 커스텀 이미지 — elasticsearch/Dockerfile로 빌드해 Docker Hub에 push)
+  # 최초 1회는 서버에서 수동 기동 필요 : docker compose up -d elasticsearch (CD는 spring만 재시작)
+  # 인증서(~/app/certs)는 배포 절차에 따라 서버에서 1회 생성 — 레포에 포함 금지 (개인키)
+  elasticsearch:
+    image: ${DOCKER_USERNAME}/bscene-es:9.4.3
+    container_name: elasticsearch
+    restart: always
+    environment:
+      - discovery.type=single-node
+      - ELASTIC_PASSWORD=${ES_PASSWORD}
+      - xpack.security.enabled=true
+      - xpack.security.http.ssl.enabled=true
+      - xpack.security.http.ssl.certificate=certs/instance.crt
+      - xpack.security.http.ssl.key=certs/instance.key
+      - xpack.security.http.ssl.certificate_authorities=certs/ca.crt
+      - xpack.security.transport.ssl.enabled=false  # 노드 간 통신용 — 단일 노드라 해당 없음
+      - TZ=Asia/Seoul
+    expose:
+      - "9200"  # spring 접근 (compose 내부 네트워크 전용 — 보안을 켰어도 외부 공개 금지 유지)
+    volumes:
+      - es-data:/usr/share/elasticsearch/data  # 컨테이너 재생성에도 색인 유지
+      - ./certs:/usr/share/elasticsearch/config/certs:ro  # 서버에서 생성한 인증서 (읽기 전용)
+    deploy:
+      resources:
+        limits:
+          memory: 1G  # ES가 이 상한을 보고 힙을 자동 계산 (약 512MB)
+        reservations:
+          memory: 512M
     networks:
       - bscene
 
@@ -26,6 +63,8 @@ services:
     container_name: redis
     logging: *default-logging
     restart: always
+    environment:
+      - TZ=Asia/Seoul
     expose:
       - "6379"
     volumes:
@@ -62,6 +101,7 @@ services:
       - "80:80"
       - "443:443"
     environment:
+      - TZ=Asia/Seoul
       - SERVER_NAME=${SERVER_NAME}
     volumes:
       - ./nginx/conf.d/default.conf:/etc/nginx/templates/default.conf.template:ro
@@ -69,6 +109,7 @@ services:
       - /var/www/certbot:/var/www/certbot:ro
     depends_on:
       - spring
+      - mediamtx
     networks:
       - bscene
     command: >
@@ -78,6 +119,32 @@ services:
       && (while :; do sleep 6h & wait $${!}; nginx -s reload; done&)
       && exec nginx -g 'daemon off;'"
 
+  mediamtx:
+    image: bluenviron/mediamtx:1.19.2-ffmpeg  # runOnRecordSegmentComplete 훅 실행에 쉘 필요 (기본 이미지는 scratch 기반)
+    container_name: mediamtx
+    restart: always
+    environment:
+      - MTX_WEBRTCADDITIONALHOSTS=${SERVER_HOST}
+      - TZ=Asia/Seoul
+    ports:
+      - "8189:8189/udp"
+      - "8889"
+      - "8888"  # nginx HLS proxy
+    expose:
+      - "8889"  # nginx 접근
+      - "9997"  # spring 접근
+    volumes:
+      - ./mediamtx/mediamtx.yml:/mediamtx.yml:ro
+      - recordings:/recordings
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 256M
+        reservations:
+          memory: 64M
+    networks:
+      - bscene
   node-exporter:
     image: prom/node-exporter:v1.9.1
     container_name: node-exporter
@@ -116,4 +183,6 @@ networks:
 
 volumes:
   redis-data:
+  recordings:
+  es-data:
   promtail-positions:

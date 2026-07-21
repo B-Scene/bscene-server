@@ -4,9 +4,7 @@ import com.umc.bscene.global.response.code.BaseResponseCode;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 
-import static com.umc.bscene.global.constant.StaticValue.BAD_REQUEST;
-import static com.umc.bscene.global.constant.StaticValue.CONFLICT;
-import static com.umc.bscene.global.constant.StaticValue.NOT_FOUND;
+import static com.umc.bscene.global.constant.StaticValue.*;
 
 @Getter
 @RequiredArgsConstructor

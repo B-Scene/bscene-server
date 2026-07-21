@@ -1,0 +1,47 @@
+logLevel: info
+
+# 안 쓰는 프로토콜 전부 비활성화
+rtsp: no
+rtmp: no
+srt: no
+
+# HLS
+hls: yes
+hlsAddress: :8888
+hlsVariant: lowLatency  # LL-HLS 옵션
+hlsAlwaysRemux: yes     # 청취자가 0명이어도 미리 세그먼트 생성
+hlsAllowOrigin: '*'     # 테스트용 CORD
+
+# WebRTC (WHIP/WHEP)
+webrtc: yes
+webrtcAddress: :8889
+webrtcLocalUDPAddress: :8189
+# webrtcAdditionalHosts는 compose의 MTX_WEBRTCADDITIONALHOSTS로 주입됨
+
+# Control API (spring의 on-air 폴링용, 내부망 전용)
+api: yes
+apiAddress: :9997
+
+# 인증을 Spring에 위임
+authMethod: http
+authHTTPAddress: http://spring:8080/api/internal/mediamtx/auth
+authHTTPExclude:
+  - action: api
+  - action: metrics
+  - action: pprof
+# 오디오 스트리밍을 청취하는 것에도 인증 인가를 부여. 이 방식은 세션 연결 최초 1회만 진행되며, 이후의 밴 기능을 구현하더라도,
+# 청취자가 직접 세션을 끊거나, 네트워크 불안정, 기기 종료, 브라우저 탭 종료 등
+# 클라이언트 단에서 세션을 종료한 후, 다른 세션을 접속하려고 할 때 밴 기능이 활성화되는 방식. (immediate kick X)
+# 따라서, 그 기능을 구현하려면 nginx에서 커스텀 함수로 처리되어야 함.
+# 원래 코드
+# - action: read
+
+paths:
+  all_others:
+    # 다시보기용 녹화. WebRTC(Opus) 오디오를 fmp4(.mp4)로 저장
+    record: yes
+    recordPath: /recordings/%path/%Y-%m-%d_%H-%M-%S-%f
+    recordFormat: fmp4
+    recordPartDuration: 1s
+    recordSegmentDuration: 3h   # 이 시간 안에 끝나는 라이브는 파일 1개
+    recordDeleteAfter: 72h      # 방송자가 다시보기 저장을 선택할 수 있는 유효 기간. 이후엔 로컬 파일을 하드 삭제

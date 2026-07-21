@@ -9,6 +9,8 @@ public record BandMemberResponse(
         Long id,
         Long bandId,
         Long userId,
+        Long bandMemberProfileId,
+        String profileNickname,
         BandMemberStatus status,
         LocalDateTime createdAt
 ) {
@@ -17,6 +19,8 @@ public record BandMemberResponse(
                 bandMember.getId(),
                 bandMember.getBand().getId(),
                 bandMember.getUser().getId(),
+                bandMember.getBandMemberProfile() != null ? bandMember.getBandMemberProfile().getId() : null,
+                bandMember.getBandMemberProfile() != null ? bandMember.getBandMemberProfile().getNickname() : null,
                 bandMember.getStatus(),
                 bandMember.getCreatedAt()
         );

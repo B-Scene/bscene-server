@@ -1,0 +1,297 @@
+package com.umc.bscene.domain.chat.service;
+
+import com.umc.bscene.domain.chat.dto.request.ChatRoomCreateRequest;
+import com.umc.bscene.domain.chat.dto.response.ChatRoomCreateResponse;
+import com.umc.bscene.domain.chat.dto.response.ChatRoomListItemResponse;
+import com.umc.bscene.domain.chat.dto.response.ChatRoomListResponse;
+import com.umc.bscene.domain.chat.dto.response.ChatRoomDetailResponse;
+import com.umc.bscene.domain.chat.dto.response.ChatMessageDetailResponse;
+import com.umc.bscene.domain.chat.entity.ChatMessage;
+import com.umc.bscene.domain.chat.enums.ChatRoomFilter;
+import com.umc.bscene.domain.chat.repository.ChatMessageRepository;
+import com.umc.bscene.domain.chat.entity.ChatRoom;
+import com.umc.bscene.domain.chat.enums.ChatContextType;
+import com.umc.bscene.domain.chat.exception.ChatException;
+import com.umc.bscene.domain.chat.repository.ChatRoomRepository;
+import com.umc.bscene.domain.chat.response.code.ChatErrorCode;
+import com.umc.bscene.domain.session.entity.SessionApplication;
+import com.umc.bscene.domain.session.entity.SessionRecruitment;
+import com.umc.bscene.domain.session.repository.SessionApplicationRepository;
+import com.umc.bscene.domain.session.repository.SessionRecruitmentRepository;
+import com.umc.bscene.domain.session.repository.SessionApplicationSubmissionRepository;
+import com.umc.bscene.domain.session.repository.SessionBasicProfileRepository;
+import com.umc.bscene.domain.session.enums.ApplicationStatus;
+import com.umc.bscene.domain.user.entity.User;
+import com.umc.bscene.domain.user.repository.UserRepository;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.data.domain.PageRequest;
+
+import java.util.List;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Map;
+import java.time.LocalDateTime;
+import java.util.function.Function;
+import java.util.stream.Collectors;
+
+@Service
+@RequiredArgsConstructor
+@Transactional
+public class ChatRoomService {
+    private static final String DEFAULT_PURPOSE = "기본";
+
+    private final ChatRoomRepository chatRoomRepository;
+    private final SessionRecruitmentRepository recruitmentRepository;
+    private final SessionApplicationRepository applicationRepository;
+    private final UserRepository userRepository;
+    private final ChatMessageRepository chatMessageRepository;
+    private final SessionApplicationSubmissionRepository submissionRepository;
+    private final SessionBasicProfileRepository sessionBasicProfileRepository;
+
+    @Transactional(readOnly = true)
+    public ChatRoomListResponse getMyRooms(Long userId, ChatRoomFilter filter,
+                                           Long cursorId, Integer size) {
+        int pageSize = size == null ? 20 : Math.max(1, Math.min(size, 50));
+        boolean unreadOnly = filter == ChatRoomFilter.UNREAD;
+        List<ChatRoom> rooms = chatRoomRepository.findMyRooms(
+                userId, cursorId, unreadOnly, PageRequest.of(0, pageSize + 1));
+        boolean hasNext = rooms.size() > pageSize;
+        List<ChatRoom> sliced = hasNext ? rooms.subList(0, pageSize) : rooms;
+        List<Long> roomIds = sliced.stream().map(ChatRoom::getChatRoomId).toList();
+        List<ChatMessage> messages = roomIds.isEmpty()
+                ? List.of() : chatMessageRepository.findMessagesForRooms(roomIds);
+        Map<Long, ChatMessage> latestMessages = messages.stream().collect(Collectors.toMap(
+                message -> message.getChatRoom().getChatRoomId(), Function.identity(),
+                (latest, ignored) -> latest));
+        Map<Long, Long> unreadCounts = messages.stream()
+                .filter(message -> !message.getSender().getId().equals(userId))
+                .filter(message -> message.getReadAt() == null)
+                .collect(Collectors.groupingBy(
+                        message -> message.getChatRoom().getChatRoomId(), Collectors.counting()));
+        List<ChatRoomListItemResponse> content = sliced.stream()
+                .map(room -> ChatRoomListItemResponse.of(
+                        room, userId, latestMessages.get(room.getChatRoomId()),
+                        unreadCounts.getOrDefault(room.getChatRoomId(), 0L), canSend(room),
+                        resolveCounterpartApplication(room, userId),
+                        resolveCounterpartProfileImageUrl(room, userId)))
+                .toList();
+        Long nextCursor = hasNext && !sliced.isEmpty()
+                ? sliced.get(sliced.size() - 1).getChatRoomId() : null;
+        return new ChatRoomListResponse(content, pageSize, nextCursor, hasNext);
+    }
+
+    public ChatRoomDetailResponse getRoomDetail(
+            Long userId, Long roomId, Long cursorId, Integer size) {
+        ChatRoom room = chatRoomRepository.findDetail(roomId)
+                .orElseThrow(() -> new ChatException(ChatErrorCode.CHAT_ROOM_NOT_FOUND));
+        boolean viewerIsSender = room.getSender().getId().equals(userId);
+        boolean viewerIsRecipient = room.getRecipient().getId().equals(userId);
+        if (!viewerIsSender && !viewerIsRecipient) {
+            throw new ChatException(ChatErrorCode.CHAT_ROOM_ACCESS_DENIED);
+        }
+        if (room.hasLeft(userId)) {
+            throw new ChatException(ChatErrorCode.CHAT_ROOM_NOT_FOUND);
+        }
+
+        int pageSize = size == null ? 20 : Math.max(1, Math.min(size, 50));
+        chatMessageRepository.markAllUnreadAsRead(roomId, userId, LocalDateTime.now());
+        List<ChatMessage> fetchedMessages = chatMessageRepository.findRoomMessages(
+                roomId, cursorId, PageRequest.of(0, pageSize + 1));
+        boolean hasNext = fetchedMessages.size() > pageSize;
+        List<ChatMessage> messages = new ArrayList<>(hasNext
+                ? fetchedMessages.subList(0, pageSize)
+                : fetchedMessages);
+        Collections.reverse(messages);
+        Long nextCursor = hasNext && !messages.isEmpty()
+                ? messages.get(0).getChatMessageId()
+                : null;
+
+        SessionApplication counterpartApplication = resolveCounterpartApplication(room, userId);
+        String profileImageUrl = room.getContextType() == ChatContextType.RECRUITMENT
+                && viewerIsSender
+                ? room.getSessionRecruitment().getBand().getProfileImageUrl()
+                : resolveCounterpartProfileImageUrl(room, userId);
+        Long opponentId = viewerIsSender
+                ? room.getRecipient().getId() : room.getSender().getId();
+        String opponentName;
+        String part;
+        String genre;
+        String region;
+        Long recruitmentId = null;
+        Long applicationId = null;
+        Long applicationSubmissionId = null;
+
+        if (room.getContextType() == ChatContextType.RECRUITMENT) {
+            recruitmentId = room.getSessionRecruitment().getSessionRecruitmentId();
+            applicationId = counterpartApplication.getSessionApplicationId();
+            if (viewerIsRecipient) {
+                applicationSubmissionId = submissionRepository
+                        .findFirstBySessionRecruitment_SessionRecruitmentIdAndSessionApplication_UserIdOrderByApplicationSubmissionIdDesc(
+                                recruitmentId, room.getSender().getId())
+                        .map(submission -> submission.getApplicationSubmissionId())
+                        .orElse(null);
+            }
+            opponentName = viewerIsSender
+                    ? room.getSessionRecruitment().getBand().getName()
+                    : room.getSender().getName();
+            part = viewerIsSender
+                    ? room.getSessionRecruitment().getPart().getDescription()
+                    : counterpartApplication.getPart().getDescription();
+            genre = viewerIsSender
+                    ? room.getSessionRecruitment().getGenre().getName()
+                    : counterpartApplication.getGenre().getName();
+            region = viewerIsSender
+                    ? room.getSessionRecruitment().getRegion().getName()
+                    : counterpartApplication.getRegion().getName();
+        } else {
+            applicationId = counterpartApplication.getSessionApplicationId();
+            opponentName = viewerIsSender
+                    ? room.getRecipient().getName() : room.getSender().getName();
+            part = counterpartApplication.getPart().getDescription();
+            genre = counterpartApplication.getGenre().getName();
+            region = counterpartApplication.getRegion().getName();
+        }
+
+        return new ChatRoomDetailResponse(
+                roomId, room.getContextType(), applicationId, recruitmentId, applicationSubmissionId,
+                opponentId, opponentName, profileImageUrl, part, genre, region, canSend(room),
+                messages.stream()
+                        .map(message -> ChatMessageDetailResponse.from(message, userId))
+                        .toList(),
+                pageSize, nextCursor, hasNext
+        );
+    }
+
+    private boolean canSend(ChatRoom room) {
+        if (room.getContextType() != ChatContextType.RECRUITMENT) return true;
+        return submissionRepository
+                .findFirstBySessionRecruitment_SessionRecruitmentIdAndSessionApplication_UserIdOrderByApplicationSubmissionIdDesc(
+                        room.getSessionRecruitment().getSessionRecruitmentId(), room.getSender().getId())
+                .map(submission -> submission.getStatus() != ApplicationStatus.REJECTED)
+                .orElse(true);
+    }
+
+    private SessionApplication resolveCounterpartApplication(ChatRoom room, Long viewerId) {
+        if (room.getContextType() == ChatContextType.RECRUITMENT) {
+            return submissionRepository
+                    .findFirstBySessionRecruitment_SessionRecruitmentIdAndSessionApplication_UserIdOrderByApplicationSubmissionIdDesc(
+                            room.getSessionRecruitment().getSessionRecruitmentId(),
+                            room.getSender().getId())
+                    .map(submission -> submission.getSessionApplication())
+                    .orElseGet(() -> applicationRepository
+                            .findFirstByUserIdAndPurposeAndDeletedAtIsNullOrderBySessionApplicationIdDesc(
+                                    room.getSender().getId(), DEFAULT_PURPOSE)
+                            .orElseThrow(() -> new ChatException(
+                                    ChatErrorCode.CHAT_TARGET_NOT_FOUND)));
+        }
+        if (room.getSender().getId().equals(viewerId)) {
+            return room.getSessionApplication();
+        }
+        return applicationRepository
+                .findFirstByUserIdAndPurposeAndDeletedAtIsNullOrderBySessionApplicationIdDesc(
+                        room.getSender().getId(), DEFAULT_PURPOSE)
+                .orElseThrow(() -> new ChatException(ChatErrorCode.CHAT_TARGET_NOT_FOUND));
+    }
+
+    private String resolveCounterpartProfileImageUrl(ChatRoom room, Long viewerId) {
+        if (room.getContextType() == ChatContextType.RECRUITMENT
+                && room.getSender().getId().equals(viewerId)) return null;
+        Long counterpartUserId = room.getSender().getId().equals(viewerId)
+                ? room.getRecipient().getId()
+                : room.getSender().getId();
+        return sessionBasicProfileRepository.findByUser_Id(counterpartUserId)
+                .map(profile -> profile.getProfileImageUrl())
+                .orElse(null);
+    }
+
+    public ChatRoomCreateResponse createOrGet(Long senderId, ChatRoomCreateRequest request) {
+        if (request.contextType() == ChatContextType.RECRUITMENT) {
+            return createForRecruitment(senderId, request);
+        }
+        if (request.contextType() == ChatContextType.SESSION_SEARCH) {
+            return createForSessionSearch(senderId, request);
+        }
+        throw new ChatException(ChatErrorCode.INVALID_CHAT_CONTEXT);
+    }
+
+    public void leaveRoom(Long userId, Long roomId) {
+        ChatRoom room = chatRoomRepository.findDetail(roomId)
+                .orElseThrow(() -> new ChatException(ChatErrorCode.CHAT_ROOM_NOT_FOUND));
+        boolean participant = room.getSender().getId().equals(userId)
+                || room.getRecipient().getId().equals(userId);
+        if (!participant) {
+            throw new ChatException(ChatErrorCode.CHAT_ROOM_ACCESS_DENIED);
+        }
+        if (room.hasLeft(userId)) {
+            throw new ChatException(ChatErrorCode.CHAT_ROOM_NOT_FOUND);
+        }
+        room.leave(userId);
+    }
+
+    private ChatRoomCreateResponse createForRecruitment(Long senderId, ChatRoomCreateRequest request) {
+        if (request.sessionRecruitmentId() == null || request.sessionApplicationId() != null) {
+            throw new ChatException(ChatErrorCode.INVALID_CHAT_CONTEXT);
+        }
+        SessionRecruitment recruitment = recruitmentRepository
+                .findBySessionRecruitmentIdAndDeletedAtIsNull(request.sessionRecruitmentId())
+                .orElseThrow(() -> new ChatException(ChatErrorCode.CHAT_TARGET_NOT_FOUND));
+        User recipient = recruitment.getBand().getOwner();
+        validateNotSelf(senderId, recipient.getId());
+
+        return chatRoomRepository
+                .findBySender_IdAndRecipient_IdAndSessionRecruitment_SessionRecruitmentId(
+                        senderId, recipient.getId(), recruitment.getSessionRecruitmentId())
+                .map(room -> {
+                    room.rejoin(senderId);
+                    return ChatRoomCreateResponse.recruitment(room, false);
+                })
+                .orElseGet(() -> ChatRoomCreateResponse.recruitment(
+                        chatRoomRepository.save(ChatRoom.builder()
+                                .contextType(ChatContextType.RECRUITMENT)
+                                .sender(userRepository.getReferenceById(senderId))
+                                .recipient(recipient)
+                                .sessionRecruitment(recruitment)
+                                .build()), true));
+    }
+
+    private ChatRoomCreateResponse createForSessionSearch(Long senderId, ChatRoomCreateRequest request) {
+        if (request.sessionApplicationId() == null || request.sessionRecruitmentId() != null) {
+            throw new ChatException(ChatErrorCode.INVALID_CHAT_CONTEXT);
+        }
+        SessionApplication myDefault = applicationRepository
+                .findFirstByUserIdAndPurposeAndDeletedAtIsNullOrderBySessionApplicationIdDesc(
+                        senderId, DEFAULT_PURPOSE)
+                .filter(application -> Boolean.TRUE.equals(application.getIsPublic()))
+                .orElseThrow(() -> new ChatException(
+                        ChatErrorCode.PUBLIC_SESSION_PROFILE_REQUIRED));
+        SessionApplication target = applicationRepository
+                .findPublicDetailWithPortfolioLinks(request.sessionApplicationId(), DEFAULT_PURPOSE)
+                .orElseThrow(() -> new ChatException(ChatErrorCode.CHAT_TARGET_NOT_FOUND));
+        validateNotSelf(senderId, target.getUserId());
+        User recipient = userRepository.findById(target.getUserId())
+                .orElseThrow(() -> new ChatException(ChatErrorCode.CHAT_TARGET_NOT_FOUND));
+
+        return chatRoomRepository
+                .findBySender_IdAndRecipient_IdAndSessionApplication_SessionApplicationId(
+                        senderId, recipient.getId(), target.getSessionApplicationId())
+                .map(room -> {
+                    room.rejoin(senderId);
+                    return ChatRoomCreateResponse.sessionSearch(room, false);
+                })
+                .orElseGet(() -> ChatRoomCreateResponse.sessionSearch(
+                        chatRoomRepository.save(ChatRoom.builder()
+                                .contextType(ChatContextType.SESSION_SEARCH)
+                                .sender(userRepository.getReferenceById(senderId))
+                                .recipient(recipient)
+                                .sessionApplication(target)
+                                .build()), true));
+    }
+
+    private void validateNotSelf(Long senderId, Long recipientId) {
+        if (senderId.equals(recipientId)) {
+            throw new ChatException(ChatErrorCode.SELF_CHAT_NOT_ALLOWED);
+        }
+    }
+}

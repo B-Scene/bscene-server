@@ -18,6 +18,9 @@ public record BandCreateRequest(
         @NotNull
         Region region,
 
+        @NotNull
+        Long bandMemberProfileId,
+
         String profileImageUrl,
 
         @Size(max = 1000)

@@ -1,8 +1,13 @@
 package com.umc.bscene.domain.band.repository;
 
 import com.umc.bscene.domain.band.entity.BandMember;
+import com.umc.bscene.domain.band.enums.BandMemberStatus;
+import com.umc.bscene.domain.band.enums.BandMemberType;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
@@ -10,7 +15,92 @@ public interface BandMemberRepository extends JpaRepository<BandMember, Long> {
 
     boolean existsByBand_IdAndUser_Id(Long bandId, Long userId);
 
+    boolean existsByBand_IdAndUser_IdAndStatus(Long bandId, Long userId, BandMemberStatus status);
+
     Optional<BandMember> findByBand_IdAndUser_Id(Long bandId, Long userId);
 
-    List<BandMember> findByBand_Id(Long bandId);
+    List<BandMember> findByBand_IdOrderByIdAsc(Long bandId);
+
+    List<BandMember> findByBand_IdAndStatus(Long bandId, BandMemberStatus status);
+
+    Long countByBand_IdAndStatus(Long bandId, BandMemberStatus status);
+
+    Optional<BandMember> findFirstByUser_IdAndStatus(Long userId, BandMemberStatus status);
+
+    Optional<BandMember> findByIdAndUser_IdAndStatus(
+            Long bandMemberId,
+            Long userId,
+            BandMemberStatus status
+    );
+
+    Optional<BandMember> findByBand_IdAndUser_IdAndStatus(
+            Long bandId,
+            Long userId,
+            BandMemberStatus status
+    );
+
+    // 멤버 프로필 삭제 전, 이미 밴드에서 사용 중인지 확인
+    boolean existsByBandMemberProfile_Id(Long bandMemberProfileId);
+
+    // 송출자(userId) 목록에 대응하는 밴드 소속 정보를 밴드까지 한 번에 조회
+    // 활성 프로필이 없으면 해당 유저는 결과에서 제외
+    @Query("""
+        SELECT bm
+        FROM BandMember bm
+        JOIN FETCH bm.band
+        JOIN bm.bandMemberProfile bmp
+        WHERE bm.user.id IN :userIds
+          AND bm.status = :status
+          AND bmp.active = true
+    """)
+    List<BandMember> findWithBandByUser_IdInAndStatus(
+            @Param("userIds") Collection<Long> userIds,
+            @Param("status") BandMemberStatus status
+    );
+
+    // 공동 진행 후보 조회용 - 밴드의 정회원 목록을 유저 정보(이름)까지 한 번에 조회
+    @Query("""
+        SELECT bm
+        FROM BandMember bm
+        JOIN FETCH bm.user
+        WHERE bm.band.id = :bandId
+          AND bm.status = :status
+    """)
+    List<BandMember> findWithUserByBand_IdAndStatus(
+            @Param("bandId") Long bandId,
+            @Param("status") BandMemberStatus status
+    );
+
+    // 라이브 방 멤버 프로필 조회용 - 라이브 생성 시점에 확정된 밴드 기준으로 멤버 프로필까지 한 번에 조회
+    // 밴드 멤버 프로필이 지정되지 않은 멤버(JOIN FETCH bm.bandMemberProfile)는 자동으로 제외됨
+    @Query("""
+        SELECT bm
+        FROM BandMember bm
+        JOIN FETCH bm.band
+        JOIN FETCH bm.bandMemberProfile
+        WHERE bm.band.id = :bandId
+          AND bm.user.id IN :userIds
+    """)
+    List<BandMember> findWithBandAndProfileByBand_IdAndUser_IdIn(
+            @Param("bandId") Long bandId,
+            @Param("userIds") Collection<Long> userIds
+    );
+
+    @Query("""
+        SELECT bm
+        FROM BandMember bm
+        JOIN FETCH bm.band band
+        JOIN FETCH band.owner
+        JOIN FETCH bm.user
+        JOIN FETCH bm.bandMemberProfile
+        WHERE band.id = :bandId
+          AND bm.status = :status
+          AND bm.memberType = :memberType
+        ORDER BY bm.id ASC
+    """)
+    List<BandMember> findPublicBandMembers(
+            @Param("bandId") Long bandId,
+            @Param("status") BandMemberStatus status,
+            @Param("memberType") BandMemberType memberType
+    );
 }

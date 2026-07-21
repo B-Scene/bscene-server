@@ -24,6 +24,14 @@ public enum PermitAllUri {
 
     GENRES("/genres"),
     REGIONS("/regions"),
+    CHAT_WEBSOCKET("/ws/chat"),
+    LIVE_CHAT_WEBSOCKET("/ws/lives/*/chat"),
+
+    // MediaMTX 관련 API 개방
+    INTERNAL_MEDIAMTX("/internal/mediamtx/**"),
+
+    // 검색 색인 관리용 내부 API
+    INTERNAL_SEARCH("/internal/search/**"),
 
     SPRING_ACTUATOR("/actuator/**"),
     ;
