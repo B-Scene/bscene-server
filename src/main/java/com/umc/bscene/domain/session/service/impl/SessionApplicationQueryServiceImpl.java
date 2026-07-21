@@ -176,7 +176,17 @@ public class SessionApplicationQueryServiceImpl implements SessionApplicationQue
                 userName,
                 profile == null ? null : profile.getProfileImageUrl()
         );
-        return SubmittedApplicationDetailResponse.of(submission, detail);
+        SessionApplication defaultApplication = sessionApplicationRepository
+                .findFirstByUserIdAndPurposeAndDeletedAtIsNullOrderBySessionApplicationIdDesc(
+                        application.getUserId(),
+                        DEFAULT_PURPOSE
+                )
+                .orElse(null);
+        return SubmittedApplicationDetailResponse.of(
+                submission,
+                detail,
+                defaultApplication
+        );
     }
 
     @Override

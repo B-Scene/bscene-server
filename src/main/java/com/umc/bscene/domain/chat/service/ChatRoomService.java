@@ -71,11 +71,16 @@ public class ChatRoomService {
                 .collect(Collectors.groupingBy(
                         message -> message.getChatRoom().getChatRoomId(), Collectors.counting()));
         List<ChatRoomListItemResponse> content = sliced.stream()
-                .map(room -> ChatRoomListItemResponse.of(
-                        room, userId, latestMessages.get(room.getChatRoomId()),
-                        unreadCounts.getOrDefault(room.getChatRoomId(), 0L), canSend(room),
-                        resolveCounterpartApplication(room, userId),
-                        resolveCounterpartProfileImageUrl(room, userId)))
+                .map(room -> {
+                    ApplicationStatus applicationStatus = resolveApplicationStatus(room);
+                    return ChatRoomListItemResponse.of(
+                            room, userId, latestMessages.get(room.getChatRoomId()),
+                            unreadCounts.getOrDefault(room.getChatRoomId(), 0L),
+                            applicationStatus != ApplicationStatus.REJECTED,
+                            applicationStatusLabel(applicationStatus),
+                            resolveCounterpartApplication(room, userId),
+                            resolveCounterpartProfileImageUrl(room, userId));
+                })
                 .toList();
         Long nextCursor = hasNext && !sliced.isEmpty()
                 ? sliced.get(sliced.size() - 1).getChatRoomId() : null;
@@ -165,12 +170,22 @@ public class ChatRoomService {
     }
 
     private boolean canSend(ChatRoom room) {
-        if (room.getContextType() != ChatContextType.RECRUITMENT) return true;
+        return resolveApplicationStatus(room) != ApplicationStatus.REJECTED;
+    }
+
+    private ApplicationStatus resolveApplicationStatus(ChatRoom room) {
+        if (room.getContextType() != ChatContextType.RECRUITMENT) return null;
         return submissionRepository
                 .findFirstBySessionRecruitment_SessionRecruitmentIdAndSessionApplication_UserIdOrderByApplicationSubmissionIdDesc(
                         room.getSessionRecruitment().getSessionRecruitmentId(), room.getSender().getId())
-                .map(submission -> submission.getStatus() != ApplicationStatus.REJECTED)
-                .orElse(true);
+                .map(submission -> submission.getStatus())
+                .orElse(null);
+    }
+
+    private String applicationStatusLabel(ApplicationStatus status) {
+        if (status == ApplicationStatus.ACCEPTED) return "수락";
+        if (status == ApplicationStatus.REJECTED) return "거절";
+        return null;
     }
 
     private SessionApplication resolveCounterpartApplication(ChatRoom room, Long viewerId) {
@@ -239,6 +254,7 @@ public class ChatRoomService {
                 .orElseThrow(() -> new ChatException(ChatErrorCode.CHAT_TARGET_NOT_FOUND));
         User recipient = recruitment.getBand().getOwner();
         validateNotSelf(senderId, recipient.getId());
+        validateRecruitmentChatAllowed(recruitment.getSessionRecruitmentId(), senderId);
 
         return chatRoomRepository
                 .findBySender_IdAndRecipient_IdAndSessionRecruitment_SessionRecruitmentId(
@@ -293,5 +309,19 @@ public class ChatRoomService {
         if (senderId.equals(recipientId)) {
             throw new ChatException(ChatErrorCode.SELF_CHAT_NOT_ALLOWED);
         }
+    }
+
+    private void validateRecruitmentChatAllowed(Long recruitmentId, Long senderId) {
+        submissionRepository
+                .findFirstBySessionRecruitment_SessionRecruitmentIdAndSessionApplication_UserIdOrderByApplicationSubmissionIdDesc(
+                        recruitmentId,
+                        senderId
+                )
+                .filter(submission -> submission.getStatus() == ApplicationStatus.REJECTED)
+                .ifPresent(submission -> {
+                    throw new ChatException(
+                            ChatErrorCode.REJECTED_APPLICATION_CHAT_NOT_ALLOWED
+                    );
+                });
     }
 }
