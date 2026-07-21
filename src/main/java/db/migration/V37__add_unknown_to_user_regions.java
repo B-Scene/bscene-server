@@ -8,7 +8,9 @@ import java.sql.ResultSet;
 import java.sql.Statement;
 import java.util.Locale;
 
-public class V34__add_unknown_to_region_values extends BaseJavaMigration {
+// V34가 "UserRegions" 단일 이름으로만 테이블을 찾아서(물리 테이블명은 user_regions) 이 테이블은
+// 실제로 한 번도 UNKNOWN이 추가되지 못했다. V34는 이미 배포돼서 직접 못 고치므로 이 테이블만 마저 고친다.
+public class V37__add_unknown_to_user_regions extends BaseJavaMigration {
 
     private static final String EXPANDED_REGIONS = """
             ENUM('SEOUL','GYEONGGI','INCHEON','BUSAN','DAEGU','GWANGJU','DAEJEON','ULSAN',\
@@ -21,17 +23,8 @@ public class V34__add_unknown_to_region_values extends BaseJavaMigration {
         Connection connection = context.getConnection();
         if (!isMysql(connection)) return;
 
-        migrateTable(connection, "UserRegions", "region");
-        migrateTable(connection, "Band", "region");
-        migrateTable(connection, "Performance", "region");
-        migrateTable(connection, "session_recruitment", "region");
-        migrateTable(connection, "session_applications", "region");
-    }
-
-    private void migrateTable(Connection connection, String expectedTable, String expectedColumn)
-            throws Exception {
-        String table = findTable(connection, expectedTable);
-        String column = table == null ? null : findColumn(connection, table, expectedColumn);
+        String table = findTable(connection, "user_regions", "UserRegions");
+        String column = table == null ? null : findColumn(connection, table, "region");
         if (column == null) return;
 
         String columnType = findMysqlColumnType(connection, table, column);
@@ -59,12 +52,14 @@ public class V34__add_unknown_to_region_values extends BaseJavaMigration {
         }
     }
 
-    private String findTable(Connection connection, String expected) throws Exception {
+    private String findTable(Connection connection, String... expectedNames) throws Exception {
         try (ResultSet tables = connection.getMetaData().getTables(
                 connection.getCatalog(), connection.getSchema(), "%", new String[]{"TABLE"})) {
             while (tables.next()) {
                 String name = tables.getString("TABLE_NAME");
-                if (expected.equalsIgnoreCase(name)) return name;
+                for (String expected : expectedNames) {
+                    if (expected.equalsIgnoreCase(name)) return name;
+                }
             }
         }
         return null;
