@@ -3,11 +3,13 @@ package com.umc.bscene.domain.post.controller;
 import com.umc.bscene.domain.post.dto.request.PostCreateRequest;
 import com.umc.bscene.domain.post.dto.request.PostUpdateRequest;
 import com.umc.bscene.domain.post.dto.response.PostCreateResponse;
+import com.umc.bscene.domain.post.dto.response.PostDetailResponse;
 import com.umc.bscene.domain.post.dto.response.PostListResponse;
 import com.umc.bscene.domain.post.dto.response.PostResponse;
 import com.umc.bscene.domain.post.dto.response.PostUpdateResponse;
 import com.umc.bscene.domain.post.enums.PostType;
 import com.umc.bscene.domain.post.response.code.PostSuccessCode;
+import com.umc.bscene.domain.post.service.PostDetailService;
 import com.umc.bscene.domain.post.service.PostService;
 import com.umc.bscene.global.response.SuccessResponse;
 import com.umc.bscene.global.security.entity.AuthMember;
@@ -22,6 +24,7 @@ import org.springframework.web.bind.annotation.*;
 public class PostController {
 
     private final PostService postService;
+    private final PostDetailService postDetailService;
 
     // 콘텐츠 등록 API (밴드 멤버만 가능)
     @PostMapping("/bands/{bandId}/posts")
@@ -51,6 +54,21 @@ public class PostController {
         SuccessResponse<PostListResponse> successResponse = SuccessResponse.of(
                 response,
                 PostSuccessCode.POST_LIST_GET_SUCCESS
+        );
+
+        return ResponseEntity.status(successResponse.getStatus()).body(successResponse);
+    }
+
+    // 팬모드 게시물 상세페이지 조회 API (밴드 정보 + 미디어/본문/태그 + 좋아요·댓글 카운트와 하트 상태)
+    @GetMapping("/posts/{postId}/detail")
+    public ResponseEntity<SuccessResponse<PostDetailResponse>> getPostDetailPage(
+            @AuthenticationPrincipal AuthMember authMember,
+            @PathVariable Long postId
+    ) {
+        PostDetailResponse response = postDetailService.getPostDetailPage(authMember.getUser().getId(), postId);
+        SuccessResponse<PostDetailResponse> successResponse = SuccessResponse.of(
+                response,
+                PostSuccessCode.POST_DETAIL_PAGE_GET_SUCCESS
         );
 
         return ResponseEntity.status(successResponse.getStatus()).body(successResponse);

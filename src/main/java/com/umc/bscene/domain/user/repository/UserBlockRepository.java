@@ -21,4 +21,12 @@ public interface UserBlockRepository extends JpaRepository<UserBlock, Long> {
             """)
     Set<Long> findBlockedUserIdsRelatedTo(
             @Param("liveId") Long liveId, @Param("userId") Long userId);
+
+    // 사용자가 차단한 모든 유저 id (라이브 구분 없이) — 게시물 댓글 목록에서 차단 유저 댓글 숨김용
+    @Query("""
+            select distinct b.blocked.id
+            from UserBlock b
+            where b.blocker.id = :userId
+            """)
+    Set<Long> findAllBlockedIdsByBlockerId(@Param("userId") Long userId);
 }
