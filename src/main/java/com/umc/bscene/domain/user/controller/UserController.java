@@ -1,5 +1,6 @@
 package com.umc.bscene.domain.user.controller;
 
+import com.umc.bscene.domain.user.dto.response.MyProfileResponse;
 import com.umc.bscene.domain.user.dto.response.mypage.BandMyPageResponse;
 import com.umc.bscene.domain.user.dto.response.mypage.FanMyPageResponse;
 import com.umc.bscene.domain.user.dto.response.FollowedBandResponse;
@@ -8,6 +9,8 @@ import com.umc.bscene.domain.user.dto.response.ParticipationHistoryResponse;
 import com.umc.bscene.domain.user.dto.response.mypage.MyPageResponse;
 import com.umc.bscene.domain.user.enums.HistoryYearFilter;
 import com.umc.bscene.domain.user.enums.UserMode;
+import com.umc.bscene.domain.user.exception.UserException;
+import com.umc.bscene.domain.user.response.code.UserErrorCode;
 import com.umc.bscene.domain.user.response.code.UserSuccessCode;
 import com.umc.bscene.domain.user.service.MyPageService;
 import com.umc.bscene.global.response.SuccessResponse;
@@ -52,6 +55,23 @@ public class UserController {
         }
 
         return response;
+    }
+
+    // 내가 속한 밴드 프로필과 나의 팬모드 프로필을 목록 조회.
+    @GetMapping("/me/profiles")
+    public ResponseEntity<SuccessResponse<?>> getMyProfiles(
+            @AuthenticationPrincipal AuthMember authMember,
+            @RequestParam(defaultValue = "band") String type
+    ) {
+        if (!type.equals("band") && !type.equals("all")) {
+            throw new UserException(UserErrorCode.PARAM_BAD_REQUEST);
+        }
+
+        MyProfileResponse response = myPageService.findMyProfiles(authMember.getUser(), type);
+
+        return ResponseEntity
+                .status(HttpStatus.OK)
+                .body(SuccessResponse.ok(response));
     }
 
     // 공연 참여 기록 조회 API (참여 완료 공연, 연도 필터, offset 무한스크롤)
