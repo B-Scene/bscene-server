@@ -140,6 +140,13 @@ public class SessionApplicationCommandServiceImpl implements SessionApplicationC
     }
 
     private void validateDefaultApplicationCreation(Long userId, String purpose) {
+        if (sessionApplicationRepository.countByUserIdAndDeletedAtIsNull(userId) == 0
+                && !DEFAULT_PURPOSE.equals(purpose)) {
+            throw new SessionApplicationException(
+                    SessionErrorCode.FIRST_SESSION_APPLICATION_MUST_BE_DEFAULT
+            );
+        }
+
         if (DEFAULT_PURPOSE.equals(purpose)
                 && sessionApplicationRepository
                 .existsByUserIdAndPurposeAndDeletedAtIsNull(userId, DEFAULT_PURPOSE)) {

@@ -31,11 +31,6 @@ public interface SessionApplicationQueryService {
             Long applicationSubmissionId
     );
 
-    SessionApplicationDetailResponse getMySubmittedApplication(
-            Long userId,
-            Long applicationSubmissionId
-    );
-
     SessionApplicationDetailResponse getDefaultApplicationDetail(Long sessionApplicationId);
 
     SessionApplicationSearchResponse searchDefaultApplications(

@@ -12,13 +12,21 @@ import com.umc.bscene.domain.session.enums.AvailableActivity;
 import com.umc.bscene.domain.session.enums.Part;
 import com.umc.bscene.domain.session.enums.SkillLevel;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 @JsonPropertyOrder({
+        "modifiedAt", "profileImageUrl", "name", "defaultPart", "defaultSkillLevel", "defaultRegion",
         "purpose", "title", "oneLineIntro", "intro", "part", "skillLevel",
         "genre", "region", "availableActivities", "careers", "portfolioLinks"
 })
 public record MySessionApplicationDetailResponse(
+        LocalDateTime modifiedAt,
+        String profileImageUrl,
+        String name,
+        Part defaultPart,
+        SkillLevel defaultSkillLevel,
+        @SessionRegionFormat Region defaultRegion,
         String purpose,
         String title,
         String oneLineIntro,
@@ -31,8 +39,23 @@ public record MySessionApplicationDetailResponse(
         List<CareerResponse> careers,
         List<PortfolioLinkResponse> portfolioLinks
 ) {
-    public static MySessionApplicationDetailResponse from(SessionApplication application) {
+    public static MySessionApplicationDetailResponse of(
+            SessionApplication application,
+            String profileImageUrl,
+            String name,
+            SessionApplication defaultApplication
+    ) {
+        boolean modified = application.getUpdatedAt() != null
+                && application.getCreatedAt() != null
+                && application.getUpdatedAt().isAfter(application.getCreatedAt());
+
         return new MySessionApplicationDetailResponse(
+                modified ? application.getUpdatedAt() : null,
+                profileImageUrl,
+                name,
+                defaultApplication == null ? null : defaultApplication.getPart(),
+                defaultApplication == null ? null : defaultApplication.getSkillLevel(),
+                defaultApplication == null ? null : defaultApplication.getRegion(),
                 application.getPurpose(), application.getTitle(),
                 application.getOneLineIntro(), application.getIntro(),
                 application.getPart(), application.getSkillLevel(),

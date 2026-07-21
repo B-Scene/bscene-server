@@ -55,13 +55,29 @@ public class SessionApplicationQueryServiceImpl implements SessionApplicationQue
             Long userId,
             Long sessionApplicationId
     ) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new BaseException(GeneralErrorCode.UNAUTHORIZED_ERROR));
         SessionApplication application = sessionApplicationRepository
                 .findByIdAndUserIdWithPortfolioLinks(sessionApplicationId, userId)
                 .orElseThrow(() -> new SessionApplicationException(
                         SessionErrorCode.SESSION_APPLICATION_NOT_FOUND
                 ));
+        SessionBasicProfile sessionProfile = sessionBasicProfileRepository
+                .findByUser_Id(userId)
+                .orElse(null);
+        SessionApplication defaultApplication = sessionApplicationRepository
+                .findFirstByUserIdAndPurposeAndDeletedAtIsNullOrderBySessionApplicationIdDesc(
+                        userId,
+                        DEFAULT_PURPOSE
+                )
+                .orElse(null);
 
-        return MySessionApplicationDetailResponse.from(application);
+        return MySessionApplicationDetailResponse.of(
+                application,
+                sessionProfile == null ? null : sessionProfile.getProfileImageUrl(),
+                user.getName(),
+                defaultApplication
+        );
     }
 
     @Override
@@ -161,31 +177,6 @@ public class SessionApplicationQueryServiceImpl implements SessionApplicationQue
                 profile == null ? null : profile.getProfileImageUrl()
         );
         return SubmittedApplicationDetailResponse.of(submission, detail);
-    }
-
-    @Override
-    public SessionApplicationDetailResponse getMySubmittedApplication(
-            Long userId,
-            Long applicationSubmissionId
-    ) {
-        SessionApplicationSubmission submission = submissionRepository
-                .findMySubmissionWithApplication(applicationSubmissionId, userId)
-                .orElseThrow(() -> new SessionApplicationException(
-                        SessionErrorCode.APPLICATION_SUBMISSION_NOT_FOUND
-                ));
-        SessionApplication application = submission.getSessionApplication();
-        SessionBasicProfile profile = sessionBasicProfileRepository
-                .findByUser_Id(userId)
-                .orElse(null);
-        String userName = userRepository.findById(userId)
-                .map(User::getName)
-                .orElse(application.getNickname());
-
-        return SessionApplicationDetailResponse.from(
-                application,
-                userName,
-                profile == null ? null : profile.getProfileImageUrl()
-        );
     }
 
     @Override

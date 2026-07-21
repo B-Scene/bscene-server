@@ -70,6 +70,11 @@ public enum SessionErrorCode implements BaseResponseCode {
             "DEFAULT_SESSION_APPLICATION_ALREADY_EXISTS",
             "기본 지원서는 하나만 생성할 수 있습니다."
     ),
+    FIRST_SESSION_APPLICATION_MUST_BE_DEFAULT(
+            HttpStatus.BAD_REQUEST.value(),
+            "FIRST_SESSION_APPLICATION_MUST_BE_DEFAULT",
+            "첫 지원서는 기본 지원서로 생성해야 합니다."
+    ),
     SESSION_APPLICATION_ALREADY_SUBMITTED(
             HttpStatus.CONFLICT.value(),
             "SESSION_APPLICATION_ALREADY_SUBMITTED",

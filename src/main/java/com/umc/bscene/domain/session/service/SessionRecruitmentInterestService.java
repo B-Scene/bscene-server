@@ -9,8 +9,6 @@ import com.umc.bscene.domain.session.enums.code.SessionErrorCode;
 import com.umc.bscene.domain.session.exception.SessionException;
 import com.umc.bscene.domain.session.repository.SessionRecruitmentInterestRepository;
 import com.umc.bscene.domain.session.repository.SessionRecruitmentRepository;
-import com.umc.bscene.domain.session.repository.SessionApplicationSubmissionRepository;
-import com.umc.bscene.domain.session.entity.SessionApplicationSubmission;
 import com.umc.bscene.domain.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -19,9 +17,6 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.data.domain.PageRequest;
 
 import java.util.List;
-import java.util.Map;
-import java.util.function.Function;
-import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -31,7 +26,6 @@ public class SessionRecruitmentInterestService {
     private final SessionRecruitmentInterestRepository interestRepository;
     private final SessionRecruitmentRepository recruitmentRepository;
     private final UserRepository userRepository;
-    private final SessionApplicationSubmissionRepository submissionRepository;
 
     public InterestedRecruitmentListResponse getMyInterests(
             Long userId,
@@ -48,33 +42,8 @@ public class SessionRecruitmentInterestService {
         List<SessionRecruitmentInterest> sliced = hasNext
                 ? interests.subList(0, pageSize)
                 : interests;
-        List<Long> recruitmentIds = sliced.stream()
-                .map(interest -> interest.getSessionRecruitment().getSessionRecruitmentId())
-                .toList();
-        Map<Long, SessionApplicationSubmission> submissionByRecruitment = recruitmentIds.isEmpty()
-                ? Map.of()
-                : submissionRepository
-                        .findActiveSubmissionsForRecruitments(userId, recruitmentIds)
-                        .stream()
-                        .collect(Collectors.toMap(
-                                submission -> submission.getSessionRecruitment()
-                                        .getSessionRecruitmentId(),
-                                Function.identity(),
-                                (latest, ignored) -> latest
-                        ));
         List<InterestedRecruitmentItemResponse> content = sliced.stream()
-                .map(interest -> {
-                    Long recruitmentId = interest.getSessionRecruitment()
-                            .getSessionRecruitmentId();
-                    SessionApplicationSubmission submission = submissionByRecruitment
-                            .get(recruitmentId);
-                    return InterestedRecruitmentItemResponse.of(
-                            interest,
-                            submission == null
-                                    ? null
-                                    : submission.getSessionApplication().getTitle()
-                    );
-                })
+                .map(InterestedRecruitmentItemResponse::from)
                 .toList();
         Long nextCursor = hasNext && !sliced.isEmpty()
                 ? sliced.get(sliced.size() - 1).getSessionRecruitmentInterestId()

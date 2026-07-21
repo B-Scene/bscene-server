@@ -119,11 +119,6 @@ public enum SessionSuccessCode implements BaseResponseCode {
             "SUBMITTED_APPLICATION_DETAIL_SUCCESS",
             "제출된 지원서 조회에 성공했습니다."
     ),
-    MY_SUBMITTED_APPLICATION_DETAIL_SUCCESS(
-            HttpStatus.OK.value(),
-            "MY_SUBMITTED_APPLICATION_DETAIL_SUCCESS",
-            "내가 제출한 지원서 조회에 성공했습니다."
-    ),
     SESSION_RECRUITMENT_INTEREST_LIST_SUCCESS(
             HttpStatus.OK.value(),
             "SESSION_RECRUITMENT_INTEREST_LIST_SUCCESS",
