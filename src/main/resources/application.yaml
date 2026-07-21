@@ -116,3 +116,19 @@ notification:
     credentials-base64: ${FCM_CREDENTIALS_BASE64:}
   terms:
     live-id: ${NOTIFICATION_TERMS_LIVE_ID:4}
+  # 로그인 실패 시: 프론트 로그인 페이지로 리다이렉트 (?error=코드) → 프론트가 토스트 등으로 안내
+  front-failure-uri: ${FRONT_ORIGIN:http://localhost:5173}/login
+
+# spring actuator
+management:
+  server:
+    # 서비스 포트와 분리
+    port: 8081
+  endpoints:
+    web:
+      exposure:
+        include: health, prometheus
+  metrics:
+    distribution:
+      percentiles-histogram:
+        http.server.requests: true

@@ -1,8 +1,15 @@
+x-logging: &default-logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "3"
+
 services:
 
   spring:
     image: ${BACKEND_IMAGE}
     container_name: spring
+    logging: *default-logging
     restart: always
     env_file: ./.env
     environment:
@@ -12,6 +19,8 @@ services:
     volumes:
       - recordings:/recordings  # mediamtx 녹화본 S3 업로드용 공유 볼륨
       - ./certs/ca.crt:/app/config/certs/es-ca.crt:ro  # ES TLS 신뢰용 CA 공개 인증서 (개인키 아님)
+    ports:
+      - "8081:8081"
     depends_on:
       - redis
       - elasticsearch  # 기동 순서만 보장 (ES 장애 시에도 spring은 뜨고 검색만 503)
@@ -52,6 +61,7 @@ services:
   redis:
     image: redis:7.4-alpine
     container_name: redis
+    logging: *default-logging
     restart: always
     environment:
       - TZ=Asia/Seoul
@@ -85,6 +95,7 @@ services:
   nginx:
     image: nginx:stable
     container_name: nginx
+    logging: *default-logging
     restart: always
     ports:
       - "80:80"
@@ -134,6 +145,37 @@ services:
           memory: 64M
     networks:
       - bscene
+  node-exporter:
+    image: prom/node-exporter:v1.9.1
+    container_name: node-exporter
+    logging: *default-logging
+    restart: always
+    pid: host
+    ports:
+      - "9100:9100"
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/rootfs:ro
+    command:
+      - "--path.procfs=/host/proc"
+      - "--path.sysfs=/host/sys"
+      - "--path.rootfs=/rootfs"
+      - "--collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc)($$|/)"
+
+  promtail:
+    image: grafana/promtail:3.4.1
+    container_name: promtail
+    logging: *default-logging
+    restart: always
+    environment:
+      - LOKI_URL=${LOKI_URL}
+    volumes:
+      - ./promtail/promtail-config.yml:/etc/promtail/config.yml:ro
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - promtail-positions:/positions
+    command: -config.file=/etc/promtail/config.yml -config.expand-env=true
 
 networks:
   bscene:
@@ -143,3 +185,4 @@ volumes:
   redis-data:
   recordings:
   es-data:
+  promtail-positions:

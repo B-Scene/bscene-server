@@ -33,5 +33,8 @@ public enum PermitAllUri {
     // 검색 색인 관리용 내부 API
     INTERNAL_SEARCH("/internal/search/**"),;
 
+    SPRING_ACTUATOR("/actuator/**"),
+    ;
+
     private final String uri;
 }

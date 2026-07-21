@@ -55,6 +55,10 @@ dependencies {
 	// AWS S3 (presigned url)
 	implementation platform('software.amazon.awssdk:bom:2.29.52')
 	implementation 'software.amazon.awssdk:s3'
+  
+	// api response time monitoring
+	implementation 'org.springframework.boot:spring-boot-starter-actuator'
+	runtimeOnly 'io.micrometer:micrometer-registry-prometheus'
 
 	// Test Only
 	testRuntimeOnly 'com.h2database:h2'
