@@ -14,6 +14,16 @@ public class UserAdapter implements AuthPort {
     private final OauthAccountRepository oauthAccountRepository;
 
     @Override
+    public boolean hasLocalCredential(Long userId) {
+        return localCredentialRepository.countByUser_Id(userId) >= 1;
+    }
+
+    @Override
+    public boolean hasOauthAccount(Long userId) {
+        return oauthAccountRepository.countByUser_Id(userId) >= 1;
+    }
+
+    @Override
     public String getEmailToLocalCredential(Long userId) {
         return localCredentialRepository.findByUser_Id(userId)
                 .orElseThrow(() -> new AuthException(AuthErrorCode.MEMBER_NOT_FOUND))
