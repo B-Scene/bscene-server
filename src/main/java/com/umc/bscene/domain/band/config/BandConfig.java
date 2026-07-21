@@ -31,11 +31,4 @@ public class BandConfig {
     public SessionAdapter sessionBandMemberAdapter(BandMemberRepository bandMemberRepository) {
         return new SessionAdapter(bandMemberRepository);
     }
-
-    // TODO : stream 도메인에 실제 어댑터(밴드의 OPEN 라이브 조회) 구현 후 이 스텁 빈 제거
-    // 그 전까지 밴드 상세는 항상 라이브 중 아님(isLive=false)으로 응답
-    @Bean
-    public StreamPort bandStreamPortStub() {
-        return bandId -> Optional.empty();
-    }
 }
