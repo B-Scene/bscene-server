@@ -15,6 +15,7 @@ import com.umc.bscene.domain.chat.exception.ChatException;
 import com.umc.bscene.domain.chat.repository.ChatRoomRepository;
 import com.umc.bscene.domain.chat.response.code.ChatErrorCode;
 import com.umc.bscene.domain.session.entity.SessionApplication;
+import com.umc.bscene.domain.session.entity.SessionApplicationSubmission;
 import com.umc.bscene.domain.session.entity.SessionRecruitment;
 import com.umc.bscene.domain.session.repository.SessionApplicationRepository;
 import com.umc.bscene.domain.session.repository.SessionRecruitmentRepository;
@@ -246,6 +247,9 @@ public class ChatRoomService {
     }
 
     private ChatRoomCreateResponse createForRecruitment(Long senderId, ChatRoomCreateRequest request) {
+        if (request.applicationSubmissionId() != null) {
+            return createForSubmittedApplication(senderId, request);
+        }
         if (request.sessionRecruitmentId() == null || request.sessionApplicationId() != null) {
             throw new ChatException(ChatErrorCode.INVALID_CHAT_CONTEXT);
         }
@@ -261,7 +265,7 @@ public class ChatRoomService {
                         senderId, recipient.getId(), recruitment.getSessionRecruitmentId())
                 .map(room -> {
                     room.rejoin(senderId);
-                    return ChatRoomCreateResponse.recruitment(room, false);
+                    return ChatRoomCreateResponse.recruitment(room, senderId, false);
                 })
                 .orElseGet(() -> ChatRoomCreateResponse.recruitment(
                         chatRoomRepository.save(ChatRoom.builder()
@@ -269,11 +273,57 @@ public class ChatRoomService {
                                 .sender(userRepository.getReferenceById(senderId))
                                 .recipient(recipient)
                                 .sessionRecruitment(recruitment)
-                                .build()), true));
+                                .build()), senderId, true));
+    }
+
+    private ChatRoomCreateResponse createForSubmittedApplication(
+            Long viewerId, ChatRoomCreateRequest request) {
+        if (request.sessionRecruitmentId() != null || request.sessionApplicationId() != null) {
+            throw new ChatException(ChatErrorCode.INVALID_CHAT_CONTEXT);
+        }
+        SessionApplicationSubmission submission = submissionRepository
+                .findForRecruitmentMember(request.applicationSubmissionId(), viewerId)
+                .orElseThrow(() -> new ChatException(ChatErrorCode.CHAT_TARGET_NOT_FOUND));
+        Long bandOwnerId = submission.getSessionRecruitment()
+                .getBand()
+                .getOwner()
+                .getId();
+        if (!bandOwnerId.equals(viewerId)) {
+            throw new ChatException(ChatErrorCode.CHAT_ROOM_ACCESS_DENIED);
+        }
+        if (submission.getStatus() == ApplicationStatus.REJECTED) {
+            throw new ChatException(ChatErrorCode.REJECTED_APPLICATION_CHAT_NOT_ALLOWED);
+        }
+
+        SessionRecruitment recruitment = recruitmentRepository
+                .findBySessionRecruitmentIdAndDeletedAtIsNull(
+                        submission.getSessionRecruitment().getSessionRecruitmentId())
+                .orElseThrow(() -> new ChatException(ChatErrorCode.CHAT_TARGET_NOT_FOUND));
+        Long applicantId = submission.getSessionApplication().getUserId();
+        validateNotSelf(viewerId, applicantId);
+        User applicant = userRepository.findById(applicantId)
+                .orElseThrow(() -> new ChatException(ChatErrorCode.CHAT_TARGET_NOT_FOUND));
+
+        return chatRoomRepository
+                .findBySender_IdAndRecipient_IdAndSessionRecruitment_SessionRecruitmentId(
+                        applicantId, viewerId, recruitment.getSessionRecruitmentId())
+                .map(room -> {
+                    room.rejoin(viewerId);
+                    return ChatRoomCreateResponse.recruitment(room, viewerId, false);
+                })
+                .orElseGet(() -> ChatRoomCreateResponse.recruitment(
+                        chatRoomRepository.save(ChatRoom.builder()
+                                .contextType(ChatContextType.RECRUITMENT)
+                                .sender(applicant)
+                                .recipient(userRepository.getReferenceById(viewerId))
+                                .sessionRecruitment(recruitment)
+                                .build()), viewerId, true));
     }
 
     private ChatRoomCreateResponse createForSessionSearch(Long senderId, ChatRoomCreateRequest request) {
-        if (request.sessionApplicationId() == null || request.sessionRecruitmentId() != null) {
+        if (request.sessionApplicationId() == null
+                || request.sessionRecruitmentId() != null
+                || request.applicationSubmissionId() != null) {
             throw new ChatException(ChatErrorCode.INVALID_CHAT_CONTEXT);
         }
         SessionApplication myDefault = applicationRepository

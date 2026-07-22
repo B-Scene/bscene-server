@@ -162,7 +162,13 @@ public class SessionApplicationQueryServiceImpl implements SessionApplicationQue
                 .orElseThrow(() -> new SessionApplicationException(
                         SessionErrorCode.APPLICATION_SUBMISSION_NOT_FOUND
                 ));
-        submission.markChecked();
+        Long bandOwnerId = submission.getSessionRecruitment()
+                .getBand()
+                .getOwner()
+                .getId();
+        if (bandOwnerId.equals(viewerId)) {
+            submission.markChecked();
+        }
 
         SessionApplication application = submission.getSessionApplication();
         SessionBasicProfile profile = sessionBasicProfileRepository
