@@ -12,7 +12,7 @@ import com.umc.bscene.domain.auth.enums.onboarding.Genre;
 import com.umc.bscene.domain.auth.enums.onboarding.Region;
 import com.umc.bscene.domain.session.enums.SkillLevel;
 import com.umc.bscene.domain.session.enums.SessionRecruitmentSortType;
-import com.umc.bscene.domain.session.enums.code.SessionErrorCode;
+import com.umc.bscene.domain.session.enums.code.error.SessionErrorCode;
 import com.umc.bscene.domain.session.exception.SessionException;
 import com.umc.bscene.domain.session.repository.SessionRecruitmentRepository;
 import com.umc.bscene.domain.session.repository.SessionRecruitmentInterestRepository;
@@ -189,8 +189,19 @@ public class SessionRecruitmentQueryServiceImpl implements SessionRecruitmentQue
         List<SessionRecruitmentView> sliced = hasNext
                 ? views.subList(0, pageSize)
                 : views;
+        List<Long> recruitmentIds = sliced.stream()
+                .map(view -> view.getSessionRecruitment().getSessionRecruitmentId())
+                .toList();
+        Set<Long> interestedIds = recruitmentIds.isEmpty()
+                ? Set.of()
+                : interestRepository.findInterestedRecruitmentIds(userId, recruitmentIds);
         List<RecentRecruitmentItemResponse> content = sliced.stream()
-                .map(RecentRecruitmentItemResponse::from)
+                .map(view -> RecentRecruitmentItemResponse.from(
+                        view,
+                        interestedIds.contains(
+                                view.getSessionRecruitment().getSessionRecruitmentId()
+                        )
+                ))
                 .toList();
         Long nextCursor = hasNext && !sliced.isEmpty()
                 ? sliced.get(sliced.size() - 1).getSessionRecruitmentViewId()

@@ -20,13 +20,13 @@ public class SessionApplicationCareer {
     @JoinColumn(name = "session_application_id", nullable = false)
     private SessionApplication sessionApplication;
 
-    @Column(name = "name", nullable = false, length = 100)
+    @Column(name = "name", nullable = false, length = 50)
     private String name;
 
-    @Column(name = "period", nullable = false, length = 100)
+    @Column(name = "period", nullable = false, length = 50)
     private String period;
 
-    @Column(name = "description", length = 500)
+    @Column(name = "description", length = 50)
     private String description;
 
     @Builder

@@ -4,6 +4,7 @@ import com.umc.bscene.domain.session.dto.application.request.MySessionApplicatio
 import com.umc.bscene.domain.session.dto.application.request.MySessionApplicationCreateRequest;
 import com.umc.bscene.domain.session.dto.application.request.SessionApplicationVisibilityRequest;
 import com.umc.bscene.domain.session.dto.application.response.MySessionApplicationResponse;
+import com.umc.bscene.domain.session.dto.application.response.MySessionApplicationDetailResponse;
 import com.umc.bscene.domain.session.dto.application.response.SessionApplicationSearchResponse;
 import com.umc.bscene.domain.session.dto.application.response.SessionApplicationDetailResponse;
 import com.umc.bscene.domain.session.dto.application.response.MySessionApplicationSummaryResponse;
@@ -13,7 +14,7 @@ import com.umc.bscene.domain.session.converter.SessionGenreJsonDeserializer;
 import com.umc.bscene.domain.session.converter.SessionRegionJsonDeserializer;
 import com.umc.bscene.domain.session.enums.Part;
 import com.umc.bscene.domain.session.enums.SkillLevel;
-import com.umc.bscene.domain.session.enums.code.SessionSuccessCode;
+import com.umc.bscene.domain.session.enums.code.success.SessionSuccessCode;
 import com.umc.bscene.domain.session.service.SessionApplicationCommandService;
 import com.umc.bscene.domain.session.service.SessionApplicationQueryService;
 import com.umc.bscene.global.response.SuccessResponse;
@@ -32,8 +33,6 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.http.HttpStatus;
-
-import java.util.List;
 
 @RestController
 @RequiredArgsConstructor
@@ -72,23 +71,6 @@ public class SessionApplicationController {
         return SuccessResponse.of(
                 response,
                 SessionSuccessCode.MY_APPLICATION_SUBMISSION_LIST_SUCCESS
-        );
-    }
-
-    @GetMapping("/submissions/{applicationSubmissionId}/application")
-    public SuccessResponse<SessionApplicationDetailResponse> getMySubmittedApplication(
-            @AuthenticationPrincipal AuthMember authMember,
-            @PathVariable Long applicationSubmissionId
-    ) {
-        SessionApplicationDetailResponse response = sessionApplicationQueryService
-                .getMySubmittedApplication(
-                        authMember.getUser().getId(),
-                        applicationSubmissionId
-                );
-
-        return SuccessResponse.of(
-                response,
-                SessionSuccessCode.MY_SUBMITTED_APPLICATION_DETAIL_SUCCESS
         );
     }
 
@@ -150,25 +132,20 @@ public class SessionApplicationController {
         );
     }
 
-    @GetMapping
-    public SuccessResponse<List<MySessionApplicationResponse>> getMySessionApplications(
-            @AuthenticationPrincipal AuthMember authMember
+    @GetMapping("/my/{sessionApplicationId}")
+    public SuccessResponse<MySessionApplicationDetailResponse> getMySessionApplicationDetail(
+            @AuthenticationPrincipal AuthMember authMember,
+            @PathVariable Long sessionApplicationId
     ) {
-        Long userId = authMember.getUser().getId();
-
-        List<MySessionApplicationResponse> response =
-                sessionApplicationQueryService.getMySessionApplications(userId);
-
-        if (response.isEmpty()) {
-            return SuccessResponse.of(
-                    response,
-                    SessionSuccessCode.MY_SESSION_APPLICATION_EMPTY
-            );
-        }
+        MySessionApplicationDetailResponse response = sessionApplicationQueryService
+                .getMySessionApplicationDetail(
+                        authMember.getUser().getId(),
+                        sessionApplicationId
+                );
 
         return SuccessResponse.of(
                 response,
-                SessionSuccessCode.MY_SESSION_APPLICATION_GET_SUCCESS
+                SessionSuccessCode.MY_SESSION_APPLICATION_DETAIL_SUCCESS
         );
     }
 

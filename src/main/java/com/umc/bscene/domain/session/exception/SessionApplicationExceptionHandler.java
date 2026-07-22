@@ -6,7 +6,7 @@ import com.umc.bscene.domain.session.dto.application.request.MySessionApplicatio
 import com.umc.bscene.domain.session.dto.application.request.SessionApplicationVisibilityRequest;
 import com.umc.bscene.domain.session.dto.profile.request.SessionBasicProfileUpdateRequest;
 import com.umc.bscene.domain.session.controller.SessionRecruitmentController;
-import com.umc.bscene.domain.session.enums.code.SessionErrorCode;
+import com.umc.bscene.domain.session.enums.code.error.SessionErrorCode;
 import com.umc.bscene.global.response.ErrorResponse;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;

@@ -2,7 +2,7 @@ package com.umc.bscene.domain.session.controller;
 
 import com.umc.bscene.domain.session.dto.profile.request.SessionBasicProfileUpdateRequest;
 import com.umc.bscene.domain.session.dto.profile.response.SessionBasicProfileResponse;
-import com.umc.bscene.domain.session.enums.code.SessionSuccessCode;
+import com.umc.bscene.domain.session.enums.code.success.SessionSuccessCode;
 import com.umc.bscene.domain.session.service.SessionBasicProfileService;
 import com.umc.bscene.global.response.SuccessResponse;
 import com.umc.bscene.global.security.entity.AuthMember;

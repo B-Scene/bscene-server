@@ -9,7 +9,7 @@ import com.umc.bscene.domain.chat.dto.response.ChatWebSocketPushFrame;
 import com.umc.bscene.domain.chat.dto.response.ChatWebSocketSystemEventData;
 import com.umc.bscene.domain.chat.dto.response.LiveChatMessageData;
 import com.umc.bscene.domain.chat.exception.ChatException;
-import com.umc.bscene.domain.chat.response.code.LiveChatWebSocketErrorCode;
+import com.umc.bscene.domain.chat.enums.code.error.ChatErrorCode;
 import com.umc.bscene.domain.user.entity.User;
 import com.umc.bscene.domain.user.repository.UserRepository;
 import com.umc.bscene.domain.user.repository.UserBlockRepository;
@@ -73,33 +73,33 @@ public class LiveChatWebSocketHandler extends TextWebSocketHandler implements Su
             } else if ("live-chat.send".equals(frame.type())) {
                 handleSend(session, frame);
             } else {
-                throw new ChatException(LiveChatWebSocketErrorCode.UNSUPPORTED_TYPE);
+                throw new ChatException(ChatErrorCode.LIVE_UNSUPPORTED_TYPE);
             }
         } catch (ChatException exception) {
-            sendError(session, clientMsgId, (LiveChatWebSocketErrorCode) exception.getBaseResponseCode());
+            sendError(session, clientMsgId, (ChatErrorCode) exception.getBaseResponseCode());
         } catch (JsonProcessingException | IllegalArgumentException exception) {
-            sendError(session, clientMsgId, LiveChatWebSocketErrorCode.INVALID_FRAME);
+            sendError(session, clientMsgId, ChatErrorCode.LIVE_INVALID_FRAME);
         } catch (Exception exception) {
             log.error("Live chat handling failed: sessionId={}", session.getId(), exception);
-            sendError(session, clientMsgId, LiveChatWebSocketErrorCode.INTERNAL_ERROR);
+            sendError(session, clientMsgId, ChatErrorCode.LIVE_INTERNAL_ERROR);
         }
     }
 
     private void handleSend(WebSocketSession session, ChatWebSocketFrame frame) throws Exception {
         if (!isUuid(frame.clientMsgId()) || frame.data() == null) {
-            throw new ChatException(LiveChatWebSocketErrorCode.INVALID_FRAME);
+            throw new ChatException(ChatErrorCode.LIVE_INVALID_FRAME);
         }
         LiveChatMessageSendRequest request = objectMapper.treeToValue(
                 frame.data(), LiveChatMessageSendRequest.class);
         String content = request.content() == null ? "" : request.content().trim();
-        if (content.isEmpty()) throw new ChatException(LiveChatWebSocketErrorCode.EMPTY_CONTENT);
+        if (content.isEmpty()) throw new ChatException(ChatErrorCode.LIVE_EMPTY_CONTENT);
         if (content.length() > MAX_CONTENT_LENGTH) {
-            throw new ChatException(LiveChatWebSocketErrorCode.CONTENT_TOO_LONG);
+            throw new ChatException(ChatErrorCode.LIVE_CONTENT_TOO_LONG);
         }
 
         Long userId = userId(session);
         User user = userRepository.findById(userId)
-                .orElseThrow(() -> new ChatException(LiveChatWebSocketErrorCode.INVALID_FRAME));
+                .orElseThrow(() -> new ChatException(ChatErrorCode.LIVE_INVALID_FRAME));
         String senderName = fanProfileRepository.findByUser(user)
                 .map(FanProfile::getNickname)
                 .orElse(user.getName());
@@ -118,7 +118,7 @@ public class LiveChatWebSocketHandler extends TextWebSocketHandler implements Su
 
     private void handlePing(WebSocketSession session, ChatWebSocketFrame frame) throws Exception {
         if (frame.clientMsgId() != null || frame.data() == null || !frame.data().isObject()) {
-            throw new ChatException(LiveChatWebSocketErrorCode.INVALID_FRAME);
+            throw new ChatException(ChatErrorCode.LIVE_INVALID_FRAME);
         }
         ChatWebSocketPushFrame pong = new ChatWebSocketPushFrame(
                 "pong", null, objectMapper.createObjectNode(), null, now());
@@ -127,7 +127,7 @@ public class LiveChatWebSocketHandler extends TextWebSocketHandler implements Su
     }
 
     private void sendError(WebSocketSession session, String clientMsgId,
-                           LiveChatWebSocketErrorCode code) {
+                           ChatErrorCode code) {
         ChatWebSocketPushFrame frame = new ChatWebSocketPushFrame(
                 "system.error", null, new ChatWebSocketErrorData(code.getCode(), code.getMessage()),
                 clientMsgId, now());

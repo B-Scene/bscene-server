@@ -9,7 +9,6 @@ import org.springframework.data.repository.query.Param;
 
 import java.util.List;
 import java.util.Optional;
-import java.util.Collection;
 
 public interface SessionApplicationSubmissionRepository
         extends JpaRepository<SessionApplicationSubmission, Long> {
@@ -53,19 +52,6 @@ public interface SessionApplicationSubmissionRepository
     @Query("""
         SELECT DISTINCT submission
         FROM SessionApplicationSubmission submission
-        JOIN FETCH submission.sessionApplication application
-        LEFT JOIN FETCH application.portfolioLinks
-        WHERE submission.applicationSubmissionId = :submissionId
-          AND application.userId = :userId
-    """)
-    Optional<SessionApplicationSubmission> findMySubmissionWithApplication(
-            @Param("submissionId") Long submissionId,
-            @Param("userId") Long userId
-    );
-
-    @Query("""
-        SELECT DISTINCT submission
-        FROM SessionApplicationSubmission submission
         JOIN FETCH submission.sessionRecruitment recruitment
         JOIN FETCH recruitment.band band
         JOIN FETCH submission.sessionApplication application
@@ -85,21 +71,6 @@ public interface SessionApplicationSubmissionRepository
     Optional<SessionApplicationSubmission> findForRecruitmentMember(
             @Param("submissionId") Long submissionId,
             @Param("viewerId") Long viewerId
-    );
-
-    @Query("""
-        SELECT submission
-        FROM SessionApplicationSubmission submission
-        JOIN FETCH submission.sessionRecruitment recruitment
-        JOIN FETCH submission.sessionApplication application
-        WHERE application.userId = :userId
-          AND recruitment.sessionRecruitmentId IN :recruitmentIds
-          AND submission.status <> com.umc.bscene.domain.session.enums.ApplicationStatus.CANCELED
-        ORDER BY submission.applicationSubmissionId DESC
-    """)
-    List<SessionApplicationSubmission> findActiveSubmissionsForRecruitments(
-            @Param("userId") Long userId,
-            @Param("recruitmentIds") Collection<Long> recruitmentIds
     );
 
     Optional<SessionApplicationSubmission>
