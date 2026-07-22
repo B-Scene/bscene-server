@@ -20,8 +20,10 @@ import com.umc.bscene.domain.user.port.PerformancePort;
 import com.umc.bscene.domain.user.repository.FanProfileRepository;
 import com.umc.bscene.domain.user.repository.UserGenresRepository;
 import com.umc.bscene.domain.user.repository.UserRegionsRepository;
+import com.umc.bscene.domain.user.repository.UserRepository;
 import com.umc.bscene.domain.user.response.code.UserErrorCode;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -29,8 +31,8 @@ import java.time.LocalDate;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
@@ -38,6 +40,7 @@ public class MyPageService {
 
     private static final int MAX_PAGE_SIZE = 30;   // 목록 조회(참여 기록·관심 공연) 페이지 크기 상한
 
+    private final UserRepository userRepository;
     private final FanProfileRepository fanProfileRepository;
     private final UserGenresRepository userGenresRepository;
     private final UserRegionsRepository userRegionsRepository;
@@ -204,15 +207,23 @@ public class MyPageService {
     }
 
     // 모드 변경 요청
+    @Transactional
     public void updateMode(User user, UserModeUpdateRequest request) {
 
+        User found = userRepository.findById(user.getId())
+                .orElseThrow(() -> new UserException(UserErrorCode.USER_NOT_FOUND));
+
         if (request.type().equals(UserMode.BAND)) {
+
             if(user.getCurrentMode().equals(UserMode.FAN)) {
-                user.changeMode(request.type());
+                found.changeMode(request.type());
             }
+
             bandPort.changeProfileByProfileId(user.getId(), request.profileId());
         } else if (request.type().equals(UserMode.FAN) && user.getCurrentMode().equals(UserMode.BAND)) {
-            user.changeMode(request.type());
+
+            bandPort.deactivateCurrentActiveProfile(user.getId());
+            found.changeMode(request.type());
 
         }
 

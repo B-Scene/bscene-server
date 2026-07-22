@@ -11,4 +11,6 @@ public interface BandPort {
     List<MyBandProfile> getAssociatedBandProfiles(Long userId);
 
     void changeProfileByProfileId(Long userId, Long profileId);
+
+    void deactivateCurrentActiveProfile(Long userId);
 }

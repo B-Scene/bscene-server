@@ -14,8 +14,10 @@ import com.umc.bscene.domain.band.response.code.BandErrorCode;
 import com.umc.bscene.domain.user.dto.response.BandMemberResponse;
 import com.umc.bscene.domain.user.dto.response.MyBandProfile;
 import com.umc.bscene.domain.user.dto.response.MyProfileResponse;
+import com.umc.bscene.domain.user.entity.User;
 import com.umc.bscene.domain.user.port.BandPort;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
@@ -61,11 +63,17 @@ public class UserAdapter implements BandPort {
         BandMemberProfile profile = bandMemberProfileRepository.findByIdAndUser_Id(profileId, userId)
                 .orElseThrow(() -> new BandException(BandErrorCode.PROFILE_ACTIVATION_FORBIDDEN));
 
-        BandMemberProfile activated = bandMemberProfileRepository.findByUser_IdAndActiveTrue(userId)
-                .orElseThrow(() -> new BandException(BandErrorCode.BAND_MEMBER_PROFILE_NOT_FOUND));
+        bandMemberProfileRepository.findByUser_IdAndActiveTrue(userId)
+                .ifPresent(BandMemberProfile::deactivate);
 
-        activated.deactivate();
         profile.activate();
+    }
+
+    @Override
+    @Transactional
+    public void deactivateCurrentActiveProfile(Long userId) {
+        bandMemberProfileRepository.findByUser_IdAndActiveTrue(userId)
+                .ifPresent(BandMemberProfile::deactivate);
     }
 
     private BandMemberResponse buildBandMemberResponse(Band band, BandMemberProfile profile, boolean isMember) {
