@@ -8,7 +8,11 @@ public record MyBandProfile(
         Long bandMemberProfileId,
         String profileImageUrl,
         String bandName,
-        Genre genre,       // Genre enum에서 String 변환 필요
-        Region region,      // Region enum에서 String 변환 필요
+        String genre,       // Genre enum에서 String 변환 필요
+        String region,      // Region enum에서 String 변환 필요
         Boolean isActive
-){ }
+){
+    public MyBandProfile(Long bandId, Long bandMemberProfileId, String profileImageUrl, String bandName, Genre genre, Region region, Boolean isActive) {
+        this(bandId, bandMemberProfileId, profileImageUrl, bandName, genre.getName(), region.getName(), isActive);
+    }
+}
