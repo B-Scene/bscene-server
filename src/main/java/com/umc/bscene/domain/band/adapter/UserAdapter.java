@@ -16,6 +16,7 @@ import com.umc.bscene.domain.user.dto.response.MyBandProfile;
 import com.umc.bscene.domain.user.dto.response.MyProfileResponse;
 import com.umc.bscene.domain.user.port.BandPort;
 import lombok.RequiredArgsConstructor;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.Set;
@@ -51,6 +52,20 @@ public class UserAdapter implements BandPort {
     @Override
     public List<MyBandProfile> getAssociatedBandProfiles(Long userId) {
         return bandMemberRepository.getMyBandProfiles(userId, BandMemberStatus.ACCEPTED);
+    }
+
+    @Override
+    @Transactional
+    public void changeProfileByProfileId(Long userId, Long profileId) {
+
+        BandMemberProfile profile = bandMemberProfileRepository.findByIdAndUser_Id(profileId, userId)
+                .orElseThrow(() -> new BandException(BandErrorCode.PROFILE_ACTIVATION_FORBIDDEN));
+
+        BandMemberProfile activated = bandMemberProfileRepository.findByUser_IdAndActiveTrue(userId)
+                .orElseThrow(() -> new BandException(BandErrorCode.BAND_MEMBER_PROFILE_NOT_FOUND));
+
+        activated.deactivate();
+        profile.activate();
     }
 
     private BandMemberResponse buildBandMemberResponse(Band band, BandMemberProfile profile, boolean isMember) {

@@ -2,6 +2,7 @@ package com.umc.bscene.domain.user.service;
 
 import com.umc.bscene.domain.auth.enums.onboarding.Genre;
 import com.umc.bscene.domain.auth.enums.onboarding.Region;
+import com.umc.bscene.domain.user.dto.request.UserModeUpdateRequest;
 import com.umc.bscene.domain.user.dto.response.*;
 import com.umc.bscene.domain.user.dto.response.mypage.BandMyPageResponse;
 import com.umc.bscene.domain.user.dto.response.mypage.FanMyPageResponse;
@@ -200,5 +201,20 @@ public class MyPageService {
             response = new MyProfileResponse(bandProfiles, null);
         }
         return response;
+    }
+
+    // 모드 변경 요청
+    public void updateMode(User user, UserModeUpdateRequest request) {
+
+        if (request.type().equals(UserMode.BAND)) {
+            if(user.getCurrentMode().equals(UserMode.FAN)) {
+                user.changeMode(request.type());
+            }
+            bandPort.changeProfileByProfileId(user.getId(), request.profileId());
+        } else if (request.type().equals(UserMode.FAN) && user.getCurrentMode().equals(UserMode.BAND)) {
+            user.changeMode(request.type());
+
+        }
+
     }
 }

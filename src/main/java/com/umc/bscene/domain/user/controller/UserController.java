@@ -1,5 +1,6 @@
 package com.umc.bscene.domain.user.controller;
 
+import com.umc.bscene.domain.user.dto.request.UserModeUpdateRequest;
 import com.umc.bscene.domain.user.dto.response.MyProfileResponse;
 import com.umc.bscene.domain.user.dto.response.mypage.BandMyPageResponse;
 import com.umc.bscene.domain.user.dto.response.mypage.FanMyPageResponse;
@@ -15,14 +16,12 @@ import com.umc.bscene.domain.user.response.code.UserSuccessCode;
 import com.umc.bscene.domain.user.service.MyPageService;
 import com.umc.bscene.global.response.SuccessResponse;
 import com.umc.bscene.global.security.entity.AuthMember;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/users")
@@ -72,6 +71,19 @@ public class UserController {
         return ResponseEntity
                 .status(HttpStatus.OK)
                 .body(SuccessResponse.ok(response));
+    }
+
+    @PatchMapping("/me/mode")
+    public ResponseEntity<SuccessResponse<?>> updateUserMode(
+            @AuthenticationPrincipal AuthMember authMember,
+            @Valid @RequestBody UserModeUpdateRequest request
+    ) {
+
+        myPageService.updateMode(authMember.getUser(), request);
+
+        return ResponseEntity
+                .status(HttpStatus.OK)
+                .body(SuccessResponse.empty(null));
     }
 
     // 공연 참여 기록 조회 API (참여 완료 공연, 연도 필터, offset 무한스크롤)
