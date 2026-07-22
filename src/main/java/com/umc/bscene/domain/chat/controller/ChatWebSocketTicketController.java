@@ -1,7 +1,7 @@
 package com.umc.bscene.domain.chat.controller;
 
 import com.umc.bscene.domain.chat.dto.response.ChatWebSocketTicketResponse;
-import com.umc.bscene.domain.chat.response.code.ChatWebSocketSuccessCode;
+import com.umc.bscene.domain.chat.enums.code.success.ChatSuccessCode;
 import com.umc.bscene.domain.chat.service.ChatWebSocketTicketService;
 import com.umc.bscene.global.response.SuccessResponse;
 import com.umc.bscene.global.security.entity.AuthMember;
@@ -23,7 +23,7 @@ public class ChatWebSocketTicketController {
     ) {
         return SuccessResponse.of(
                 ticketService.issue(authMember.getUser().getId()),
-                ChatWebSocketSuccessCode.TICKET_ISSUE_SUCCESS
+                ChatSuccessCode.DM_TICKET_ISSUE_SUCCESS
         );
     }
 }

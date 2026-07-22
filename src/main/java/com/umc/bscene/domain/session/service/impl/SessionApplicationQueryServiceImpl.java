@@ -15,7 +15,7 @@ import com.umc.bscene.domain.session.enums.Part;
 import com.umc.bscene.domain.auth.enums.onboarding.Genre;
 import com.umc.bscene.domain.auth.enums.onboarding.Region;
 import com.umc.bscene.domain.session.enums.SkillLevel;
-import com.umc.bscene.domain.session.enums.code.SessionErrorCode;
+import com.umc.bscene.domain.session.enums.code.error.SessionErrorCode;
 import com.umc.bscene.domain.session.enums.ApplicationStatus;
 import com.umc.bscene.domain.session.exception.SessionApplicationException;
 import com.umc.bscene.domain.session.repository.SessionApplicationRepository;

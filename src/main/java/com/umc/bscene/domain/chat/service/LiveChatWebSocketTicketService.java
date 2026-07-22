@@ -2,7 +2,7 @@ package com.umc.bscene.domain.chat.service;
 
 import com.umc.bscene.domain.chat.dto.response.LiveChatWebSocketTicketResponse;
 import com.umc.bscene.domain.chat.exception.ChatException;
-import com.umc.bscene.domain.chat.response.code.LiveChatWebSocketErrorCode;
+import com.umc.bscene.domain.chat.enums.code.error.ChatErrorCode;
 import com.umc.bscene.domain.stream.enums.StreamStatus;
 import com.umc.bscene.domain.stream.repository.AudioStreamRepository;
 import org.springframework.data.redis.core.StringRedisTemplate;
@@ -33,7 +33,7 @@ public class LiveChatWebSocketTicketService {
 
     public LiveChatWebSocketTicketResponse issue(Long userId, Long liveId) {
         if (!audioStreamRepository.existsByIdAndStatus(liveId, StreamStatus.OPEN)) {
-            throw new ChatException(LiveChatWebSocketErrorCode.LIVE_NOT_OPEN);
+            throw new ChatException(ChatErrorCode.LIVE_NOT_OPEN);
         }
 
         String ticket = generateTicket();

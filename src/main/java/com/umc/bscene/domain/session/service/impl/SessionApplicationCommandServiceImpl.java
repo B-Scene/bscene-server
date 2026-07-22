@@ -14,7 +14,7 @@ import com.umc.bscene.domain.session.entity.SessionApplicationCareer;
 import com.umc.bscene.domain.session.entity.SessionRecruitment;
 import com.umc.bscene.domain.session.enums.ApplicationStatus;
 import com.umc.bscene.domain.session.event.SessionPortfolioPreviewRequestedEvent;
-import com.umc.bscene.domain.session.enums.code.SessionErrorCode;
+import com.umc.bscene.domain.session.enums.code.error.SessionErrorCode;
 import com.umc.bscene.domain.session.exception.SessionApplicationException;
 import com.umc.bscene.domain.session.port.BandMemberPort;
 import com.umc.bscene.domain.session.port.NotifyPort;

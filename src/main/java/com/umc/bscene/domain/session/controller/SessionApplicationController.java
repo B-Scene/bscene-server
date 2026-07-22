@@ -14,7 +14,7 @@ import com.umc.bscene.domain.session.converter.SessionGenreJsonDeserializer;
 import com.umc.bscene.domain.session.converter.SessionRegionJsonDeserializer;
 import com.umc.bscene.domain.session.enums.Part;
 import com.umc.bscene.domain.session.enums.SkillLevel;
-import com.umc.bscene.domain.session.enums.code.SessionSuccessCode;
+import com.umc.bscene.domain.session.enums.code.success.SessionSuccessCode;
 import com.umc.bscene.domain.session.service.SessionApplicationCommandService;
 import com.umc.bscene.domain.session.service.SessionApplicationQueryService;
 import com.umc.bscene.global.response.SuccessResponse;

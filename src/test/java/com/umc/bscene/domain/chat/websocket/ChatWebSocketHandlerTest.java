@@ -84,7 +84,7 @@ class ChatWebSocketHandlerTest {
 
         JsonNode frame = captureSentFrame();
         assertEquals("system.error", frame.get("type").asText());
-        assertEquals("DM_UNSUPPORTED_TYPE", frame.get("data").get("code").asText());
+        assertEquals("CHAT400_6", frame.get("data").get("code").asText());
     }
 
     @Test
@@ -147,7 +147,7 @@ class ChatWebSocketHandlerTest {
 
         JsonNode frame = captureSentFrame();
         assertEquals("system.error", frame.get("type").asText());
-        assertEquals("DM_INVALID_FRAME", frame.get("data").get("code").asText());
+        assertEquals("CHAT400_3", frame.get("data").get("code").asText());
         assertNull(frame.get("clientMsgId").textValue());
         verifyNoInteractions(chatMessageService);
     }
@@ -161,7 +161,7 @@ class ChatWebSocketHandlerTest {
 
         JsonNode frame = captureSentFrame();
         assertEquals("system.error", frame.get("type").asText());
-        assertEquals("DM_INVALID_FRAME", frame.get("data").get("code").asText());
+        assertEquals("CHAT400_3", frame.get("data").get("code").asText());
         assertEquals("invalid-uuid", frame.get("clientMsgId").asText());
         verifyNoInteractions(chatMessageService);
     }

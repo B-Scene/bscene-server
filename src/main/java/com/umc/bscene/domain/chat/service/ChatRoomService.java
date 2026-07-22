@@ -13,7 +13,7 @@ import com.umc.bscene.domain.chat.entity.ChatRoom;
 import com.umc.bscene.domain.chat.enums.ChatContextType;
 import com.umc.bscene.domain.chat.exception.ChatException;
 import com.umc.bscene.domain.chat.repository.ChatRoomRepository;
-import com.umc.bscene.domain.chat.response.code.ChatErrorCode;
+import com.umc.bscene.domain.chat.enums.code.error.ChatErrorCode;
 import com.umc.bscene.domain.session.entity.SessionApplication;
 import com.umc.bscene.domain.session.entity.SessionApplicationSubmission;
 import com.umc.bscene.domain.session.entity.SessionRecruitment;

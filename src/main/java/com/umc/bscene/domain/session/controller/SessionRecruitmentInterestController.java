@@ -1,7 +1,7 @@
 package com.umc.bscene.domain.session.controller;
 
 import com.umc.bscene.domain.session.dto.recruitment.response.SessionRecruitmentInterestResponse;
-import com.umc.bscene.domain.session.enums.code.SessionSuccessCode;
+import com.umc.bscene.domain.session.enums.code.success.SessionSuccessCode;
 import com.umc.bscene.domain.session.service.SessionRecruitmentInterestService;
 import com.umc.bscene.global.response.SuccessResponse;
 import com.umc.bscene.global.security.entity.AuthMember;
