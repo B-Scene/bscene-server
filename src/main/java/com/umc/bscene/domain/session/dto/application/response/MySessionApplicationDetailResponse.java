@@ -10,6 +10,7 @@ import com.umc.bscene.domain.session.entity.SessionApplicationCareer;
 import com.umc.bscene.domain.session.entity.SessionApplicationLink;
 import com.umc.bscene.domain.session.enums.AvailableActivity;
 import com.umc.bscene.domain.session.enums.Part;
+import com.umc.bscene.domain.session.enums.PortfolioMediaType;
 import com.umc.bscene.domain.session.enums.SkillLevel;
 
 import java.time.LocalDateTime;
@@ -78,10 +79,17 @@ public record MySessionApplicationDetailResponse(
         }
     }
 
-    @JsonPropertyOrder("url")
-    public record PortfolioLinkResponse(String url) {
+    @JsonPropertyOrder({"url", "title", "thumbnailUrl", "mediaType"})
+    public record PortfolioLinkResponse(
+            String url,
+            String title,
+            String thumbnailUrl,
+            PortfolioMediaType mediaType
+    ) {
         private static PortfolioLinkResponse from(SessionApplicationLink link) {
-            return new PortfolioLinkResponse(link.getUrl());
+            return new PortfolioLinkResponse(
+                    link.getUrl(), link.getTitle(), link.getThumbnailUrl(), link.getMediaType()
+            );
         }
     }
 }

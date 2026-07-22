@@ -13,6 +13,7 @@ import com.umc.bscene.domain.session.entity.SessionApplicationSubmission;
 import com.umc.bscene.domain.session.entity.SessionApplicationCareer;
 import com.umc.bscene.domain.session.entity.SessionRecruitment;
 import com.umc.bscene.domain.session.enums.ApplicationStatus;
+import com.umc.bscene.domain.session.event.SessionPortfolioPreviewRequestedEvent;
 import com.umc.bscene.domain.session.enums.code.SessionErrorCode;
 import com.umc.bscene.domain.session.exception.SessionApplicationException;
 import com.umc.bscene.domain.session.port.BandMemberPort;
@@ -26,6 +27,7 @@ import com.umc.bscene.domain.user.repository.UserRepository;
 import com.umc.bscene.global.exception.BaseException;
 import com.umc.bscene.global.response.code.GeneralErrorCode;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionSynchronization;
@@ -45,6 +47,7 @@ public class SessionApplicationCommandServiceImpl implements SessionApplicationC
     private final SessionApplicationSubmissionRepository submissionRepository;
     private final SessionRecruitmentRepository sessionRecruitmentRepository;
     private final UserRepository userRepository;
+    private final ApplicationEventPublisher eventPublisher;
 
     private final BandMemberPort bandMemberPort;
     private final NotifyPort notifyPort;
@@ -77,7 +80,9 @@ public class SessionApplicationCommandServiceImpl implements SessionApplicationC
         addCareers(sessionApplication, request);
         addPortfolioLinks(sessionApplication, request);
 
-        SessionApplication savedSessionApplication = sessionApplicationRepository.save(sessionApplication);
+        SessionApplication savedSessionApplication =
+                sessionApplicationRepository.saveAndFlush(sessionApplication);
+        publishPortfolioPreviewRequests(savedSessionApplication);
 
         return MySessionApplicationResponse.fromWithoutVisibility(savedSessionApplication);
     }
@@ -119,6 +124,7 @@ public class SessionApplicationCommandServiceImpl implements SessionApplicationC
 
         SessionApplication savedSessionApplication =
                 sessionApplicationRepository.saveAndFlush(sessionApplication);
+        publishPortfolioPreviewRequests(savedSessionApplication);
 
         return MySessionApplicationResponse.fromWithoutVisibility(savedSessionApplication);
     }
@@ -378,5 +384,14 @@ public class SessionApplicationCommandServiceImpl implements SessionApplicationC
                         .url(link.getUrl())
                         .build())
         );
+    }
+
+    private void publishPortfolioPreviewRequests(SessionApplication application) {
+        application.getPortfolioLinks().stream()
+                .filter(link -> link.getDeletedAt() == null)
+                .map(SessionApplicationLink::getSessionApplicationLinkId)
+                .filter(java.util.Objects::nonNull)
+                .map(SessionPortfolioPreviewRequestedEvent::new)
+                .forEach(eventPublisher::publishEvent);
     }
 }

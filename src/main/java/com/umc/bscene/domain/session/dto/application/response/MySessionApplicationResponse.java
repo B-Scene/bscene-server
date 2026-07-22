@@ -10,6 +10,7 @@ import com.umc.bscene.domain.session.converter.SessionGenreFormat;
 import com.umc.bscene.domain.session.converter.SessionRegionFormat;
 import com.umc.bscene.domain.session.enums.SkillLevel;
 import com.umc.bscene.domain.session.enums.AvailableActivity;
+import com.umc.bscene.domain.session.enums.PortfolioMediaType;
 import lombok.Builder;
 import lombok.Getter;
 
@@ -122,6 +123,9 @@ public class MySessionApplicationResponse {
                                 .map(link -> PortfolioLinkResponse.builder()
                                         .sessionApplicationLinkId(link.getSessionApplicationLinkId())
                                         .url(link.getUrl())
+                                        .title(link.getTitle())
+                                        .thumbnailUrl(link.getThumbnailUrl())
+                                        .mediaType(link.getMediaType())
                                         .build())
                                 .toList()
                 )
@@ -132,12 +136,18 @@ public class MySessionApplicationResponse {
     @Builder
     @JsonPropertyOrder({
             "sessionApplicationLinkId",
-            "url"
+            "url",
+            "title",
+            "thumbnailUrl",
+            "mediaType"
     })
     public static class PortfolioLinkResponse {
 
         private Long sessionApplicationLinkId;
         private String url;
+        private String title;
+        private String thumbnailUrl;
+        private PortfolioMediaType mediaType;
     }
 
     public record CareerResponse(
