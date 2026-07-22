@@ -8,7 +8,7 @@ import java.sql.ResultSet;
 import java.sql.Statement;
 import java.util.Locale;
 
-public class V34__expand_session_application_title_and_purpose extends BaseJavaMigration {
+public class V38__expand_session_application_title_and_purpose extends BaseJavaMigration {
 
     private static final int MAX_LENGTH = 50;
 

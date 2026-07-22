@@ -8,7 +8,7 @@ import java.sql.ResultSet;
 import java.sql.Statement;
 import java.util.Locale;
 
-public class V35__expand_session_application_portfolio_url extends BaseJavaMigration {
+public class V40__add_session_portfolio_preview_metadata extends BaseJavaMigration {
 
     @Override
     public void migrate(Context context) throws Exception {
@@ -16,18 +16,24 @@ public class V35__expand_session_application_portfolio_url extends BaseJavaMigra
         String table = findTable(connection, "session_application_links");
         if (table == null) return;
 
-        String column = findColumn(connection, table, "url");
-        if (column == null) return;
-
         boolean mysql = connection.getMetaData().getDatabaseProductName()
                 .toLowerCase(Locale.ROOT).contains("mysql");
-        String sql = mysql
-                ? "ALTER TABLE " + q(table, true) + " MODIFY COLUMN "
-                        + q(column, true) + " TEXT NOT NULL"
-                : "ALTER TABLE " + q(table, false) + " ALTER COLUMN "
-                        + q(column, false) + " CLOB";
+        addColumnIfMissing(connection, table, "title", "VARCHAR(255)", mysql);
+        addColumnIfMissing(connection, table, "thumbnail_url", "TEXT", mysql);
+        addColumnIfMissing(connection, table, "media_type", "VARCHAR(30)", mysql);
+    }
+
+    private void addColumnIfMissing(
+            Connection connection,
+            String table,
+            String column,
+            String definition,
+            boolean mysql
+    ) throws Exception {
+        if (findColumn(connection, table, column) != null) return;
         try (Statement statement = connection.createStatement()) {
-            statement.execute(sql);
+            statement.execute("ALTER TABLE " + quote(table, mysql)
+                    + " ADD COLUMN " + quote(column, mysql) + " " + definition);
         }
     }
 
@@ -54,7 +60,7 @@ public class V35__expand_session_application_portfolio_url extends BaseJavaMigra
         return null;
     }
 
-    private String q(String value, boolean mysql) {
+    private String quote(String value, boolean mysql) {
         return mysql ? "`" + value.replace("`", "``") + "`"
                 : "\"" + value.replace("\"", "\"\"") + "\"";
     }
