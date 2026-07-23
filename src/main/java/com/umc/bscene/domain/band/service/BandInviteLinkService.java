@@ -4,6 +4,7 @@ import com.umc.bscene.domain.band.dto.response.BandInviteLinkDetailResponse;
 import com.umc.bscene.domain.band.dto.response.BandInviteLinkResponse;
 import com.umc.bscene.domain.band.entity.Band;
 import com.umc.bscene.domain.band.entity.BandInviteLink;
+import com.umc.bscene.domain.band.enums.BandMemberType;
 import com.umc.bscene.domain.band.exception.BandException;
 import com.umc.bscene.domain.band.repository.BandInviteLinkRepository;
 import com.umc.bscene.domain.band.repository.BandRepository;
@@ -28,7 +29,8 @@ public class BandInviteLinkService {
     @Transactional
     public BandInviteLinkResponse issueInviteLink(
             Long requesterId,
-            Long bandId
+            Long bandId,
+            BandMemberType memberType
     ) {
         Band band = bandRepository.findById(bandId)
                 .orElseThrow(() ->
@@ -41,18 +43,9 @@ public class BandInviteLinkService {
         LocalDateTime expiresAt =
                 now.plusDays(INVITE_LINK_EXPIRATION_DAYS);
 
-        BandInviteLink inviteLink =
-                bandInviteLinkRepository.findByBand_Id(bandId)
-                        .map(existingLink ->
-                                renewIfExpired(
-                                        existingLink,
-                                        now,
-                                        expiresAt
-                                )
-                        )
-                        .orElseGet(() ->
-                                createInviteLink(band, expiresAt)
-                        );
+        BandInviteLink inviteLink = bandInviteLinkRepository.findByBand_IdAndMemberType(bandId, memberType)
+                        .map(existingLink -> renewIfExpired(existingLink, now, expiresAt))
+                        .orElseGet(() -> createInviteLink(band, memberType, expiresAt));
 
         return BandInviteLinkResponse.from(inviteLink);
     }
@@ -95,10 +88,12 @@ public class BandInviteLinkService {
     // 새 링크 생성
     private BandInviteLink createInviteLink(
             Band band,
+            BandMemberType memberType,
             LocalDateTime expiresAt
     ) {
         BandInviteLink inviteLink = BandInviteLink.builder()
                 .band(band)
+                .memberType(memberType)
                 .token(generateToken())
                 .expiresAt(expiresAt)
                 .build();
