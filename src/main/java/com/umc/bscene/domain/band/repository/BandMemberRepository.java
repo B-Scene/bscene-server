@@ -127,4 +127,19 @@ order by bm.id ASC
             @Param("status") BandMemberStatus status,
             @Param("memberType") BandMemberType memberType
     );
+
+    @Query("""
+select bm
+from BandMember bm
+    join fetch bm.band
+    join bm.bandMemberProfile bmp
+where bm.user.id = :userId
+    and bmp.status = :isActive
+    and bm.status = :status
+""")
+    Optional<BandMember> findWithBandByUser_IdAndActiveProfile(
+            @Param("userId") Long userId,
+            @Param("isActive") Boolean isActive,
+            @Param("status") BandMemberStatus status
+    );
 }

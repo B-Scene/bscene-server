@@ -57,10 +57,14 @@ public class UserAdapter implements BandPort {
     public Long getActiveBandMemberProfile_BandIdIdByUserId(Long userId) {
 
         // BandRepository를 사용, join을 통해 BandMember, BandMemberProfile을 타고 가서 활성화 필터링
-        Band band = bandRepository.findByUserIdWithActiveProfile(userId, true, BandMemberStatus.ACCEPTED)
-                .orElseThrow(() -> new BandException(BandErrorCode.BAND_NOT_FOUND));
+        BandMember bandMember = bandMemberRepository.findWithBandByUser_IdAndActiveProfile(userId, true, BandMemberStatus.ACCEPTED)
+                .orElseThrow(() -> new BandException(BandErrorCode.BAND_MEMBER_NOT_FOUND));
 
-        return band.getId();
+        if (!bandMember.isMember()) {
+            throw new BandException(BandErrorCode.BAND_PERMISSION_DENIED);
+        }
+
+        return bandMember.getBand().getId();
     }
 
     @Override

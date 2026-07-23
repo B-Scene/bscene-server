@@ -21,20 +21,4 @@ public interface BandRepository extends JpaRepository<Band, Long> {
 
     // 밴드 추천 후보군 조회 : 선호 지역이 일치하는 밴드
     List<Band> findByRegionIn(Collection<Region> regions);
-
-    // 사용자 기본 키 사용. 활성화된 밴드 멤버 프로필에 연관된 밴드 조회
-    @Query("""
-select b
-from BandMember bm
-    left join bm.bandMemberProfile bmp
-    left join bm.band b
-where bm.user.id = :userId
-    and bmp.active = :isActive
-    and bm.status = :status
-""")
-    Optional<Band> findByUserIdWithActiveProfile(
-            @Param("userId") Long userId,
-            @Param("isActive") Boolean isActive,
-            @Param("status") BandMemberStatus status
-    );
 }
