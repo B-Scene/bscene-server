@@ -11,8 +11,7 @@ import com.umc.bscene.domain.chat.dto.response.ChatWebSocketPushFrame;
 import com.umc.bscene.domain.chat.dto.response.ChatWebSocketErrorData;
 import com.umc.bscene.domain.chat.dto.response.ChatWebSocketSystemEventData;
 import com.umc.bscene.domain.chat.exception.ChatException;
-import com.umc.bscene.domain.chat.response.code.ChatWebSocketErrorCode;
-import com.umc.bscene.domain.chat.response.code.ChatWebSocketSystemErrorCode;
+import com.umc.bscene.domain.chat.enums.code.error.ChatErrorCode;
 import com.umc.bscene.domain.chat.service.ChatMessageService;
 import com.umc.bscene.global.exception.BaseException;
 import com.umc.bscene.global.response.code.BaseResponseCode;
@@ -77,11 +76,11 @@ public class ChatWebSocketHandler extends TextWebSocketHandler implements SubPro
         } catch (BaseException exception) {
             sendError(session, userId, clientMsgId, exception.getBaseResponseCode());
         } catch (JsonProcessingException | IllegalArgumentException exception) {
-            sendError(session, userId, clientMsgId, ChatWebSocketErrorCode.INVALID_FRAME);
+            sendError(session, userId, clientMsgId, ChatErrorCode.DM_INVALID_FRAME);
         } catch (Exception exception) {
             log.error("Chat WebSocket message handling failed: userId={}, sessionId={}",
                     userId, session.getId(), exception);
-            sendError(session, userId, clientMsgId, ChatWebSocketSystemErrorCode.INTERNAL_ERROR);
+            sendError(session, userId, clientMsgId, ChatErrorCode.DM_INTERNAL_ERROR);
         }
     }
 
@@ -91,14 +90,14 @@ public class ChatWebSocketHandler extends TextWebSocketHandler implements SubPro
             ChatWebSocketFrame frame
     ) throws Exception {
         if (frame.type() == null || frame.data() == null) {
-            throw new ChatException(ChatWebSocketErrorCode.INVALID_FRAME);
+            throw new ChatException(ChatErrorCode.DM_INVALID_FRAME);
         }
 
         switch (frame.type()) {
             case "dm.send" -> handleSend(userId, frame);
             case "dm.read" -> handleRead(userId, frame);
             case "ping" -> handlePing(session, userId, frame);
-            default -> throw new ChatException(ChatWebSocketSystemErrorCode.UNSUPPORTED_TYPE);
+            default -> throw new ChatException(ChatErrorCode.DM_UNSUPPORTED_TYPE);
         }
     }
 
@@ -108,7 +107,7 @@ public class ChatWebSocketHandler extends TextWebSocketHandler implements SubPro
             ChatWebSocketFrame frame
     ) throws Exception {
         if (frame.clientMsgId() != null || !frame.data().isObject()) {
-            throw new ChatException(ChatWebSocketErrorCode.INVALID_FRAME);
+            throw new ChatException(ChatErrorCode.DM_INVALID_FRAME);
         }
 
         ChatWebSocketPushFrame pongFrame = new ChatWebSocketPushFrame(
@@ -147,7 +146,7 @@ public class ChatWebSocketHandler extends TextWebSocketHandler implements SubPro
 
     private void handleSend(Long userId, ChatWebSocketFrame frame) throws Exception {
         if (!isUuid(frame.clientMsgId())) {
-            throw new ChatException(ChatWebSocketErrorCode.INVALID_FRAME);
+            throw new ChatException(ChatErrorCode.DM_INVALID_FRAME);
         }
         ChatMessageSendRequest request = objectMapper.treeToValue(
                 frame.data(), ChatMessageSendRequest.class);
@@ -177,7 +176,7 @@ public class ChatWebSocketHandler extends TextWebSocketHandler implements SubPro
 
     private void handleRead(Long userId, ChatWebSocketFrame frame) throws Exception {
         if (frame.clientMsgId() != null) {
-            throw new ChatException(ChatWebSocketErrorCode.INVALID_FRAME);
+            throw new ChatException(ChatErrorCode.DM_INVALID_FRAME);
         }
 
         ChatMessageReadRequest request = objectMapper.treeToValue(

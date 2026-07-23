@@ -14,12 +14,16 @@ public record ChatRoomCreateResponse(
         String recipientName,
         boolean created
 ) {
-    public static ChatRoomCreateResponse recruitment(ChatRoom room, boolean created) {
+    public static ChatRoomCreateResponse recruitment(
+            ChatRoom room, Long viewerId, boolean created) {
         var recruitment = room.getSessionRecruitment();
+        boolean viewerIsApplicant = room.getSender().getId().equals(viewerId);
         return new ChatRoomCreateResponse(room.getChatRoomId(), room.getContextType(),
                 recruitment.getSessionRecruitmentId(), recruitment.getRecruitmentTitle(),
                 recruitment.getGenre().getName(), recruitment.getPart().getDescription(),
-                room.getRecipient().getId(), recruitment.getBand().getName(), created);
+                viewerIsApplicant ? room.getRecipient().getId() : room.getSender().getId(),
+                viewerIsApplicant ? recruitment.getBand().getName() : room.getSender().getName(),
+                created);
     }
 
     public static ChatRoomCreateResponse sessionSearch(ChatRoom room, boolean created) {

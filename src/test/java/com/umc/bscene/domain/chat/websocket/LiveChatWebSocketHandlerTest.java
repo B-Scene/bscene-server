@@ -100,7 +100,7 @@ class LiveChatWebSocketHandlerTest {
 
         JsonNode frame = captureSessionFrame();
         assertEquals("system.error", frame.get("type").asText());
-        assertEquals("LIVE_CHAT_CONTENT_EMPTY", frame.get("data").get("code").asText());
+        assertEquals("LIVE400_6", frame.get("data").get("code").asText());
     }
 
     private JsonNode captureSessionFrame() throws Exception {

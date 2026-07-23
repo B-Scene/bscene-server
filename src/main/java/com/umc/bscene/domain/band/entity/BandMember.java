@@ -61,4 +61,8 @@ public class BandMember extends BaseEntity {
         this.bandMemberProfile = bandMemberProfile;
         accept();
     }
+
+    public Boolean isMember() {
+        return this.memberType.equals(BandMemberType.MEMBER);
+    }
 }

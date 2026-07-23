@@ -5,7 +5,7 @@ import com.umc.bscene.domain.chat.dto.response.ChatRoomCreateResponse;
 import com.umc.bscene.domain.chat.dto.response.ChatRoomListResponse;
 import com.umc.bscene.domain.chat.dto.response.ChatRoomDetailResponse;
 import com.umc.bscene.domain.chat.enums.ChatRoomFilter;
-import com.umc.bscene.domain.chat.response.code.ChatSuccessCode;
+import com.umc.bscene.domain.chat.enums.code.success.ChatSuccessCode;
 import com.umc.bscene.domain.chat.service.ChatRoomService;
 import com.umc.bscene.global.response.SuccessResponse;
 import com.umc.bscene.global.security.entity.AuthMember;

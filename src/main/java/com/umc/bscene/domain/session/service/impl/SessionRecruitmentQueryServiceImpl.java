@@ -5,6 +5,13 @@ import com.umc.bscene.domain.session.dto.recruitment.response.SessionRecruitment
 import com.umc.bscene.domain.session.dto.recruitment.response.SessionRecruitmentListResponse;
 import com.umc.bscene.domain.session.dto.recruitment.response.RecentRecruitmentItemResponse;
 import com.umc.bscene.domain.session.dto.recruitment.response.RecentRecruitmentListResponse;
+import com.umc.bscene.domain.session.dto.recruitment.response.ManagedRecruitmentItemResponse;
+import com.umc.bscene.domain.session.dto.recruitment.response.ManagedRecruitmentListResponse;
+import com.umc.bscene.domain.session.dto.recruitment.response.SessionRecruitmentEditResponse;
+import com.umc.bscene.domain.band.entity.Band;
+import com.umc.bscene.domain.band.repository.BandRepository;
+import com.umc.bscene.domain.band.exception.BandException;
+import com.umc.bscene.domain.band.response.code.BandErrorCode;
 import com.umc.bscene.domain.session.entity.SessionRecruitmentView;
 import com.umc.bscene.domain.session.entity.SessionRecruitment;
 import com.umc.bscene.domain.session.enums.Part;
@@ -12,7 +19,7 @@ import com.umc.bscene.domain.auth.enums.onboarding.Genre;
 import com.umc.bscene.domain.auth.enums.onboarding.Region;
 import com.umc.bscene.domain.session.enums.SkillLevel;
 import com.umc.bscene.domain.session.enums.SessionRecruitmentSortType;
-import com.umc.bscene.domain.session.enums.code.SessionErrorCode;
+import com.umc.bscene.domain.session.enums.code.error.SessionErrorCode;
 import com.umc.bscene.domain.session.exception.SessionException;
 import com.umc.bscene.domain.session.repository.SessionRecruitmentRepository;
 import com.umc.bscene.domain.session.repository.SessionRecruitmentInterestRepository;
@@ -42,6 +49,7 @@ public class SessionRecruitmentQueryServiceImpl implements SessionRecruitmentQue
     private final SessionRecruitmentViewRepository viewRepository;
     private final UserRepository userRepository;
     private final SessionRecruitmentSearchKeywordService searchKeywordService;
+    private final BandRepository bandRepository;
 
     @Override
     @Transactional
@@ -189,8 +197,19 @@ public class SessionRecruitmentQueryServiceImpl implements SessionRecruitmentQue
         List<SessionRecruitmentView> sliced = hasNext
                 ? views.subList(0, pageSize)
                 : views;
+        List<Long> recruitmentIds = sliced.stream()
+                .map(view -> view.getSessionRecruitment().getSessionRecruitmentId())
+                .toList();
+        Set<Long> interestedIds = recruitmentIds.isEmpty()
+                ? Set.of()
+                : interestRepository.findInterestedRecruitmentIds(userId, recruitmentIds);
         List<RecentRecruitmentItemResponse> content = sliced.stream()
-                .map(RecentRecruitmentItemResponse::from)
+                .map(view -> RecentRecruitmentItemResponse.from(
+                        view,
+                        interestedIds.contains(
+                                view.getSessionRecruitment().getSessionRecruitmentId()
+                        )
+                ))
                 .toList();
         Long nextCursor = hasNext && !sliced.isEmpty()
                 ? sliced.get(sliced.size() - 1).getSessionRecruitmentViewId()
@@ -198,6 +217,78 @@ public class SessionRecruitmentQueryServiceImpl implements SessionRecruitmentQue
         return new RecentRecruitmentListResponse(
                 content, pageSize, nextCursor, hasNext
         );
+    }
+
+    @Override
+    public ManagedRecruitmentListResponse getManagedRecruitments(
+            Long userId, Long bandId, Long cursorId, Integer size
+    ) {
+        Band band = bandRepository.findById(bandId)
+                .orElseThrow(() -> new BandException(BandErrorCode.BAND_NOT_FOUND));
+        if (!band.getOwner().getId().equals(userId)) {
+            throw new SessionException(SessionErrorCode.BAND_PERMISSION_DENIED);
+        }
+
+        int pageSize = size == null ? 10 : Math.max(1, Math.min(size, 50));
+        List<SessionRecruitment> recruitments = sessionRecruitmentRepository
+                .findManagedRecruitments(bandId, cursorId, PageRequest.of(0, pageSize + 1));
+        boolean hasNext = recruitments.size() > pageSize;
+        List<SessionRecruitment> sliced = hasNext
+                ? recruitments.subList(0, pageSize) : recruitments;
+        LocalDateTime now = LocalDateTime.now();
+        List<ManagedRecruitmentItemResponse> content = sliced.stream()
+                .map(recruitment -> ManagedRecruitmentItemResponse.builder()
+                        .sessionRecruitmentId(recruitment.getSessionRecruitmentId())
+                        .dDay(calculateDDay(recruitment.getDeadlineAt().toLocalDate()))
+                        .recruitmentTitle(recruitment.getRecruitmentTitle())
+                        .bandName(band.getName())
+                        .bandGenre(band.getGenre().getName())
+                        .bandRegion(band.getRegion().getName())
+                        .postedAgo(calculatePostedAgo(recruitment.getCreatedAt(), now))
+                        .summary(recruitment.getSummary())
+                        .build())
+                .toList();
+        Long nextCursor = hasNext && !sliced.isEmpty()
+                ? sliced.get(sliced.size() - 1).getSessionRecruitmentId() : null;
+
+        return ManagedRecruitmentListResponse.builder()
+                .bandId(band.getId())
+                .bandName(band.getName())
+                .bandProfileImageUrl(band.getProfileImageUrl())
+                .content(content)
+                .size(pageSize)
+                .nextCursor(nextCursor)
+                .hasNext(hasNext)
+                .build();
+    }
+
+    @Override
+    public SessionRecruitmentEditResponse getRecruitmentForEdit(
+            Long userId,
+            Long recruitmentId
+    ) {
+        SessionRecruitment recruitment = sessionRecruitmentRepository
+                .findBySessionRecruitmentIdAndDeletedAtIsNull(recruitmentId)
+                .orElseThrow(() -> new SessionException(
+                        SessionErrorCode.SESSION_RECRUITMENT_NOT_FOUND
+                ));
+        if (!recruitment.getBand().getOwner().getId().equals(userId)) {
+            throw new SessionException(SessionErrorCode.BAND_PERMISSION_DENIED);
+        }
+
+        return SessionRecruitmentEditResponse.builder()
+                .recruitmentTitle(recruitment.getRecruitmentTitle())
+                .summary(recruitment.getSummary())
+                .content(recruitment.getContent())
+                .part(recruitment.getPart().getDescription())
+                .skillLevel(recruitment.getSkillLevel().getDescription())
+                .genre(recruitment.getGenre().getName())
+                .region(recruitment.getRegion().getName())
+                .practiceSchedule(recruitment.getPracticeSchedule())
+                .practicePlace(recruitment.getPracticePlace())
+                .deadlineAt(recruitment.getDeadlineAt())
+                .qualification(recruitment.getQualification())
+                .build();
     }
 
     static boolean isNewRecruitment(LocalDateTime createdAt, LocalDateTime now) {

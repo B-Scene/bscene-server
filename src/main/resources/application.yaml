@@ -26,7 +26,7 @@ spring:
     database-platform: org.hibernate.dialect.MySQLDialect
     show-sql: false
     hibernate:
-      ddl-auto: update
+      ddl-auto: create-drop
     properties:
       hibernate:
         format_sql: true
@@ -96,12 +96,15 @@ mediamtx:
   api-url: ${MEDIAMTX_API_URL:http://localhost:9997}
   webrtc-url: ${MEDIAMTX_WEBRTC_URL:http://localhost:8889}
 
+# FRONT_ORIGIN : CORS 허용 목록 (콤마로 여러 개 가능)
+# FRONT_REDIRECT_ORIGIN : 소셜 로그인 리다이렉트용 단일 프론트 주소 (경로 제외 origin만)
+# 두 용도를 한 변수로 겸용하면 CORS용 목록 값이 리다이렉트 URL에 섞여 500(Bad authority)이 발생 → 분리
 cors:
   allowed-origins: ${FRONT_ORIGIN:http://localhost:5173}
 
 oauth:
-  front-redirect-uri: ${FRONT_ORIGIN:http://localhost:5173}/oauth/callback
-  front-failure-uri: ${FRONT_ORIGIN:http://localhost:5173}/login
+  front-redirect-uri: ${FRONT_REDIRECT_ORIGIN:http://localhost:5173}/oauth/callback
+  front-failure-uri: ${FRONT_REDIRECT_ORIGIN:http://localhost:5173}/login
 
 aws:
   s3:
@@ -117,7 +120,7 @@ notification:
   terms:
     live-id: ${NOTIFICATION_TERMS_LIVE_ID:4}
   # 로그인 실패 시: 프론트 로그인 페이지로 리다이렉트 (?error=코드) → 프론트가 토스트 등으로 안내
-  front-failure-uri: ${FRONT_ORIGIN:http://localhost:5173}/login
+  front-failure-uri: ${FRONT_REDIRECT_ORIGIN:http://localhost:5173}/login
 
 # spring actuator
 management:

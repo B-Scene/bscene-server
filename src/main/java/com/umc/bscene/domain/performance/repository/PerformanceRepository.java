@@ -9,6 +9,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.List;
 import java.util.Optional;
@@ -27,6 +28,9 @@ public interface PerformanceRepository extends JpaRepository<Performance, Long> 
     );
 
     Long countByBand_IdAndStatus(Long bandId, PerformanceStatus status);
+
+    // BandAdapter에서 사용 : 현재까지 내가 속한 밴드가 진행한 공연의 수를 조회
+    Long countByBand_IdAndStatusAndPerformanceDateBefore(Long band_id, PerformanceStatus status, LocalDate now);
 
     // FanHomeAdapter에서 사용 : 팔로우한 밴드들의 아직 시작하지 않은 ACTIVE 공연을 시작 일시가 가까운 순으로 조회
     @Query("SELECT p FROM Performance p " +

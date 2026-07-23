@@ -9,7 +9,7 @@ import com.umc.bscene.domain.session.dto.recruitment.response.RecentRecruitmentL
 import com.umc.bscene.domain.session.service.SessionRecruitmentInterestService;
 import com.umc.bscene.domain.session.dto.recruitment.request.SessionRecruitmentUpdateRequest;
 import com.umc.bscene.domain.session.dto.recruitment.response.SessionRecruitmentCreateResponse;
-import com.umc.bscene.domain.session.enums.code.SessionSuccessCode;
+import com.umc.bscene.domain.session.enums.code.success.SessionSuccessCode;
 import com.umc.bscene.domain.session.service.SessionRecruitmentCommandService;
 import com.umc.bscene.domain.session.service.SessionApplicationCommandService;
 import com.umc.bscene.domain.session.service.SessionApplicationQueryService;
@@ -29,6 +29,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 import com.umc.bscene.domain.session.dto.recruitment.response.SessionRecruitmentDetailResponse;
+import com.umc.bscene.domain.session.dto.recruitment.response.ManagedRecruitmentListResponse;
+import com.umc.bscene.domain.session.dto.recruitment.response.SessionRecruitmentEditResponse;
 import java.util.List;
 @RestController
 @RequiredArgsConstructor
@@ -144,6 +146,23 @@ public class SessionRecruitmentController {
         );
     }
     // 세션 모집 공고 목록 조회
+    @GetMapping("/manage")
+    public SuccessResponse<ManagedRecruitmentListResponse> getManagedRecruitments(
+            @AuthenticationPrincipal AuthMember authMember,
+            @RequestParam Long bandId,
+            @RequestParam(required = false) Long cursorId,
+            @RequestParam(defaultValue = "10") Integer size
+    ) {
+        ManagedRecruitmentListResponse response =
+                sessionRecruitmentQueryService.getManagedRecruitments(
+                        authMember.getUser().getId(), bandId, cursorId, size
+                );
+        return SuccessResponse.of(
+                response,
+                SessionSuccessCode.SESSION_RECRUITMENT_MANAGEMENT_LIST_SUCCESS
+        );
+    }
+
     @GetMapping
     public SuccessResponse<SessionRecruitmentListResponse> getSessionRecruitments(
             @AuthenticationPrincipal AuthMember authMember,
@@ -194,6 +213,23 @@ public class SessionRecruitmentController {
                 SessionSuccessCode.SESSION_RECRUITMENT_UPDATE_SUCCESS
         );
     }
+
+    @GetMapping("/{sessionRecruitmentId}/edit")
+    public SuccessResponse<SessionRecruitmentEditResponse> getRecruitmentForEdit(
+            @AuthenticationPrincipal AuthMember authMember,
+            @PathVariable Long sessionRecruitmentId
+    ) {
+        SessionRecruitmentEditResponse response =
+                sessionRecruitmentQueryService.getRecruitmentForEdit(
+                        authMember.getUser().getId(),
+                        sessionRecruitmentId
+                );
+        return SuccessResponse.of(
+                response,
+                SessionSuccessCode.SESSION_RECRUITMENT_EDIT_GET_SUCCESS
+        );
+    }
+
     @DeleteMapping("/{sessionRecruitmentId}")
     public SuccessResponse<Void> deleteSessionRecruitment(
             @AuthenticationPrincipal AuthMember authMember,

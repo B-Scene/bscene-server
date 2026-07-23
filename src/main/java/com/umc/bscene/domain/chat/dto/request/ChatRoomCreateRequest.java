@@ -6,6 +6,7 @@ import jakarta.validation.constraints.NotNull;
 public record ChatRoomCreateRequest(
         @NotNull ChatContextType contextType,
         Long sessionRecruitmentId,
-        Long sessionApplicationId
+        Long sessionApplicationId,
+        Long applicationSubmissionId
 ) {
 }

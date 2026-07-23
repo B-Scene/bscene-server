@@ -1,6 +1,7 @@
 package com.umc.bscene.domain.session.dto.application.response;
 
 import com.fasterxml.jackson.annotation.JsonPropertyOrder;
+import com.fasterxml.jackson.annotation.JsonInclude;
 import com.umc.bscene.domain.session.entity.SessionApplication;
 import com.umc.bscene.domain.session.enums.Part;
 import com.umc.bscene.domain.auth.enums.onboarding.Genre;
@@ -9,6 +10,7 @@ import com.umc.bscene.domain.session.converter.SessionGenreFormat;
 import com.umc.bscene.domain.session.converter.SessionRegionFormat;
 import com.umc.bscene.domain.session.enums.SkillLevel;
 import com.umc.bscene.domain.session.enums.AvailableActivity;
+import com.umc.bscene.domain.session.enums.PortfolioMediaType;
 import lombok.Builder;
 import lombok.Getter;
 
@@ -44,6 +46,7 @@ public class MySessionApplicationResponse {
     private String purpose;
     private String oneLineIntro;
     private String profileImageUrl;
+    @JsonInclude(JsonInclude.Include.NON_NULL)
     private Boolean isPublic;
 
     private Part part;
@@ -82,6 +85,19 @@ public class MySessionApplicationResponse {
     }
 
     public static MySessionApplicationResponse from(SessionApplication sessionApplication) {
+        return from(sessionApplication, true);
+    }
+
+    public static MySessionApplicationResponse fromWithoutVisibility(
+            SessionApplication sessionApplication
+    ) {
+        return from(sessionApplication, false);
+    }
+
+    private static MySessionApplicationResponse from(
+            SessionApplication sessionApplication,
+            boolean includeVisibility
+    ) {
         return MySessionApplicationResponse.builder()
                 .hasApplication(true)
                 .sessionApplicationId(sessionApplication.getSessionApplicationId())
@@ -91,7 +107,7 @@ public class MySessionApplicationResponse {
                 .purpose(sessionApplication.getPurpose())
                 .oneLineIntro(sessionApplication.getOneLineIntro())
                 .profileImageUrl(sessionApplication.getProfileImageUrl())
-                .isPublic(sessionApplication.getIsPublic())
+                .isPublic(includeVisibility ? sessionApplication.getIsPublic() : null)
                 .part(sessionApplication.getPart())
                 .skillLevel(sessionApplication.getSkillLevel())
                 .genre(sessionApplication.getGenre())
@@ -107,6 +123,9 @@ public class MySessionApplicationResponse {
                                 .map(link -> PortfolioLinkResponse.builder()
                                         .sessionApplicationLinkId(link.getSessionApplicationLinkId())
                                         .url(link.getUrl())
+                                        .title(link.getTitle())
+                                        .thumbnailUrl(link.getThumbnailUrl())
+                                        .mediaType(link.getMediaType())
                                         .build())
                                 .toList()
                 )
@@ -117,12 +136,18 @@ public class MySessionApplicationResponse {
     @Builder
     @JsonPropertyOrder({
             "sessionApplicationLinkId",
-            "url"
+            "url",
+            "title",
+            "thumbnailUrl",
+            "mediaType"
     })
     public static class PortfolioLinkResponse {
 
         private Long sessionApplicationLinkId;
         private String url;
+        private String title;
+        private String thumbnailUrl;
+        private PortfolioMediaType mediaType;
     }
 
     public record CareerResponse(

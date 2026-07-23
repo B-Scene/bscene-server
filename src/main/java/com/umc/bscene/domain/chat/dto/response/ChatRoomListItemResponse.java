@@ -14,7 +14,7 @@ public record ChatRoomListItemResponse(
         Long counterpartUserId,
         String counterpartName,
         String counterpartProfileImageUrl,
-        String part,
+        String applicationStatus,
         String lastMessage,
         LocalDateTime lastMessageAt,
         long unreadCount,
@@ -23,6 +23,7 @@ public record ChatRoomListItemResponse(
     public static ChatRoomListItemResponse of(ChatRoom room, Long viewerId,
                                                ChatMessage lastMessage, long unreadCount,
                                                boolean canSend,
+                                               String applicationStatus,
                                                SessionApplication counterpartApplication,
                                                String sessionProfileImageUrl) {
         boolean viewerIsSender = room.getSender().getId().equals(viewerId);
@@ -33,13 +34,10 @@ public record ChatRoomListItemResponse(
             String profileImageUrl = viewerIsSender
                     ? recruitment.getBand().getProfileImageUrl()
                     : sessionProfileImageUrl;
-            String part = viewerIsSender
-                    ? recruitment.getPart().getDescription()
-                    : counterpartApplication.getPart().getDescription();
             return new ChatRoomListItemResponse(room.getChatRoomId(), room.getContextType(),
                     recruitment.getSessionRecruitmentId(), counterpart.getId(), name,
                     profileImageUrl,
-                    part,
+                    applicationStatus,
                     lastMessage == null ? null : lastMessage.getContent(),
                     lastMessage == null ? null : lastMessage.getCreatedAt(), unreadCount, canSend);
         }
@@ -47,7 +45,7 @@ public record ChatRoomListItemResponse(
         return new ChatRoomListItemResponse(room.getChatRoomId(), room.getContextType(),
                 application.getSessionApplicationId(), counterpart.getId(), counterpart.getName(),
                 sessionProfileImageUrl,
-                application.getPart().getDescription(),
+                null,
                 lastMessage == null ? null : lastMessage.getContent(),
                 lastMessage == null ? null : lastMessage.getCreatedAt(), unreadCount, canSend);
     }

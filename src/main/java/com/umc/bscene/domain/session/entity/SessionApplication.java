@@ -45,13 +45,13 @@ public class SessionApplication extends BaseEntity {
     @Column(name = "nickname", nullable = false, length = 30)
     private String nickname;
 
-    @Column(name = "title", nullable = false, length = 30)
+    @Column(name = "title", nullable = false, length = 50)
     private String title;
 
-    @Column(name = "purpose", nullable = false, length = 20)
+    @Column(name = "purpose", nullable = false, length = 50)
     private String purpose;
 
-    @Column(name = "one_line_intro", length = 100)
+    @Column(name = "one_line_intro", length = 50)
     private String oneLineIntro;
 
     @Column(name = "profile_image_url", length = 500)
@@ -102,7 +102,6 @@ public class SessionApplication extends BaseEntity {
             String title,
             String purpose,
             String oneLineIntro,
-            String profileImageUrl,
             Part part,
             SkillLevel skillLevel,
             Genre genre,
@@ -115,9 +114,6 @@ public class SessionApplication extends BaseEntity {
         this.purpose = purpose;
         this.oneLineIntro = oneLineIntro;
         this.isPublic = true;
-        if (profileImageUrl != null) {
-            this.profileImageUrl = profileImageUrl;
-        }
         this.part = part;
         this.skillLevel = skillLevel;
         this.genre = genre;
@@ -129,7 +125,6 @@ public class SessionApplication extends BaseEntity {
             String title,
             String purpose,
             String oneLineIntro,
-            String profileImageUrl,
             Part part,
             SkillLevel skillLevel,
             Genre genre,
@@ -139,9 +134,6 @@ public class SessionApplication extends BaseEntity {
         this.title = title;
         this.purpose = purpose;
         this.oneLineIntro = oneLineIntro;
-        if (profileImageUrl != null) {
-            this.profileImageUrl = profileImageUrl;
-        }
         this.part = part;
         this.skillLevel = skillLevel;
         this.genre = genre;
