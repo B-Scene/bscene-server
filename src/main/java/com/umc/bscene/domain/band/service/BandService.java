@@ -42,6 +42,8 @@ import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -237,14 +239,40 @@ public class BandService {
 
     // 초대 대상 닉네임 검색
     public List<BandMemberSearchItem> searchInviteTargets(Long bandId, String keyword) {
+        String normalizedKeyword = validateAndNormalizeSearchKeyword(keyword);
+
         getBand(bandId);
 
-        return userRepository.findByNameContaining(keyword).stream()
-                .map(user -> new BandMemberSearchItem(
-                        user.getId(),
-                        user.getName(),
-                        bandMemberRepository.existsByBand_IdAndUser_Id(bandId, user.getId())
-                ))
+        List<User> users = userRepository.findByNameContaining(normalizedKeyword);
+
+        if (users.isEmpty()) {
+            return List.of();
+        }
+
+        List<Long> userIds = users.stream()
+                .map(User::getId)
+                .toList();
+
+        Map<Long, BandMemberStatus> statusByUserId =
+                bandMemberRepository.findWithUserByBandIdAndUserIdIn(bandId, userIds)
+                        .stream()
+                        .collect(Collectors.toMap(
+                                bandMember -> bandMember.getUser().getId(),
+                                BandMember::getStatus
+                        ));
+
+        return users.stream()
+                .map(user -> {
+                    BandMemberStatus bandMemberStatus =
+                            statusByUserId.get(user.getId());
+
+                    return new BandMemberSearchItem(
+                            user.getId(),
+                            user.getName(),
+                            bandMemberStatus,
+                            bandMemberStatus == null
+                    );
+                })
                 .toList();
     }
 
@@ -369,5 +397,13 @@ public class BandService {
                         band.getOwner().getId().equals(bandMember.getUser().getId())
                 ))
                 .toList();
+    }
+
+    private String validateAndNormalizeSearchKeyword(String keyword) {
+        if (keyword == null || keyword.isBlank()) {
+            throw new BandException(BandErrorCode.INVALID_MEMBER_SEARCH_KEYWORD);
+        }
+
+        return keyword.strip();
     }
 }
