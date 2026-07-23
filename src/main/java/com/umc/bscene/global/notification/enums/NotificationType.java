@@ -5,5 +5,6 @@ public enum NotificationType {
     LIVE,
     MESSAGE,
     SESSION,
-    POST
+    POST,
+    BAND_INVITE
 }
