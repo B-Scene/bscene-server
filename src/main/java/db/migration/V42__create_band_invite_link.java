@@ -9,7 +9,7 @@ import java.sql.Statement;
 
 public class V42__create_band_invite_link extends BaseJavaMigration {
 
-    private static final String TABLE_NAME = "BandInviteLink";
+    private static final String TABLE_NAME = "band_invite_link";
 
     @Override
     public void migrate(Context context) throws Exception {
@@ -46,12 +46,12 @@ public class V42__create_band_invite_link extends BaseJavaMigration {
 
         String sql = "CREATE TABLE " + quote(TABLE_NAME, mysql) + " ("
                 + quote("id", mysql) + " " + idDefinition + ", "
-                + quote("bandId", mysql) + " BIGINT NOT NULL, "
+                + quote("band_id", mysql) + " BIGINT NOT NULL, "
                 + quote("token", mysql) + " VARCHAR(64) NOT NULL, "
-                + quote("expiresAt", mysql) + " " + dateTimeType + " NOT NULL, "
-                + quote("createdAt", mysql)
+                + quote("expires_at", mysql) + " " + dateTimeType + " NOT NULL, "
+                + quote("created_at", mysql)
                 + " TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP, "
-                + quote("updatedAt", mysql)
+                + quote("updated_at", mysql)
                 + " TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP, "
 
                 + "PRIMARY KEY (" + quote("id", mysql) + "), "
@@ -60,7 +60,7 @@ public class V42__create_band_invite_link extends BaseJavaMigration {
                 "uk_band_invite_link_band",
                 mysql
         )
-                + " UNIQUE (" + quote("bandId", mysql) + "), "
+                + " UNIQUE (" + quote("band_id", mysql) + "), "
 
                 + "CONSTRAINT " + quote(
                 "uk_band_invite_link_token",
@@ -72,7 +72,7 @@ public class V42__create_band_invite_link extends BaseJavaMigration {
                 "fk_band_invite_link_band",
                 mysql
         )
-                + " FOREIGN KEY (" + quote("bandId", mysql) + ") "
+                + " FOREIGN KEY (" + quote("band_id", mysql) + ") "
                 + "REFERENCES " + quote(bandTable, mysql)
                 + " (" + quote(bandIdColumn, mysql) + ") "
                 + "ON DELETE CASCADE"
