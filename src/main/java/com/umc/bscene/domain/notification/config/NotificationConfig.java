@@ -1,6 +1,7 @@
 package com.umc.bscene.domain.notification.config;
 
 import com.google.firebase.messaging.FirebaseMessaging;
+import com.umc.bscene.domain.notification.adapter.BandAdapter;
 import com.umc.bscene.domain.notification.adapter.ChatAdapter;
 import com.umc.bscene.domain.notification.adapter.FanHomeAdapter;
 import com.umc.bscene.domain.notification.adapter.FirebasePushAdapter;
@@ -81,5 +82,13 @@ public class NotificationConfig {
             NotificationService notificationService
     ) {
         return new NotificationCleanupScheduler(notificationService);
+    }
+
+    // Band 도메인 NotifyPort 구현 어댑터
+    @Bean
+    public BandAdapter bandNotificationAdapter(
+            NotificationPort notificationPort
+    ) {
+        return new BandAdapter(notificationPort);
     }
 }

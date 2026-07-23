@@ -1,5 +1,6 @@
 package com.umc.bscene.domain.band.service;
 
+import com.umc.bscene.domain.band.dto.BandPushMessage;
 import com.umc.bscene.domain.band.dto.request.BandCreateRequest;
 import com.umc.bscene.domain.band.dto.request.BandMemberAcceptRequest;
 import com.umc.bscene.domain.band.dto.request.BandMemberInviteRequest;
@@ -22,6 +23,7 @@ import com.umc.bscene.domain.band.enums.BandMemberStatus;
 import com.umc.bscene.domain.band.enums.BandMemberType;
 import com.umc.bscene.domain.band.exception.BandException;
 import com.umc.bscene.domain.band.port.FollowPort;
+import com.umc.bscene.domain.band.port.NotifyPort;
 import com.umc.bscene.domain.band.port.PerformancePort;
 import com.umc.bscene.domain.band.port.StreamPort;
 import com.umc.bscene.domain.band.repository.BandMemberProfileRepository;
@@ -36,6 +38,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.util.List;
 
@@ -52,6 +56,7 @@ public class BandService {
     private final FollowPort followPort;
     private final PerformancePort performancePort;
     private final StreamPort streamPort;
+    private final NotifyPort notifyPort;
     private final ApplicationEventPublisher eventPublisher;
 
     // 밴드 개설 (요청자가 오너가 됨, 이 밴드에서 사용할 멤버 프로필 선택)
@@ -167,7 +172,15 @@ public class BandService {
                 .user(invitee)
                 .build();
 
-        return BandMemberResponse.from(bandMemberRepository.save(bandMember));
+        BandMember savedBandMember = bandMemberRepository.save(bandMember);
+
+        notifyMemberAfterCommit(
+                invitee.getId(),
+                band.getName(),
+                savedBandMember.getId()
+        );
+
+        return BandMemberResponse.from(savedBandMember);
     }
 
     // 초대 수락 (이 밴드에서 사용할 멤버 프로필 선택)
@@ -287,6 +300,26 @@ public class BandService {
     private BandMember getBandMember(Long bandId, Long userId, BandErrorCode notFoundCode) {
         return bandMemberRepository.findByBand_IdAndUser_Id(bandId, userId)
                 .orElseThrow(() -> new BandException(notFoundCode));
+    }
+
+    private void notifyMemberAfterCommit(
+            Long inviteeId,
+            String bandName,
+            Long bandMemberId
+    ) {
+        BandPushMessage message = BandPushMessage.memberInvited(
+                bandName,
+                bandMemberId
+        );
+
+        TransactionSynchronizationManager.registerSynchronization(
+                new TransactionSynchronization() {
+                    @Override
+                    public void afterCommit() {
+                        notifyPort.notify(inviteeId, message);
+                    }
+                }
+        );
     }
 
     private void validateOwner(Band band, Long userId, BandErrorCode forbiddenCode) {
