@@ -9,7 +9,6 @@ import numpy as np
 import pymysql
 from pymysql.connections import Connection
 from sentence_transformers import SentenceTransformer
-from sklearn.metrics.pairwise import cosine_similarity
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 import config
@@ -79,10 +78,11 @@ def embed_descriptions(model: SentenceTransformer, descriptions: list[str]) -> n
 def compute_similarity(embeddings: np.ndarray) -> np.ndarray:
     """임베딩 행렬로부터 전체 코사인 유사도 행렬을 계산한다.
 
-    현재는 500개 내외라 sklearn cosine_similarity로 전체를 한 번에 계산하지만,
+    현재는 500개 내외라 numpy로 전체를 한 번에 계산하지만,
     밴드 수가 늘어나면 이 함수만 청크 단위 계산으로 교체 예정
     """
-    return cosine_similarity(embeddings)
+    normalized = embeddings / np.linalg.norm(embeddings, axis=1, keepdims=True)
+    return normalized @ normalized.T
 
 
 def extract_top_k_pairs(
