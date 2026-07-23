@@ -5,6 +5,7 @@ import com.umc.bscene.global.security.filter.JwtAuthFilter;
 import com.umc.bscene.global.security.handler.CustomAuthenticationEntryPoint;
 import com.umc.bscene.global.security.handler.OAuthFailureHandler;
 import com.umc.bscene.global.security.handler.OAuthSuccessHandler;
+import com.umc.bscene.global.security.oauth.DynamicRedirectAuthorizationRequestResolver;
 import com.umc.bscene.global.security.service.CustomOAuthService;
 import com.umc.bscene.global.security.service.CustomUserDetailsService;
 import com.umc.bscene.global.security.util.JwtUtil;
@@ -35,6 +36,7 @@ public class SecurityConfig {
     private final OAuthSuccessHandler oAuthSuccessHandler;
     private final OAuthFailureHandler oAuthFailureHandler;
     private final CustomAuthenticationEntryPoint customAuthenticationEntryPoint;
+    private final DynamicRedirectAuthorizationRequestResolver dynamicRedirectAuthorizationRequestResolver;
 
     private final String[] allowUris = Arrays.stream(PermitAllUri.values())
             .map(PermitAllUri::getUri)
@@ -65,6 +67,9 @@ public class SecurityConfig {
 
                 // 소셜 로그인(OAuth2) 설정
                 .oauth2Login(oauth -> oauth
+                        // 로그인 시작 시 redirect_origin 파라미터를 세션에 기억 (동적 프론트 리다이렉트)
+                        .authorizationEndpoint(authorization -> authorization
+                                .authorizationRequestResolver(dynamicRedirectAuthorizationRequestResolver))
                         // 커스텀 콜백 경로 (application.yaml의 redirect-uri와 일치)
                         .redirectionEndpoint(redirect -> redirect.baseUri("/oauth/callback/*"))
                         // 소셜 유저 정보 로드

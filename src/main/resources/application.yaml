@@ -103,8 +103,9 @@ cors:
   allowed-origins: ${FRONT_ORIGIN:http://localhost:5173}
 
 oauth:
-  front-redirect-uri: ${FRONT_REDIRECT_ORIGIN:http://localhost:5173}/oauth/callback
-  front-failure-uri: ${FRONT_REDIRECT_ORIGIN:http://localhost:5173}/login
+  # 기본값은 배포 프론트 — 로컬 프론트/백엔드 개발 시에는 로그인 시작 URL에 ?redirect_origin=http://localhost:5173을 붙여 사용
+  front-redirect-uri: ${FRONT_REDIRECT_ORIGIN:https://bscene.app}/oauth/callback
+  front-failure-uri: ${FRONT_REDIRECT_ORIGIN:https://bscene.app}/login
 
 aws:
   s3:
@@ -119,8 +120,6 @@ notification:
     credentials-base64: ${FCM_CREDENTIALS_BASE64:}
   terms:
     live-id: ${NOTIFICATION_TERMS_LIVE_ID:4}
-  # 로그인 실패 시: 프론트 로그인 페이지로 리다이렉트 (?error=코드) → 프론트가 토스트 등으로 안내
-  front-failure-uri: ${FRONT_REDIRECT_ORIGIN:http://localhost:5173}/login
 
 # spring actuator
 management:

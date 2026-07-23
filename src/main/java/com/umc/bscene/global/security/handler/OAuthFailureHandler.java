@@ -1,5 +1,6 @@
 package com.umc.bscene.global.security.handler;
 
+import com.umc.bscene.global.security.oauth.OAuthRedirectOriginSupport;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.beans.factory.annotation.Value;
@@ -22,12 +23,16 @@ import java.nio.charset.StandardCharsets;
 public class OAuthFailureHandler implements AuthenticationFailureHandler {
 
     private static final String DEFAULT_ERROR = "OAUTH_LOGIN_FAILED";
+    private static final String LOGIN_PATH = "/login";
 
+    private final OAuthRedirectOriginSupport redirectOriginSupport;
     private final String frontFailureUri;
 
     public OAuthFailureHandler(
+            OAuthRedirectOriginSupport redirectOriginSupport,
             @Value("${oauth.front-failure-uri}") String frontFailureUri
     ) {
+        this.redirectOriginSupport = redirectOriginSupport;
         this.frontFailureUri = frontFailureUri;
     }
 
@@ -45,7 +50,13 @@ public class OAuthFailureHandler implements AuthenticationFailureHandler {
             error = oauthException.getError().getErrorCode();
         }
 
-        String redirectUrl = frontFailureUri + "?error=" + URLEncoder.encode(error, StandardCharsets.UTF_8);
+        String redirectUrl = resolveFailureBase(request) + "?error=" + URLEncoder.encode(error, StandardCharsets.UTF_8);
         response.sendRedirect(redirectUrl);
+    }
+
+    // 로그인 시작 시 프론트가 알려준 origin(화이트리스트 검증됨)이 있으면 그쪽 로그인 페이지로, 없으면 기본 주소로
+    private String resolveFailureBase(HttpServletRequest request) {
+        String origin = redirectOriginSupport.consume(request);
+        return (origin != null) ? origin + LOGIN_PATH : frontFailureUri;
     }
 }
