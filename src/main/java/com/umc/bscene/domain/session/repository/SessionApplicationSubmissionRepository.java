@@ -1,5 +1,6 @@
 package com.umc.bscene.domain.session.repository;
 
+import com.umc.bscene.domain.session.dto.application.response.BandsRecruitmentsSummaryResponse;
 import com.umc.bscene.domain.session.entity.SessionApplicationSubmission;
 import com.umc.bscene.domain.session.enums.ApplicationStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -26,6 +27,80 @@ where recruitment.band.id = :bandId
     and submission.status <> com.umc.bscene.domain.session.enums.ApplicationStatus.CANCELED
 """)
     long countActiveApplicantsByBandId(
+            @Param("bandId") Long bandId,
+            @Param("now") LocalDateTime now
+    );
+
+    // bandId로 활성화된 공고 조회, 반환은 지원서와 지원자 정보
+    // 마감하지 않은, 마감일 임박순 정렬
+    @Query("""
+select 
+    new com.umc.bscene.domain.session.dto.application.response.BandsRecruitmentsSummaryResponse(
+            sr.sessionRecruitmentId,
+            sas.applicationSubmissionId,
+            sbp.sessionBasicProfileId,
+            sr.deadlineAt,
+            sr.recruitmentTitle,
+            sr.part,
+            sr.genre,
+            sr.region,
+            sa.profileImageUrl,
+            sa.nickname,
+            sa.part,
+            sa.skillLevel,
+            sa.region,
+            sas.status
+    )
+from 
+SessionApplicationSubmission sas
+join sas.sessionApplication sa
+join sas.sessionRecruitment sr
+join SessionBasicProfile sbp
+    on sbp.user.id = sa.userId
+where sr.band.id = :bandId
+    and sr.deadlineAt > :now
+    and sr.deletedAt is null
+    and sas.status <> CANCELED
+order by sr.deadlineAt asc
+""")
+    List<BandsRecruitmentsSummaryResponse> findNonExpiredApplicantsByBandIdOrderByAsc(
+            @Param("bandId") Long bandId,
+            @Param("now") LocalDateTime now
+    );
+
+    // bandId로 마감된 공고 조회, 반환은 지원서와 지원자 정보
+    // 마감된지 얼마 안된 것부터 마감된지 오래된 것 순
+    @Query("""
+select 
+    new com.umc.bscene.domain.session.dto.application.response.BandsRecruitmentsSummaryResponse(
+            sr.sessionRecruitmentId,
+            sas.applicationSubmissionId,
+            sbp.sessionBasicProfileId,
+            sr.deadlineAt,
+            sr.recruitmentTitle,
+            sr.part,
+            sr.genre,
+            sr.region,
+            sa.profileImageUrl,
+            sa.nickname,
+            sa.part,
+            sa.skillLevel,
+            sa.region,
+            sas.status
+    )
+from 
+SessionApplicationSubmission sas
+join sas.sessionApplication sa
+join sas.sessionRecruitment sr
+join SessionBasicProfile sbp
+    on sbp.user.id = sa.userId
+where sr.band.id = :bandId
+    and sr.deadlineAt <= :now
+    and sr.deletedAt is null
+    and sas.status <> CANCELED
+order by sr.deadlineAt desc
+""")
+    List<BandsRecruitmentsSummaryResponse> findExpiredApplicantsByBandIdOrderByDesc(
             @Param("bandId") Long bandId,
             @Param("now") LocalDateTime now
     );

@@ -6,6 +6,7 @@ import com.umc.bscene.domain.user.dto.request.UserModeUpdateRequest;
 import com.umc.bscene.domain.user.dto.response.*;
 import com.umc.bscene.domain.user.dto.response.mypage.BandMyPageResponse;
 import com.umc.bscene.domain.user.dto.response.mypage.FanMyPageResponse;
+import com.umc.bscene.domain.user.dto.response.session.ReceiveRecruitmentsResponse;
 import com.umc.bscene.domain.user.entity.FanProfile;
 import com.umc.bscene.domain.user.entity.User;
 import com.umc.bscene.domain.user.entity.UserGenres;
@@ -13,10 +14,7 @@ import com.umc.bscene.domain.user.entity.UserRegions;
 import com.umc.bscene.domain.user.enums.HistoryYearFilter;
 import com.umc.bscene.domain.user.enums.UserMode;
 import com.umc.bscene.domain.user.exception.UserException;
-import com.umc.bscene.domain.user.port.AuthPort;
-import com.umc.bscene.domain.user.port.BandPort;
-import com.umc.bscene.domain.user.port.FollowPort;
-import com.umc.bscene.domain.user.port.PerformancePort;
+import com.umc.bscene.domain.user.port.*;
 import com.umc.bscene.domain.user.repository.FanProfileRepository;
 import com.umc.bscene.domain.user.repository.UserGenresRepository;
 import com.umc.bscene.domain.user.repository.UserRegionsRepository;
@@ -36,7 +34,7 @@ import java.util.Map;
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
-public class MyPageService {
+public class UserService {
 
     private static final int MAX_PAGE_SIZE = 30;   // 목록 조회(참여 기록·관심 공연) 페이지 크기 상한
 
@@ -45,6 +43,7 @@ public class MyPageService {
     private final UserGenresRepository userGenresRepository;
     private final UserRegionsRepository userRegionsRepository;
     private final FollowPort followPort;
+    private final SessionPort sessionPort;
     private final PerformancePort performancePort;
     private final BandPort bandPort;
     private final AuthPort authPort;
@@ -226,6 +225,14 @@ public class MyPageService {
             found.changeMode(request.type());
 
         }
+    }
 
+    public ReceiveRecruitmentsResponse findMyBandsRecruitments(User user) {
+
+        // 1. 내 활성화된 밴드 프로필로 연관된 밴드를 찾는다.
+        Long bandId = bandPort.getActiveBandMemberProfile_BandIdIdByUserId(user.getId());
+
+        // 2. 밴드 ID를 통해 현재 진행 중인 모집 공고를 찾는다
+        return sessionPort.findPendingRecruitmentsByBandId(user.getId(), bandId);
     }
 }

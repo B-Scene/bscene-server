@@ -10,6 +10,7 @@ import com.umc.bscene.domain.band.port.PerformancePort;
 import com.umc.bscene.domain.band.port.SessionPort;
 import com.umc.bscene.domain.band.repository.BandMemberProfileRepository;
 import com.umc.bscene.domain.band.repository.BandMemberRepository;
+import com.umc.bscene.domain.band.repository.BandRepository;
 import com.umc.bscene.domain.band.response.code.BandErrorCode;
 import com.umc.bscene.domain.user.dto.response.BandMemberResponse;
 import com.umc.bscene.domain.user.dto.response.MyBandProfile;
@@ -28,6 +29,7 @@ public class UserAdapter implements BandPort {
 
     private final BandMemberProfileRepository bandMemberProfileRepository;
     private final BandMemberRepository bandMemberRepository;
+    private final BandRepository bandRepository;
     private final FollowPort followPort;
     private final SessionPort sessionPort;
     private final PerformancePort performancePort;
@@ -49,6 +51,16 @@ public class UserAdapter implements BandPort {
         Band band = bandMember.getBand();
 
         return buildBandMemberResponse(band, profile, bandMember.isMember());
+    }
+
+    @Override
+    public Long getActiveBandMemberProfile_BandIdIdByUserId(Long userId) {
+
+        // BandRepository를 사용, join을 통해 BandMember, BandMemberProfile을 타고 가서 활성화 필터링
+        Band band = bandRepository.findByUserIdWithActiveProfile(userId, true, BandMemberStatus.ACCEPTED)
+                .orElseThrow(() -> new BandException(BandErrorCode.BAND_NOT_FOUND));
+
+        return band.getId();
     }
 
     @Override

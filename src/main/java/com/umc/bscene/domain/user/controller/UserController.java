@@ -8,12 +8,13 @@ import com.umc.bscene.domain.user.dto.response.FollowedBandResponse;
 import com.umc.bscene.domain.user.dto.response.InterestedPerformanceResponse;
 import com.umc.bscene.domain.user.dto.response.ParticipationHistoryResponse;
 import com.umc.bscene.domain.user.dto.response.mypage.MyPageResponse;
+import com.umc.bscene.domain.user.dto.response.session.ReceiveRecruitmentsResponse;
 import com.umc.bscene.domain.user.enums.HistoryYearFilter;
 import com.umc.bscene.domain.user.enums.UserMode;
 import com.umc.bscene.domain.user.exception.UserException;
 import com.umc.bscene.domain.user.response.code.UserErrorCode;
 import com.umc.bscene.domain.user.response.code.UserSuccessCode;
-import com.umc.bscene.domain.user.service.MyPageService;
+import com.umc.bscene.domain.user.service.UserService;
 import com.umc.bscene.global.response.SuccessResponse;
 import com.umc.bscene.global.security.entity.AuthMember;
 import jakarta.validation.Valid;
@@ -28,7 +29,7 @@ import org.springframework.web.bind.annotation.*;
 @RequiredArgsConstructor
 public class UserController {
 
-    private final MyPageService myPageService;
+    private final UserService userService;
 
     // 마이페이지 조회 API (팬/밴드 모드 공용 엔드포인트)
     @GetMapping("/me")
@@ -40,14 +41,14 @@ public class UserController {
         ResponseEntity<SuccessResponse<MyPageResponse>> response;
 
         if (currentMode.equals(UserMode.FAN)) {
-            FanMyPageResponse resDto = myPageService.getFanMyPage(authMember.getUser());
+            FanMyPageResponse resDto = userService.getFanMyPage(authMember.getUser());
             SuccessResponse<MyPageResponse> successResponse = SuccessResponse.of(
                     resDto,
                     UserSuccessCode.FAN_MYPAGE_GET_SUCCESS
             );
             response = ResponseEntity.status(successResponse.getStatus()).body(successResponse);
         } else {
-            BandMyPageResponse resDto = myPageService.getBandMyPage(authMember.getUser());
+            BandMyPageResponse resDto = userService.getBandMyPage(authMember.getUser());
             response = ResponseEntity
                     .status(HttpStatus.OK)
                     .body(SuccessResponse.ok(resDto));
@@ -66,7 +67,7 @@ public class UserController {
             throw new UserException(UserErrorCode.PARAM_BAD_REQUEST);
         }
 
-        MyProfileResponse response = myPageService.findMyProfiles(authMember.getUser(), type);
+        MyProfileResponse response = userService.findMyProfiles(authMember.getUser(), type);
 
         return ResponseEntity
                 .status(HttpStatus.OK)
@@ -79,7 +80,7 @@ public class UserController {
             @Valid @RequestBody UserModeUpdateRequest request
     ) {
 
-        myPageService.updateMode(authMember.getUser(), request);
+        userService.updateMode(authMember.getUser(), request);
 
         return ResponseEntity
                 .status(HttpStatus.OK)
@@ -94,7 +95,7 @@ public class UserController {
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size
     ) {
-        ParticipationHistoryResponse response = myPageService.getParticipationHistory(
+        ParticipationHistoryResponse response = userService.getParticipationHistory(
                 authMember.getUser().getId(), filter, page, size);
         SuccessResponse<ParticipationHistoryResponse> successResponse = SuccessResponse.of(
                 response,
@@ -111,7 +112,7 @@ public class UserController {
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size
     ) {
-        InterestedPerformanceResponse response = myPageService.getInterestedPerformances(
+        InterestedPerformanceResponse response = userService.getInterestedPerformances(
                 authMember.getUser().getId(), page, size);
         SuccessResponse<InterestedPerformanceResponse> successResponse = SuccessResponse.of(
                 response,
@@ -128,7 +129,7 @@ public class UserController {
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size
     ) {
-        FollowedBandResponse response = myPageService.getFollowedBands(
+        FollowedBandResponse response = userService.getFollowedBands(
                 authMember.getUser().getId(), page, size);
         SuccessResponse<FollowedBandResponse> successResponse = SuccessResponse.of(
                 response,
@@ -136,5 +137,18 @@ public class UserController {
         );
 
         return ResponseEntity.status(successResponse.getStatus()).body(successResponse);
+    }
+
+    // 나의 현재 활성화된 밴드 프로필을 사용하여, 내 밴드에 지원한 지원자들을 공고마다 섹셔닝
+    @GetMapping("/me/recruitments/receives")
+    public ResponseEntity<SuccessResponse<ReceiveRecruitmentsResponse>> getReceiveRecruitments(
+            @AuthenticationPrincipal AuthMember user
+    ) {
+
+        ReceiveRecruitmentsResponse response = userService.findMyBandsRecruitments(user.getUser());
+
+        return ResponseEntity
+                .status(HttpStatus.OK)
+                .body(SuccessResponse.ok(response));
     }
 }

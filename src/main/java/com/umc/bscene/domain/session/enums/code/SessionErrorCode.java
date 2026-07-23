@@ -1,5 +1,6 @@
 package com.umc.bscene.domain.session.enums.code;
 
+import com.umc.bscene.global.constant.StaticValue;
 import com.umc.bscene.global.response.code.BaseResponseCode;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
@@ -89,7 +90,14 @@ public enum SessionErrorCode implements BaseResponseCode {
             HttpStatus.CONFLICT.value(),
             "APPLICATION_SUBMISSION_CANCEL_NOT_ALLOWED",
             "진행 중인 지원만 취소할 수 있습니다."
-    );
+    ),
+
+    SESSION_PROFILE_NOT_FOUND(
+            StaticValue.NOT_FOUND,
+            "SESSION_PRIFILE404_1",
+            "세션 지원에 사용할 프로필을 찾을 수 없습니다."
+    )
+    ;
 
     private final int status;
     private final String code;

@@ -19,6 +19,7 @@ public class BandMemberPortConfig {
     public BandPort BandUserAdapter(
             BandMemberProfileRepository bandMemberProfileRepository,
             BandMemberRepository bandMemberRepository,
+            BandRepository bandRepository,
             FollowPort followPort,
             SessionPort sessionPort,
             PerformancePort performancePort
@@ -26,6 +27,7 @@ public class BandMemberPortConfig {
         return new UserAdapter(
                 bandMemberProfileRepository,
                 bandMemberRepository,
+                bandRepository,
                 followPort,
                 sessionPort,
                 performancePort
