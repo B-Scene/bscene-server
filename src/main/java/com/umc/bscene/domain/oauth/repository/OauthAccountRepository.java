@@ -12,6 +12,8 @@ public interface OauthAccountRepository extends JpaRepository<OauthAccount, Long
 
     Optional<OauthAccount> findFirstByUser_IdOrderByIdAsc(Long userId);
 
+    long countByUser_Id(Long userId);
+
     // User를 함께 조회(fetch join)하여 지연 로딩 예외(LazyInitializationException) 방지
     @Query("SELECT oa FROM OauthAccount oa JOIN FETCH oa.user " +
             "WHERE oa.provider = :provider AND oa.providerUid = :providerUid")

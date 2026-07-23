@@ -23,6 +23,7 @@ public enum SessionErrorCode implements BaseResponseCode {
     SESSION_RECRUITMENT_APPLICATION_CLOSED("SESSION400_8", BAD_REQUEST, "지원이 마감된 공고입니다."),
     BAND_PERMISSION_DENIED("SESSION403_1", FORBIDDEN, "밴드 오너만 세션 모집 공고를 등록, 수정, 삭제할 수 있습니다."),
     SELF_RECRUITMENT_APPLICATION_NOT_ALLOWED("SESSION403_2", FORBIDDEN, "본인이 만든 공고에는 지원할 수 없습니다."),
+    SELF_APPLICATION_DECISION_NOT_ALLOWED("SESSION403_3", FORBIDDEN, "본인의 지원 건은 본인이 수락하거나 거절할 수 없습니다."),
     SESSION_APPLICATION_NOT_FOUND("SESSION404_1", NOT_FOUND, "지원서를 찾을 수 없습니다."),
     SESSION_RECRUITMENT_NOT_FOUND("SESSION404_2", NOT_FOUND, "세션 모집 공고를 찾을 수 없습니다."),
     APPLICATION_SUBMISSION_NOT_FOUND("SESSION404_3", NOT_FOUND, "지원 내역을 찾을 수 없습니다."),
@@ -30,6 +31,8 @@ public enum SessionErrorCode implements BaseResponseCode {
     DEFAULT_SESSION_APPLICATION_ALREADY_EXISTS("SESSION409_2", CONFLICT, "기본 지원서는 하나만 생성할 수 있습니다."),
     SESSION_APPLICATION_ALREADY_SUBMITTED("SESSION409_3", CONFLICT, "이미 해당 지원서로 지원한 공고입니다."),
     APPLICATION_SUBMISSION_CANCEL_NOT_ALLOWED("SESSION409_4", CONFLICT, "진행 중인 지원만 취소할 수 있습니다."),
+    APPLICATION_SUBMISSION_ALREADY_PROCESSED("SESSION409_5", CONFLICT, "이미 처리되었거나 취소된 지원입니다."),
+    APPLICATION_SUBMISSION_NOT_CONFIRMABLE("SESSION409_6", CONFLICT, "지원자 최종 확정이 가능한 상태가 아닙니다."),
     ;
 
     private final String code;
