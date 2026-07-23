@@ -4,6 +4,7 @@ import com.umc.bscene.domain.auth.enums.onboarding.Genre;
 import com.umc.bscene.domain.auth.enums.onboarding.Region;
 import com.umc.bscene.domain.band.entity.Band;
 import com.umc.bscene.domain.band.entity.BandInviteLink;
+import com.umc.bscene.domain.band.enums.BandMemberType;
 
 import java.time.LocalDateTime;
 
@@ -13,6 +14,7 @@ public record BandInviteLinkDetailResponse(
         String bandProfileImageUrl,
         Genre genre,
         Region region,
+        BandMemberType memberType,
         LocalDateTime expiresAt
 ) {
 
@@ -27,6 +29,7 @@ public record BandInviteLinkDetailResponse(
                 band.getProfileImageUrl(),
                 band.getGenre(),
                 band.getRegion(),
+                inviteLink.getMemberType(),
                 inviteLink.getExpiresAt()
         );
     }
