@@ -81,6 +81,73 @@ public interface SessionRecruitmentRepository extends JpaRepository<SessionRecru
             Pageable pageable
     );
 
+    // 내 밴드가 받은 공고 커서 페이지 : 진행 중(OPEN), 마감 임박순
+    // 유효한 지원이 하나도 없는 공고는 제외 (취소된 지원만 있는 공고 포함)
+    @Query("""
+        SELECT sr.sessionRecruitmentId
+        FROM SessionRecruitment sr
+        WHERE sr.band.id = :bandId
+          AND sr.deletedAt IS NULL
+          AND sr.deadlineAt > :now
+          AND EXISTS (
+              SELECT 1
+              FROM SessionApplicationSubmission sas
+              WHERE sas.sessionRecruitment = sr
+                AND sas.status <> com.umc.bscene.domain.session.enums.ApplicationStatus.CANCELED
+          )
+          AND (:cursorId IS NULL
+              OR sr.deadlineAt > (
+                  SELECT cursor.deadlineAt
+                  FROM SessionRecruitment cursor
+                  WHERE cursor.sessionRecruitmentId = :cursorId
+              )
+              OR (sr.deadlineAt = (
+                  SELECT cursor.deadlineAt
+                  FROM SessionRecruitment cursor
+                  WHERE cursor.sessionRecruitmentId = :cursorId
+              ) AND sr.sessionRecruitmentId < :cursorId))
+        ORDER BY sr.deadlineAt ASC, sr.sessionRecruitmentId DESC
+    """)
+    List<Long> findOpenRecruitmentIdsByBandId(
+            @Param("bandId") Long bandId,
+            @Param("now") LocalDateTime now,
+            @Param("cursorId") Long cursorId,
+            Pageable pageable
+    );
+
+    // 내 밴드가 받은 공고 커서 페이지 : 마감(CLOSE), 최근에 마감된 순
+    @Query("""
+        SELECT sr.sessionRecruitmentId
+        FROM SessionRecruitment sr
+        WHERE sr.band.id = :bandId
+          AND sr.deletedAt IS NULL
+          AND sr.deadlineAt <= :now
+          AND EXISTS (
+              SELECT 1
+              FROM SessionApplicationSubmission sas
+              WHERE sas.sessionRecruitment = sr
+                AND sas.status <> com.umc.bscene.domain.session.enums.ApplicationStatus.CANCELED
+          )
+          AND (:cursorId IS NULL
+              OR sr.deadlineAt < (
+                  SELECT cursor.deadlineAt
+                  FROM SessionRecruitment cursor
+                  WHERE cursor.sessionRecruitmentId = :cursorId
+              )
+              OR (sr.deadlineAt = (
+                  SELECT cursor.deadlineAt
+                  FROM SessionRecruitment cursor
+                  WHERE cursor.sessionRecruitmentId = :cursorId
+              ) AND sr.sessionRecruitmentId < :cursorId))
+        ORDER BY sr.deadlineAt DESC, sr.sessionRecruitmentId DESC
+    """)
+    List<Long> findClosedRecruitmentIdsByBandId(
+            @Param("bandId") Long bandId,
+            @Param("now") LocalDateTime now,
+            @Param("cursorId") Long cursorId,
+            Pageable pageable
+    );
+
     // 현재부터 24시간 이내에 마감되며 아직 알림을 발송하지 않은 공고 조회
     @Query("""
         SELECT sr

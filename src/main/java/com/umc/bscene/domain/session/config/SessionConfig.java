@@ -3,7 +3,7 @@ package com.umc.bscene.domain.session.config;
 import com.umc.bscene.domain.session.adapter.BandAdapter;
 import com.umc.bscene.domain.session.adapter.UserAdapter;
 import com.umc.bscene.domain.session.repository.SessionApplicationSubmissionRepository;
-import com.umc.bscene.domain.session.repository.SessionBasicProfileRepository;
+import com.umc.bscene.domain.session.repository.SessionRecruitmentRepository;
 import com.umc.bscene.domain.session.scheduler.SessionRecruitmentReminderScheduler;
 import com.umc.bscene.domain.session.service.SessionRecruitmentReminderService;
 import org.springframework.context.annotation.Bean;
@@ -20,11 +20,11 @@ public class SessionConfig {
     @Bean
     public com.umc.bscene.domain.user.port.SessionPort SessionUserAdapter(
             SessionApplicationSubmissionRepository sessionApplicationSubmissionRepository,
-            SessionBasicProfileRepository sessionBasicProfileRepository
+            SessionRecruitmentRepository sessionRecruitmentRepository
     ) {
         return new UserAdapter(
                 sessionApplicationSubmissionRepository,
-                sessionBasicProfileRepository
+                sessionRecruitmentRepository
         );
     }
 

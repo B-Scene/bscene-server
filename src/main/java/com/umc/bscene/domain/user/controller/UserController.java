@@ -8,13 +8,15 @@ import com.umc.bscene.domain.user.dto.response.FollowedBandResponse;
 import com.umc.bscene.domain.user.dto.response.InterestedPerformanceResponse;
 import com.umc.bscene.domain.user.dto.response.ParticipationHistoryResponse;
 import com.umc.bscene.domain.user.dto.response.mypage.MyPageResponse;
-import com.umc.bscene.domain.user.dto.response.session.ReceiveRecruitmentsResponse;
+import com.umc.bscene.domain.user.dto.response.session.SessionRecruitmentResponse;
 import com.umc.bscene.domain.user.enums.HistoryYearFilter;
+import com.umc.bscene.domain.user.enums.RecruitmentStatusFilter;
 import com.umc.bscene.domain.user.enums.UserMode;
 import com.umc.bscene.domain.user.exception.UserException;
 import com.umc.bscene.domain.user.response.code.UserErrorCode;
 import com.umc.bscene.domain.user.response.code.UserSuccessCode;
 import com.umc.bscene.domain.user.service.UserService;
+import com.umc.bscene.global.response.CursorPage;
 import com.umc.bscene.global.response.SuccessResponse;
 import com.umc.bscene.global.security.entity.AuthMember;
 import jakarta.validation.Valid;
@@ -140,12 +142,17 @@ public class UserController {
     }
 
     // 나의 현재 활성화된 밴드 프로필을 사용하여, 내 밴드에 지원한 지원자들을 공고마다 섹셔닝
+    // status=OPEN(진행 중, 마감 임박순) / CLOSE(마감, 최근 마감 순), 공고 단위 커서 페이지네이션
     @GetMapping("/me/recruitments/receives")
-    public ResponseEntity<SuccessResponse<ReceiveRecruitmentsResponse>> getReceiveRecruitments(
-            @AuthenticationPrincipal AuthMember user
+    public ResponseEntity<SuccessResponse<CursorPage<SessionRecruitmentResponse>>> getReceiveRecruitments(
+            @AuthenticationPrincipal AuthMember user,
+            @RequestParam(defaultValue = "OPEN") RecruitmentStatusFilter status,
+            @RequestParam(required = false) Long cursor,
+            @RequestParam(defaultValue = "10") int size
     ) {
 
-        ReceiveRecruitmentsResponse response = userService.findMyBandsRecruitments(user.getUser());
+        CursorPage<SessionRecruitmentResponse> response =
+                userService.findMyBandsRecruitments(user.getUser(), status, cursor, size);
 
         return ResponseEntity
                 .status(HttpStatus.OK)

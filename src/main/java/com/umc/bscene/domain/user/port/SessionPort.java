@@ -1,8 +1,15 @@
 package com.umc.bscene.domain.user.port;
 
-import com.umc.bscene.domain.user.dto.response.session.ReceiveRecruitmentsResponse;
+import com.umc.bscene.domain.user.dto.response.session.SessionRecruitmentResponse;
+import com.umc.bscene.domain.user.enums.RecruitmentStatusFilter;
+import com.umc.bscene.global.response.CursorPage;
 
 public interface SessionPort {
 
-    ReceiveRecruitmentsResponse findPendingRecruitmentsByBandId(Long userId, Long bandId);
+    CursorPage<SessionRecruitmentResponse> findRecruitmentsByBandId(
+            Long bandId,
+            RecruitmentStatusFilter status,
+            Long cursorId,
+            int size
+    );
 }

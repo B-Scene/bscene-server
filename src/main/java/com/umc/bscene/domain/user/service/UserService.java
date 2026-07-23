@@ -6,7 +6,9 @@ import com.umc.bscene.domain.user.dto.request.UserModeUpdateRequest;
 import com.umc.bscene.domain.user.dto.response.*;
 import com.umc.bscene.domain.user.dto.response.mypage.BandMyPageResponse;
 import com.umc.bscene.domain.user.dto.response.mypage.FanMyPageResponse;
-import com.umc.bscene.domain.user.dto.response.session.ReceiveRecruitmentsResponse;
+import com.umc.bscene.domain.user.dto.response.session.SessionRecruitmentResponse;
+import com.umc.bscene.domain.user.enums.RecruitmentStatusFilter;
+import com.umc.bscene.global.response.CursorPage;
 import com.umc.bscene.domain.user.entity.FanProfile;
 import com.umc.bscene.domain.user.entity.User;
 import com.umc.bscene.domain.user.entity.UserGenres;
@@ -37,6 +39,7 @@ import java.util.Map;
 public class UserService {
 
     private static final int MAX_PAGE_SIZE = 30;   // 목록 조회(참여 기록·관심 공연) 페이지 크기 상한
+    private static final int RECEIVES_MAX_PAGE_SIZE = 15;   // 받은 모집 공고 커서 페이지 크기 상한
 
     private final UserRepository userRepository;
     private final FanProfileRepository fanProfileRepository;
@@ -227,12 +230,14 @@ public class UserService {
         }
     }
 
-    public ReceiveRecruitmentsResponse findMyBandsRecruitments(User user) {
+    public CursorPage<SessionRecruitmentResponse> findMyBandsRecruitments(
+            User user, RecruitmentStatusFilter status, Long cursor, int size) {
 
         // 1. 내 활성화된 밴드 프로필로 연관된 밴드를 찾는다.
         Long bandId = bandPort.getActiveBandMemberProfile_BandIdIdByUserId(user.getId());
 
-        // 2. 밴드 ID를 통해 현재 진행 중인 모집 공고를 찾는다
-        return sessionPort.findPendingRecruitmentsByBandId(user.getId(), bandId);
+        // 2. 밴드 ID로 공고 단위 커서 페이지 조회 (사이즈: 최저 1, 최대 15)
+        int pageSize = Math.min(Math.max(size, 1), RECEIVES_MAX_PAGE_SIZE);
+        return sessionPort.findRecruitmentsByBandId(bandId, status, cursor, pageSize);
     }
 }
