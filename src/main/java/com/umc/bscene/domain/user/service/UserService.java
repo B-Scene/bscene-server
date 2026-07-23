@@ -126,21 +126,13 @@ public class UserService {
         return buildMyInfo(fanProfile, user);
     }
 
-    // 내 정보 조회 (내 정보 수정 화면 초기값 : 닉네임/관심 장르/활동 지역)
-    public MyInfoResponse getMyInfo(User user) {
-        FanProfile fanProfile = fanProfileRepository.findByUser(user)
-                .orElseThrow(() -> new UserException(UserErrorCode.FAN_PROFILE_NOT_FOUND));
-
-        return buildMyInfo(fanProfile, user);
-    }
-
     // 공연 참여 기록 조회 (참여 완료 공연, 연도 필터, offset 무한스크롤)
     // 필터는 서버 기준 올해에 상대적 : THIS_YEAR(올해) / LAST_YEAR(작년) / BEFORE(재작년 이전) / ALL(전체)
     public ParticipationHistoryResponse getParticipationHistory(
             Long userId, HistoryYearFilter filter, int page, int size) {
         HistoryYearFilter appliedFilter = (filter == null) ? HistoryYearFilter.ALL : filter;
         int baseYear = LocalDate.now().getYear();
-        MyPageService.YearDateRange range = resolveYearDateRange(appliedFilter, baseYear);
+        YearDateRange range = resolveYearDateRange(appliedFilter, baseYear);
 
         int pageNumber = Math.max(page, 0);
         int pageSize = Math.min(Math.max(size, 1), MAX_PAGE_SIZE);
@@ -158,7 +150,7 @@ public class UserService {
             Long userId, HistoryYearFilter filter, int page, int size) {
         HistoryYearFilter appliedFilter = (filter == null) ? HistoryYearFilter.ALL : filter;
         int baseYear = LocalDate.now().getYear();
-        MyPageService.YearDateRange range = resolveYearDateRange(appliedFilter, baseYear);
+        YearDateRange range = resolveYearDateRange(appliedFilter, baseYear);
 
         int pageNumber = Math.max(page, 0);
         int pageSize = Math.min(Math.max(size, 1), MAX_PAGE_SIZE);
