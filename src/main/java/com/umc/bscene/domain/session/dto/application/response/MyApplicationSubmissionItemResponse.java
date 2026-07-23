@@ -43,6 +43,7 @@ public record MyApplicationSubmissionItemResponse(
     private static String statusLabel(SessionApplicationSubmission submission) {
         return switch (submission.getStatus()) {
             case PENDING -> "지원 완료";
+            case BAND_ACCEPTED -> "수락 대기";
             case ACCEPTED -> "지원 수락";
             case REJECTED -> "지원 거절";
             case CANCELED -> "지원 취소";
