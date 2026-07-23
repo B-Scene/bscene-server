@@ -12,6 +12,7 @@ public enum BandErrorCode implements BaseResponseCode {
 
     INVALID_ETC_MUSIC_LINK(BAD_REQUEST, "MUSIC400_1", "플랫폼과 링크를 함께 입력해주세요."),
     NOT_OWN_BAND_MEMBER_PROFILE(BAD_REQUEST, "PROFILE400_1", "본인의 멤버 프로필만 선택할 수 있어요."),
+    INVALID_MEMBER_SEARCH_KEYWORD(BAD_REQUEST, "MEMBER400_1", "검색어를 한 글자 이상 입력해주세요."),
 
     NOT_BAND_OWNER(FORBIDDEN, "BAND403_1", "밴드 오너만 수행할 수 있는 작업입니다."),
     CANNOT_REMOVE_OWNER(FORBIDDEN, "BAND403_2", "밴드 오너는 제거할 수 없습니다."),
