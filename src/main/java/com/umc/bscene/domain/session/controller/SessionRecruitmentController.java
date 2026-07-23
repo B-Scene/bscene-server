@@ -30,6 +30,7 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 import com.umc.bscene.domain.session.dto.recruitment.response.SessionRecruitmentDetailResponse;
 import com.umc.bscene.domain.session.dto.recruitment.response.ManagedRecruitmentListResponse;
+import com.umc.bscene.domain.session.dto.recruitment.response.SessionRecruitmentEditResponse;
 import java.util.List;
 @RestController
 @RequiredArgsConstructor
@@ -212,6 +213,23 @@ public class SessionRecruitmentController {
                 SessionSuccessCode.SESSION_RECRUITMENT_UPDATE_SUCCESS
         );
     }
+
+    @GetMapping("/{sessionRecruitmentId}/edit")
+    public SuccessResponse<SessionRecruitmentEditResponse> getRecruitmentForEdit(
+            @AuthenticationPrincipal AuthMember authMember,
+            @PathVariable Long sessionRecruitmentId
+    ) {
+        SessionRecruitmentEditResponse response =
+                sessionRecruitmentQueryService.getRecruitmentForEdit(
+                        authMember.getUser().getId(),
+                        sessionRecruitmentId
+                );
+        return SuccessResponse.of(
+                response,
+                SessionSuccessCode.SESSION_RECRUITMENT_EDIT_GET_SUCCESS
+        );
+    }
+
     @DeleteMapping("/{sessionRecruitmentId}")
     public SuccessResponse<Void> deleteSessionRecruitment(
             @AuthenticationPrincipal AuthMember authMember,

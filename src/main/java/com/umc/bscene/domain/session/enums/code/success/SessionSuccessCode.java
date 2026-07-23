@@ -37,6 +37,7 @@ public enum SessionSuccessCode implements BaseResponseCode {
     SESSION_RECRUITMENT_CREATE_SUCCESS("SESSION201_2", CREATED, "세션 모집 공고 등록에 성공했습니다."),
     SESSION_APPLICATION_SUBMIT_SUCCESS("SESSION201_3", CREATED, "지원이 완료되었습니다."),
     SESSION_RECRUITMENT_MANAGEMENT_LIST_SUCCESS("SESSION200_23", OK, "모집 공고 관리 목록 조회에 성공했습니다."),
+    SESSION_RECRUITMENT_EDIT_GET_SUCCESS("SESSION200_24", OK, "모집 공고 수정 정보 조회에 성공했습니다."),
     ;
 
     private final String code;

@@ -4,6 +4,7 @@ import com.umc.bscene.domain.session.dto.recruitment.response.SessionRecruitment
 import com.umc.bscene.domain.session.dto.recruitment.response.SessionRecruitmentListResponse;
 import com.umc.bscene.domain.session.dto.recruitment.response.RecentRecruitmentListResponse;
 import com.umc.bscene.domain.session.dto.recruitment.response.ManagedRecruitmentListResponse;
+import com.umc.bscene.domain.session.dto.recruitment.response.SessionRecruitmentEditResponse;
 import com.umc.bscene.domain.session.enums.Part;
 import com.umc.bscene.domain.auth.enums.onboarding.Genre;
 import com.umc.bscene.domain.auth.enums.onboarding.Region;
@@ -36,5 +37,10 @@ public interface SessionRecruitmentQueryService {
             Long bandId,
             Long cursorId,
             Integer size
+    );
+
+    SessionRecruitmentEditResponse getRecruitmentForEdit(
+            Long userId,
+            Long recruitmentId
     );
 }

@@ -7,6 +7,7 @@ import com.umc.bscene.domain.session.dto.recruitment.response.RecentRecruitmentI
 import com.umc.bscene.domain.session.dto.recruitment.response.RecentRecruitmentListResponse;
 import com.umc.bscene.domain.session.dto.recruitment.response.ManagedRecruitmentItemResponse;
 import com.umc.bscene.domain.session.dto.recruitment.response.ManagedRecruitmentListResponse;
+import com.umc.bscene.domain.session.dto.recruitment.response.SessionRecruitmentEditResponse;
 import com.umc.bscene.domain.band.entity.Band;
 import com.umc.bscene.domain.band.repository.BandRepository;
 import com.umc.bscene.domain.band.exception.BandException;
@@ -258,6 +259,35 @@ public class SessionRecruitmentQueryServiceImpl implements SessionRecruitmentQue
                 .size(pageSize)
                 .nextCursor(nextCursor)
                 .hasNext(hasNext)
+                .build();
+    }
+
+    @Override
+    public SessionRecruitmentEditResponse getRecruitmentForEdit(
+            Long userId,
+            Long recruitmentId
+    ) {
+        SessionRecruitment recruitment = sessionRecruitmentRepository
+                .findBySessionRecruitmentIdAndDeletedAtIsNull(recruitmentId)
+                .orElseThrow(() -> new SessionException(
+                        SessionErrorCode.SESSION_RECRUITMENT_NOT_FOUND
+                ));
+        if (!recruitment.getBand().getOwner().getId().equals(userId)) {
+            throw new SessionException(SessionErrorCode.BAND_PERMISSION_DENIED);
+        }
+
+        return SessionRecruitmentEditResponse.builder()
+                .recruitmentTitle(recruitment.getRecruitmentTitle())
+                .summary(recruitment.getSummary())
+                .content(recruitment.getContent())
+                .part(recruitment.getPart().getDescription())
+                .skillLevel(recruitment.getSkillLevel().getDescription())
+                .genre(recruitment.getGenre().getName())
+                .region(recruitment.getRegion().getName())
+                .practiceSchedule(recruitment.getPracticeSchedule())
+                .practicePlace(recruitment.getPracticePlace())
+                .deadlineAt(recruitment.getDeadlineAt())
+                .qualification(recruitment.getQualification())
                 .build();
     }
 
