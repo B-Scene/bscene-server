@@ -13,4 +13,9 @@ public class BandAdapter implements FollowPort {
     public Long countFollowersByBandId(Long bandId) {
         return followRepository.countByBand_Id(bandId);
     }
+
+    @Override
+    public boolean isFollowing(Long userId, Long bandId) {
+        return followRepository.existsByBand_IdAndUser_Id(bandId, userId);
+    }
 }

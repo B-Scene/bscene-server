@@ -1,6 +1,6 @@
 package com.umc.bscene.domain.session.service.impl;
 
-import com.umc.bscene.domain.session.dto.application.response.MySessionApplicationResponse;
+import com.umc.bscene.domain.session.dto.application.response.MySessionApplicationDetailResponse;
 import com.umc.bscene.domain.session.dto.application.response.SessionApplicationSearchItemResponse;
 import com.umc.bscene.domain.session.dto.application.response.SessionApplicationSearchResponse;
 import com.umc.bscene.domain.session.dto.application.response.SessionApplicationDetailResponse;
@@ -51,10 +51,33 @@ public class SessionApplicationQueryServiceImpl implements SessionApplicationQue
     private final SessionRecruitmentSearchKeywordService searchKeywordService;
 
     @Override
-    public List<MySessionApplicationResponse> getMySessionApplications(Long userId) {
-        return sessionApplicationRepository.findAllByUserIdWithPortfolioLinks(userId).stream()
-                .map(MySessionApplicationResponse::from)
-                .toList();
+    public MySessionApplicationDetailResponse getMySessionApplicationDetail(
+            Long userId,
+            Long sessionApplicationId
+    ) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new BaseException(GeneralErrorCode.UNAUTHORIZED_ERROR));
+        SessionApplication application = sessionApplicationRepository
+                .findByIdAndUserIdWithPortfolioLinks(sessionApplicationId, userId)
+                .orElseThrow(() -> new SessionApplicationException(
+                        SessionErrorCode.SESSION_APPLICATION_NOT_FOUND
+                ));
+        SessionBasicProfile sessionProfile = sessionBasicProfileRepository
+                .findByUser_Id(userId)
+                .orElse(null);
+        SessionApplication defaultApplication = sessionApplicationRepository
+                .findFirstByUserIdAndPurposeAndDeletedAtIsNullOrderBySessionApplicationIdDesc(
+                        userId,
+                        DEFAULT_PURPOSE
+                )
+                .orElse(null);
+
+        return MySessionApplicationDetailResponse.of(
+                application,
+                sessionProfile == null ? null : sessionProfile.getProfileImageUrl(),
+                user.getName(),
+                defaultApplication
+        );
     }
 
     @Override
@@ -80,6 +103,8 @@ public class SessionApplicationQueryServiceImpl implements SessionApplicationQue
                         userId,
                         ApplicationStatus.PENDING
                 );
+        List<SessionApplication> applications = sessionApplicationRepository
+                .findAllByUserIdAndDeletedAtIsNullOrderBySessionApplicationIdAsc(userId);
 
         return MySessionApplicationSummaryResponse.of(
                 defaultApplication,
@@ -87,7 +112,8 @@ public class SessionApplicationQueryServiceImpl implements SessionApplicationQue
                 sessionProfile == null ? null : sessionProfile.getProfileImageUrl(),
                 applicationCount,
                 submissionCount,
-                inProgressCount
+                inProgressCount,
+                applications
         );
     }
 
@@ -136,7 +162,13 @@ public class SessionApplicationQueryServiceImpl implements SessionApplicationQue
                 .orElseThrow(() -> new SessionApplicationException(
                         SessionErrorCode.APPLICATION_SUBMISSION_NOT_FOUND
                 ));
-        submission.markChecked();
+        Long bandOwnerId = submission.getSessionRecruitment()
+                .getBand()
+                .getOwner()
+                .getId();
+        if (bandOwnerId.equals(viewerId)) {
+            submission.markChecked();
+        }
 
         SessionApplication application = submission.getSessionApplication();
         SessionBasicProfile profile = sessionBasicProfileRepository
@@ -150,31 +182,16 @@ public class SessionApplicationQueryServiceImpl implements SessionApplicationQue
                 userName,
                 profile == null ? null : profile.getProfileImageUrl()
         );
-        return SubmittedApplicationDetailResponse.of(submission, detail);
-    }
-
-    @Override
-    public SessionApplicationDetailResponse getMySubmittedApplication(
-            Long userId,
-            Long applicationSubmissionId
-    ) {
-        SessionApplicationSubmission submission = submissionRepository
-                .findMySubmissionWithApplication(applicationSubmissionId, userId)
-                .orElseThrow(() -> new SessionApplicationException(
-                        SessionErrorCode.APPLICATION_SUBMISSION_NOT_FOUND
-                ));
-        SessionApplication application = submission.getSessionApplication();
-        SessionBasicProfile profile = sessionBasicProfileRepository
-                .findByUser_Id(userId)
+        SessionApplication defaultApplication = sessionApplicationRepository
+                .findFirstByUserIdAndPurposeAndDeletedAtIsNullOrderBySessionApplicationIdDesc(
+                        application.getUserId(),
+                        DEFAULT_PURPOSE
+                )
                 .orElse(null);
-        String userName = userRepository.findById(userId)
-                .map(User::getName)
-                .orElse(application.getNickname());
-
-        return SessionApplicationDetailResponse.from(
-                application,
-                userName,
-                profile == null ? null : profile.getProfileImageUrl()
+        return SubmittedApplicationDetailResponse.of(
+                submission,
+                detail,
+                defaultApplication
         );
     }
 

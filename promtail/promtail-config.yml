@@ -1,0 +1,40 @@
+server:
+  http_listen_port: 9080
+  grpc_listen_port: 0
+
+# 로그를 어디까지 읽었는지 오프셋을 기록하는 파일 위치
+# docker-compose의 promtail-positions에 마운트하여 컨테이너 재시작 이후에도 읽을 수 있음
+positions:
+  filename: /positions/positions.yaml
+
+# Grafana, Loki는 다른 인스턴스에 분리할 예정
+clients:
+  - url: ${LOKI_URL}/loki/api/v1/push
+
+scrape_configs:
+  # 정적 파일 경로(/var/liv/docker/containers/...) tail 대신
+  # Docker service discovery 사용 -> 로그 파일 경로에 포함된 컨테이너 ID가 재배포마다 달라지므로, SD가 자동으로 새 컨테이너를 추적하게 함
+  - job_name: docker
+    docker_sd_configs:
+      - host: unix:///var/run/docker.sock # 컨테이너 목록 재조회 추가. 재배포 직후 로그 유실 구간을 5초 이내로 줄이기 위한 값
+        refresh_interval: 5s
+    relabel_configs:
+      # spring 컨테이너 로그만 수집
+      - source_labels: ['__meta_docker_container_name']
+        regex: '/spring'
+        action: keep
+      - source_labels: ['__meta_docker_container_name']
+        regex: '/(.*)'
+        target_label: 'container'
+    pipeline_stages:
+      # Spring Boot 기본 로그 형태는 "yyyy-MM-dd T HH:mm:ss.SSSSSS... 로 시작
+      # 유효한 값(Stack Trace, Caused By 등)을 직전 로그에 병합
+      - multiline:
+          firstline: '^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}'
+          max_wait_time: 3s
+          max_lines: 500
+      # 로그 레벨을 label로 추출
+      - regex:
+          expression: '^\S+\s+(?P<level>ERROR|WARN|INFO|DEBUG|TRACE)'
+      - labels:
+          level:

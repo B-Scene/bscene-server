@@ -12,48 +12,40 @@ import java.time.LocalDateTime;
 @Builder
 @JsonPropertyOrder({
         "sessionRecruitmentId",
+        "isNew",
         "recruitmentTitle",
         "deadlineAt",
         "dDay",
-        "isNew",
-        "isInterested",
 
-        "bandId",
-        "bandName",
-        "bandProfileImageUrl",
-        "bandGenre",
-        "bandRegion",
-
-        "summary",
         "content",
 
         "part",
+        "skillLevel",
         "genre",
         "region",
         "practiceSchedule",
         "practicePlace",
 
-        "qualification"
+        "qualification",
+
+        "bandId",
+        "bandName",
+        "bandProfileImageUrl",
+        "bandGenre",
+        "bandRegion"
 })
 public class SessionRecruitmentDetailResponse {
 
     private Long sessionRecruitmentId;
+    private Boolean isNew;
     private String recruitmentTitle;
     private LocalDateTime deadlineAt;
     private Long dDay;
-    private Boolean isNew;
-    private Boolean isInterested;
 
-    private Long bandId;
-    private String bandName;
-    private String bandProfileImageUrl;
-    private String bandGenre;
-    private String bandRegion;
-
-    private String summary;
     private String content;
 
     private String part;
+    private String skillLevel;
     private String genre;
     @SessionRegionFormat
     private Region region;
@@ -61,4 +53,10 @@ public class SessionRecruitmentDetailResponse {
     private String practicePlace;
 
     private String qualification;
+
+    private Long bandId;
+    private String bandName;
+    private String bandProfileImageUrl;
+    private String bandGenre;
+    private String bandRegion;
 }

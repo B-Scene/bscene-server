@@ -9,6 +9,7 @@ import com.umc.bscene.domain.band.response.code.BandErrorCode;
 import com.umc.bscene.domain.performance.dto.PerformancePushMessage;
 import com.umc.bscene.domain.performance.dto.request.PerformanceCreateRequest;
 import com.umc.bscene.domain.performance.dto.request.PerformanceUpdateRequest;
+import com.umc.bscene.domain.performance.dto.response.PerformanceDetailResponse;
 import com.umc.bscene.domain.performance.dto.response.PerformanceListResponse;
 import com.umc.bscene.domain.performance.dto.response.PerformanceResponse;
 import com.umc.bscene.domain.performance.dto.response.PerformanceSummaryResponse;
@@ -38,6 +39,8 @@ import java.util.List;
 @Transactional(readOnly = true)
 public class PerformanceService {
 
+    private static final int MAX_TAG_COUNT = 8;
+
     private final PerformanceRepository performanceRepository;
     private final PerformanceInterestRepository performanceInterestRepository;
     private final BandRepository bandRepository;
@@ -49,10 +52,11 @@ public class PerformanceService {
 
     // 공연 등록 (밴드 멤버만 가능, 지난 날짜 등록 불가)
     @Transactional
-    public PerformanceSummaryResponse createPerformance(Long userId, Long bandId, PerformanceCreateRequest request) {
+    public PerformanceResponse createPerformance(Long userId, Long bandId, PerformanceCreateRequest request) {
         Band band = getBand(bandId);
         validateBandMember(band, userId);
         validateNotPastDate(request.performanceDate());
+        validateTagCount(request.tags());
 
         Performance performance = Performance.builder()
                 .band(band)
@@ -66,7 +70,10 @@ public class PerformanceService {
                 .ticketPrice(request.ticketPrice())
                 .ticketLink(request.ticketLink())
                 .posterImageUrl(request.posterImageUrl())
+                .ageRating(request.ageRating())
                 .build();
+
+        addTagList(performance, request.tags());
 
         Performance savedPerformance = performanceRepository.save(performance);
 
@@ -75,7 +82,7 @@ public class PerformanceService {
 
         notifyFollowersAfterCommit(savedPerformance);
 
-        return PerformanceSummaryResponse.from(savedPerformance);
+        return PerformanceResponse.of(savedPerformance, 0L, false);
     }
 
     // 공연 등록 트랜잭션이 완료된 후 밴드 팔로워에게 알림을 발송
@@ -126,6 +133,22 @@ public class PerformanceService {
         return PerformanceResponse.of(performance, interestCount, isInterested);
     }
 
+    // 팬모드 공연 상세페이지 조회 : 공연정보/공연소개/캐스팅 + 관심·알림 버튼 상태
+    public PerformanceDetailResponse getPerformanceDetailPage(Long userId, Long performanceId) {
+        Performance performance = getActivePerformance(performanceId);
+
+        long interestCount = performanceInterestRepository.countByPerformance_Id(performanceId);
+        boolean isInterested = performanceInterestRepository.existsByPerformance_IdAndUser_Id(performanceId, userId);
+
+        // 알림 종 아이콘 상태 : 참여 기록이 없으면 null (알림 미설정)
+        String participationStatus = performanceParticipationRepository
+                .findByPerformance_IdAndUser_Id(performanceId, userId)
+                .map(participation -> participation.getStatus().name())
+                .orElse(null);
+
+        return PerformanceDetailResponse.of(performance, interestCount, isInterested, participationStatus);
+    }
+
     // 공연 정보 수정 (등록한 밴드의 멤버만 가능)
     @Transactional
     public PerformanceResponse updatePerformance(Long userId, Long performanceId, PerformanceUpdateRequest request) {
@@ -134,6 +157,7 @@ public class PerformanceService {
         if (request.performanceDate() != null) {
             validateNotPastDate(request.performanceDate());
         }
+        validateTagCount(request.tags());
 
         performance.update(
                 request.title(),
@@ -143,8 +167,14 @@ public class PerformanceService {
                 request.venue(),
                 request.ticketPrice(),
                 request.ticketLink(),
-                request.posterImageUrl()
+                request.posterImageUrl(),
+                request.ageRating()
         );
+
+        if (request.tags() != null) {
+            performance.clearTags();
+            addTagList(performance, request.tags());
+        }
 
         // 검색 색인 동기화 (커밋 후 search 도메인 리스너가 비동기 처리)
         eventPublisher.publishEvent(new PerformanceChangedEvent(performanceId));
@@ -194,6 +224,19 @@ public class PerformanceService {
     private void validateNotPastDate(LocalDate performanceDate) {
         if (performanceDate.isBefore(LocalDate.now())) {
             throw new PerformanceException(PerformanceErrorCode.PAST_DATE_NOT_ALLOWED);
+        }
+    }
+
+    private void addTagList(Performance performance, List<String> tags) {
+        if (tags == null) return;
+        for (String tag : tags) {
+            performance.addTag(tag);
+        }
+    }
+
+    private void validateTagCount(List<String> tags) {
+        if (tags != null && tags.size() > MAX_TAG_COUNT) {
+            throw new PerformanceException(PerformanceErrorCode.TAG_LIMIT_EXCEEDED);
         }
     }
 

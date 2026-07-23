@@ -2,6 +2,7 @@ package com.umc.bscene.domain.band.controller;
 
 import com.umc.bscene.domain.band.dto.request.BandCreateRequest;
 import com.umc.bscene.domain.band.dto.request.BandUpdateRequest;
+import com.umc.bscene.domain.band.dto.response.BandDetailResponse;
 import com.umc.bscene.domain.band.dto.response.BandNameCheckResponse;
 import com.umc.bscene.domain.band.dto.response.BandProfileResponse;
 import com.umc.bscene.domain.band.dto.response.BandRecommendResponse;
@@ -86,6 +87,22 @@ public class BandController {
         SuccessResponse<BandProfileResponse> successResponse = SuccessResponse.of(
                 response,
                 BandSuccessCode.BAND_PROFILE_GET_SUCCESS
+        );
+
+        return ResponseEntity.status(successResponse.getStatus()).body(successResponse);
+    }
+
+    // 팬모드 밴드 상세 조회 API (밴드 프로필 화면 : 기본 정보 + 팔로우 여부 + 라이브 진행 여부)
+    @GetMapping("/{bandId}/detail")
+    public ResponseEntity<SuccessResponse<BandDetailResponse>> getBandDetail(
+            @AuthenticationPrincipal AuthMember authMember,
+            @PathVariable Long bandId
+    ) {
+        BandDetailResponse response = bandService.getBandDetail(authMember.getUser().getId(), bandId);
+        interactionService.recordClick(authMember.getUser().getId(), bandId);
+        SuccessResponse<BandDetailResponse> successResponse = SuccessResponse.of(
+                response,
+                BandSuccessCode.BAND_DETAIL_GET_SUCCESS
         );
 
         return ResponseEntity.status(successResponse.getStatus()).body(successResponse);

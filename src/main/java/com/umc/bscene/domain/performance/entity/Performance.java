@@ -3,6 +3,7 @@ package com.umc.bscene.domain.performance.entity;
 import com.umc.bscene.domain.auth.enums.onboarding.Genre;
 import com.umc.bscene.domain.auth.enums.onboarding.Region;
 import com.umc.bscene.domain.band.entity.Band;
+import com.umc.bscene.domain.performance.enums.AgeRating;
 import com.umc.bscene.domain.performance.enums.PerformanceStatus;
 import com.umc.bscene.global.entity.BaseEntity;
 import jakarta.persistence.*;
@@ -10,6 +11,8 @@ import lombok.*;
 
 import java.time.LocalDate;
 import java.time.LocalTime;
+import java.util.ArrayList;
+import java.util.List;
 
 @Entity
 @Getter
@@ -52,7 +55,11 @@ public class Performance extends BaseEntity {
     private String description;
 
     @Column(nullable = false)
-    private Integer ticketPrice;
+    @Enumerated(EnumType.STRING)
+    private AgeRating ageRating;
+
+    @Column(nullable = false, length = 100)
+    private String ticketPrice;
 
     @Column(length = 500)
     private String ticketLink;
@@ -65,6 +72,10 @@ public class Performance extends BaseEntity {
     @Builder.Default
     private PerformanceStatus status = PerformanceStatus.ACTIVE;
 
+    @Builder.Default
+    @OneToMany(mappedBy = "performance", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<PerformanceTag> tagList = new ArrayList<>();
+
     // 수정 API에서 전달된 값만 부분 반영
     public void update(
             String title,
@@ -72,9 +83,10 @@ public class Performance extends BaseEntity {
             LocalDate performanceDate,
             LocalTime startTime,
             String venue,
-            Integer ticketPrice,
+            String ticketPrice,
             String ticketLink,
-            String posterImageUrl
+            String posterImageUrl,
+            AgeRating ageRating
     ) {
         if (title != null) this.title = title;
         if (genre != null) this.genre = genre;
@@ -84,9 +96,21 @@ public class Performance extends BaseEntity {
         if (ticketPrice != null) this.ticketPrice = ticketPrice;
         if (ticketLink != null) this.ticketLink = ticketLink;
         if (posterImageUrl != null) this.posterImageUrl = posterImageUrl;
+        if (ageRating != null) this.ageRating = ageRating;
     }
 
     public void delete() {
         this.status = PerformanceStatus.DELETED;
+    }
+
+    public void clearTags() {
+        this.tagList.clear();
+    }
+
+    public void addTag(String tagName) {
+        this.tagList.add(PerformanceTag.builder()
+                .performance(this)
+                .tagName(tagName)
+                .build());
     }
 }

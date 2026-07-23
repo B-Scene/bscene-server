@@ -23,7 +23,10 @@ public interface PerformancePort {
             Long userId, HistoryYearFilter appliedFilter, int baseYear,
             LocalDate startDate, LocalDate endDate, int page, int size);
 
-    // 관심 공연 목록 (날짜/시간 빠른 순, offset 무한스크롤)
+    // 관심 공연 목록 (날짜/시간 빠른 순, 연도 필터, offset 무한스크롤)
     // 아이템마다 알림/참여 상태(participationStatus)를 함께 내려줌 (null: 알림 미설정)
-    InterestedPerformanceResponse findInterestedPerformances(Long userId, int page, int size);
+    // appliedFilter·baseYear는 응답에 그대로 echo, startDate/endDate가 null이면 해당 방향 제한 없음
+    InterestedPerformanceResponse findInterestedPerformances(
+            Long userId, HistoryYearFilter appliedFilter, int baseYear,
+            LocalDate startDate, LocalDate endDate, int page, int size);
 }

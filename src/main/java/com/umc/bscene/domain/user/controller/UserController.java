@@ -1,13 +1,11 @@
 package com.umc.bscene.domain.user.controller;
 
+import com.umc.bscene.domain.user.dto.request.MyInfoUpdateRequest;
 import com.umc.bscene.domain.user.dto.request.SessionApplyConfirmRequest;
 import com.umc.bscene.domain.user.dto.request.UserModeUpdateRequest;
-import com.umc.bscene.domain.user.dto.response.MyProfileResponse;
+import com.umc.bscene.domain.user.dto.response.*;
 import com.umc.bscene.domain.user.dto.response.mypage.BandMyPageResponse;
 import com.umc.bscene.domain.user.dto.response.mypage.FanMyPageResponse;
-import com.umc.bscene.domain.user.dto.response.FollowedBandResponse;
-import com.umc.bscene.domain.user.dto.response.InterestedPerformanceResponse;
-import com.umc.bscene.domain.user.dto.response.ParticipationHistoryResponse;
 import com.umc.bscene.domain.user.dto.response.mypage.MyPageResponse;
 import com.umc.bscene.domain.user.dto.response.session.SessionRecruitmentResponse;
 import com.umc.bscene.domain.user.enums.HistoryYearFilter;
@@ -113,14 +111,44 @@ public class UserController {
     @GetMapping("/me/performance/interest")
     public ResponseEntity<SuccessResponse<InterestedPerformanceResponse>> getInterestedPerformances(
             @AuthenticationPrincipal AuthMember authMember,
+            @RequestParam(defaultValue = "All") HistoryYearFilter filter,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size
     ) {
         InterestedPerformanceResponse response = userService.getInterestedPerformances(
-                authMember.getUser().getId(), page, size);
+                authMember.getUser().getId(), filter, page, size);
         SuccessResponse<InterestedPerformanceResponse> successResponse = SuccessResponse.of(
                 response,
                 UserSuccessCode.FAN_PERFORMANCE_INTEREST_GET_SUCCESS
+        );
+
+        return ResponseEntity.status(successResponse.getStatus()).body(successResponse);
+    }
+
+    // 내 정보 조회 API (내 정보 수정 화면 초기값 : 닉네임/관심 장르/활동 지역)
+    @GetMapping("/users/me/information")
+    public ResponseEntity<SuccessResponse<MyInfoResponse>> getMyInfo(
+            @AuthenticationPrincipal AuthMember authMember
+    ) {
+        MyInfoResponse response = userService.getMyInfo(authMember.getUser());
+        SuccessResponse<MyInfoResponse> successResponse = SuccessResponse.of(
+                response,
+                UserSuccessCode.MY_INFO_GET_SUCCESS
+        );
+
+        return ResponseEntity.status(successResponse.getStatus()).body(successResponse);
+    }
+
+    // 내 정보 수정 API (닉네임/관심 장르/활동 지역을 통째로 교체)
+    @PatchMapping("/users/me/information")
+    public ResponseEntity<SuccessResponse<MyInfoResponse>> updateMyInfo(
+            @AuthenticationPrincipal AuthMember authMember,
+            @Valid @RequestBody MyInfoUpdateRequest request
+    ) {
+        MyInfoResponse response = userService.updateMyInfo(authMember.getUser().getId(), request);
+        SuccessResponse<MyInfoResponse> successResponse = SuccessResponse.of(
+                response,
+                UserSuccessCode.MY_INFO_UPDATE_SUCCESS
         );
 
         return ResponseEntity.status(successResponse.getStatus()).body(successResponse);

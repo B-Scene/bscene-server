@@ -8,7 +8,7 @@ import java.util.List;
 
 // 공연 참여 기록 조회 응답 (offset 기반 무한스크롤, 날짜/시간 빠른 순)
 public record ParticipationHistoryResponse(
-        Long totalCount,                        // 총 참여 공연 수 (전체 참여 완료 수, 첫 페이지에만 내려감 / 이후 null)
+        Long totalCount,                        // 총 참여 공연 수 (연도 필터 적용, 첫 페이지에만 내려감 / 이후 null)
         HistoryYearFilter appliedFilter,        // 적용된 연도 필터 (ALL/THIS_YEAR/LAST_YEAR/BEFORE)
         int baseYear,                           // 서버 기준 올해 → 프론트가 탭 라벨 계산 (올해/작년/재작년 이전)
         List<ParticipationHistoryItem> items,

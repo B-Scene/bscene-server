@@ -20,6 +20,9 @@ public interface AudioStreamRepository extends JpaRepository<AudioStream, Long> 
     // Path 기준으로 쿼리.
     Optional<AudioStream> findByPath(String path);
 
+    // bandId로 현재 진행 중인 라이브 ID 조회
+    Optional<AudioStream> findByBandIdAndStatus(Long bandId, StreamStatus status);
+
     // 경로 기입, status는 OPEN으로 고정하여 청취 여부 조회
     Boolean existsByPathAndStatus(String path, StreamStatus status);
 

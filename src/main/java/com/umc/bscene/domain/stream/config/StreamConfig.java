@@ -1,5 +1,7 @@
 package com.umc.bscene.domain.stream.config;
 
+import com.umc.bscene.domain.band.port.StreamPort;
+import com.umc.bscene.domain.stream.adapter.BandAdapter;
 import com.umc.bscene.domain.stream.port.*;
 import com.umc.bscene.domain.stream.repository.*;
 import com.umc.bscene.domain.stream.scheduler.DiscordNotifyRetryScheduler;
@@ -16,6 +18,7 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.scheduling.annotation.EnableAsync;
 import org.springframework.scheduling.annotation.EnableScheduling;
+import org.springframework.security.core.parameters.P;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.service.registry.ImportHttpServices;
 
@@ -24,6 +27,13 @@ import org.springframework.web.service.registry.ImportHttpServices;
 @ImportHttpServices(group = "discord", types = DiscordWebhookPort.class)
 @Configuration
 public class StreamConfig {
+
+    @Bean
+    public StreamPort bandStreamPort(
+            AudioStreamRepository audioStreamRepository
+    ) {
+        return new BandAdapter(audioStreamRepository);
+    }
 
     @Bean
     public RestClient mtxRestClient(

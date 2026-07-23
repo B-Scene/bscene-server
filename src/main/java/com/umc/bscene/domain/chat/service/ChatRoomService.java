@@ -13,8 +13,9 @@ import com.umc.bscene.domain.chat.entity.ChatRoom;
 import com.umc.bscene.domain.chat.enums.ChatContextType;
 import com.umc.bscene.domain.chat.exception.ChatException;
 import com.umc.bscene.domain.chat.repository.ChatRoomRepository;
-import com.umc.bscene.domain.chat.response.code.ChatErrorCode;
+import com.umc.bscene.domain.chat.enums.code.error.ChatErrorCode;
 import com.umc.bscene.domain.session.entity.SessionApplication;
+import com.umc.bscene.domain.session.entity.SessionApplicationSubmission;
 import com.umc.bscene.domain.session.entity.SessionRecruitment;
 import com.umc.bscene.domain.session.repository.SessionApplicationRepository;
 import com.umc.bscene.domain.session.repository.SessionRecruitmentRepository;
@@ -71,11 +72,16 @@ public class ChatRoomService {
                 .collect(Collectors.groupingBy(
                         message -> message.getChatRoom().getChatRoomId(), Collectors.counting()));
         List<ChatRoomListItemResponse> content = sliced.stream()
-                .map(room -> ChatRoomListItemResponse.of(
-                        room, userId, latestMessages.get(room.getChatRoomId()),
-                        unreadCounts.getOrDefault(room.getChatRoomId(), 0L), canSend(room),
-                        resolveCounterpartApplication(room, userId),
-                        resolveCounterpartProfileImageUrl(room, userId)))
+                .map(room -> {
+                    ApplicationStatus applicationStatus = resolveApplicationStatus(room);
+                    return ChatRoomListItemResponse.of(
+                            room, userId, latestMessages.get(room.getChatRoomId()),
+                            unreadCounts.getOrDefault(room.getChatRoomId(), 0L),
+                            applicationStatus != ApplicationStatus.REJECTED,
+                            applicationStatusLabel(applicationStatus),
+                            resolveCounterpartApplication(room, userId),
+                            resolveCounterpartProfileImageUrl(room, userId));
+                })
                 .toList();
         Long nextCursor = hasNext && !sliced.isEmpty()
                 ? sliced.get(sliced.size() - 1).getChatRoomId() : null;
@@ -165,12 +171,22 @@ public class ChatRoomService {
     }
 
     private boolean canSend(ChatRoom room) {
-        if (room.getContextType() != ChatContextType.RECRUITMENT) return true;
+        return resolveApplicationStatus(room) != ApplicationStatus.REJECTED;
+    }
+
+    private ApplicationStatus resolveApplicationStatus(ChatRoom room) {
+        if (room.getContextType() != ChatContextType.RECRUITMENT) return null;
         return submissionRepository
                 .findFirstBySessionRecruitment_SessionRecruitmentIdAndSessionApplication_UserIdOrderByApplicationSubmissionIdDesc(
                         room.getSessionRecruitment().getSessionRecruitmentId(), room.getSender().getId())
-                .map(submission -> submission.getStatus() != ApplicationStatus.REJECTED)
-                .orElse(true);
+                .map(submission -> submission.getStatus())
+                .orElse(null);
+    }
+
+    private String applicationStatusLabel(ApplicationStatus status) {
+        if (status == ApplicationStatus.ACCEPTED) return "수락";
+        if (status == ApplicationStatus.REJECTED) return "거절";
+        return null;
     }
 
     private SessionApplication resolveCounterpartApplication(ChatRoom room, Long viewerId) {
@@ -231,6 +247,9 @@ public class ChatRoomService {
     }
 
     private ChatRoomCreateResponse createForRecruitment(Long senderId, ChatRoomCreateRequest request) {
+        if (request.applicationSubmissionId() != null) {
+            return createForSubmittedApplication(senderId, request);
+        }
         if (request.sessionRecruitmentId() == null || request.sessionApplicationId() != null) {
             throw new ChatException(ChatErrorCode.INVALID_CHAT_CONTEXT);
         }
@@ -239,13 +258,14 @@ public class ChatRoomService {
                 .orElseThrow(() -> new ChatException(ChatErrorCode.CHAT_TARGET_NOT_FOUND));
         User recipient = recruitment.getBand().getOwner();
         validateNotSelf(senderId, recipient.getId());
+        validateRecruitmentChatAllowed(recruitment.getSessionRecruitmentId(), senderId);
 
         return chatRoomRepository
                 .findBySender_IdAndRecipient_IdAndSessionRecruitment_SessionRecruitmentId(
                         senderId, recipient.getId(), recruitment.getSessionRecruitmentId())
                 .map(room -> {
                     room.rejoin(senderId);
-                    return ChatRoomCreateResponse.recruitment(room, false);
+                    return ChatRoomCreateResponse.recruitment(room, senderId, false);
                 })
                 .orElseGet(() -> ChatRoomCreateResponse.recruitment(
                         chatRoomRepository.save(ChatRoom.builder()
@@ -253,11 +273,57 @@ public class ChatRoomService {
                                 .sender(userRepository.getReferenceById(senderId))
                                 .recipient(recipient)
                                 .sessionRecruitment(recruitment)
-                                .build()), true));
+                                .build()), senderId, true));
+    }
+
+    private ChatRoomCreateResponse createForSubmittedApplication(
+            Long viewerId, ChatRoomCreateRequest request) {
+        if (request.sessionRecruitmentId() != null || request.sessionApplicationId() != null) {
+            throw new ChatException(ChatErrorCode.INVALID_CHAT_CONTEXT);
+        }
+        SessionApplicationSubmission submission = submissionRepository
+                .findForRecruitmentMember(request.applicationSubmissionId(), viewerId)
+                .orElseThrow(() -> new ChatException(ChatErrorCode.CHAT_TARGET_NOT_FOUND));
+        Long bandOwnerId = submission.getSessionRecruitment()
+                .getBand()
+                .getOwner()
+                .getId();
+        if (!bandOwnerId.equals(viewerId)) {
+            throw new ChatException(ChatErrorCode.CHAT_ROOM_ACCESS_DENIED);
+        }
+        if (submission.getStatus() == ApplicationStatus.REJECTED) {
+            throw new ChatException(ChatErrorCode.REJECTED_APPLICATION_CHAT_NOT_ALLOWED);
+        }
+
+        SessionRecruitment recruitment = recruitmentRepository
+                .findBySessionRecruitmentIdAndDeletedAtIsNull(
+                        submission.getSessionRecruitment().getSessionRecruitmentId())
+                .orElseThrow(() -> new ChatException(ChatErrorCode.CHAT_TARGET_NOT_FOUND));
+        Long applicantId = submission.getSessionApplication().getUserId();
+        validateNotSelf(viewerId, applicantId);
+        User applicant = userRepository.findById(applicantId)
+                .orElseThrow(() -> new ChatException(ChatErrorCode.CHAT_TARGET_NOT_FOUND));
+
+        return chatRoomRepository
+                .findBySender_IdAndRecipient_IdAndSessionRecruitment_SessionRecruitmentId(
+                        applicantId, viewerId, recruitment.getSessionRecruitmentId())
+                .map(room -> {
+                    room.rejoin(viewerId);
+                    return ChatRoomCreateResponse.recruitment(room, viewerId, false);
+                })
+                .orElseGet(() -> ChatRoomCreateResponse.recruitment(
+                        chatRoomRepository.save(ChatRoom.builder()
+                                .contextType(ChatContextType.RECRUITMENT)
+                                .sender(applicant)
+                                .recipient(userRepository.getReferenceById(viewerId))
+                                .sessionRecruitment(recruitment)
+                                .build()), viewerId, true));
     }
 
     private ChatRoomCreateResponse createForSessionSearch(Long senderId, ChatRoomCreateRequest request) {
-        if (request.sessionApplicationId() == null || request.sessionRecruitmentId() != null) {
+        if (request.sessionApplicationId() == null
+                || request.sessionRecruitmentId() != null
+                || request.applicationSubmissionId() != null) {
             throw new ChatException(ChatErrorCode.INVALID_CHAT_CONTEXT);
         }
         SessionApplication myDefault = applicationRepository
@@ -293,5 +359,19 @@ public class ChatRoomService {
         if (senderId.equals(recipientId)) {
             throw new ChatException(ChatErrorCode.SELF_CHAT_NOT_ALLOWED);
         }
+    }
+
+    private void validateRecruitmentChatAllowed(Long recruitmentId, Long senderId) {
+        submissionRepository
+                .findFirstBySessionRecruitment_SessionRecruitmentIdAndSessionApplication_UserIdOrderByApplicationSubmissionIdDesc(
+                        recruitmentId,
+                        senderId
+                )
+                .filter(submission -> submission.getStatus() == ApplicationStatus.REJECTED)
+                .ifPresent(submission -> {
+                    throw new ChatException(
+                            ChatErrorCode.REJECTED_APPLICATION_CHAT_NOT_ALLOWED
+                    );
+                });
     }
 }

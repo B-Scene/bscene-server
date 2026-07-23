@@ -8,8 +8,8 @@ import java.util.List;
 
 public record FanMyPageResponse(
         String nickname,
-        Genre genre,                          // 대표 장르 — 팔로우한 밴드들의 최다 장르 (팔로우 없으면 온보딩 첫 장르, 그것도 없으면 null)
-        int additionalGenreCount,             // 대표 장르 외 장르 종류 수 — 프론트에서 "록 외 2" 형태로 표시
+        Genre genre,                          // 대표 장르 — 등록한 관심장르 중 팔로우한 밴드가 많은 장르 (동점/팔로우 없으면 먼저 고른 장르)
+        int additionalGenreCount,             // 대표를 제외한 나머지 관심장르 수 — 프론트에서 "록 외 2" 형태로 표시
         List<Region> regions,                 // 활동 지역 (복수)
         UserMode currentMode,                 // 현재 모드 (FAN | BAND)
         long followingCount,                  // 팔로우한 밴드 수

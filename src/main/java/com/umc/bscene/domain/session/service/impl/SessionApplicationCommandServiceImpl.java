@@ -13,6 +13,7 @@ import com.umc.bscene.domain.session.entity.SessionApplicationSubmission;
 import com.umc.bscene.domain.session.entity.SessionApplicationCareer;
 import com.umc.bscene.domain.session.entity.SessionRecruitment;
 import com.umc.bscene.domain.session.enums.ApplicationStatus;
+import com.umc.bscene.domain.session.event.SessionPortfolioPreviewRequestedEvent;
 import com.umc.bscene.domain.session.enums.code.error.SessionErrorCode;
 import com.umc.bscene.domain.session.exception.SessionApplicationException;
 import com.umc.bscene.domain.session.port.BandMemberPort;
@@ -26,6 +27,7 @@ import com.umc.bscene.domain.user.repository.UserRepository;
 import com.umc.bscene.global.exception.BaseException;
 import com.umc.bscene.global.response.code.GeneralErrorCode;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionSynchronization;
@@ -39,10 +41,13 @@ import java.util.List;
 @Transactional
 public class SessionApplicationCommandServiceImpl implements SessionApplicationCommandService {
 
+    private static final String DEFAULT_PURPOSE = "기본";
+
     private final SessionApplicationRepository sessionApplicationRepository;
     private final SessionApplicationSubmissionRepository submissionRepository;
     private final SessionRecruitmentRepository sessionRecruitmentRepository;
     private final UserRepository userRepository;
+    private final ApplicationEventPublisher eventPublisher;
 
     private final BandMemberPort bandMemberPort;
     private final NotifyPort notifyPort;
@@ -52,6 +57,8 @@ public class SessionApplicationCommandServiceImpl implements SessionApplicationC
             Long userId,
             MySessionApplicationCreateRequest request
     ) {
+        validateDefaultApplicationCreation(userId, request.getPurpose());
+
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new BaseException(GeneralErrorCode.UNAUTHORIZED_ERROR));
 
@@ -68,14 +75,16 @@ public class SessionApplicationCommandServiceImpl implements SessionApplicationC
                 .intro(request.getIntro())
                 .build();
 
-        sessionApplication.updateVisibility(request.getIsPublic());
+        sessionApplication.updateVisibility(DEFAULT_PURPOSE.equals(request.getPurpose()));
         sessionApplication.replaceAvailableActivities(request.getAvailableActivities());
         addCareers(sessionApplication, request);
         addPortfolioLinks(sessionApplication, request);
 
-        SessionApplication savedSessionApplication = sessionApplicationRepository.save(sessionApplication);
+        SessionApplication savedSessionApplication =
+                sessionApplicationRepository.saveAndFlush(sessionApplication);
+        publishPortfolioPreviewRequests(savedSessionApplication);
 
-        return MySessionApplicationResponse.from(savedSessionApplication);
+        return MySessionApplicationResponse.fromWithoutVisibility(savedSessionApplication);
     }
 
     @Override
@@ -90,18 +99,22 @@ public class SessionApplicationCommandServiceImpl implements SessionApplicationC
                         SessionErrorCode.SESSION_APPLICATION_NOT_FOUND
                 ));
 
+        validateDefaultApplicationUpdate(
+                userId,
+                sessionApplicationId,
+                request.getPurpose()
+        );
+
         sessionApplication.updateApplication(
                 request.getTitle(),
                 request.getPurpose(),
                 request.getOneLineIntro(),
-                request.getProfileImageUrl(),
                 request.getPart(),
                 request.getSkillLevel(),
                 request.getGenre(),
                 request.getRegion(),
                 request.getIntro()
         );
-        sessionApplication.updateVisibility(request.getIsPublic());
         sessionApplication.replaceAvailableActivities(request.getAvailableActivities());
 
         sessionApplication.clearPortfolioLinks();
@@ -111,8 +124,9 @@ public class SessionApplicationCommandServiceImpl implements SessionApplicationC
 
         SessionApplication savedSessionApplication =
                 sessionApplicationRepository.saveAndFlush(sessionApplication);
+        publishPortfolioPreviewRequests(savedSessionApplication);
 
-        return MySessionApplicationResponse.from(savedSessionApplication);
+        return MySessionApplicationResponse.fromWithoutVisibility(savedSessionApplication);
     }
 
     @Override
@@ -129,6 +143,41 @@ public class SessionApplicationCommandServiceImpl implements SessionApplicationC
         submissionRepository
                 .deleteAllBySessionApplication_SessionApplicationId(sessionApplicationId);
         sessionApplicationRepository.delete(sessionApplication);
+    }
+
+    private void validateDefaultApplicationCreation(Long userId, String purpose) {
+        if (sessionApplicationRepository.countByUserIdAndDeletedAtIsNull(userId) == 0
+                && !DEFAULT_PURPOSE.equals(purpose)) {
+            throw new SessionApplicationException(
+                    SessionErrorCode.FIRST_SESSION_APPLICATION_MUST_BE_DEFAULT
+            );
+        }
+
+        if (DEFAULT_PURPOSE.equals(purpose)
+                && sessionApplicationRepository
+                .existsByUserIdAndPurposeAndDeletedAtIsNull(userId, DEFAULT_PURPOSE)) {
+            throw new SessionApplicationException(
+                    SessionErrorCode.DEFAULT_SESSION_APPLICATION_ALREADY_EXISTS
+            );
+        }
+    }
+
+    private void validateDefaultApplicationUpdate(
+            Long userId,
+            Long sessionApplicationId,
+            String purpose
+    ) {
+        if (DEFAULT_PURPOSE.equals(purpose)
+                && sessionApplicationRepository
+                .existsByUserIdAndPurposeAndDeletedAtIsNullAndSessionApplicationIdNot(
+                        userId,
+                        DEFAULT_PURPOSE,
+                        sessionApplicationId
+                )) {
+            throw new SessionApplicationException(
+                    SessionErrorCode.DEFAULT_SESSION_APPLICATION_ALREADY_EXISTS
+            );
+        }
     }
 
     @Override
@@ -335,5 +384,14 @@ public class SessionApplicationCommandServiceImpl implements SessionApplicationC
                         .url(link.getUrl())
                         .build())
         );
+    }
+
+    private void publishPortfolioPreviewRequests(SessionApplication application) {
+        application.getPortfolioLinks().stream()
+                .filter(link -> link.getDeletedAt() == null)
+                .map(SessionApplicationLink::getSessionApplicationLinkId)
+                .filter(java.util.Objects::nonNull)
+                .map(SessionPortfolioPreviewRequestedEvent::new)
+                .forEach(eventPublisher::publishEvent);
     }
 }

@@ -3,11 +3,14 @@ package com.umc.bscene.domain.band.config;
 import com.umc.bscene.domain.band.adapter.FanHomeAdapter;
 import com.umc.bscene.domain.band.adapter.SearchAdapter;
 import com.umc.bscene.domain.band.adapter.SessionAdapter;
+import com.umc.bscene.domain.band.port.StreamPort;
 import com.umc.bscene.domain.band.repository.BandMemberRepository;
 import com.umc.bscene.domain.band.repository.BandRepository;
 import com.umc.bscene.domain.band.service.BandRecommendationService;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+
+import java.util.Optional;
 
 @Configuration
 public class BandConfig {

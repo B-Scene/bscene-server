@@ -8,6 +8,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.time.LocalDate;
 import java.util.List;
 
 public interface PerformanceInterestRepository extends JpaRepository<PerformanceInterest, Long> {
@@ -34,15 +35,33 @@ public interface PerformanceInterestRepository extends JpaRepository<Performance
             @Param("performanceIds") List<Long> performanceIds
     );
 
-    // 관심 공연 목록 : 날짜/시간 빠른 순(같으면 제목순)으로 조회 (삭제된 공연 제외)
+    // 관심 공연 총 개수 : 연도 필터가 적용된 관심 공연 수 (목록 상단 "관심 공연 N개"용, 삭제된 공연 제외)
+    @Query("SELECT COUNT(pi) FROM PerformanceInterest pi " +
+            "JOIN pi.performance p " +
+            "WHERE pi.user.id = :userId " +
+            "AND p.status = :performanceStatus " +
+            "AND (:startDate IS NULL OR p.performanceDate >= :startDate) " +
+            "AND (:endDate IS NULL OR p.performanceDate <= :endDate)")
+    long countInterestList(
+            @Param("userId") Long userId,
+            @Param("performanceStatus") PerformanceStatus performanceStatus,
+            @Param("startDate") LocalDate startDate,
+            @Param("endDate") LocalDate endDate
+    );
+
+    // 관심 공연 목록 : 날짜/시간 빠른 순(같으면 제목순)으로 조회 (삭제된 공연 제외, 연도 필터)
     @Query("SELECT pi FROM PerformanceInterest pi " +
             "JOIN FETCH pi.performance p " +
             "WHERE pi.user.id = :userId " +
             "AND p.status = :performanceStatus " +
+            "AND (:startDate IS NULL OR p.performanceDate >= :startDate) " +
+            "AND (:endDate IS NULL OR p.performanceDate <= :endDate) " +
             "ORDER BY p.performanceDate ASC, p.startTime ASC, p.title ASC, p.id ASC")
     Slice<PerformanceInterest> findInterestList(
             @Param("userId") Long userId,
             @Param("performanceStatus") PerformanceStatus performanceStatus,
+            @Param("startDate") LocalDate startDate,
+            @Param("endDate") LocalDate endDate,
             Pageable pageable
     );
 

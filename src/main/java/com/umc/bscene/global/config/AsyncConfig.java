@@ -22,4 +22,15 @@ public class AsyncConfig {
         executor.initialize();
         return executor;
     }
+
+    @Bean(name = "sessionPortfolioPreviewExecutor")
+    public Executor sessionPortfolioPreviewExecutor() {
+        ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
+        executor.setCorePoolSize(2);
+        executor.setMaxPoolSize(4);
+        executor.setQueueCapacity(100);
+        executor.setThreadNamePrefix("session-portfolio-preview-");
+        executor.initialize();
+        return executor;
+    }
 }

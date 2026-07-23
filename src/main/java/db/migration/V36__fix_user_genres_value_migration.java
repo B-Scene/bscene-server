@@ -1,0 +1,198 @@
+package db.migration;
+
+import org.flywaydb.core.api.migration.BaseJavaMigration;
+import org.flywaydb.core.api.migration.Context;
+
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.Statement;
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Locale;
+import java.util.Set;
+
+// V32가 "UserGenres" 이름으로만 테이블을 찾아서(물리 테이블명은 user_genres) 실제로는 이 테이블에
+// 값 변환(INDIE_POP -> INDIE 등)이 한 번도 적용되지 못했다. 그 사이 ddl-auto가 enum 컬럼 정의를
+// 새 값 목록으로 이미 좁혀놔서, 옛 값을 그대로 갖고 있던 row는 MySQL이 빈 문자열로 무효화했을 수 있다.
+// 이 마이그레이션은 물리 테이블명으로 다시 찾아 값 변환을 마저 적용하고, 이미 깨진(빈 문자열) row는
+// 원래 값을 복구할 수 없으므로 삭제한다.
+public class V36__fix_user_genres_value_migration extends BaseJavaMigration {
+
+    private static final String EXPANDED_GENRES = """
+            ENUM('ROCK','INDIE_POP','JAZZ','METAL','FOLK','RNB','BLUES','PUNK','ACOUSTIC',\
+            'PSYCHEDELIC_ROCK','ALTERNATIVE_ROCK','INDIE','ELECTRONIC_ROCK','POP','POP_ROCK',\
+            'PUNK_ROCK','FOLK_ROCK','HARD_ROCK','ETC')\
+            """;
+
+    private static final String CURRENT_GENRES = """
+            ENUM('METAL','BLUES','PSYCHEDELIC_ROCK','ALTERNATIVE_ROCK','INDIE',\
+            'ELECTRONIC_ROCK','JAZZ','POP','POP_ROCK','PUNK_ROCK','FOLK_ROCK','HARD_ROCK','ETC')\
+            """;
+
+    @Override
+    public void migrate(Context context) throws Exception {
+        Connection connection = context.getConnection();
+
+        String table = findTable(connection, "user_genres", "UserGenres");
+        if (table == null) return;
+
+        String idColumn = findColumn(connection, table, "id");
+        String userIdColumn = findColumn(connection, table, "userId", "user_id");
+        String genreColumn = findColumn(connection, table, "genre");
+        if (idColumn == null || userIdColumn == null || genreColumn == null) return;
+
+        boolean mysql = isMysql(connection);
+        boolean nativeEnum = mysql && isNativeEnum(connection, table, genreColumn);
+        expandEnumIfNeeded(connection, table, genreColumn, nativeEnum);
+
+        deleteCorruptedRows(connection, table, idColumn, genreColumn, mysql);
+
+        List<UserGenreRow> rows = readUserGenres(
+                connection, table, idColumn, userIdColumn, genreColumn, mysql);
+        Set<String> occupied = new HashSet<>();
+        String updateSql = "UPDATE " + q(table, mysql) + " SET " + q(genreColumn, mysql)
+                + " = ? WHERE " + q(idColumn, mysql) + " = ?";
+        String deleteSql = "DELETE FROM " + q(table, mysql)
+                + " WHERE " + q(idColumn, mysql) + " = ?";
+
+        try (PreparedStatement update = connection.prepareStatement(updateSql);
+             PreparedStatement delete = connection.prepareStatement(deleteSql)) {
+            for (UserGenreRow row : rows) {
+                String target = mapGenre(row.genre());
+                String key = row.userId() + " " + target;
+                if (!occupied.add(key)) {
+                    delete.setLong(1, row.id());
+                    delete.addBatch();
+                } else if (!target.equals(row.genre())) {
+                    update.setString(1, target);
+                    update.setLong(2, row.id());
+                    update.addBatch();
+                }
+            }
+            delete.executeBatch();
+            update.executeBatch();
+        }
+
+        shrinkEnumIfNeeded(connection, table, genreColumn, nativeEnum);
+    }
+
+    // 이미 새 enum 정의로 좁혀지면서 빈 문자열로 무효화된 row는 원래 값을 복구할 수 없어 삭제한다.
+    private void deleteCorruptedRows(
+            Connection connection, String table, String idColumn, String genreColumn, boolean mysql
+    ) throws Exception {
+        String sql = "DELETE FROM " + q(table, mysql)
+                + " WHERE " + q(genreColumn, mysql) + " = ''";
+        try (Statement statement = connection.createStatement()) {
+            statement.executeUpdate(sql);
+        }
+    }
+
+    private List<UserGenreRow> readUserGenres(
+            Connection connection,
+            String table,
+            String idColumn,
+            String userIdColumn,
+            String genreColumn,
+            boolean mysql
+    ) throws Exception {
+        List<UserGenreRow> rows = new ArrayList<>();
+        String sql = "SELECT " + q(idColumn, mysql) + ", " + q(userIdColumn, mysql)
+                + ", " + q(genreColumn, mysql) + " FROM " + q(table, mysql)
+                + " ORDER BY " + q(idColumn, mysql);
+        try (Statement statement = connection.createStatement();
+             ResultSet resultSet = statement.executeQuery(sql)) {
+            while (resultSet.next()) {
+                rows.add(new UserGenreRow(
+                        resultSet.getLong(1),
+                        resultSet.getLong(2),
+                        resultSet.getString(3)
+                ));
+            }
+        }
+        return rows;
+    }
+
+    private String mapGenre(String genre) {
+        return switch (genre) {
+            case "INDIE_POP" -> "INDIE";
+            case "FOLK" -> "FOLK_ROCK";
+            case "PUNK" -> "PUNK_ROCK";
+            case "ROCK", "RNB", "ACOUSTIC" -> "ETC";
+            default -> genre;
+        };
+    }
+
+    private void expandEnumIfNeeded(
+            Connection connection, String table, String column, boolean nativeEnum
+    ) throws Exception {
+        if (!nativeEnum) return;
+        try (Statement statement = connection.createStatement()) {
+            statement.execute("ALTER TABLE " + q(table, true)
+                    + " MODIFY COLUMN " + q(column, true)
+                    + " " + EXPANDED_GENRES + " NOT NULL");
+        }
+    }
+
+    private void shrinkEnumIfNeeded(
+            Connection connection, String table, String column, boolean nativeEnum
+    ) throws Exception {
+        if (!nativeEnum) return;
+        try (Statement statement = connection.createStatement()) {
+            statement.execute("ALTER TABLE " + q(table, true)
+                    + " MODIFY COLUMN " + q(column, true)
+                    + " " + CURRENT_GENRES + " NOT NULL");
+        }
+    }
+
+    private boolean isMysql(Connection connection) throws Exception {
+        return connection.getMetaData().getDatabaseProductName()
+                .toLowerCase(Locale.ROOT).contains("mysql");
+    }
+
+    private boolean isNativeEnum(Connection connection, String table, String column)
+            throws Exception {
+        try (Statement statement = connection.createStatement();
+             ResultSet columns = statement.executeQuery("SHOW COLUMNS FROM " + q(table, true)
+                     + " LIKE '" + column.replace("'", "''") + "'")) {
+            return columns.next()
+                    && columns.getString("Type").toLowerCase(Locale.ROOT).startsWith("enum(");
+        }
+    }
+
+    private String findTable(Connection connection, String... expectedNames) throws Exception {
+        try (ResultSet tables = connection.getMetaData().getTables(
+                connection.getCatalog(), connection.getSchema(), "%", new String[]{"TABLE"})) {
+            while (tables.next()) {
+                String name = tables.getString("TABLE_NAME");
+                for (String expected : expectedNames) {
+                    if (expected.equalsIgnoreCase(name)) return name;
+                }
+            }
+        }
+        return null;
+    }
+
+    private String findColumn(Connection connection, String table, String... expectedNames)
+            throws Exception {
+        try (ResultSet columns = connection.getMetaData().getColumns(
+                connection.getCatalog(), connection.getSchema(), table, "%")) {
+            while (columns.next()) {
+                String name = columns.getString("COLUMN_NAME");
+                for (String expected : expectedNames) {
+                    if (expected.equalsIgnoreCase(name)) return name;
+                }
+            }
+        }
+        return null;
+    }
+
+    private String q(String value, boolean mysql) {
+        return mysql ? "`" + value.replace("`", "``") + "`"
+                : "\"" + value.replace("\"", "\"\"") + "\"";
+    }
+
+    private record UserGenreRow(long id, long userId, String genre) {
+    }
+}

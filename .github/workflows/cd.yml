@@ -26,7 +26,7 @@ jobs:
           username: ${{ secrets.SERVER_USER }}
           key: ${{ secrets.SERVER_SSH_KEY }}
           port: 22
-          source: "docker-compose.yml,nginx/conf.d/default.conf,mediamtx/mediamtx.yml,ml-server"
+          source: "docker-compose.yml,nginx/conf.d/default.conf,mediamtx/mediamtx.yml,ml-server,promtail"
           target: "/home/${{ secrets.SERVER_USER }}/app"
 
       - name: deploy over ssh

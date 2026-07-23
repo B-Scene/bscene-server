@@ -49,10 +49,10 @@ public class SessionRecruitment extends BaseEntity {
     @Column(nullable = false)
     private Region region;
 
-    @Column(length = 100)
+    @Column(length = 50)
     private String practiceSchedule;
 
-    @Column(length = 100)
+    @Column(length = 50)
     private String practicePlace;
 
     @Column(nullable = false)
@@ -64,7 +64,7 @@ public class SessionRecruitment extends BaseEntity {
     @Column
     private LocalDateTime deletedAt;
 
-    @Column(nullable = false, length = 100)
+    @Column(nullable = false, length = 50)
     private String recruitmentTitle;
 
     @Column

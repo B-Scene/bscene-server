@@ -1,7 +1,7 @@
 package com.umc.bscene.domain.chat.controller;
 
 import com.umc.bscene.domain.chat.dto.response.LiveChatWebSocketTicketResponse;
-import com.umc.bscene.domain.chat.response.code.LiveChatWebSocketSuccessCode;
+import com.umc.bscene.domain.chat.enums.code.success.ChatSuccessCode;
 import com.umc.bscene.domain.chat.service.LiveChatWebSocketTicketService;
 import com.umc.bscene.global.response.SuccessResponse;
 import com.umc.bscene.global.security.entity.AuthMember;
@@ -25,7 +25,7 @@ public class LiveChatWebSocketTicketController {
     ) {
         return SuccessResponse.of(
                 ticketService.issue(authMember.getUser().getId(), liveId),
-                LiveChatWebSocketSuccessCode.TICKET_ISSUE_SUCCESS
+                ChatSuccessCode.LIVE_CHAT_TICKET_ISSUE_SUCCESS
         );
     }
 }

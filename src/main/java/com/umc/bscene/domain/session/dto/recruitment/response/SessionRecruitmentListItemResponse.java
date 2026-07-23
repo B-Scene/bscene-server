@@ -5,8 +5,6 @@ import com.umc.bscene.domain.session.enums.SkillLevel;
 import lombok.Builder;
 import lombok.Getter;
 
-import java.time.LocalDateTime;
-
 import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 
 @Getter
@@ -14,7 +12,6 @@ import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 @JsonPropertyOrder({
         "sessionRecruitmentId",
         "bandId",
-        "deadlineAt",
         "dDay",
         "isNew",
         "isInterested",
@@ -22,10 +19,10 @@ import com.fasterxml.jackson.annotation.JsonPropertyOrder;
         "bandName",
         "bandGenre",
         "bandRegion",
+        "postedAgo",
         "summary",
         "part",
-        "skillLevel",
-        "practiceSchedule"
+        "skillLevel"
 })
 public class SessionRecruitmentListItemResponse {
 
@@ -35,11 +32,10 @@ public class SessionRecruitmentListItemResponse {
     private String bandName;
     private String bandGenre;
     private String bandRegion;
+    private Long postedAgo;
     private String summary;
     private Part part;
     private SkillLevel skillLevel;
-    private String practiceSchedule;
-    private LocalDateTime deadlineAt;
     private Long dDay;
     private Boolean isNew;
     private Boolean isInterested;

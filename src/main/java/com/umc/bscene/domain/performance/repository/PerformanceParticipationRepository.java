@@ -32,6 +32,22 @@ public interface PerformanceParticipationRepository extends JpaRepository<Perfor
     long countByUser_IdAndStatusAndPerformance_Status(
             Long userId, ParticipationStatus status, PerformanceStatus performanceStatus);
 
+    // 공연 참여 기록 총 개수 : 연도 필터가 적용된 참여 완료 공연 수 (목록 상단 "총 참여 공연 N회"용, 삭제된 공연 제외)
+    @Query("SELECT COUNT(pp) FROM PerformanceParticipation pp " +
+            "JOIN pp.performance p " +
+            "WHERE pp.user.id = :userId " +
+            "AND pp.status = :status " +
+            "AND p.status = :performanceStatus " +
+            "AND (:startDate IS NULL OR p.performanceDate >= :startDate) " +
+            "AND (:endDate IS NULL OR p.performanceDate <= :endDate)")
+    long countCompletedHistory(
+            @Param("userId") Long userId,
+            @Param("status") ParticipationStatus status,
+            @Param("performanceStatus") PerformanceStatus performanceStatus,
+            @Param("startDate") LocalDate startDate,
+            @Param("endDate") LocalDate endDate
+    );
+
     // 공연 참여 기록 목록 : 참여 완료 공연을 날짜/시간 빠른 순(같으면 제목순)으로 조회 (삭제된 공연 제외, 연도 필터)
     @Query("SELECT pp FROM PerformanceParticipation pp " +
             "JOIN FETCH pp.performance p " +

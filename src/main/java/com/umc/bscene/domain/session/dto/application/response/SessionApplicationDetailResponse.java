@@ -9,6 +9,7 @@ import com.umc.bscene.domain.session.converter.SessionGenreFormat;
 import com.umc.bscene.domain.session.converter.SessionRegionFormat;
 import com.umc.bscene.domain.session.enums.SkillLevel;
 import com.umc.bscene.domain.session.enums.AvailableActivity;
+import com.umc.bscene.domain.session.enums.PortfolioMediaType;
 import lombok.Builder;
 import lombok.Getter;
 
@@ -18,40 +19,48 @@ import java.util.List;
 @Builder
 @JsonPropertyOrder({
         "sessionApplicationId",
+        "title",
+        "purpose",
+
         "userId",
         "nickname",
         "profileImageUrl",
         "isPublic",
-        "title",
-        "purpose",
+
         "oneLineIntro",
+        "intro",
+
         "part",
         "skillLevel",
         "genre",
         "region",
-        "intro",
         "availableActivities",
+
         "careers",
         "portfolioLinks"
 })
 public class SessionApplicationDetailResponse {
 
     private Long sessionApplicationId;
+    private String title;
+    private String purpose;
+
     private Long userId;
     private String nickname;
     private String profileImageUrl;
     private Boolean isPublic;
-    private String title;
-    private String purpose;
+
     private String oneLineIntro;
+    private String intro;
+
     private Part part;
     private SkillLevel skillLevel;
     @SessionGenreFormat
     private Genre genre;
     @SessionRegionFormat
     private Region region;
-    private String intro;
     private List<AvailableActivity> availableActivities;
+
     private List<MySessionApplicationResponse.CareerResponse> careers;
     private List<PortfolioLinkResponse> portfolioLinks;
 
@@ -91,6 +100,9 @@ public class SessionApplicationDetailResponse {
                                         link.getSessionApplicationLinkId()
                                 )
                                 .url(link.getUrl())
+                                .title(link.getTitle())
+                                .thumbnailUrl(link.getThumbnailUrl())
+                                .mediaType(link.getMediaType())
                                 .build())
                         .toList())
                 .build();
@@ -98,10 +110,15 @@ public class SessionApplicationDetailResponse {
 
     @Getter
     @Builder
-    @JsonPropertyOrder({"sessionApplicationLinkId", "url"})
+    @JsonPropertyOrder({
+            "sessionApplicationLinkId", "url", "title", "thumbnailUrl", "mediaType"
+    })
     public static class PortfolioLinkResponse {
 
         private Long sessionApplicationLinkId;
         private String url;
+        private String title;
+        private String thumbnailUrl;
+        private PortfolioMediaType mediaType;
     }
 }

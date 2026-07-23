@@ -14,8 +14,7 @@ import com.umc.bscene.domain.chat.exception.ChatException;
 import com.umc.bscene.domain.chat.port.NotifyPort;
 import com.umc.bscene.domain.chat.repository.ChatMessageRepository;
 import com.umc.bscene.domain.chat.repository.ChatRoomRepository;
-import com.umc.bscene.domain.chat.response.code.ChatErrorCode;
-import com.umc.bscene.domain.chat.response.code.ChatWebSocketErrorCode;
+import com.umc.bscene.domain.chat.enums.code.error.ChatErrorCode;
 import com.umc.bscene.domain.session.enums.ApplicationStatus;
 import com.umc.bscene.domain.session.repository.SessionApplicationSubmissionRepository;
 import com.umc.bscene.domain.session.repository.SessionBasicProfileRepository;
@@ -45,7 +44,7 @@ public class ChatMessageService {
     @Transactional
     public ChatMessageSendResult send(Long userId, ChatMessageSendRequest request) {
         if (request == null || request.chatRoomId() == null) {
-            throw new ChatException(ChatWebSocketErrorCode.INVALID_FRAME);
+            throw new ChatException(ChatErrorCode.DM_INVALID_FRAME);
         }
 
         String content = normalizeContent(request.content());
@@ -57,7 +56,7 @@ public class ChatMessageService {
             throw new ChatException(ChatErrorCode.CHAT_ROOM_NOT_FOUND);
         }
         if (!canSend(room)) {
-            throw new ChatException(ChatWebSocketErrorCode.SEND_NOT_ALLOWED);
+            throw new ChatException(ChatErrorCode.DM_SEND_NOT_ALLOWED);
         }
 
         Long recipientId = room.getSender().getId().equals(userId)
@@ -99,7 +98,7 @@ public class ChatMessageService {
         if (request == null
                 || request.chatRoomId() == null
                 || request.lastReadMessageId() == null) {
-            throw new ChatException(ChatWebSocketErrorCode.INVALID_FRAME);
+            throw new ChatException(ChatErrorCode.DM_INVALID_FRAME);
         }
 
         ChatRoom room = chatRoomRepository.findDetail(request.chatRoomId())
@@ -110,7 +109,7 @@ public class ChatMessageService {
         }
         if (!chatMessageRepository.existsByChatMessageIdAndChatRoom_ChatRoomId(
                 request.lastReadMessageId(), request.chatRoomId())) {
-            throw new ChatException(ChatWebSocketErrorCode.READ_MESSAGE_NOT_FOUND);
+            throw new ChatException(ChatErrorCode.DM_READ_MESSAGE_NOT_FOUND);
         }
 
         LocalDateTime readAt = LocalDateTime.now();
@@ -134,12 +133,12 @@ public class ChatMessageService {
 
     private String normalizeContent(String content) {
         if (content == null || content.isBlank()) {
-            throw new ChatException(ChatWebSocketErrorCode.EMPTY_CONTENT);
+            throw new ChatException(ChatErrorCode.DM_EMPTY_CONTENT);
         }
 
         String normalized = content.strip();
         if (normalized.length() > MAX_CONTENT_LENGTH) {
-            throw new ChatException(ChatWebSocketErrorCode.CONTENT_TOO_LONG);
+            throw new ChatException(ChatErrorCode.DM_CONTENT_TOO_LONG);
         }
         return normalized;
     }

@@ -16,6 +16,7 @@ public enum UserErrorCode implements BaseResponseCode {
     PARAM_BAD_REQUEST(400, "USER400_2",  "잘못된 요청 파라미터 값입니다."),
 
     ONBOARDING_NOT_COMPLETED(FORBIDDEN, "USER403_1", "온보딩이 완료되지 않은 사용자입니다."),
+    DUPLICATE_NICKNAME(CONFLICT, "USER409_2", "이미 사용 중인 닉네임입니다."),
     ;
 
     private final int status;
