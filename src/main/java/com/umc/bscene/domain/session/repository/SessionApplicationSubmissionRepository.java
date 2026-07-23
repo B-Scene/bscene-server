@@ -5,6 +5,7 @@ import com.umc.bscene.domain.session.entity.SessionApplicationSubmission;
 import com.umc.bscene.domain.session.enums.ApplicationStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -64,6 +65,31 @@ order by sas.applicationSubmissionId asc
             @Param("recruitmentIds") Collection<Long> recruitmentIds
     );
 
+    // 세션 지원 기록 ID로 모집 공고를 게시한 밴드 ID를 조회 (삭제된 공고의 지원 건은 제외)
+    @Query("""
+select sas.sessionRecruitment.band.id
+from SessionApplicationSubmission sas
+where sas.applicationSubmissionId = :sasId
+    and sas.sessionRecruitment.deletedAt is null
+""")
+    Long findBandIdBySessionApplicationSubmissionId(
+            @Param("sasId") Long sasId);
+
+    // 상태 전이를 원자적으로 수행 - 현재 상태가 expected일 때만 갱신됨
+    // 반환값 0이면 다른 요청이 먼저 전이시킨 것 (동시 결정·확정·취소 경합 방지)
+    @Modifying
+    @Query("""
+        UPDATE SessionApplicationSubmission submission
+        SET submission.status = :target
+        WHERE submission.applicationSubmissionId = :submissionId
+          AND submission.status = :expected
+    """)
+    int transitionStatus(
+            @Param("submissionId") Long submissionId,
+            @Param("expected") ApplicationStatus expected,
+            @Param("target") ApplicationStatus target
+    );
+
     long countBySessionApplication_UserId(Long userId);
 
     long countBySessionApplication_UserIdAndStatus(
@@ -98,6 +124,17 @@ order by sas.applicationSubmissionId asc
     Optional<SessionApplicationSubmission> findByApplicationSubmissionIdAndSessionApplication_UserId(
             Long applicationSubmissionId,
             Long userId
+    );
+
+    // 지원 수락/거절 처리용 - 지원자(userId) 확인을 위해 지원서까지 한 번에 조회
+    @Query("""
+        SELECT submission
+        FROM SessionApplicationSubmission submission
+        JOIN FETCH submission.sessionApplication
+        WHERE submission.applicationSubmissionId = :submissionId
+    """)
+    Optional<SessionApplicationSubmission> findWithApplicationById(
+            @Param("submissionId") Long submissionId
     );
 
     @Query("""

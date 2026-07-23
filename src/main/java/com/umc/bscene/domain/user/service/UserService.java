@@ -2,6 +2,7 @@ package com.umc.bscene.domain.user.service;
 
 import com.umc.bscene.domain.auth.enums.onboarding.Genre;
 import com.umc.bscene.domain.auth.enums.onboarding.Region;
+import com.umc.bscene.domain.user.dto.request.SessionApplyConfirmRequest;
 import com.umc.bscene.domain.user.dto.request.UserModeUpdateRequest;
 import com.umc.bscene.domain.user.dto.response.*;
 import com.umc.bscene.domain.user.dto.response.mypage.BandMyPageResponse;
@@ -15,6 +16,7 @@ import com.umc.bscene.domain.user.entity.UserGenres;
 import com.umc.bscene.domain.user.entity.UserRegions;
 import com.umc.bscene.domain.user.enums.HistoryYearFilter;
 import com.umc.bscene.domain.user.enums.UserMode;
+import com.umc.bscene.domain.user.enums.UserStatus;
 import com.umc.bscene.domain.user.exception.UserException;
 import com.umc.bscene.domain.user.port.*;
 import com.umc.bscene.domain.user.repository.FanProfileRepository;
@@ -239,5 +241,56 @@ public class UserService {
         // 2. 밴드 ID로 공고 단위 커서 페이지 조회 (사이즈: 최저 1, 최대 15)
         int pageSize = Math.min(Math.max(size, 1), RECEIVES_MAX_PAGE_SIZE);
         return sessionPort.findRecruitmentsByBandId(bandId, status, cursor, pageSize);
+    }
+
+    // 밴드 측의 세션 지원 수락/거절
+    // 수락은 최종 확정이 아니라 지원자 확정 대기(BAND_ACCEPTED)로의 전이이며,
+    // 세션 멤버 등록은 지원자가 confirmSessionApply로 최종 수락한 시점에 수행된다
+    @Transactional
+    public void decideSessionApply(Long userId, Long applySubmissionId, Boolean isApproved) {
+
+        Long bandId = sessionPort.findBandIdBySessionApplicationSubmission(applySubmissionId);
+        bandPort.validateActiveBandMember(userId, bandId);
+
+        Long applicantUserId =
+                sessionPort.decideApplicationSubmission(applySubmissionId, userId, isApproved);
+
+        if (isApproved) {
+            // 탈퇴·정지·휴면 지원자의 지원은 수락 불가 (예외 시 전체 롤백되어 지원은 PENDING 유지)
+            User applicant = userRepository.findById(applicantUserId)
+                    .orElseThrow(() -> new UserException(UserErrorCode.USER_NOT_FOUND));
+            if (applicant.getStatus() != UserStatus.ACTIVE) {
+                throw new UserException(UserErrorCode.USER_NOT_FOUND);
+            }
+
+            // TODO: FCM 개발자 - 지원자가 조회할 수락 알림 생성 및 FCM 발송 로직 구현 필요
+        }
+
+        // NOTE: 거절 상태도 알림 전송할 것인지?
+    }
+
+    // 밴드가 수락한 세션 지원 건에 대한 지원자의 최종 수락/거절
+    // 수락 시 이 시점에 입력받은 활동명·파트를 확정값으로 멤버 프로필을 생성하고 세션 멤버로 등록한다
+    // 모든 단계가 한 트랜잭션 - 하나라도 실패하면 상태 전이 포함 전체 롤백
+    @Transactional
+    public void confirmSessionApply(Long userId, Long applySubmissionId, SessionApplyConfirmRequest request) {
+
+        boolean isAccepted = request.isAccepted();
+
+        // 최종 수락이면 확정할 활동명·파트가 필수
+        if (isAccepted && (request.nickname() == null || request.nickname().isBlank() || request.part() == null)) {
+            throw new UserException(UserErrorCode.PARAM_BAD_REQUEST);
+        }
+
+        // BAND_ACCEPTED일 때만 원자적으로 전이 - 중복 확정·경합 요청은 여기서 걸러짐
+        Long bandId = sessionPort.finalizeApplicationSubmission(applySubmissionId, userId, isAccepted);
+
+        if (isAccepted) {
+            User applicant = userRepository.findById(userId)
+                    .orElseThrow(() -> new UserException(UserErrorCode.USER_NOT_FOUND));
+
+            // BandMember(ACCEPTED, SESSION) + 비활성(active=false) 멤버 프로필 생성
+            bandPort.registerSessionMember(bandId, applicant, request.nickname(), request.part());
+        }
     }
 }

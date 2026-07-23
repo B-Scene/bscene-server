@@ -1,5 +1,6 @@
 package com.umc.bscene.domain.user.controller;
 
+import com.umc.bscene.domain.user.dto.request.SessionApplyConfirmRequest;
 import com.umc.bscene.domain.user.dto.request.UserModeUpdateRequest;
 import com.umc.bscene.domain.user.dto.response.MyProfileResponse;
 import com.umc.bscene.domain.user.dto.response.mypage.BandMyPageResponse;
@@ -20,6 +21,7 @@ import com.umc.bscene.global.response.CursorPage;
 import com.umc.bscene.global.response.SuccessResponse;
 import com.umc.bscene.global.security.entity.AuthMember;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotNull;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -157,5 +159,35 @@ public class UserController {
         return ResponseEntity
                 .status(HttpStatus.OK)
                 .body(SuccessResponse.ok(response));
+    }
+
+    @PostMapping("/me/{applySubmissionId}/acceptance")
+    public ResponseEntity<SuccessResponse<?>> decideSessionApply(
+            @AuthenticationPrincipal AuthMember member,
+            @PathVariable Long applySubmissionId,
+            @RequestBody @NotNull(message = "지원에 대한 수락, 거절 상태값은 비어있을 수 없습니다.") Boolean isApproved
+    ) {
+
+        userService.decideSessionApply(member.getUser().getId(), applySubmissionId, isApproved);
+
+        return ResponseEntity
+                .status(HttpStatus.OK)
+                .body(SuccessResponse.empty(null));
+    }
+
+    // 밴드가 수락한(BAND_ACCEPTED) 세션 지원 건에 대한 지원자의 최종 수락/거절
+    // 최종 수락 시 활동명·파트를 입력받아 확정하고, 세션 멤버 등록까지 한 트랜잭션으로 수행
+    @PostMapping("/me/{applySubmissionId}/final")
+    public ResponseEntity<SuccessResponse<?>> confirmSessionApply(
+            @AuthenticationPrincipal AuthMember member,
+            @PathVariable Long applySubmissionId,
+            @Valid @RequestBody SessionApplyConfirmRequest request
+    ) {
+
+        userService.confirmSessionApply(member.getUser().getId(), applySubmissionId, request);
+
+        return ResponseEntity
+                .status(HttpStatus.OK)
+                .body(SuccessResponse.empty(null));
     }
 }

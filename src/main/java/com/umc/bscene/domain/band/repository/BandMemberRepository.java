@@ -134,7 +134,7 @@ from BandMember bm
     join fetch bm.band
     join bm.bandMemberProfile bmp
 where bm.user.id = :userId
-    and bmp.status = :isActive
+    and bmp.active = :isActive
     and bm.status = :status
 """)
     Optional<BandMember> findWithBandByUser_IdAndActiveProfile(

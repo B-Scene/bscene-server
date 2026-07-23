@@ -1,12 +1,22 @@
 package com.umc.bscene.domain.user.port;
 
 import com.umc.bscene.domain.band.enums.BandMemberStatus;
+import com.umc.bscene.domain.session.enums.Part;
 import com.umc.bscene.domain.user.dto.response.BandMemberResponse;
 import com.umc.bscene.domain.user.dto.response.MyBandProfile;
+import com.umc.bscene.domain.user.entity.User;
 
 import java.util.List;
 
 public interface BandPort {
+
+    // 해당 밴드의 정회원(ACCEPTED, MEMBER)인지 + 이 밴드 프로필로 전환(활성화)된 상태인지 검증
+    // 미소속 -> BAND_PERMISSION_DENIED / 소속이지만 밴드 모드 아님 -> BAND_MODE_REQUIRED
+    void validateActiveBandMember(Long userId, Long bandId);
+
+    // 세션 지원 수락 시 지원자를 세션 멤버(memberType=SESSION)로 등록
+    // 지원 시점 지원서의 닉네임·파트로 pre-fill한 멤버 프로필도 함께 생성해 연결
+    void registerSessionMember(Long bandId, User applicant, String nickname, Part part);
 
     BandMemberResponse getActiveBandMemberProfile(Long userId);
     Long getActiveBandMemberProfile_BandIdIdByUserId(Long userIdl);

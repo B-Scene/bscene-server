@@ -5,7 +5,7 @@ import com.umc.bscene.domain.session.dto.recruitment.response.InterestedRecruitm
 import com.umc.bscene.domain.session.dto.recruitment.response.InterestedRecruitmentListResponse;
 import com.umc.bscene.domain.session.entity.SessionRecruitment;
 import com.umc.bscene.domain.session.entity.SessionRecruitmentInterest;
-import com.umc.bscene.domain.session.enums.code.SessionErrorCode;
+import com.umc.bscene.domain.session.enums.code.error.SessionErrorCode;
 import com.umc.bscene.domain.session.exception.SessionException;
 import com.umc.bscene.domain.session.repository.SessionRecruitmentInterestRepository;
 import com.umc.bscene.domain.session.repository.SessionRecruitmentRepository;

@@ -4,6 +4,7 @@ import com.umc.bscene.domain.band.entity.Band;
 import com.umc.bscene.domain.band.entity.BandMember;
 import com.umc.bscene.domain.band.entity.BandMemberProfile;
 import com.umc.bscene.domain.band.enums.BandMemberStatus;
+import com.umc.bscene.domain.band.enums.BandMemberType;
 import com.umc.bscene.domain.band.exception.BandException;
 import com.umc.bscene.domain.band.port.FollowPort;
 import com.umc.bscene.domain.band.port.PerformancePort;
@@ -12,6 +13,7 @@ import com.umc.bscene.domain.band.repository.BandMemberProfileRepository;
 import com.umc.bscene.domain.band.repository.BandMemberRepository;
 import com.umc.bscene.domain.band.repository.BandRepository;
 import com.umc.bscene.domain.band.response.code.BandErrorCode;
+import com.umc.bscene.domain.session.enums.Part;
 import com.umc.bscene.domain.user.dto.response.BandMemberResponse;
 import com.umc.bscene.domain.user.dto.response.MyBandProfile;
 import com.umc.bscene.domain.user.dto.response.MyProfileResponse;
@@ -33,6 +35,55 @@ public class UserAdapter implements BandPort {
     private final FollowPort followPort;
     private final SessionPort sessionPort;
     private final PerformancePort performancePort;
+
+    @Override
+    public void validateActiveBandMember(Long userId, Long bandId) {
+
+        // 밴드 소속(ACCEPTED)이 아니면 접근 불가
+        BandMember bandMember = bandMemberRepository
+                .findByBand_IdAndUser_IdAndStatus(bandId, userId, BandMemberStatus.ACCEPTED)
+                .orElseThrow(() -> new BandException(BandErrorCode.BAND_PERMISSION_DENIED));
+
+        // 세션 멤버(memberType=SESSION)는 밴드 기능 사용 불가
+        if (!bandMember.isMember()) {
+            throw new BandException(BandErrorCode.BAND_PERMISSION_DENIED);
+        }
+
+        // 멤버는 맞지만 이 밴드의 프로필로 전환된 상태가 아님
+        // FE가 모드 전환 후 재시도하는 복구 플로우를 탈 수 있도록 위와 다른 코드로 구분
+        BandMemberProfile profile = bandMember.getBandMemberProfile();
+        if (profile == null || !Boolean.TRUE.equals(profile.getActive())) {
+            throw new BandException(BandErrorCode.BAND_MODE_REQUIRED);
+        }
+    }
+
+    @Override
+    @Transactional
+    public void registerSessionMember(Long bandId, User applicant, String nickname, Part part) {
+
+        // (bandId, userId) 유니크 제약 - 이미 소속(정회원/세션)이면 중복 등록하지 않음
+        if (bandMemberRepository.existsByBand_IdAndUser_Id(bandId, applicant.getId())) {
+            return;
+        }
+
+        Band band = bandRepository.findById(bandId)
+                .orElseThrow(() -> new BandException(BandErrorCode.BAND_NOT_FOUND));
+
+        // 지원 시점 지원서의 닉네임·파트로 pre-fill한 멤버 프로필 생성 (active는 기본값 false)
+        BandMemberProfile profile = bandMemberProfileRepository.save(BandMemberProfile.builder()
+                .nickname(nickname)
+                .part(part)
+                .user(applicant)
+                .build());
+
+        bandMemberRepository.save(BandMember.builder()
+                .band(band)
+                .user(applicant)
+                .bandMemberProfile(profile)
+                .status(BandMemberStatus.ACCEPTED)
+                .memberType(BandMemberType.SESSION)
+                .build());
+    }
 
     @Override
     public BandMemberResponse getActiveBandMemberProfile(Long userId) {
