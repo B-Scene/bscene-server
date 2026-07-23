@@ -1,5 +1,6 @@
 package com.umc.bscene.domain.band.service;
 
+import com.umc.bscene.domain.band.dto.response.BandInviteLinkDetailResponse;
 import com.umc.bscene.domain.band.dto.response.BandInviteLinkResponse;
 import com.umc.bscene.domain.band.entity.Band;
 import com.umc.bscene.domain.band.entity.BandInviteLink;
@@ -54,6 +55,25 @@ public class BandInviteLinkService {
                         );
 
         return BandInviteLinkResponse.from(inviteLink);
+    }
+
+    // 초대 링크 조회
+    public BandInviteLinkDetailResponse getInviteLink(String token) {
+        BandInviteLink inviteLink =
+                bandInviteLinkRepository.findByToken(token)
+                        .orElseThrow(() ->
+                                new BandException(
+                                        BandErrorCode.BAND_INVITE_LINK_NOT_FOUND
+                                )
+                        );
+
+        if (inviteLink.isExpired(LocalDateTime.now())) {
+            throw new BandException(
+                    BandErrorCode.BAND_INVITE_LINK_EXPIRED
+            );
+        }
+
+        return BandInviteLinkDetailResponse.from(inviteLink);
     }
 
     // 토큰 갱신
