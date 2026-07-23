@@ -23,6 +23,21 @@ public interface SessionRecruitmentRepository extends JpaRepository<SessionRecru
         SELECT sr
         FROM SessionRecruitment sr
         JOIN FETCH sr.band
+        WHERE sr.band.id = :bandId
+          AND sr.deletedAt IS NULL
+          AND (:cursorId IS NULL OR sr.sessionRecruitmentId < :cursorId)
+        ORDER BY sr.sessionRecruitmentId DESC
+    """)
+    List<SessionRecruitment> findManagedRecruitments(
+            @Param("bandId") Long bandId,
+            @Param("cursorId") Long cursorId,
+            Pageable pageable
+    );
+
+    @Query("""
+        SELECT sr
+        FROM SessionRecruitment sr
+        JOIN FETCH sr.band
         WHERE sr.deletedAt IS NULL
           AND sr.deadlineAt > :now
           AND (:part IS NULL OR sr.part = :part)

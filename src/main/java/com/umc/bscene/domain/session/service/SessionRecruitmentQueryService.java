@@ -3,6 +3,7 @@ package com.umc.bscene.domain.session.service;
 import com.umc.bscene.domain.session.dto.recruitment.response.SessionRecruitmentDetailResponse;
 import com.umc.bscene.domain.session.dto.recruitment.response.SessionRecruitmentListResponse;
 import com.umc.bscene.domain.session.dto.recruitment.response.RecentRecruitmentListResponse;
+import com.umc.bscene.domain.session.dto.recruitment.response.ManagedRecruitmentListResponse;
 import com.umc.bscene.domain.session.enums.Part;
 import com.umc.bscene.domain.auth.enums.onboarding.Genre;
 import com.umc.bscene.domain.auth.enums.onboarding.Region;
@@ -26,6 +27,13 @@ public interface SessionRecruitmentQueryService {
 
     RecentRecruitmentListResponse getRecentRecruitments(
             Long userId,
+            Long cursorId,
+            Integer size
+    );
+
+    ManagedRecruitmentListResponse getManagedRecruitments(
+            Long userId,
+            Long bandId,
             Long cursorId,
             Integer size
     );
