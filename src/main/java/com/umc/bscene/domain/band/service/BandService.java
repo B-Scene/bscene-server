@@ -172,6 +172,7 @@ public class BandService {
         BandMember bandMember = BandMember.builder()
                 .band(band)
                 .user(invitee)
+                .memberType(request.memberType())
                 .build();
 
         BandMember savedBandMember = bandMemberRepository.save(bandMember);
