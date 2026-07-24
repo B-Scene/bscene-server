@@ -1,13 +1,17 @@
 package com.umc.bscene.domain.band.controller;
 
 import com.umc.bscene.domain.band.dto.response.BandInviteLinkDetailResponse;
+import com.umc.bscene.domain.band.dto.response.BandInviteLinkEntryResponse;
 import com.umc.bscene.domain.band.response.code.BandSuccessCode;
 import com.umc.bscene.domain.band.service.BandInviteLinkService;
 import com.umc.bscene.global.response.SuccessResponse;
+import com.umc.bscene.global.security.entity.AuthMember;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -31,6 +35,30 @@ public class BandInviteLinkAccessController {
                 SuccessResponse.of(
                         response,
                         BandSuccessCode.BAND_INVITE_LINK_GET_SUCCESS
+                );
+
+        return ResponseEntity
+                .status(successResponse.getStatus())
+                .body(successResponse);
+    }
+
+    @PostMapping("/{token}/entries")
+    public ResponseEntity<
+            SuccessResponse<BandInviteLinkEntryResponse>
+            > enterInviteLink(
+            @AuthenticationPrincipal AuthMember authMember,
+            @PathVariable String token
+    ) {
+        BandInviteLinkEntryResponse response =
+                bandInviteLinkService.enterInviteLink(
+                        authMember.getUser().getId(),
+                        token
+                );
+
+        SuccessResponse<BandInviteLinkEntryResponse> successResponse =
+                SuccessResponse.of(
+                        response,
+                        BandSuccessCode.BAND_INVITE_LINK_ENTRY_SUCCESS
                 );
 
         return ResponseEntity
