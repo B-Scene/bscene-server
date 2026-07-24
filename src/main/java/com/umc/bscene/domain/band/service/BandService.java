@@ -180,7 +180,8 @@ public class BandService {
         notifyMemberAfterCommit(
                 invitee.getId(),
                 band.getName(),
-                savedBandMember.getId()
+                savedBandMember.getId(),
+                request.memberType()
         );
 
         return BandMemberResponse.from(savedBandMember);
@@ -334,11 +335,13 @@ public class BandService {
     private void notifyMemberAfterCommit(
             Long inviteeId,
             String bandName,
-            Long bandMemberId
+            Long bandMemberId,
+            BandMemberType memberType
     ) {
         BandPushMessage message = BandPushMessage.memberInvited(
                 bandName,
-                bandMemberId
+                bandMemberId,
+                memberType
         );
 
         TransactionSynchronizationManager.registerSynchronization(
