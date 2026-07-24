@@ -328,6 +328,24 @@ public class BandService {
         return MusicLinkResponse.from(musicLinkRepository.save(newMusicLink));
     }
 
+    // 밴드 탈퇴
+    @Transactional
+    public void leaveBand(Long userId, Long bandId) {
+        Band band = getBand(bandId);
+
+        if (band.getOwner().getId().equals(userId)) {
+            throw new BandException(BandErrorCode.BAND_OWNER_CANNOT_LEAVE);
+        }
+
+        BandMember bandMember = getBandMember(bandId, userId, BandErrorCode.BAND_MEMBER_NOT_FOUND);
+
+        if (bandMember.getStatus() != BandMemberStatus.ACCEPTED) {
+            throw new BandException(BandErrorCode.BAND_PERMISSION_DENIED);
+        }
+
+        deleteBandMemberAndOrphanProfile(bandMember);
+    }
+
     private Band getBand(Long bandId) {
         return bandRepository.findById(bandId)
                 .orElseThrow(() -> new BandException(BandErrorCode.BAND_NOT_FOUND));

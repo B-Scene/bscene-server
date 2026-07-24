@@ -24,6 +24,7 @@ public enum BandErrorCode implements BaseResponseCode {
     PROFILE_ACTIVATION_FORBIDDEN(FORBIDDEN, "MEMBER403_2", "프로필 소유자만 활성화 여부를 업데이트할 수 있습니다."),
     // 멤버는 맞지만 해당 밴드 프로필로 전환되지 않은 상태 - FE가 모드 전환 후 재시도할 수 있는 복구 가능 403
     BAND_MODE_REQUIRED(FORBIDDEN, "BAND403_4", "해당 밴드 모드로 전환 후 이용할 수 있는 기능입니다."),
+    BAND_OWNER_CANNOT_LEAVE(FORBIDDEN, "BAND403_5", "밴드 오너는 밴드를 탈퇴할 수 없습니다."),
 
 
     BAND_NOT_FOUND(NOT_FOUND, "BAND404_1", "존재하지 않는 밴드입니다."),
