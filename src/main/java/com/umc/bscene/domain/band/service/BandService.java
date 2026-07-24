@@ -2,12 +2,13 @@ package com.umc.bscene.domain.band.service;
 
 import com.umc.bscene.domain.band.dto.BandPushMessage;
 import com.umc.bscene.domain.band.dto.request.BandCreateRequest;
-import com.umc.bscene.domain.band.dto.request.BandMemberAcceptRequest;
 import com.umc.bscene.domain.band.dto.request.BandMemberInviteRequest;
+import com.umc.bscene.domain.band.dto.request.BandMemberProfileCreateRequest;
 import com.umc.bscene.domain.band.dto.request.BandUpdateRequest;
 import com.umc.bscene.domain.band.dto.request.MusicLinkSaveRequest;
 import com.umc.bscene.domain.band.dto.response.BandDetailResponse;
 import com.umc.bscene.domain.band.dto.response.BandMemberAcceptResponse;
+import com.umc.bscene.domain.band.dto.response.BandMemberProfileResponse;
 import com.umc.bscene.domain.band.dto.response.BandMemberResponse;
 import com.umc.bscene.domain.band.dto.response.BandMemberSearchItem;
 import com.umc.bscene.domain.band.dto.response.BandNameCheckResponse;
@@ -60,6 +61,7 @@ public class BandService {
     private final StreamPort streamPort;
     private final NotifyPort notifyPort;
     private final ApplicationEventPublisher eventPublisher;
+    private final BandMemberProfileService bandMemberProfileService;
 
     // 밴드 개설 (요청자가 오너가 됨, 이 밴드에서 사용할 멤버 프로필 선택)
     @Transactional
@@ -189,15 +191,18 @@ public class BandService {
 
     // 초대 수락 (이 밴드에서 사용할 멤버 프로필 선택)
     @Transactional
-    public BandMemberAcceptResponse acceptInvite(Long userId, Long bandId, BandMemberAcceptRequest request) {
+    public BandMemberAcceptResponse acceptInvite(Long userId, Long bandId, BandMemberProfileCreateRequest request) {
         getBand(bandId);
+
         BandMember bandMember = getBandMember(bandId, userId, BandErrorCode.NOT_INVITED_MEMBER);
 
         if (bandMember.getStatus() != BandMemberStatus.INVITED) {
             throw new BandException(BandErrorCode.INVITE_ALREADY_PROCESSED);
         }
 
-        BandMemberProfile bandMemberProfile = getOwnBandMemberProfile(request.bandMemberProfileId(), userId);
+        BandMemberProfileResponse createdProfile = bandMemberProfileService.createProfile(userId, request);
+
+        BandMemberProfile bandMemberProfile = getOwnBandMemberProfile(createdProfile.id(), userId);
 
         bandMember.acceptWithProfile(bandMemberProfile);
 
