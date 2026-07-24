@@ -4,6 +4,7 @@ import com.umc.bscene.domain.band.dto.BandPushMessage;
 import com.umc.bscene.domain.band.dto.request.BandCreateRequest;
 import com.umc.bscene.domain.band.dto.request.BandMemberInviteRequest;
 import com.umc.bscene.domain.band.dto.request.BandMemberProfileCreateRequest;
+import com.umc.bscene.domain.band.dto.request.BandOwnerTransferRequest;
 import com.umc.bscene.domain.band.dto.request.BandUpdateRequest;
 import com.umc.bscene.domain.band.dto.request.MusicLinkSaveRequest;
 import com.umc.bscene.domain.band.dto.response.BandDetailResponse;
@@ -344,6 +345,31 @@ public class BandService {
         }
 
         deleteBandMemberAndOrphanProfile(bandMember);
+    }
+
+    // Owner 양도
+    @Transactional
+    public void transferOwnership(Long requesterId, Long bandId, BandOwnerTransferRequest request) {
+        Band band = getBand(bandId);
+
+        validateOwner(band, requesterId, BandErrorCode.NOT_BAND_OWNER);
+
+        if (band.getOwner().getId().equals(request.newOwnerUserId())) {
+            throw new BandException(BandErrorCode.CANNOT_TRANSFER_OWNER_TO_SELF);
+        }
+
+        BandMember newOwnerMember = getBandMember(
+                bandId,
+                request.newOwnerUserId(),
+                BandErrorCode.BAND_MEMBER_NOT_FOUND
+        );
+
+        if (newOwnerMember.getStatus() != BandMemberStatus.ACCEPTED
+                || newOwnerMember.getMemberType() != BandMemberType.MEMBER) {
+            throw new BandException(BandErrorCode.INVALID_OWNER_TRANSFER_TARGET);
+        }
+
+        band.transferOwnership(newOwnerMember.getUser());
     }
 
     private Band getBand(Long bandId) {

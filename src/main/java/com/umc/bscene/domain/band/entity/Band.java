@@ -54,4 +54,8 @@ public class Band extends BaseEntity {
         if (profileImageUrl != null) this.profileImageUrl = profileImageUrl;
         if (description != null) this.description = description;
     }
+
+    public void transferOwnership(User newOwner) {
+        this.owner = newOwner;
+    }
 }
