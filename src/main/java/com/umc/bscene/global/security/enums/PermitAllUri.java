@@ -15,6 +15,9 @@ public enum PermitAllUri {
     AUTH_LOGOUT("/auth/logout"),
     AUTH_REISSUE("/auth/reissue"),
 
+    // 밴드 초대 링크 조회
+    BAND_INVITE_LINK_LOOKUP("/band-invite-links/*"),
+
     PHONE_VERIFICATIONS("/phone-verifications/**"),
 
     OAUTH2_AUTHORIZATION("/oauth2/**"),

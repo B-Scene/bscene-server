@@ -1,7 +1,7 @@
 package com.umc.bscene.domain.band.controller;
 
-import com.umc.bscene.domain.band.dto.request.BandMemberAcceptRequest;
 import com.umc.bscene.domain.band.dto.request.BandMemberInviteRequest;
+import com.umc.bscene.domain.band.dto.request.BandMemberProfileCreateRequest;
 import com.umc.bscene.domain.band.dto.response.BandMemberAcceptResponse;
 import com.umc.bscene.domain.band.dto.response.BandMemberResponse;
 import com.umc.bscene.domain.band.dto.response.BandMemberSearchItem;
@@ -54,15 +54,24 @@ public class BandMemberController {
     public ResponseEntity<SuccessResponse<BandMemberAcceptResponse>> acceptInvite(
             @AuthenticationPrincipal AuthMember authMember,
             @PathVariable Long bandId,
-            @Valid @RequestBody BandMemberAcceptRequest request
+            @Valid @RequestBody BandMemberProfileCreateRequest request
     ) {
-        BandMemberAcceptResponse response = bandService.acceptInvite(authMember.getUser().getId(), bandId, request);
-        SuccessResponse<BandMemberAcceptResponse> successResponse = SuccessResponse.of(
-                response,
-                BandSuccessCode.BAND_MEMBER_ACCEPT_SUCCESS
-        );
+        BandMemberAcceptResponse response =
+                bandService.acceptInvite(
+                        authMember.getUser().getId(),
+                        bandId,
+                        request
+                );
 
-        return ResponseEntity.status(successResponse.getStatus()).body(successResponse);
+        SuccessResponse<BandMemberAcceptResponse> successResponse =
+                SuccessResponse.of(
+                        response,
+                        BandSuccessCode.BAND_MEMBER_ACCEPT_SUCCESS
+                );
+
+        return ResponseEntity
+                .status(successResponse.getStatus())
+                .body(successResponse);
     }
 
     // 밴드 초대 거절 API (row 삭제)
