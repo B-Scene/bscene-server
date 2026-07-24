@@ -24,6 +24,7 @@ public enum BandErrorCode implements BaseResponseCode {
     PROFILE_ACTIVATION_FORBIDDEN(FORBIDDEN, "MEMBER403_2", "프로필 소유자만 활성화 여부를 업데이트할 수 있습니다."),
     // 멤버는 맞지만 해당 밴드 프로필로 전환되지 않은 상태 - FE가 모드 전환 후 재시도할 수 있는 복구 가능 403
     BAND_MODE_REQUIRED(FORBIDDEN, "BAND403_4", "해당 밴드 모드로 전환 후 이용할 수 있는 기능입니다."),
+    BAND_OWNER_CANNOT_LEAVE(FORBIDDEN, "BAND403_5", "밴드 오너는 밴드를 탈퇴할 수 없습니다."),
 
 
     BAND_NOT_FOUND(NOT_FOUND, "BAND404_1", "존재하지 않는 밴드입니다."),
@@ -36,8 +37,7 @@ public enum BandErrorCode implements BaseResponseCode {
     DUPLICATE_BAND_NAME(CONFLICT, "BAND409_2", "이미 사용 중인 밴드명이에요."),
     ALREADY_ACCEPTED_MEMBER(CONFLICT, "BAND409_3", "이미 수락된 멤버는 거절할 수 없습니다."),
     INVITE_ALREADY_PROCESSED(CONFLICT, "MEMBER409_2", "이미 처리된 초대예요."),
-    BAND_MEMBER_PROFILE_IN_USE(CONFLICT, "PROFILE409_1", "밴드에서 사용 중인 멤버 프로필은 삭제할 수 없어요."),
-    DUPLICATE_BAND_MEMBER_PROFILE_NICKNAME(CONFLICT, "PROFILE409_2", "이미 사용 중인 닉네임이에요.");
+    BAND_MEMBER_PROFILE_IN_USE(CONFLICT, "PROFILE409_1", "밴드에서 사용 중인 멤버 프로필은 삭제할 수 없어요.");
 
     private final int status;
     private final String code;

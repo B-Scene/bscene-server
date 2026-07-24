@@ -218,7 +218,7 @@ public class BandService {
             throw new BandException(BandErrorCode.ALREADY_ACCEPTED_MEMBER);
         }
 
-        bandMemberRepository.delete(bandMember);
+        deleteBandMemberAndOrphanProfile(bandMember);
     }
 
     // 밴드 멤버 제거/초대 취소 (오너만 가능)
@@ -232,7 +232,8 @@ public class BandService {
         }
 
         BandMember bandMember = getBandMember(bandId, targetUserId, BandErrorCode.BAND_MEMBER_NOT_FOUND);
-        bandMemberRepository.delete(bandMember);
+
+        deleteBandMemberAndOrphanProfile(bandMember);
     }
 
     // 밴드 멤버 목록 조회 (수락한 멤버 + 초대 대기 중인 멤버)
@@ -327,6 +328,24 @@ public class BandService {
         return MusicLinkResponse.from(musicLinkRepository.save(newMusicLink));
     }
 
+    // 밴드 탈퇴
+    @Transactional
+    public void leaveBand(Long userId, Long bandId) {
+        Band band = getBand(bandId);
+
+        if (band.getOwner().getId().equals(userId)) {
+            throw new BandException(BandErrorCode.BAND_OWNER_CANNOT_LEAVE);
+        }
+
+        BandMember bandMember = getBandMember(bandId, userId, BandErrorCode.BAND_MEMBER_NOT_FOUND);
+
+        if (bandMember.getStatus() != BandMemberStatus.ACCEPTED) {
+            throw new BandException(BandErrorCode.BAND_PERMISSION_DENIED);
+        }
+
+        deleteBandMemberAndOrphanProfile(bandMember);
+    }
+
     private Band getBand(Long bandId) {
         return bandRepository.findById(bandId)
                 .orElseThrow(() -> new BandException(BandErrorCode.BAND_NOT_FOUND));
@@ -414,5 +433,21 @@ public class BandService {
         }
 
         return keyword.strip();
+    }
+
+    private void deleteBandMemberAndOrphanProfile(BandMember bandMember) {
+        BandMemberProfile bandMemberProfile = bandMember.getBandMemberProfile();
+
+        bandMemberRepository.delete(bandMember);
+
+        if (bandMemberProfile == null) {
+            return;
+        }
+
+        bandMemberRepository.flush();
+
+        if (!bandMemberRepository.existsByBandMemberProfile_Id(bandMemberProfile.getId())) {
+            bandMemberProfileRepository.delete(bandMemberProfile);
+        }
     }
 }

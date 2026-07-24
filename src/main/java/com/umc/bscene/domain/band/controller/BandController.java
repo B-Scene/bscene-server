@@ -127,4 +127,20 @@ public class BandController {
 
         return ResponseEntity.status(successResponse.getStatus()).body(successResponse);
     }
+
+    // 밴드 멤버 자기 탈퇴 API
+    @DeleteMapping("/{bandId}/leave")
+    public ResponseEntity<SuccessResponse<Void>> leaveBand(
+            @AuthenticationPrincipal AuthMember authMember,
+            @PathVariable Long bandId
+    ) {
+        bandService.leaveBand(authMember.getUser().getId(), bandId);
+
+        SuccessResponse<Void> successResponse = SuccessResponse.of(
+                (Void) null,
+                BandSuccessCode.BAND_MEMBER_LEAVE_SUCCESS
+        );
+
+        return ResponseEntity.status(successResponse.getStatus()).body(successResponse);
+    }
 }
