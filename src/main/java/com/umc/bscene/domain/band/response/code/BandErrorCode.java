@@ -36,8 +36,7 @@ public enum BandErrorCode implements BaseResponseCode {
     DUPLICATE_BAND_NAME(CONFLICT, "BAND409_2", "이미 사용 중인 밴드명이에요."),
     ALREADY_ACCEPTED_MEMBER(CONFLICT, "BAND409_3", "이미 수락된 멤버는 거절할 수 없습니다."),
     INVITE_ALREADY_PROCESSED(CONFLICT, "MEMBER409_2", "이미 처리된 초대예요."),
-    BAND_MEMBER_PROFILE_IN_USE(CONFLICT, "PROFILE409_1", "밴드에서 사용 중인 멤버 프로필은 삭제할 수 없어요."),
-    DUPLICATE_BAND_MEMBER_PROFILE_NICKNAME(CONFLICT, "PROFILE409_2", "이미 사용 중인 닉네임이에요.");
+    BAND_MEMBER_PROFILE_IN_USE(CONFLICT, "PROFILE409_1", "밴드에서 사용 중인 멤버 프로필은 삭제할 수 없어요.");
 
     private final int status;
     private final String code;

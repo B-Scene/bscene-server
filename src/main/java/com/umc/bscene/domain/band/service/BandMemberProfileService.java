@@ -27,10 +27,6 @@ public class BandMemberProfileService {
     // 멤버 프로필 생성 (첫 프로필이면 자동으로 활성화)
     @Transactional
     public BandMemberProfileResponse createProfile(Long userId, BandMemberProfileCreateRequest request) {
-        if (bandMemberProfileRepository.existsByNickname(request.nickname())) {
-            throw new BandException(BandErrorCode.DUPLICATE_BAND_MEMBER_PROFILE_NICKNAME);
-        }
-
         boolean isFirstProfile = !bandMemberProfileRepository.existsByUser_IdAndActiveTrue(userId);
 
         BandMemberProfile profile = BandMemberProfile.builder()
@@ -67,11 +63,6 @@ public class BandMemberProfileService {
     @Transactional
     public BandMemberProfileResponse updateProfile(Long userId, Long profileId, BandMemberProfileUpdateRequest request) {
         BandMemberProfile profile = getOwnProfile(userId, profileId);
-
-        if (request.nickname() != null
-                && bandMemberProfileRepository.existsByNicknameAndIdNot(request.nickname(), profileId)) {
-            throw new BandException(BandErrorCode.DUPLICATE_BAND_MEMBER_PROFILE_NICKNAME);
-        }
 
         profile.update(request.nickname(), request.part());
 
