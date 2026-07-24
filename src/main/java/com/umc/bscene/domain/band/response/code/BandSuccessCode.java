@@ -14,6 +14,7 @@ public enum BandSuccessCode implements BaseResponseCode {
     BAND_CREATE_SUCCESS(CREATED, "BAND201_1", "밴드가 생성되었습니다."),
     BAND_MEMBER_INVITE_SUCCESS(CREATED, "BAND201_2", "밴드 멤버를 초대했습니다."),
     BAND_INVITE_LINK_CREATE_SUCCESS(CREATED, "BAND201_3", "밴드 초대 링크를 발급했습니다."),
+    BAND_INVITE_LINK_ENTRY_SUCCESS(CREATED, "BAND201_4", "초대 링크를 통한 밴드 초대를 등록했습니다."),
 
     BAND_MEMBER_ACCEPT_SUCCESS(OK, "BAND200_1", "밴드 초대를 수락했습니다."),
     BAND_MEMBER_REMOVE_SUCCESS(OK, "BAND200_2", "밴드 멤버를 제거했습니다."),
