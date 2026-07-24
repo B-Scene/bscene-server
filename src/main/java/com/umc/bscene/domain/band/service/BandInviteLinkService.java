@@ -1,14 +1,18 @@
 package com.umc.bscene.domain.band.service;
 
 import com.umc.bscene.domain.band.dto.response.BandInviteLinkDetailResponse;
+import com.umc.bscene.domain.band.dto.response.BandInviteLinkEntryResponse;
 import com.umc.bscene.domain.band.dto.response.BandInviteLinkResponse;
 import com.umc.bscene.domain.band.entity.Band;
 import com.umc.bscene.domain.band.entity.BandInviteLink;
+import com.umc.bscene.domain.band.entity.BandMember;
 import com.umc.bscene.domain.band.enums.BandMemberType;
 import com.umc.bscene.domain.band.exception.BandException;
 import com.umc.bscene.domain.band.repository.BandInviteLinkRepository;
+import com.umc.bscene.domain.band.repository.BandMemberRepository;
 import com.umc.bscene.domain.band.repository.BandRepository;
 import com.umc.bscene.domain.band.response.code.BandErrorCode;
+import com.umc.bscene.domain.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -25,6 +29,8 @@ public class BandInviteLinkService {
 
     private final BandRepository bandRepository;
     private final BandInviteLinkRepository bandInviteLinkRepository;
+    private final BandMemberRepository bandMemberRepository;
+    private final UserRepository userRepository;
 
     @Transactional
     public BandInviteLinkResponse issueInviteLink(
@@ -52,21 +58,32 @@ public class BandInviteLinkService {
 
     // 초대 링크 조회
     public BandInviteLinkDetailResponse getInviteLink(String token) {
-        BandInviteLink inviteLink =
-                bandInviteLinkRepository.findByToken(token)
-                        .orElseThrow(() ->
-                                new BandException(
-                                        BandErrorCode.BAND_INVITE_LINK_NOT_FOUND
-                                )
-                        );
+        return BandInviteLinkDetailResponse.from(getValidInviteLink(token));
+    }
 
-        if (inviteLink.isExpired(LocalDateTime.now())) {
-            throw new BandException(
-                    BandErrorCode.BAND_INVITE_LINK_EXPIRED
-            );
+    // 초대 링크를 통한 밴드 초대 등록
+    @Transactional
+    public BandInviteLinkEntryResponse enterInviteLink(Long userId, String token) {
+        BandInviteLink inviteLink = getValidInviteLink(token);
+
+        Band band = inviteLink.getBand();
+
+        if (bandMemberRepository.existsByBand_IdAndUser_Id(band.getId(), userId)) {
+            throw new BandException(BandErrorCode.ALREADY_BAND_MEMBER);
         }
 
-        return BandInviteLinkDetailResponse.from(inviteLink);
+        BandMember bandMember = BandMember.builder()
+                .band(band)
+                .user(userRepository.getReferenceById(userId))
+                .memberType(inviteLink.getMemberType())
+                .build();
+
+        BandMember savedBandMember =
+                bandMemberRepository.save(bandMember);
+
+        return BandInviteLinkEntryResponse.from(
+                savedBandMember
+        );
     }
 
     // 토큰 갱신
@@ -113,5 +130,24 @@ public class BandInviteLinkService {
                     BandErrorCode.BAND_MEMBER_INVITE_FORBIDDEN
             );
         }
+    }
+
+    // 사용 가능한 초대 링크 조회
+    private BandInviteLink getValidInviteLink(String token) {
+        BandInviteLink inviteLink =
+                bandInviteLinkRepository.findByToken(token)
+                        .orElseThrow(() ->
+                                new BandException(
+                                        BandErrorCode.BAND_INVITE_LINK_NOT_FOUND
+                                )
+                        );
+
+        if (inviteLink.isExpired(LocalDateTime.now())) {
+            throw new BandException(
+                    BandErrorCode.BAND_INVITE_LINK_EXPIRED
+            );
+        }
+
+        return inviteLink;
     }
 }
