@@ -4,6 +4,7 @@ import com.umc.bscene.domain.notification.dto.request.NotificationSettingUpdateR
 import com.umc.bscene.domain.notification.dto.request.PushTestSendRequest;
 import com.umc.bscene.domain.notification.dto.request.PushTokenDeleteRequest;
 import com.umc.bscene.domain.notification.dto.request.PushTokenSaveRequest;
+import com.umc.bscene.domain.notification.dto.response.BandInviteNotificationDetailResponse;
 import com.umc.bscene.domain.notification.dto.response.NotificationListItemResponse;
 import com.umc.bscene.domain.notification.dto.response.NotificationSettingItemResponse;
 import com.umc.bscene.domain.notification.dto.response.NotificationSettingsResponse;
@@ -12,6 +13,7 @@ import com.umc.bscene.domain.notification.entity.Notification;
 import com.umc.bscene.domain.notification.entity.NotificationSetting;
 import com.umc.bscene.domain.notification.entity.PushToken;
 import com.umc.bscene.domain.notification.exception.NotificationException;
+import com.umc.bscene.domain.notification.port.BandInvitePort;
 import com.umc.bscene.domain.notification.port.PushPort;
 import com.umc.bscene.domain.notification.repository.NotificationRepository;
 import com.umc.bscene.domain.notification.repository.NotificationSettingRepository;
@@ -21,6 +23,7 @@ import com.umc.bscene.domain.user.entity.User;
 import com.umc.bscene.domain.user.repository.UserRepository;
 import com.umc.bscene.global.notification.enums.NotificationSettingMode;
 import com.umc.bscene.global.notification.enums.NotificationSettingType;
+import com.umc.bscene.global.notification.enums.NotificationType;
 import com.umc.bscene.global.notification.message.PushMessage;
 import com.umc.bscene.global.response.CursorPage;
 import lombok.RequiredArgsConstructor;
@@ -46,6 +49,7 @@ public class NotificationService {
     private final PushTokenRepository pushTokenRepository;
     private final PushPort pushPort;
     private final NotificationSettingRepository notificationSettingRepository;
+    private final BandInvitePort bandInvitePort;
 
     private static final long READ_NOTIFICATION_RETENTION_DAYS = 3L;
 
@@ -135,8 +139,23 @@ public class NotificationService {
         boolean hasNext = notifications.size() > size;
         List<Notification> page = hasNext ? notifications.subList(0, size) : notifications;
 
+        List<Long> bandMemberIds = page.stream()
+                .filter(notification -> notification.getType() == NotificationType.BAND_INVITE)
+                .map(Notification::getReferenceId)
+                .filter(referenceId -> referenceId != null)
+                .distinct()
+                .toList();
+
+        Map<Long, BandInviteNotificationDetailResponse> bandInviteDetails =
+                bandInvitePort.getBandInviteDetails(userId, bandMemberIds);
+
         List<NotificationListItemResponse> items = page.stream()
-                .map(NotificationListItemResponse::from)
+                .map(notification -> NotificationListItemResponse.from(
+                        notification,
+                        notification.getType() == NotificationType.BAND_INVITE
+                                ? bandInviteDetails.get(notification.getReferenceId())
+                                : null
+                ))
                 .toList();
 
         Long nextCursor = hasNext ? page.getLast().getId() : null;
