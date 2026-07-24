@@ -218,7 +218,7 @@ public class BandService {
             throw new BandException(BandErrorCode.ALREADY_ACCEPTED_MEMBER);
         }
 
-        bandMemberRepository.delete(bandMember);
+        deleteBandMemberAndOrphanProfile(bandMember);
     }
 
     // 밴드 멤버 제거/초대 취소 (오너만 가능)
@@ -232,7 +232,8 @@ public class BandService {
         }
 
         BandMember bandMember = getBandMember(bandId, targetUserId, BandErrorCode.BAND_MEMBER_NOT_FOUND);
-        bandMemberRepository.delete(bandMember);
+
+        deleteBandMemberAndOrphanProfile(bandMember);
     }
 
     // 밴드 멤버 목록 조회 (수락한 멤버 + 초대 대기 중인 멤버)
@@ -414,5 +415,21 @@ public class BandService {
         }
 
         return keyword.strip();
+    }
+
+    private void deleteBandMemberAndOrphanProfile(BandMember bandMember) {
+        BandMemberProfile bandMemberProfile = bandMember.getBandMemberProfile();
+
+        bandMemberRepository.delete(bandMember);
+
+        if (bandMemberProfile == null) {
+            return;
+        }
+
+        bandMemberRepository.flush();
+
+        if (!bandMemberRepository.existsByBandMemberProfile_Id(bandMemberProfile.getId())) {
+            bandMemberProfileRepository.delete(bandMemberProfile);
+        }
     }
 }
