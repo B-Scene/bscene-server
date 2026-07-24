@@ -153,4 +153,28 @@ where bm.user.id = :userId
             @Param("bandId") Long bandId,
             @Param("userIds") Collection<Long> userIds
     );
+
+    @Query("""
+        SELECT bm
+        FROM BandMember bm
+        JOIN FETCH bm.band
+        WHERE bm.id IN :bandMemberIds
+          AND bm.user.id = :userId
+    """)
+    List<BandMember> findInviteDetails(
+            @Param("userId") Long userId,
+            @Param("bandMemberIds") Collection<Long> bandMemberIds
+    );
+
+    @Query("""
+        SELECT bm.band.id, COUNT(bm.id)
+        FROM BandMember bm
+        WHERE bm.band.id IN :bandIds
+          AND bm.status = :status
+        GROUP BY bm.band.id
+    """)
+    List<Object[]> countMembersByBandIdsAndStatus(
+            @Param("bandIds") Collection<Long> bandIds,
+            @Param("status") BandMemberStatus status
+    );
 }
