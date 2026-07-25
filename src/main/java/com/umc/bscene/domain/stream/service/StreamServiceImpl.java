@@ -954,7 +954,7 @@ public class StreamServiceImpl implements StreamService {
     @Transactional
     public void updateReservation(User user, Long liveId, ReservationPatchRequest request) {
 
-        // X-lock 선점으로 동시 PATCH 직렬화 및 cancel↔PATCH insert 경합 방지 (#2/#3)
+        // 오디오 스트리밍 레코드 선 조회 -> Transactional 메소드 스코프 내이므로 배타적 잠금
         AudioStream stream = audioStreamRepository.findByIdForUpdate(liveId)
                 .orElseThrow(() -> new StreamException(StreamErrorCode.AUDIO_STREAM_NOT_FOUND));
         validateReservationEditable(user, stream);
@@ -963,7 +963,7 @@ public class StreamServiceImpl implements StreamService {
         // 상태 조건부 벌크 UPDATE로 갱신 (null 필드는 coalesce로 기존 값 유지 - PATCH 시맨틱)
         // 조회-갱신 사이 enterRoom의 SCHEDULED→OPEN 전환을 stale 스냅샷이 덮어쓰는 lost update 방지
         int updated = audioStreamRepository.updateReservationIfScheduled(
-                liveId, request.title(), request.description(), request.scheduledAt()
+                liveId, request.title(), request.description(), request.thumbnailImageUrl(), request.scheduledAt()
         );
 
         if (updated == 0)
