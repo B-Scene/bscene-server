@@ -5,6 +5,7 @@ import com.umc.bscene.domain.user.enums.UserMode;
 import java.util.List;
 
 public record BandMyPageResponse(
+        Long bandMemberProfileId,
         String nickname,
         String bandName,
         List<String> parts,

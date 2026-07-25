@@ -1,5 +1,6 @@
 package com.umc.bscene.domain.stream.service;
 
+import com.umc.bscene.domain.stream.dto.ReplayDurationSum;
 import com.umc.bscene.domain.stream.dto.response.BandInfoForGetLiveResponse;
 import com.umc.bscene.domain.stream.dto.response.ReplayResponse;
 import com.umc.bscene.domain.stream.dto.response.StreamReplayResponse;
@@ -222,6 +223,19 @@ public class StreamReplayServiceImpl implements StreamReplayService {
                                 (a, b) -> a
                         ));
 
+        // 라이브별 총 재생 길이 매핑. 목록 행은 대표(첫) 세그먼트라, 세그먼트가 여러 개인 라이브는 합산 필요 (watchReplay와 동일 기준)
+        Set<Long> audioStreamIds = page.stream()
+                .map(r -> r.getAudioStream().getId())
+                .collect(Collectors.toSet());
+
+        Map<Long, Integer> durationByAudioStreamId = audioStreamIds.isEmpty()
+                ? Map.of()
+                : streamReplayRepository.sumDurationSecByAudioStreamIds(audioStreamIds).stream()
+                        .collect(Collectors.toMap(
+                                ReplayDurationSum::audioStreamId,
+                                d -> d.totalDurationSec().intValue()
+                        ));
+
         return CursorPage.of(
                 page.stream()
                         .map(r -> {
@@ -229,9 +243,11 @@ public class StreamReplayServiceImpl implements StreamReplayService {
 
                             return new ReplayResponse(
                                     r.getId(),
+                                    r.getAudioStream().getThumbnailImageUrl(),
                                     r.getAudioStream().getTitle(),
                                     band != null ? band.bandName() : "",
-                                    r.getViewCount()
+                                    r.getViewCount(),
+                                    durationByAudioStreamId.getOrDefault(r.getAudioStream().getId(), r.getDurationSec())
                             );
                         })
                         .toList(),

@@ -146,6 +146,7 @@ public class UserAdapter implements BandPort {
     private BandMemberResponse buildBandMemberResponse(Band band, BandMemberProfile profile, boolean isMember) {
         if (band != null) {
             return new BandMemberResponse(
+                    profile.getId(),
                     band.getProfileImageUrl(),
                     profile.getNickname(),
                     band.getName(),
@@ -157,6 +158,7 @@ public class UserAdapter implements BandPort {
             );
         } else {
             return new BandMemberResponse(
+                    profile.getId(),
                     null,
                     profile.getNickname(),
                     null,

@@ -1,5 +1,6 @@
 package com.umc.bscene.domain.stream.repository;
 
+import com.umc.bscene.domain.stream.dto.ReplayDurationSum;
 import com.umc.bscene.domain.stream.entity.StreamReplay;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -7,6 +8,7 @@ import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.util.Collection;
 import java.util.List;
 
 public interface StreamReplayRepository extends JpaRepository<StreamReplay, Long> {
@@ -17,6 +19,15 @@ public interface StreamReplayRepository extends JpaRepository<StreamReplay, Long
 
     // 라이브의 전체 세그먼트를 재생 순서로 조회. mediamtx 세그먼트 파일명이 시간순이라 s3Key 오름차순 = 녹화 순서
     List<StreamReplay> findAllByAudioStream_IdOrderByS3KeyAsc(Long audioStreamId);
+
+    // 다시보기 목록의 총 재생 길이 계산용 - 라이브(audioStream)별 세그먼트 durationSec 합
+    @Query("""
+select new com.umc.bscene.domain.stream.dto.ReplayDurationSum(r.audioStream.id, sum(r.durationSec))
+from StreamReplay r
+where r.audioStream.id in :audioStreamIds
+group by r.audioStream.id
+""")
+    List<ReplayDurationSum> sumDurationSecByAudioStreamIds(@Param("audioStreamIds") Collection<Long> audioStreamIds);
 
     // 원자적 증가로 동시 시청자 환경의 lost update 방지
     @Modifying
