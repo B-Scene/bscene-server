@@ -1,12 +1,15 @@
 package com.umc.bscene.domain.band.service;
 
+import com.umc.bscene.domain.band.dto.BandPushMessage;
 import com.umc.bscene.domain.band.dto.request.BandCreateRequest;
-import com.umc.bscene.domain.band.dto.request.BandMemberAcceptRequest;
 import com.umc.bscene.domain.band.dto.request.BandMemberInviteRequest;
+import com.umc.bscene.domain.band.dto.request.BandMemberProfileCreateRequest;
+import com.umc.bscene.domain.band.dto.request.BandOwnerTransferRequest;
 import com.umc.bscene.domain.band.dto.request.BandUpdateRequest;
 import com.umc.bscene.domain.band.dto.request.MusicLinkSaveRequest;
 import com.umc.bscene.domain.band.dto.response.BandDetailResponse;
 import com.umc.bscene.domain.band.dto.response.BandMemberAcceptResponse;
+import com.umc.bscene.domain.band.dto.response.BandMemberProfileResponse;
 import com.umc.bscene.domain.band.dto.response.BandMemberResponse;
 import com.umc.bscene.domain.band.dto.response.BandMemberSearchItem;
 import com.umc.bscene.domain.band.dto.response.BandNameCheckResponse;
@@ -22,6 +25,7 @@ import com.umc.bscene.domain.band.enums.BandMemberStatus;
 import com.umc.bscene.domain.band.enums.BandMemberType;
 import com.umc.bscene.domain.band.exception.BandException;
 import com.umc.bscene.domain.band.port.FollowPort;
+import com.umc.bscene.domain.band.port.NotifyPort;
 import com.umc.bscene.domain.band.port.PerformancePort;
 import com.umc.bscene.domain.band.port.StreamPort;
 import com.umc.bscene.domain.band.repository.BandMemberProfileRepository;
@@ -36,8 +40,12 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -52,7 +60,9 @@ public class BandService {
     private final FollowPort followPort;
     private final PerformancePort performancePort;
     private final StreamPort streamPort;
+    private final NotifyPort notifyPort;
     private final ApplicationEventPublisher eventPublisher;
+    private final BandMemberProfileService bandMemberProfileService;
 
     // 밴드 개설 (요청자가 오너가 됨, 이 밴드에서 사용할 멤버 프로필 선택)
     @Transactional
@@ -165,22 +175,35 @@ public class BandService {
         BandMember bandMember = BandMember.builder()
                 .band(band)
                 .user(invitee)
+                .memberType(request.memberType())
                 .build();
 
-        return BandMemberResponse.from(bandMemberRepository.save(bandMember));
+        BandMember savedBandMember = bandMemberRepository.save(bandMember);
+
+        notifyMemberAfterCommit(
+                invitee.getId(),
+                band.getName(),
+                savedBandMember.getId(),
+                request.memberType()
+        );
+
+        return BandMemberResponse.from(savedBandMember);
     }
 
     // 초대 수락 (이 밴드에서 사용할 멤버 프로필 선택)
     @Transactional
-    public BandMemberAcceptResponse acceptInvite(Long userId, Long bandId, BandMemberAcceptRequest request) {
+    public BandMemberAcceptResponse acceptInvite(Long userId, Long bandId, BandMemberProfileCreateRequest request) {
         getBand(bandId);
+
         BandMember bandMember = getBandMember(bandId, userId, BandErrorCode.NOT_INVITED_MEMBER);
 
         if (bandMember.getStatus() != BandMemberStatus.INVITED) {
             throw new BandException(BandErrorCode.INVITE_ALREADY_PROCESSED);
         }
 
-        BandMemberProfile bandMemberProfile = getOwnBandMemberProfile(request.bandMemberProfileId(), userId);
+        BandMemberProfileResponse createdProfile = bandMemberProfileService.createProfile(userId, request);
+
+        BandMemberProfile bandMemberProfile = getOwnBandMemberProfile(createdProfile.id(), userId);
 
         bandMember.acceptWithProfile(bandMemberProfile);
 
@@ -196,7 +219,7 @@ public class BandService {
             throw new BandException(BandErrorCode.ALREADY_ACCEPTED_MEMBER);
         }
 
-        bandMemberRepository.delete(bandMember);
+        deleteBandMemberAndOrphanProfile(bandMember);
     }
 
     // 밴드 멤버 제거/초대 취소 (오너만 가능)
@@ -210,7 +233,8 @@ public class BandService {
         }
 
         BandMember bandMember = getBandMember(bandId, targetUserId, BandErrorCode.BAND_MEMBER_NOT_FOUND);
-        bandMemberRepository.delete(bandMember);
+
+        deleteBandMemberAndOrphanProfile(bandMember);
     }
 
     // 밴드 멤버 목록 조회 (수락한 멤버 + 초대 대기 중인 멤버)
@@ -224,14 +248,40 @@ public class BandService {
 
     // 초대 대상 닉네임 검색
     public List<BandMemberSearchItem> searchInviteTargets(Long bandId, String keyword) {
+        String normalizedKeyword = validateAndNormalizeSearchKeyword(keyword);
+
         getBand(bandId);
 
-        return userRepository.findByNameContaining(keyword).stream()
-                .map(user -> new BandMemberSearchItem(
-                        user.getId(),
-                        user.getName(),
-                        bandMemberRepository.existsByBand_IdAndUser_Id(bandId, user.getId())
-                ))
+        List<User> users = userRepository.findByNameContaining(normalizedKeyword);
+
+        if (users.isEmpty()) {
+            return List.of();
+        }
+
+        List<Long> userIds = users.stream()
+                .map(User::getId)
+                .toList();
+
+        Map<Long, BandMemberStatus> statusByUserId =
+                bandMemberRepository.findWithUserByBandIdAndUserIdIn(bandId, userIds)
+                        .stream()
+                        .collect(Collectors.toMap(
+                                bandMember -> bandMember.getUser().getId(),
+                                BandMember::getStatus
+                        ));
+
+        return users.stream()
+                .map(user -> {
+                    BandMemberStatus bandMemberStatus =
+                            statusByUserId.get(user.getId());
+
+                    return new BandMemberSearchItem(
+                            user.getId(),
+                            user.getName(),
+                            bandMemberStatus,
+                            bandMemberStatus == null
+                    );
+                })
                 .toList();
     }
 
@@ -279,6 +329,49 @@ public class BandService {
         return MusicLinkResponse.from(musicLinkRepository.save(newMusicLink));
     }
 
+    // 밴드 탈퇴
+    @Transactional
+    public void leaveBand(Long userId, Long bandId) {
+        Band band = getBand(bandId);
+
+        if (band.getOwner().getId().equals(userId)) {
+            throw new BandException(BandErrorCode.BAND_OWNER_CANNOT_LEAVE);
+        }
+
+        BandMember bandMember = getBandMember(bandId, userId, BandErrorCode.BAND_MEMBER_NOT_FOUND);
+
+        if (bandMember.getStatus() != BandMemberStatus.ACCEPTED) {
+            throw new BandException(BandErrorCode.BAND_PERMISSION_DENIED);
+        }
+
+        deleteBandMemberAndOrphanProfile(bandMember);
+    }
+
+    // Owner 양도
+    @Transactional
+    public void transferOwnership(Long requesterId, Long bandId, BandOwnerTransferRequest request) {
+        Band band = getBand(bandId);
+
+        validateOwner(band, requesterId, BandErrorCode.NOT_BAND_OWNER);
+
+        if (band.getOwner().getId().equals(request.newOwnerUserId())) {
+            throw new BandException(BandErrorCode.CANNOT_TRANSFER_OWNER_TO_SELF);
+        }
+
+        BandMember newOwnerMember = getBandMember(
+                bandId,
+                request.newOwnerUserId(),
+                BandErrorCode.BAND_MEMBER_NOT_FOUND
+        );
+
+        if (newOwnerMember.getStatus() != BandMemberStatus.ACCEPTED
+                || newOwnerMember.getMemberType() != BandMemberType.MEMBER) {
+            throw new BandException(BandErrorCode.INVALID_OWNER_TRANSFER_TARGET);
+        }
+
+        band.transferOwnership(newOwnerMember.getUser());
+    }
+
     private Band getBand(Long bandId) {
         return bandRepository.findById(bandId)
                 .orElseThrow(() -> new BandException(BandErrorCode.BAND_NOT_FOUND));
@@ -287,6 +380,28 @@ public class BandService {
     private BandMember getBandMember(Long bandId, Long userId, BandErrorCode notFoundCode) {
         return bandMemberRepository.findByBand_IdAndUser_Id(bandId, userId)
                 .orElseThrow(() -> new BandException(notFoundCode));
+    }
+
+    private void notifyMemberAfterCommit(
+            Long inviteeId,
+            String bandName,
+            Long bandMemberId,
+            BandMemberType memberType
+    ) {
+        BandPushMessage message = BandPushMessage.memberInvited(
+                bandName,
+                bandMemberId,
+                memberType
+        );
+
+        TransactionSynchronizationManager.registerSynchronization(
+                new TransactionSynchronization() {
+                    @Override
+                    public void afterCommit() {
+                        notifyPort.notify(inviteeId, message);
+                    }
+                }
+        );
     }
 
     private void validateOwner(Band band, Long userId, BandErrorCode forbiddenCode) {
@@ -336,5 +451,29 @@ public class BandService {
                         band.getOwner().getId().equals(bandMember.getUser().getId())
                 ))
                 .toList();
+    }
+
+    private String validateAndNormalizeSearchKeyword(String keyword) {
+        if (keyword == null || keyword.isBlank()) {
+            throw new BandException(BandErrorCode.INVALID_MEMBER_SEARCH_KEYWORD);
+        }
+
+        return keyword.strip();
+    }
+
+    private void deleteBandMemberAndOrphanProfile(BandMember bandMember) {
+        BandMemberProfile bandMemberProfile = bandMember.getBandMemberProfile();
+
+        bandMemberRepository.delete(bandMember);
+
+        if (bandMemberProfile == null) {
+            return;
+        }
+
+        bandMemberRepository.flush();
+
+        if (!bandMemberRepository.existsByBandMemberProfile_Id(bandMemberProfile.getId())) {
+            bandMemberProfileRepository.delete(bandMemberProfile);
+        }
     }
 }

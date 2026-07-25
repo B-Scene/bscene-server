@@ -1,6 +1,7 @@
 package com.umc.bscene.domain.band.controller;
 
 import com.umc.bscene.domain.band.dto.request.BandCreateRequest;
+import com.umc.bscene.domain.band.dto.request.BandOwnerTransferRequest;
 import com.umc.bscene.domain.band.dto.request.BandUpdateRequest;
 import com.umc.bscene.domain.band.dto.response.BandDetailResponse;
 import com.umc.bscene.domain.band.dto.response.BandNameCheckResponse;
@@ -17,7 +18,15 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequiredArgsConstructor
@@ -123,6 +132,39 @@ public class BandController {
         SuccessResponse<BandProfileResponse> successResponse = SuccessResponse.of(
                 response,
                 BandSuccessCode.BAND_PROFILE_UPDATE_SUCCESS
+        );
+
+        return ResponseEntity.status(successResponse.getStatus()).body(successResponse);
+    }
+
+    // 밴드 멤버 자기 탈퇴 API
+    @DeleteMapping("/{bandId}/leave")
+    public ResponseEntity<SuccessResponse<Void>> leaveBand(
+            @AuthenticationPrincipal AuthMember authMember,
+            @PathVariable Long bandId
+    ) {
+        bandService.leaveBand(authMember.getUser().getId(), bandId);
+
+        SuccessResponse<Void> successResponse = SuccessResponse.of(
+                (Void) null,
+                BandSuccessCode.BAND_MEMBER_LEAVE_SUCCESS
+        );
+
+        return ResponseEntity.status(successResponse.getStatus()).body(successResponse);
+    }
+
+    // 밴드 Owner 양도
+    @PatchMapping("/{bandId}/owner")
+    public ResponseEntity<SuccessResponse<Void>> transferOwnership(
+            @AuthenticationPrincipal AuthMember authMember,
+            @PathVariable Long bandId,
+            @Valid @RequestBody BandOwnerTransferRequest request
+    ) {
+        bandService.transferOwnership(authMember.getUser().getId(), bandId, request);
+
+        SuccessResponse<Void> successResponse = SuccessResponse.of(
+                (Void) null,
+                BandSuccessCode.BAND_OWNER_TRANSFER_SUCCESS
         );
 
         return ResponseEntity.status(successResponse.getStatus()).body(successResponse);

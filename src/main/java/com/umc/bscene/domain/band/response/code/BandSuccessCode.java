@@ -13,6 +13,8 @@ public enum BandSuccessCode implements BaseResponseCode {
 
     BAND_CREATE_SUCCESS(CREATED, "BAND201_1", "밴드가 생성되었습니다."),
     BAND_MEMBER_INVITE_SUCCESS(CREATED, "BAND201_2", "밴드 멤버를 초대했습니다."),
+    BAND_INVITE_LINK_CREATE_SUCCESS(CREATED, "BAND201_3", "밴드 초대 링크를 발급했습니다."),
+    BAND_INVITE_LINK_ENTRY_SUCCESS(CREATED, "BAND201_4", "초대 링크를 통한 밴드 초대를 등록했습니다."),
 
     BAND_MEMBER_ACCEPT_SUCCESS(OK, "BAND200_1", "밴드 초대를 수락했습니다."),
     BAND_MEMBER_REMOVE_SUCCESS(OK, "BAND200_2", "밴드 멤버를 제거했습니다."),
@@ -26,6 +28,9 @@ public enum BandSuccessCode implements BaseResponseCode {
     BAND_RECOMMEND_LIST_GET_SUCCESS(OK, "BAND200_10", "추천 밴드 목록을 조회했습니다."),
     BAND_PUBLIC_MEMBER_LIST_GET_SUCCESS(OK, "BAND200_11", "밴드 구성원 프로필을 조회했습니다."),
     BAND_DETAIL_GET_SUCCESS(OK, "BAND200_12", "밴드 상세 정보를 조회했습니다."),
+    BAND_INVITE_LINK_GET_SUCCESS(OK, "BAND200_13", "밴드 초대 링크 정보를 조회했습니다."),
+    BAND_MEMBER_LEAVE_SUCCESS(OK, "BAND200_14", "밴드에서 탈퇴했습니다."),
+    BAND_OWNER_TRANSFER_SUCCESS(OK, "BAND200_15", "밴드 오너 권한을 양도했습니다."),
     MUSIC_LINK_GET_SUCCESS(OK, "MUSIC200_1", "음원 링크를 조회했습니다."),
     MUSIC_LINK_SAVE_SUCCESS(OK, "MUSIC200_2", "저장됐어요."),
 

@@ -4,7 +4,6 @@ import com.umc.bscene.domain.band.entity.BandMember;
 import com.umc.bscene.domain.band.enums.BandMemberStatus;
 import com.umc.bscene.domain.band.enums.BandMemberType;
 import com.umc.bscene.domain.user.dto.response.MyBandProfile;
-import com.umc.bscene.domain.user.dto.response.MyProfileResponse;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -140,6 +139,42 @@ where bm.user.id = :userId
     Optional<BandMember> findWithBandByUser_IdAndActiveProfile(
             @Param("userId") Long userId,
             @Param("isActive") Boolean isActive,
+            @Param("status") BandMemberStatus status
+    );
+
+    @Query("""
+        SELECT bm
+        FROM BandMember bm
+        JOIN FETCH bm.user
+        WHERE bm.band.id = :bandId
+          AND bm.user.id IN :userIds
+    """)
+    List<BandMember> findWithUserByBandIdAndUserIdIn(
+            @Param("bandId") Long bandId,
+            @Param("userIds") Collection<Long> userIds
+    );
+
+    @Query("""
+        SELECT bm
+        FROM BandMember bm
+        JOIN FETCH bm.band
+        WHERE bm.id IN :bandMemberIds
+          AND bm.user.id = :userId
+    """)
+    List<BandMember> findInviteDetails(
+            @Param("userId") Long userId,
+            @Param("bandMemberIds") Collection<Long> bandMemberIds
+    );
+
+    @Query("""
+        SELECT bm.band.id, COUNT(bm.id)
+        FROM BandMember bm
+        WHERE bm.band.id IN :bandIds
+          AND bm.status = :status
+        GROUP BY bm.band.id
+    """)
+    List<Object[]> countMembersByBandIdsAndStatus(
+            @Param("bandIds") Collection<Long> bandIds,
             @Param("status") BandMemberStatus status
     );
 }

@@ -14,11 +14,18 @@ public record NotificationListItemResponse(
         Long referenceId,
         Boolean isRead,
         LocalDateTime readAt,
-        LocalDateTime createdAt
+        LocalDateTime createdAt,
+        BandInviteNotificationDetailResponse bandInvite
 ) {
 
-    // 알림 엔티티를 목록 조회 응답으로 변환
     public static NotificationListItemResponse from(Notification notification) {
+        return from(notification, null);
+    }
+
+    public static NotificationListItemResponse from(
+            Notification notification,
+            BandInviteNotificationDetailResponse bandInvite
+    ) {
         return new NotificationListItemResponse(
                 notification.getId(),
                 notification.getType(),
@@ -28,7 +35,8 @@ public record NotificationListItemResponse(
                 notification.getReferenceId(),
                 notification.getIsRead(),
                 notification.getReadAt(),
-                notification.getCreatedAt()
+                notification.getCreatedAt(),
+                bandInvite
         );
     }
 }
