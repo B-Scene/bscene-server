@@ -341,9 +341,10 @@ public class UserService {
             if (applicant.getStatus() != UserStatus.ACTIVE) {
                 throw new UserException(UserErrorCode.USER_NOT_FOUND);
             }
-
-            notifyApplicationDecisionAfterCommit(result, userId, isApproved);
         }
+
+        notifyApplicationDecisionAfterCommit(result, userId, isApproved);
+
     }
 
     // 밴드가 수락한 세션 지원 건에 대한 지원자의 최종 수락/거절
