@@ -17,6 +17,9 @@ public enum NotificationSettingType {
     FAN_SCHEDULED_LIVE_REMINDER(NotificationSettingMode.FAN, true),
     FAN_LIVE_REPLAY_READY(NotificationSettingMode.FAN, true),
 
+    // 팬 모드 세션 지원 알림
+    FAN_SESSION_APPLICATION_STATUS(NotificationSettingMode.FAN, true),
+
     // 밴드 모드 모집 알림
     BAND_NEW_SESSION_APPLICATION(NotificationSettingMode.BAND, true),
     BAND_SESSION_APPLICATION_STATUS(NotificationSettingMode.BAND, true),
