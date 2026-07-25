@@ -14,10 +14,6 @@ public class SessionAdapter implements BandMemberPort {
 
     @Override
     public List<Long> getAcceptedMemberUserIds(Long bandId) {
-        return bandMemberRepository
-                .findByBand_IdAndStatus(bandId, BandMemberStatus.ACCEPTED)
-                .stream()
-                .map(bandMember -> bandMember.getUser().getId())
-                .toList();
+        return bandMemberRepository.findUserIdsByBandIdAndStatus(bandId, BandMemberStatus.ACCEPTED);
     }
 }

@@ -1,6 +1,5 @@
 package com.umc.bscene.domain.user.port;
 
-import com.umc.bscene.domain.band.enums.BandMemberStatus;
 import com.umc.bscene.domain.session.enums.Part;
 import com.umc.bscene.domain.user.dto.response.BandMemberResponse;
 import com.umc.bscene.domain.user.dto.response.MyBandProfile;
@@ -25,4 +24,6 @@ public interface BandPort {
     void changeProfileByProfileId(Long userId, Long profileId);
 
     void deactivateCurrentActiveProfile(Long userId);
+
+    List<Long> getAcceptedMemberUserIds(Long bandId);
 }

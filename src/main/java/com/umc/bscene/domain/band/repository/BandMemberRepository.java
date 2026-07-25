@@ -180,4 +180,16 @@ where bm.user.id = :userId
             @Param("bandIds") Collection<Long> bandIds,
             @Param("status") BandMemberStatus status
     );
+
+    @Query("""
+        SELECT bm.user.id
+        FROM BandMember bm
+        WHERE bm.band.id = :bandId
+          AND bm.status = :status
+        ORDER BY bm.id ASC
+    """)
+    List<Long> findUserIdsByBandIdAndStatus(
+            @Param("bandId") Long bandId,
+            @Param("status") BandMemberStatus status
+    );
 }
