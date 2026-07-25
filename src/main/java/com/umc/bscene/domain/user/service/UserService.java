@@ -5,26 +5,37 @@ import com.umc.bscene.domain.auth.enums.onboarding.Region;
 import com.umc.bscene.domain.user.dto.request.MyInfoUpdateRequest;
 import com.umc.bscene.domain.user.dto.request.SessionApplyConfirmRequest;
 import com.umc.bscene.domain.user.dto.request.UserModeUpdateRequest;
-import com.umc.bscene.domain.user.dto.response.*;
+import com.umc.bscene.domain.user.dto.response.BandMemberResponse;
+import com.umc.bscene.domain.user.dto.response.FollowedBandResponse;
+import com.umc.bscene.domain.user.dto.response.InterestedPerformanceResponse;
+import com.umc.bscene.domain.user.dto.response.MyBandProfile;
+import com.umc.bscene.domain.user.dto.response.MyInfoResponse;
+import com.umc.bscene.domain.user.dto.response.MyProfileResponse;
+import com.umc.bscene.domain.user.dto.response.ParticipationHistoryResponse;
 import com.umc.bscene.domain.user.dto.response.mypage.BandMyPageResponse;
 import com.umc.bscene.domain.user.dto.response.mypage.FanMyPageResponse;
+import com.umc.bscene.domain.user.dto.response.session.SessionApplicationStatusResult;
 import com.umc.bscene.domain.user.dto.response.session.SessionRecruitmentResponse;
-import com.umc.bscene.domain.user.enums.RecruitmentStatusFilter;
-import com.umc.bscene.global.response.CursorPage;
 import com.umc.bscene.domain.user.entity.FanProfile;
 import com.umc.bscene.domain.user.entity.User;
 import com.umc.bscene.domain.user.entity.UserGenres;
 import com.umc.bscene.domain.user.entity.UserRegions;
 import com.umc.bscene.domain.user.enums.HistoryYearFilter;
+import com.umc.bscene.domain.user.enums.RecruitmentStatusFilter;
 import com.umc.bscene.domain.user.enums.UserMode;
 import com.umc.bscene.domain.user.enums.UserStatus;
 import com.umc.bscene.domain.user.exception.UserException;
-import com.umc.bscene.domain.user.port.*;
+import com.umc.bscene.domain.user.port.AuthPort;
+import com.umc.bscene.domain.user.port.BandPort;
+import com.umc.bscene.domain.user.port.FollowPort;
+import com.umc.bscene.domain.user.port.PerformancePort;
+import com.umc.bscene.domain.user.port.SessionPort;
 import com.umc.bscene.domain.user.repository.FanProfileRepository;
 import com.umc.bscene.domain.user.repository.UserGenresRepository;
 import com.umc.bscene.domain.user.repository.UserRegionsRepository;
 import com.umc.bscene.domain.user.repository.UserRepository;
 import com.umc.bscene.domain.user.response.code.UserErrorCode;
+import com.umc.bscene.global.response.CursorPage;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -313,8 +324,10 @@ public class UserService {
         Long bandId = sessionPort.findBandIdBySessionApplicationSubmission(applySubmissionId);
         bandPort.validateActiveBandMember(userId, bandId);
 
-        Long applicantUserId =
+        SessionApplicationStatusResult result =
                 sessionPort.decideApplicationSubmission(applySubmissionId, userId, isApproved);
+
+        Long applicantUserId = result.applicantUserId();
 
         if (isApproved) {
             // 탈퇴·정지·휴면 지원자의 지원은 수락 불가 (예외 시 전체 롤백되어 지원은 PENDING 유지)
@@ -344,7 +357,10 @@ public class UserService {
         }
 
         // BAND_ACCEPTED일 때만 원자적으로 전이 - 중복 확정·경합 요청은 여기서 걸러짐
-        Long bandId = sessionPort.finalizeApplicationSubmission(applySubmissionId, userId, isAccepted);
+        SessionApplicationStatusResult result =
+                sessionPort.finalizeApplicationSubmission(applySubmissionId, userId, isAccepted);
+
+        Long bandId = result.bandId();
 
         if (isAccepted) {
             User applicant = userRepository.findById(userId)

@@ -8,6 +8,7 @@ import com.umc.bscene.domain.session.enums.code.error.SessionErrorCode;
 import com.umc.bscene.domain.session.exception.SessionException;
 import com.umc.bscene.domain.session.repository.SessionApplicationSubmissionRepository;
 import com.umc.bscene.domain.session.repository.SessionRecruitmentRepository;
+import com.umc.bscene.domain.user.dto.response.session.SessionApplicationStatusResult;
 import com.umc.bscene.domain.user.dto.response.session.SessionRecruitmentResponse;
 import com.umc.bscene.domain.user.enums.RecruitmentStatusFilter;
 import com.umc.bscene.domain.user.port.SessionPort;
@@ -44,7 +45,7 @@ public class UserAdapter implements SessionPort {
 
     @Override
     @Transactional
-    public Long decideApplicationSubmission(Long sasId, Long deciderUserId, boolean isApproved) {
+    public SessionApplicationStatusResult decideApplicationSubmission(Long sasId, Long deciderUserId, boolean isApproved) {
 
         SessionApplicationSubmission submission = sasRepository.findWithApplicationById(sasId)
                 .orElseThrow(() -> new SessionException(SessionErrorCode.APPLICATION_SUBMISSION_NOT_FOUND));
@@ -64,15 +65,15 @@ public class UserAdapter implements SessionPort {
             throw new SessionException(SessionErrorCode.APPLICATION_SUBMISSION_ALREADY_PROCESSED);
         }
 
-        return application.getUserId();
+        return toStatusResult(submission);
     }
 
     @Override
     @Transactional
-    public Long finalizeApplicationSubmission(Long sasId, Long applicantUserId, boolean isAccepted) {
+    public SessionApplicationStatusResult finalizeApplicationSubmission(Long sasId, Long applicantUserId, boolean isAccepted) {
 
         // 본인의 지원 건이 아니면 존재 여부를 숨기기 위해 404
-        sasRepository.findByApplicationSubmissionIdAndSessionApplication_UserId(sasId, applicantUserId)
+        SessionApplicationSubmission submission = sasRepository.findByApplicationSubmissionIdAndSessionApplication_UserId(sasId, applicantUserId)
                 .orElseThrow(() -> new SessionException(SessionErrorCode.APPLICATION_SUBMISSION_NOT_FOUND));
 
         // 밴드가 수락한(BAND_ACCEPTED) 건만 지원자가 최종 확정 가능
@@ -88,7 +89,7 @@ public class UserAdapter implements SessionPort {
         if (bandId == null) {
             throw new SessionException(SessionErrorCode.SESSION_RECRUITMENT_NOT_FOUND);
         }
-        return bandId;
+        return toStatusResult(submission);
     }
 
     @Override
@@ -159,5 +160,16 @@ public class UserAdapter implements SessionPort {
                     );
                 })
                 .toList();
+    }
+
+    private SessionApplicationStatusResult toStatusResult(
+            SessionApplicationSubmission submission
+    ) {
+        return new SessionApplicationStatusResult(
+                submission.getSessionRecruitment().getBand().getId(),
+                submission.getSessionApplication().getUserId(),
+                submission.getSessionApplication().getNickname(),
+                submission.getSessionRecruitment().getRecruitmentTitle()
+        );
     }
 }
