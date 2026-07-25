@@ -166,6 +166,7 @@ public class UserAdapter implements SessionPort {
             SessionApplicationSubmission submission
     ) {
         return new SessionApplicationStatusResult(
+                submission.getApplicationSubmissionId(),
                 submission.getSessionRecruitment().getBand().getId(),
                 submission.getSessionApplication().getUserId(),
                 submission.getSessionApplication().getNickname(),
