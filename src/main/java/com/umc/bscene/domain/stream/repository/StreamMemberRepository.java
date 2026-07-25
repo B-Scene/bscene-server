@@ -13,6 +13,8 @@ public interface StreamMemberRepository extends JpaRepository<StreamMember, Long
 
     List<StreamMember> findAllByAudioStream_Id(Long audioStreamId);
 
+    List<StreamMember> findAllByAudioStream_IdAndStatus(Long audioStreamId, StreamMemberStatus status);
+
     // 사용자 ID, 멤버 초대 상태, 방송 상태를 파라미터로 전달하면 레코드의 존재 여부 반환
     @Query("""
 select count(sm) > 0

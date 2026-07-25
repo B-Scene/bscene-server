@@ -1,8 +1,8 @@
 package com.umc.bscene.domain.stream.port;
 
+import com.umc.bscene.domain.stream.dto.CoHostCandidateInfo;
 import com.umc.bscene.domain.stream.dto.response.BandInfoForGetLiveResponse;
 import com.umc.bscene.domain.stream.dto.response.BandSummaryResponse;
-import com.umc.bscene.domain.stream.dto.response.CoHostCandidateResponse;
 import com.umc.bscene.domain.stream.dto.response.LiveMembersResponse.LiveMemberProfileResponse;
 
 import java.util.List;
@@ -29,21 +29,22 @@ public interface BandMemberPort {
 
     /**
      * 라이브 예약 편집 화면에서 보여줄 공동 진행 후보 리스트를 조회하는 메소드입니다.
-     * 송출자의 현재 활성화된 밴드 멤버 프로필이 속한 밴드를 기준으로,
-     * 그 밴드에 속한 다른 멤버들(송출자 본인 제외)을 반환합니다.
-     * @param broadcasterId 오디오 송출자의 ID를 전달합니다.
-     * @return 공동 진행 후보 리스트를 반환해주세요. 송출자의 밴드 멤버 프로필이 없으면 빈 리스트를 반환합니다.
+     * 라이브가 생성 시점에 확정한 밴드를 기준으로, 그 밴드의 정회원 전체(송출자 본인 포함)를 반환합니다.
+     * 멤버의 활성 프로필 여부와 무관하게 해당 밴드 멤버십에 연결된 프로필로 조회해주세요.
+     * (기존 공동 진행자가 타 밴드 프로필로 전환해도 목록에서 빠지지 않아야 함)
+     * @param bandId 라이브가 생성 시점에 확정한 밴드의 ID를 전달합니다.
+     * @return 공동 진행 후보 리스트를 반환해주세요. userId는 스트림 도메인의 초대 상태(OWNER/INVITED 등) 계산용이며 응답에는 노출되지 않습니다.
      */
-    List<CoHostCandidateResponse> getCoHostCandidatesByBroadcasterId(Long broadcasterId);
+    List<CoHostCandidateInfo> getCoHostCandidatesByBandId(Long bandId);
 
     /**
-     * 요청자가 송출자(라이브 생성자)가 속한 밴드의 밴드 멤버인지 검사하는 메소드입니다.
-     * 세션 멤버는 리소스 접근 제한이므로 false를 반환합니다.
-     * @param broadcasterId 오디오 송출자의 ID를 전달합니다.
+     * 요청자의 현재 활성 밴드 멤버 프로필이 해당 밴드(라이브 생성 시 확정된 밴드)의 정회원 소속인지 검사하는 메소드입니다.
+     * 타 밴드 프로필로 전환한 상태면 라이브 생성자 본인이라도 false를 반환합니다.
+     * @param bandId 라이브가 생성 시점에 확정한 밴드의 ID를 전달합니다.
      * @param userId 검사할 요청자의 ID를 전달합니다.
-     * @return 정회원 여부를 반환해주세요.
+     * @return 활성 정회원 여부를 반환해주세요.
      */
-    boolean isRegularMemberOfBroadcasterBand(Long broadcasterId, Long userId);
+    boolean isActiveRegularMemberOfBand(Long bandId, Long userId);
 
     /**
      * 라이브 방 멤버(송출자 + 공동 진행자) 프로필 요약 조회를 위한 메소드입니다.
