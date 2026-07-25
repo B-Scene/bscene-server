@@ -11,6 +11,7 @@ import com.umc.bscene.domain.notification.adapter.PerformanceAdapter;
 import com.umc.bscene.domain.notification.adapter.PostAdapter;
 import com.umc.bscene.domain.notification.adapter.SessionAdapter;
 import com.umc.bscene.domain.notification.adapter.StreamAdapter;
+import com.umc.bscene.domain.notification.adapter.UserAdapter;
 import com.umc.bscene.domain.notification.port.PushPort;
 import com.umc.bscene.domain.notification.repository.NotificationRepository;
 import com.umc.bscene.domain.notification.scheduler.NotificationCleanupScheduler;
@@ -90,5 +91,11 @@ public class NotificationConfig {
             NotificationPort notificationPort
     ) {
         return new BandAdapter(notificationPort);
+    }
+
+    // User 도메인 NotifyPort 구현 어댑터
+    @Bean
+    public UserAdapter userNotificationAdapter(NotificationPort notificationPort) {
+        return new UserAdapter(notificationPort);
     }
 }

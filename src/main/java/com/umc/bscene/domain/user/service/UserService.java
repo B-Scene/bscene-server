@@ -2,34 +2,49 @@ package com.umc.bscene.domain.user.service;
 
 import com.umc.bscene.domain.auth.enums.onboarding.Genre;
 import com.umc.bscene.domain.auth.enums.onboarding.Region;
+import com.umc.bscene.domain.session.dto.SessionPushMessage;
 import com.umc.bscene.domain.user.dto.request.MyInfoUpdateRequest;
 import com.umc.bscene.domain.user.dto.request.SessionApplyConfirmRequest;
 import com.umc.bscene.domain.user.dto.request.UserModeUpdateRequest;
-import com.umc.bscene.domain.user.dto.response.*;
+import com.umc.bscene.domain.user.dto.response.BandMemberResponse;
+import com.umc.bscene.domain.user.dto.response.FollowedBandResponse;
+import com.umc.bscene.domain.user.dto.response.InterestedPerformanceResponse;
+import com.umc.bscene.domain.user.dto.response.MyBandProfile;
+import com.umc.bscene.domain.user.dto.response.MyInfoResponse;
+import com.umc.bscene.domain.user.dto.response.MyProfileResponse;
+import com.umc.bscene.domain.user.dto.response.ParticipationHistoryResponse;
 import com.umc.bscene.domain.user.dto.response.mypage.BandMyPageResponse;
 import com.umc.bscene.domain.user.dto.response.mypage.FanMyPageResponse;
+import com.umc.bscene.domain.user.dto.response.session.SessionApplicationStatusResult;
 import com.umc.bscene.domain.user.dto.response.session.SessionRecruitmentResponse;
-import com.umc.bscene.domain.user.enums.RecruitmentStatusFilter;
-import com.umc.bscene.global.response.CursorPage;
 import com.umc.bscene.domain.user.entity.FanProfile;
 import com.umc.bscene.domain.user.entity.User;
 import com.umc.bscene.domain.user.entity.UserGenres;
 import com.umc.bscene.domain.user.entity.UserRegions;
 import com.umc.bscene.domain.user.enums.HistoryYearFilter;
+import com.umc.bscene.domain.user.enums.RecruitmentStatusFilter;
 import com.umc.bscene.domain.user.enums.UserMode;
 import com.umc.bscene.domain.user.enums.UserStatus;
 import com.umc.bscene.domain.user.exception.UserException;
-import com.umc.bscene.domain.user.port.*;
+import com.umc.bscene.domain.user.port.AuthPort;
+import com.umc.bscene.domain.user.port.BandPort;
+import com.umc.bscene.domain.user.port.FollowPort;
+import com.umc.bscene.domain.user.port.NotifyPort;
+import com.umc.bscene.domain.user.port.PerformancePort;
+import com.umc.bscene.domain.user.port.SessionPort;
 import com.umc.bscene.domain.user.repository.FanProfileRepository;
 import com.umc.bscene.domain.user.repository.UserGenresRepository;
 import com.umc.bscene.domain.user.repository.UserRegionsRepository;
 import com.umc.bscene.domain.user.repository.UserRepository;
 import com.umc.bscene.domain.user.response.code.UserErrorCode;
+import com.umc.bscene.global.response.CursorPage;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.time.LocalDate;
 import java.util.Comparator;
@@ -54,6 +69,7 @@ public class UserService {
     private final PerformancePort performancePort;
     private final BandPort bandPort;
     private final AuthPort authPort;
+    private final NotifyPort notifyPort;
 
     // 팬모드 마이페이지 조회
     public FanMyPageResponse getFanMyPage(User user) {
@@ -308,13 +324,15 @@ public class UserService {
     // 수락은 최종 확정이 아니라 지원자 확정 대기(BAND_ACCEPTED)로의 전이이며,
     // 세션 멤버 등록은 지원자가 confirmSessionApply로 최종 수락한 시점에 수행된다
     @Transactional
-    public void decideSessionApply(Long userId, Long applySubmissionId, Boolean isApproved) {
+    public void decideSessionApply(Long userId, Long applySubmissionId, boolean isApproved) {
 
         Long bandId = sessionPort.findBandIdBySessionApplicationSubmission(applySubmissionId);
         bandPort.validateActiveBandMember(userId, bandId);
 
-        Long applicantUserId =
+        SessionApplicationStatusResult result =
                 sessionPort.decideApplicationSubmission(applySubmissionId, userId, isApproved);
+
+        Long applicantUserId = result.applicantUserId();
 
         if (isApproved) {
             // 탈퇴·정지·휴면 지원자의 지원은 수락 불가 (예외 시 전체 롤백되어 지원은 PENDING 유지)
@@ -323,11 +341,10 @@ public class UserService {
             if (applicant.getStatus() != UserStatus.ACTIVE) {
                 throw new UserException(UserErrorCode.USER_NOT_FOUND);
             }
-
-            // TODO: FCM 개발자 - 지원자가 조회할 수락 알림 생성 및 FCM 발송 로직 구현 필요
         }
 
-        // NOTE: 거절 상태도 알림 전송할 것인지?
+        notifyApplicationDecisionAfterCommit(result, userId, isApproved);
+
     }
 
     // 밴드가 수락한 세션 지원 건에 대한 지원자의 최종 수락/거절
@@ -344,7 +361,10 @@ public class UserService {
         }
 
         // BAND_ACCEPTED일 때만 원자적으로 전이 - 중복 확정·경합 요청은 여기서 걸러짐
-        Long bandId = sessionPort.finalizeApplicationSubmission(applySubmissionId, userId, isAccepted);
+        SessionApplicationStatusResult result =
+                sessionPort.finalizeApplicationSubmission(applySubmissionId, userId, isAccepted);
+
+        Long bandId = result.bandId();
 
         if (isAccepted) {
             User applicant = userRepository.findById(userId)
@@ -353,5 +373,88 @@ public class UserService {
             // BandMember(ACCEPTED, SESSION) + 비활성(active=false) 멤버 프로필 생성
             bandPort.registerSessionMember(bandId, applicant, request.nickname(), request.part());
         }
+
+        String notificationNickname = isAccepted
+                ? request.nickname()
+                : result.applicationNickname();
+
+        notifyApplicationFinalDecisionAfterCommit(
+                result,
+                notificationNickname,
+                isAccepted
+        );
+    }
+
+    private void notifyApplicationDecisionAfterCommit(
+            SessionApplicationStatusResult result,
+            Long deciderUserId,
+            boolean isApproved
+    ) {
+        List<Long> bandReceiverIds = bandPort.getAcceptedMemberUserIds(result.bandId()).stream()
+                .filter(receiverId -> !receiverId.equals(deciderUserId))
+                .filter(receiverId -> !receiverId.equals(result.applicantUserId()))
+                .distinct()
+                .toList();
+
+        SessionPushMessage applicantMessage =
+                SessionPushMessage.applicationDecisionForApplicant(
+                        result.applicationSubmissionId(),
+                        result.recruitmentTitle(),
+                        isApproved
+                );
+
+        SessionPushMessage bandMessage =
+                SessionPushMessage.applicationDecisionForBandMembers(
+                        result.applicationSubmissionId(),
+                        result.applicationNickname(),
+                        isApproved
+                );
+
+        TransactionSynchronizationManager.registerSynchronization(
+                new TransactionSynchronization() {
+                    @Override
+                    public void afterCommit() {
+                        notifyPort.notify(
+                                List.of(result.applicantUserId()),
+                                applicantMessage
+                        );
+
+                        if (!bandReceiverIds.isEmpty()) {
+                            notifyPort.notify(bandReceiverIds, bandMessage);
+                        }
+                    }
+                }
+        );
+    }
+
+    private void notifyApplicationFinalDecisionAfterCommit(
+            SessionApplicationStatusResult result,
+            String notificationNickname,
+            boolean isAccepted
+    ) {
+        List<Long> bandReceiverIds = bandPort.getAcceptedMemberUserIds(result.bandId()).stream()
+                .filter(receiverId -> !receiverId.equals(result.applicantUserId()))
+                .distinct()
+                .toList();
+
+        if (bandReceiverIds.isEmpty()) {
+            return;
+        }
+
+        SessionPushMessage message =
+                SessionPushMessage.applicationFinalDecisionForBandMembers(
+                        result.applicationSubmissionId(),
+                        notificationNickname,
+                        isAccepted
+                );
+
+        TransactionSynchronizationManager.registerSynchronization(
+                new TransactionSynchronization() {
+                    @Override
+                    public void afterCommit() {
+                        notifyPort.notify(bandReceiverIds, message);
+                    }
+                }
+        );
     }
 }

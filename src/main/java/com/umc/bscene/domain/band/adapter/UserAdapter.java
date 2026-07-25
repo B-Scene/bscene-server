@@ -16,11 +16,9 @@ import com.umc.bscene.domain.band.response.code.BandErrorCode;
 import com.umc.bscene.domain.session.enums.Part;
 import com.umc.bscene.domain.user.dto.response.BandMemberResponse;
 import com.umc.bscene.domain.user.dto.response.MyBandProfile;
-import com.umc.bscene.domain.user.dto.response.MyProfileResponse;
 import com.umc.bscene.domain.user.entity.User;
 import com.umc.bscene.domain.user.port.BandPort;
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
@@ -169,5 +167,13 @@ public class UserAdapter implements BandPort {
                     isMember
             );
         }
+    }
+
+    @Override
+    public List<Long> getAcceptedMemberUserIds(Long bandId) {
+        return bandMemberRepository.findUserIdsByBandIdAndStatus(
+                bandId,
+                BandMemberStatus.ACCEPTED
+        );
     }
 }
