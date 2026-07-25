@@ -26,7 +26,6 @@ import com.umc.bscene.domain.stream.entity.LiveAlarm;
 import com.umc.bscene.domain.stream.entity.StreamReplay;
 import com.umc.bscene.domain.stream.entity.mapper.ReportHistory;
 import com.umc.bscene.domain.stream.entity.mapper.StreamMember;
-import com.umc.bscene.domain.stream.enums.CoHostStatus;
 import com.umc.bscene.domain.stream.enums.StreamMemberStatus;
 import com.umc.bscene.domain.stream.enums.StreamStatus;
 import com.umc.bscene.domain.stream.enums.code.error.StreamErrorCode;
@@ -781,15 +780,16 @@ public class StreamServiceImpl implements StreamService {
 
         if (isBroadcaster) {
             // 송출자일 때,
-            // 타 밴드 프로필로 전환한 상태에서는 이 라이브에 진입(방송 시작) 불가
-            validateActiveBandMatches(userId, stream);
-
             // 닫힌 혹은 취소된 라이브에 진입하려고하면 예외 발생
             if (stream.getStatus() == StreamStatus.CLOSED || stream.getStatus() == StreamStatus.CANCELED)
                 throw new StreamException(StreamErrorCode.AUDIO_STREAM_NOT_LIVE);
 
             // 예약된 라이브에 진입하면 그 라이브를 OPEN으로 변경
             if (stream.getStatus() == StreamStatus.SCHEDULED) {
+                // 방송 시작(SCHEDULED→OPEN)은 타 밴드 프로필로 전환한 상태로는 불가.
+                // 이미 OPEN인 라이브 재입장은 방송 유지(재접속)를 막지 않도록 검증하지 않음
+                validateActiveBandMatches(userId, stream);
+
                 if (audioStreamRepository.existsByBroadcasterIdAndStatus(userId, StreamStatus.OPEN))
                     throw new StreamException(StreamErrorCode.ALREADY_LIVE);
 
@@ -986,29 +986,26 @@ public class StreamServiceImpl implements StreamService {
     }
 
     // 예약 편집 화면 후보의 표시용 상태. 송출자는 OWNER, StreamMember 행이 없으면 미선택(null)
-    private CoHostStatus resolveCoHostStatus(Long candidateUserId, AudioStream stream, Map<Long, StreamMemberStatus> statusByUserId) {
+    // DB에는 INVITED/ACCEPTED/REJECTED만 저장되며, 응답에서는 ACCEPTED를 APPROVED로 표기
+    private StreamMemberStatus resolveCoHostStatus(Long candidateUserId, AudioStream stream, Map<Long, StreamMemberStatus> statusByUserId) {
         if (stream.getBroadcasterId().equals(candidateUserId))
-            return CoHostStatus.OWNER;
+            return StreamMemberStatus.OWNER;
 
         StreamMemberStatus status = statusByUserId.get(candidateUserId);
         if (status == null)
             return null;
 
-        return switch (status) {
-            case INVITED -> CoHostStatus.INVITED;
-            case ACCEPTED -> CoHostStatus.APPROVED;
-            case REJECTED -> CoHostStatus.REJECTED;
-        };
+        return status == StreamMemberStatus.ACCEPTED ? StreamMemberStatus.APPROVED : status;
     }
 
     // 후보 표시 순서 가중치: OWNER → APPROVED → INVITED → 미선택(null) → REJECTED
-    private int coHostStatusRank(CoHostStatus status) {
+    private int coHostStatusRank(StreamMemberStatus status) {
         if (status == null)
             return 3;
 
         return switch (status) {
             case OWNER -> 0;
-            case APPROVED -> 1;
+            case APPROVED, ACCEPTED -> 1;
             case INVITED -> 2;
             case REJECTED -> 4;
         };
