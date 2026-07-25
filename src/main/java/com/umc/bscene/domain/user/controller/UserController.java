@@ -2,6 +2,7 @@ package com.umc.bscene.domain.user.controller;
 
 import com.umc.bscene.domain.user.dto.request.MyInfoUpdateRequest;
 import com.umc.bscene.domain.user.dto.request.SessionApplyConfirmRequest;
+import com.umc.bscene.domain.user.dto.request.SessionRecruitDecisionRequest;
 import com.umc.bscene.domain.user.dto.request.UserModeUpdateRequest;
 import com.umc.bscene.domain.user.dto.response.*;
 import com.umc.bscene.domain.user.dto.response.mypage.BandMyPageResponse;
@@ -193,10 +194,10 @@ public class UserController {
     public ResponseEntity<SuccessResponse<?>> decideSessionApply(
             @AuthenticationPrincipal AuthMember member,
             @PathVariable Long applySubmissionId,
-            @RequestBody @NotNull(message = "지원에 대한 수락, 거절 상태값은 비어있을 수 없습니다.") Boolean isApproved
+            @RequestBody SessionRecruitDecisionRequest request
     ) {
 
-        userService.decideSessionApply(member.getUser().getId(), applySubmissionId, isApproved);
+        userService.decideSessionApply(member.getUser().getId(), applySubmissionId, request.isApproved());
 
         return ResponseEntity
                 .status(HttpStatus.OK)

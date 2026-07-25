@@ -98,6 +98,7 @@ public class UserService {
     public BandMyPageResponse getBandMyPage(User user) {
         BandMemberResponse result = bandPort.getActiveBandMemberProfile(user.getId());
         return new BandMyPageResponse(
+                result.bandMemberProfileId(),
                 result.nickname(),
                 result.bandName(),
                 result.parts(),
