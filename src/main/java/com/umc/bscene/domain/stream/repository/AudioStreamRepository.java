@@ -141,7 +141,7 @@ where a.status = com.umc.bscene.domain.stream.enums.StreamStatus.SCHEDULED
 update AudioStream a
 set a.title = coalesce(:title, a.title),
     a.description = coalesce(:description, a.description),
-    a.thumbnailImageUrl = coalease(:thumbnailImageUrl, a.thumbnailImageUrl)
+    a.thumbnailImageUrl = coalesce(:thumbnailImageUrl, a.thumbnailImageUrl),
     a.scheduledAt = coalesce(:scheduledAt, a.scheduledAt)
 where a.id = :id
     and a.status = com.umc.bscene.domain.stream.enums.StreamStatus.SCHEDULED
