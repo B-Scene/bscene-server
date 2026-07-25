@@ -98,6 +98,10 @@ public class StreamServiceImpl implements StreamService {
     private static final DateTimeFormatter SCHEDULED_AT_FORMATTER =
             DateTimeFormatter.ofPattern("M.dd. (E) a h:mm", Locale.KOREAN);
 
+    // 예정된 라이브 목록(scheduledAt)용 시각 포맷. 연도가 바뀌어도 구분되도록 전체 표기. 예: "2026-07-11 21:00:00"
+    private static final DateTimeFormatter SCHEDULED_AT_FULL_FORMATTER =
+            DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+
     private static final int MAX_SCHEDULED_PER_BROADCASTER = 5;
     private static final String LIVE_PUSH_COOLDOWN_PREFIX = "livePush:cooldown:";
     private static final Duration SCHEDULED_PUSH_COOLDOWN = Duration.ofMinutes(5);
@@ -489,7 +493,7 @@ public class StreamServiceImpl implements StreamService {
                                     band != null ? band.bandProfileImageUrl() : "",
                                     s.getTitle(),
                                     band != null ? band.bandName() : "",
-                                    formatScheduledAt(s.getScheduledAt()),
+                                    formatScheduledAtFull(s.getScheduledAt()),
                                     alarmedLiveIds.contains(s.getId())
                             );
                         })
@@ -624,6 +628,10 @@ public class StreamServiceImpl implements StreamService {
 
     private String formatScheduledAt(LocalDateTime scheduledAt) {
         return scheduledAt == null ? null : SCHEDULED_AT_FORMATTER.format(scheduledAt);
+    }
+
+    private String formatScheduledAtFull(LocalDateTime scheduledAt) {
+        return scheduledAt == null ? null : SCHEDULED_AT_FULL_FORMATTER.format(scheduledAt);
     }
 
     /*
