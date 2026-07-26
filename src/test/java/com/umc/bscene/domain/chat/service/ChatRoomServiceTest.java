@@ -121,6 +121,44 @@ class ChatRoomServiceTest {
     }
 
     @Test
+    @DisplayName("기존 쪽지방이 있으면 새로 저장하지 않고 나가기 상태를 복구한다")
+    void createSessionSearchRoomReusesAndRejoinsExistingRoom() {
+        SessionApplication myDefault =
+                application(5L, USER_ID, "내 프로필");
+        SessionApplication target =
+                application(APPLICATION_ID, TARGET_USER_ID, "상대 프로필");
+        User recipient = user(TARGET_USER_ID, "상대");
+        ChatRoom existingRoom = room(100L);
+        existingRoom.leave(USER_ID);
+        ChatRoomCreateRequest request = new ChatRoomCreateRequest(
+                ChatContextType.SESSION_SEARCH,
+                null,
+                APPLICATION_ID,
+                null
+        );
+        when(applicationRepository
+                .findFirstByUserIdAndPurposeAndDeletedAtIsNullOrderBySessionApplicationIdDesc(
+                        USER_ID, DEFAULT_PURPOSE
+                )).thenReturn(Optional.of(myDefault));
+        when(applicationRepository.findPublicDetailWithPortfolioLinks(
+                APPLICATION_ID, DEFAULT_PURPOSE
+        )).thenReturn(Optional.of(target));
+        when(userRepository.findById(TARGET_USER_ID))
+                .thenReturn(Optional.of(recipient));
+        when(chatRoomRepository
+                .findBySender_IdAndRecipient_IdAndSessionApplication_SessionApplicationId(
+                        USER_ID, TARGET_USER_ID, APPLICATION_ID
+                )).thenReturn(Optional.of(existingRoom));
+
+        var response = service.createOrGet(USER_ID, request);
+
+        assertThat(response.chatRoomId()).isEqualTo(100L);
+        assertThat(response.created()).isFalse();
+        assertThat(existingRoom.hasLeft(USER_ID)).isFalse();
+        verify(chatRoomRepository, never()).save(any());
+    }
+
+    @Test
     @DisplayName("지원서와 모집 공고가 함께 전달되면 잘못된 채팅 문맥으로 실패한다")
     void createRoomFailsForInvalidContext() {
         ChatRoomCreateRequest request = new ChatRoomCreateRequest(

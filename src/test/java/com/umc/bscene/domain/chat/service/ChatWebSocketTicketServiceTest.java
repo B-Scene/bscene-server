@@ -4,6 +4,7 @@ import com.umc.bscene.domain.chat.dto.response.ChatWebSocketTicketResponse;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.redis.core.StringRedisTemplate;
@@ -18,6 +19,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.Mockito.verifyNoInteractions;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -47,6 +50,32 @@ class ChatWebSocketTicketServiceTest {
         ChatWebSocketTicketResponse second = ticketService.issue(1L);
 
         assertNotEquals(first.ticket(), second.ticket());
+    }
+
+    @SuppressWarnings({"unchecked", "rawtypes"})
+    @Test
+    void issuingNewTicketUsesSameUserKeyAndReplacesPreviousTicketAtomically() {
+        ChatWebSocketTicketResponse first = ticketService.issue(1L);
+        ChatWebSocketTicketResponse second = ticketService.issue(1L);
+
+        ArgumentCaptor<List> keysCaptor = ArgumentCaptor.forClass(List.class);
+        verify(redisTemplate, times(2)).execute(
+                any(RedisScript.class),
+                keysCaptor.capture(),
+                any(Object[].class)
+        );
+        List<List> issuedKeys = keysCaptor.getAllValues();
+        assertEquals("chat:ws:user-ticket:1", issuedKeys.get(0).get(0));
+        assertEquals("chat:ws:user-ticket:1", issuedKeys.get(1).get(0));
+        assertEquals(
+                "chat:ws:ticket:" + first.ticket(),
+                issuedKeys.get(0).get(1)
+        );
+        assertEquals(
+                "chat:ws:ticket:" + second.ticket(),
+                issuedKeys.get(1).get(1)
+        );
+        assertNotEquals(issuedKeys.get(0).get(1), issuedKeys.get(1).get(1));
     }
 
     @Test
