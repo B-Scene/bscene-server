@@ -254,7 +254,7 @@ public class SessionPortfolioPreviewService {
 
     private PortfolioMediaType directMediaType(String path) {
         String lower = path.toLowerCase(Locale.ROOT);
-        if (lower.matches(".*\\.(jpg|jpeg|png|gif|webp|bmp)$")) return PortfolioMediaType.IMAGE;
+        if (lower.matches(".*\\.(jpg|jpeg|png|webp|bmp)$")) return PortfolioMediaType.IMAGE;
         if (lower.matches(".*\\.(mp4|mov|webm|m4v|avi)$")) return PortfolioMediaType.VIDEO;
         return PortfolioMediaType.LINK;
     }
