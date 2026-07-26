@@ -122,7 +122,7 @@ public class UserController {
     @GetMapping("/me/performance/interest")
     public ResponseEntity<SuccessResponse<InterestedPerformanceResponse>> getInterestedPerformances(
             @AuthenticationPrincipal AuthMember authMember,
-            @RequestParam(defaultValue = "All") HistoryYearFilter filter,
+            @RequestParam(defaultValue = "ALL") HistoryYearFilter filter,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size
     ) {
@@ -137,7 +137,7 @@ public class UserController {
     }
 
     // 내 정보 조회 API (내 정보 수정 화면 초기값 : 닉네임/관심 장르/활동 지역)
-    @GetMapping("/users/me/information")
+    @GetMapping("/me/information")
     public ResponseEntity<SuccessResponse<MyInfoResponse>> getMyInfo(
             @AuthenticationPrincipal AuthMember authMember
     ) {
@@ -151,7 +151,7 @@ public class UserController {
     }
 
     // 내 정보 수정 API (닉네임/관심 장르/활동 지역을 통째로 교체)
-    @PatchMapping("/users/me/information")
+    @PatchMapping("/me/information")
     public ResponseEntity<SuccessResponse<MyInfoResponse>> updateMyInfo(
             @AuthenticationPrincipal AuthMember authMember,
             @Valid @RequestBody MyInfoUpdateRequest request
