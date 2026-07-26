@@ -1,6 +1,12 @@
 package com.umc.bscene.domain.session.service;
 
+import com.umc.bscene.domain.auth.enums.onboarding.Genre;
+import com.umc.bscene.domain.auth.enums.onboarding.Region;
+import com.umc.bscene.domain.band.entity.Band;
 import com.umc.bscene.domain.session.entity.SessionRecruitment;
+import com.umc.bscene.domain.session.entity.SessionRecruitmentInterest;
+import com.umc.bscene.domain.session.enums.Part;
+import com.umc.bscene.domain.session.enums.SkillLevel;
 import com.umc.bscene.domain.session.enums.code.error.SessionErrorCode;
 import com.umc.bscene.domain.session.exception.SessionException;
 import com.umc.bscene.domain.session.repository.SessionRecruitmentInterestRepository;
@@ -15,12 +21,17 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.data.domain.Pageable;
+import org.springframework.test.util.ReflectionTestUtils;
 
+import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -148,9 +159,74 @@ class SessionRecruitmentInterestServiceTest {
                 .deleteBySessionRecruitment_SessionRecruitmentIdAndUser_Id(any(), any());
     }
 
+    @Test
+    @DisplayName("스크랩한 모집 공고를 커서 방식으로 조회한다")
+    void getMyInterestsCalculatesNextCursor() {
+        SessionRecruitmentInterest first = interest(10L, 20L);
+        SessionRecruitmentInterest second = interest(9L, 19L);
+        when(interestRepository.findMyInterests(
+                eq(USER_ID), eq(null), any(Pageable.class)
+        )).thenReturn(List.of(first, second));
+
+        var response = service.getMyInterests(USER_ID, null, 1);
+
+        assertThat(response.content()).hasSize(1);
+        assertThat(response.hasNext()).isTrue();
+        assertThat(response.nextCursor()).isEqualTo(10L);
+        assertThat(response.size()).isEqualTo(1);
+    }
+
+    @Test
+    @DisplayName("스크랩 조회 크기는 기본 10개이고 최대 50개다")
+    void getMyInterestsUsesDefaultAndMaximumSize() {
+        when(interestRepository.findMyInterests(
+                eq(USER_ID), eq(null), any(Pageable.class)
+        )).thenReturn(List.of());
+
+        var defaultSize = service.getMyInterests(USER_ID, null, null);
+        var maximumSize = service.getMyInterests(USER_ID, null, 100);
+
+        assertThat(defaultSize.size()).isEqualTo(10);
+        assertThat(maximumSize.size()).isEqualTo(50);
+    }
+
     private SessionRecruitment recruitment() {
         return SessionRecruitment.builder()
                 .sessionRecruitmentId(RECRUITMENT_ID)
                 .build();
+    }
+
+    private SessionRecruitmentInterest interest(Long interestId, Long recruitmentId) {
+        User owner = User.builder().id(2L).build();
+        Band band = Band.builder()
+                .id(3L)
+                .owner(owner)
+                .name("테스트 밴드")
+                .genre(Genre.HARD_ROCK)
+                .region(Region.SEOUL)
+                .build();
+        SessionRecruitment recruitment = SessionRecruitment.builder()
+                .sessionRecruitmentId(recruitmentId)
+                .band(band)
+                .recruitmentTitle("기타 모집")
+                .summary("주 1회 합주")
+                .part(Part.GUITAR)
+                .skillLevel(SkillLevel.INTERMEDIATE)
+                .genre(Genre.HARD_ROCK)
+                .region(Region.SEOUL)
+                .deadlineAt(LocalDateTime.now().plusDays(7))
+                .build();
+        ReflectionTestUtils.setField(
+                recruitment, "createdAt", LocalDateTime.now().minusDays(1)
+        );
+        SessionRecruitmentInterest interest =
+                SessionRecruitmentInterest.builder()
+                        .sessionRecruitment(recruitment)
+                        .user(User.builder().id(USER_ID).build())
+                        .build();
+        ReflectionTestUtils.setField(
+                interest, "sessionRecruitmentInterestId", interestId
+        );
+        return interest;
     }
 }

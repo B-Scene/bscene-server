@@ -154,6 +154,41 @@ class SessionRecruitmentQueryServiceImplTest {
     }
 
     @Test
+    @DisplayName("최근 본 모집 공고를 커서 방식으로 조회한다")
+    void getRecentRecruitmentsCalculatesNextCursor() {
+        SessionRecruitmentView first = view(30L, recruitment(10L));
+        SessionRecruitmentView second = view(29L, recruitment(9L));
+        when(viewRepository.findRecentViews(
+                eq(1L), eq(null), any(Pageable.class)
+        )).thenReturn(List.of(first, second));
+        when(interestRepository.findInterestedRecruitmentIds(
+                1L, List.of(10L)
+        )).thenReturn(Set.of(10L));
+
+        var response = service.getRecentRecruitments(1L, null, 1);
+
+        assertThat(response.content()).hasSize(1);
+        assertThat(response.content().get(0).isInterested()).isTrue();
+        assertThat(response.hasNext()).isTrue();
+        assertThat(response.nextCursor()).isEqualTo(30L);
+        assertThat(response.size()).isEqualTo(1);
+    }
+
+    @Test
+    @DisplayName("최근 본 공고 조회 크기는 기본 10개이고 최대 50개다")
+    void getRecentRecruitmentsUsesDefaultAndMaximumSize() {
+        when(viewRepository.findRecentViews(
+                eq(1L), eq(null), any(Pageable.class)
+        )).thenReturn(List.of());
+
+        var defaultSize = service.getRecentRecruitments(1L, null, null);
+        var maximumSize = service.getRecentRecruitments(1L, null, 100);
+
+        assertThat(defaultSize.size()).isEqualTo(10);
+        assertThat(maximumSize.size()).isEqualTo(50);
+    }
+
+    @Test
     @DisplayName("모집 공고는 생성 후 3일이 되기 전까지만 신규 공고이다")
     void isNewRecruitmentUsesThreeDayBoundary() {
         LocalDateTime createdAt = LocalDateTime.of(2026, 7, 11, 10, 0);
@@ -210,5 +245,19 @@ class SessionRecruitmentQueryServiceImplTest {
                 LocalDateTime.now().minusDays(1)
         );
         return recruitment;
+    }
+
+    private SessionRecruitmentView view(
+            Long viewId,
+            SessionRecruitment recruitment
+    ) {
+        SessionRecruitmentView view = SessionRecruitmentView.builder()
+                .sessionRecruitment(recruitment)
+                .user(User.builder().id(1L).build())
+                .build();
+        ReflectionTestUtils.setField(
+                view, "sessionRecruitmentViewId", viewId
+        );
+        return view;
     }
 }

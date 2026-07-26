@@ -3,7 +3,10 @@ package com.umc.bscene.domain.session.service.impl;
 import com.umc.bscene.domain.auth.enums.onboarding.Genre;
 import com.umc.bscene.domain.auth.enums.onboarding.Region;
 import com.umc.bscene.domain.session.entity.SessionApplication;
+import com.umc.bscene.domain.session.entity.SessionApplicationSubmission;
 import com.umc.bscene.domain.session.entity.SessionBasicProfile;
+import com.umc.bscene.domain.session.entity.SessionRecruitment;
+import com.umc.bscene.domain.band.entity.Band;
 import com.umc.bscene.domain.session.enums.ApplicationStatus;
 import com.umc.bscene.domain.session.enums.Part;
 import com.umc.bscene.domain.session.enums.SkillLevel;
@@ -25,6 +28,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.domain.Pageable;
 import org.springframework.test.util.ReflectionTestUtils;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -202,6 +206,81 @@ class SessionApplicationQueryServiceImplTest {
                 .isInstanceOf(BaseException.class);
     }
 
+    @Test
+    @DisplayName("내 지원서 상세정보를 조회한다")
+    void getMyApplicationDetailSuccess() {
+        User user = User.builder().id(USER_ID).name("내 이름").build();
+        SessionApplication application =
+                application(20L, USER_ID, "공연 지원");
+        SessionApplication defaultApplication =
+                application(10L, USER_ID, DEFAULT_PURPOSE);
+        when(userRepository.findById(USER_ID)).thenReturn(Optional.of(user));
+        when(applicationRepository.findByIdAndUserIdWithPortfolioLinks(
+                20L, USER_ID
+        )).thenReturn(Optional.of(application));
+        when(basicProfileRepository.findByUser_Id(USER_ID)).thenReturn(Optional.empty());
+        when(applicationRepository
+                .findFirstByUserIdAndPurposeAndDeletedAtIsNullOrderBySessionApplicationIdDesc(
+                        USER_ID, DEFAULT_PURPOSE
+                )).thenReturn(Optional.of(defaultApplication));
+
+        var response = service.getMySessionApplicationDetail(USER_ID, 20L);
+
+        assertThat(response.name()).isEqualTo("내 이름");
+        assertThat(response.purpose()).isEqualTo("공연 지원");
+        assertThat(response.title()).isEqualTo("기타 세션 지원서");
+    }
+
+    @Test
+    @DisplayName("다른 사용자의 지원서는 내 지원서 상세조회로 볼 수 없다")
+    void getMyApplicationDetailFailsWhenNotOwned() {
+        when(userRepository.findById(USER_ID))
+                .thenReturn(Optional.of(User.builder().id(USER_ID).build()));
+        when(applicationRepository.findByIdAndUserIdWithPortfolioLinks(
+                20L, USER_ID
+        )).thenReturn(Optional.empty());
+
+        assertThatThrownBy(
+                () -> service.getMySessionApplicationDetail(USER_ID, 20L)
+        )
+                .isInstanceOf(SessionApplicationException.class)
+                .extracting("baseResponseCode")
+                .isEqualTo(SessionErrorCode.SESSION_APPLICATION_NOT_FOUND);
+    }
+
+    @Test
+    @DisplayName("내 지원 내역을 커서 방식으로 조회한다")
+    void getMySubmissionsCalculatesNextCursor() {
+        SessionApplicationSubmission first = submission(30L);
+        SessionApplicationSubmission second = submission(29L);
+        when(submissionRepository.findMySubmissions(
+                eq(USER_ID), eq(null), any(Pageable.class)
+        )).thenReturn(List.of(first, second));
+
+        var response = service.getMyApplicationSubmissions(
+                USER_ID, null, 1
+        );
+
+        assertThat(response.content()).hasSize(1);
+        assertThat(response.hasNext()).isTrue();
+        assertThat(response.nextCursor()).isEqualTo(30L);
+        assertThat(response.size()).isEqualTo(1);
+    }
+
+    @Test
+    @DisplayName("지원 내역 조회 크기는 1에서 50 사이로 제한한다")
+    void getMySubmissionsClampsPageSize() {
+        when(submissionRepository.findMySubmissions(
+                eq(USER_ID), eq(null), any(Pageable.class)
+        )).thenReturn(List.of());
+
+        var minimum = service.getMyApplicationSubmissions(USER_ID, null, 0);
+        var maximum = service.getMyApplicationSubmissions(USER_ID, null, 100);
+
+        assertThat(minimum.size()).isEqualTo(1);
+        assertThat(maximum.size()).isEqualTo(50);
+    }
+
     private SessionApplication application(Long id, Long userId, String purpose) {
         SessionApplication application = SessionApplication.builder()
                 .userId(userId)
@@ -217,5 +296,40 @@ class SessionApplicationQueryServiceImplTest {
                 .build();
         ReflectionTestUtils.setField(application, "sessionApplicationId", id);
         return application;
+    }
+
+    private SessionApplicationSubmission submission(Long id) {
+        User owner = User.builder().id(2L).build();
+        Band band = Band.builder()
+                .id(3L)
+                .owner(owner)
+                .name("테스트 밴드")
+                .genre(Genre.HARD_ROCK)
+                .region(Region.SEOUL)
+                .build();
+        SessionRecruitment recruitment = SessionRecruitment.builder()
+                .sessionRecruitmentId(4L)
+                .band(band)
+                .recruitmentTitle("기타 모집")
+                .part(Part.GUITAR)
+                .skillLevel(SkillLevel.INTERMEDIATE)
+                .genre(Genre.HARD_ROCK)
+                .region(Region.SEOUL)
+                .build();
+        SessionApplicationSubmission submission =
+                SessionApplicationSubmission.builder()
+                        .sessionRecruitment(recruitment)
+                        .sessionApplication(application(
+                                20L, USER_ID, DEFAULT_PURPOSE
+                        ))
+                        .status(ApplicationStatus.PENDING)
+                        .build();
+        ReflectionTestUtils.setField(
+                submission, "applicationSubmissionId", id
+        );
+        ReflectionTestUtils.setField(
+                submission, "createdAt", LocalDateTime.now().minusDays(1)
+        );
+        return submission;
     }
 }
