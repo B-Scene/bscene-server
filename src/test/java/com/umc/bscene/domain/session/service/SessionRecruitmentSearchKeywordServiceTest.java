@@ -7,6 +7,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.mockito.ArgumentCaptor;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -17,6 +18,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.mockito.ArgumentMatchers.any;
 
 @ExtendWith(MockitoExtension.class)
 class SessionRecruitmentSearchKeywordServiceTest {
@@ -72,6 +74,58 @@ class SessionRecruitmentSearchKeywordServiceTest {
         service.record(userId, "drum");
 
         verify(repository, never()).save(org.mockito.ArgumentMatchers.any());
+    }
+
+    @Test
+    void ignoresNullAndBlankKeyword() {
+        service.record(1L, null);
+        service.record(1L, "   ");
+
+        verify(repository, never()).findByUserIdAndKeyword(any(), any());
+        verify(repository, never()).save(any());
+    }
+
+    @Test
+    void trimsWhitespaceBeforeSavingKeyword() {
+        Long userId = 1L;
+        when(repository.findByUserIdAndKeyword(userId, "드럼"))
+                .thenReturn(Optional.empty());
+        when(repository.findAllByUserIdOrderBySearchedAtDesc(userId))
+                .thenReturn(List.of());
+
+        service.record(userId, "  드럼  ");
+
+        ArgumentCaptor<SessionRecruitmentSearchKeyword> captor =
+                ArgumentCaptor.forClass(SessionRecruitmentSearchKeyword.class);
+        verify(repository).save(captor.capture());
+        assertThat(captor.getValue().getKeyword()).isEqualTo("드럼");
+        assertThat(captor.getValue().getUserId()).isEqualTo(userId);
+    }
+
+    @Test
+    void truncatesKeywordLongerThanOneHundredCharacters() {
+        Long userId = 1L;
+        String longKeyword = "가".repeat(101);
+        String expected = "가".repeat(100);
+        when(repository.findByUserIdAndKeyword(userId, expected))
+                .thenReturn(Optional.empty());
+        when(repository.findAllByUserIdOrderBySearchedAtDesc(userId))
+                .thenReturn(List.of());
+
+        service.record(userId, longKeyword);
+
+        ArgumentCaptor<SessionRecruitmentSearchKeyword> captor =
+                ArgumentCaptor.forClass(SessionRecruitmentSearchKeyword.class);
+        verify(repository).save(captor.capture());
+        assertThat(captor.getValue().getKeyword()).hasSize(100);
+    }
+
+    @Test
+    void deletesOnlyKeywordOwnedByUser() {
+        service.delete(1L, 20L);
+
+        verify(repository)
+                .deleteBySessionRecruitmentSearchKeywordIdAndUserId(20L, 1L);
     }
 
     private List<SessionRecruitmentSearchKeyword> searches(Long userId, int count) {
