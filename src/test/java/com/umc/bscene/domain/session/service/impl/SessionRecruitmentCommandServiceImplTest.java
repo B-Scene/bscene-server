@@ -7,6 +7,7 @@ import com.umc.bscene.domain.band.entity.BandMember;
 import com.umc.bscene.domain.band.exception.BandException;
 import com.umc.bscene.domain.band.repository.BandMemberRepository;
 import com.umc.bscene.domain.session.dto.recruitment.request.SessionRecruitmentCreateRequest;
+import com.umc.bscene.domain.session.dto.recruitment.request.SessionRecruitmentUpdateRequest;
 import com.umc.bscene.domain.session.entity.SessionRecruitment;
 import com.umc.bscene.domain.session.enums.Part;
 import com.umc.bscene.domain.session.enums.SkillLevel;
@@ -44,6 +45,8 @@ class SessionRecruitmentCommandServiceImplTest {
     private BandMemberRepository bandMemberRepository;
     @Mock
     private SessionRecruitmentCreateRequest request;
+    @Mock
+    private SessionRecruitmentUpdateRequest updateRequest;
 
     private SessionRecruitmentCommandServiceImpl service;
 
@@ -121,6 +124,84 @@ class SessionRecruitmentCommandServiceImplTest {
         verify(recruitmentRepository, never()).save(any());
     }
 
+    @Test
+    @DisplayName("밴드 소유자는 모집 공고를 수정할 수 있다")
+    void updateRecruitmentSuccess() {
+        SessionRecruitment recruitment = SessionRecruitment.builder()
+                .sessionRecruitmentId(30L)
+                .band(band(USER_ID))
+                .recruitmentTitle("기존 제목")
+                .part(Part.GUITAR)
+                .skillLevel(SkillLevel.INTERMEDIATE)
+                .genre(Genre.HARD_ROCK)
+                .region(Region.SEOUL)
+                .deadlineAt(LocalDateTime.now().plusDays(3))
+                .build();
+        LocalDateTime newDeadline = LocalDateTime.now().plusDays(10);
+        givenValidUpdateRequest(newDeadline);
+        when(recruitmentRepository
+                .findBySessionRecruitmentIdAndDeletedAtIsNull(30L))
+                .thenReturn(Optional.of(recruitment));
+
+        var response = service.updateSessionRecruitment(
+                USER_ID, 30L, updateRequest
+        );
+
+        assertThat(recruitment.getRecruitmentTitle()).isEqualTo("수정한 모집");
+        assertThat(recruitment.getDeadlineAt()).isEqualTo(newDeadline);
+        assertThat(response.getRecruitmentTitle()).isEqualTo("수정한 모집");
+    }
+
+    @Test
+    @DisplayName("밴드 소유자가 아니면 모집 공고를 수정할 수 없다")
+    void updateRecruitmentFailsWithoutPermission() {
+        SessionRecruitment recruitment = SessionRecruitment.builder()
+                .sessionRecruitmentId(30L)
+                .band(band(999L))
+                .build();
+        when(recruitmentRepository
+                .findBySessionRecruitmentIdAndDeletedAtIsNull(30L))
+                .thenReturn(Optional.of(recruitment));
+
+        assertThatThrownBy(() -> service.updateSessionRecruitment(
+                USER_ID, 30L, updateRequest
+        ))
+                .isInstanceOf(SessionException.class)
+                .extracting("baseResponseCode")
+                .isEqualTo(SessionErrorCode.BAND_PERMISSION_DENIED);
+    }
+
+    @Test
+    @DisplayName("밴드 소유자는 모집 공고를 소프트 삭제할 수 있다")
+    void deleteRecruitmentSuccess() {
+        SessionRecruitment recruitment = SessionRecruitment.builder()
+                .sessionRecruitmentId(30L)
+                .band(band(USER_ID))
+                .build();
+        when(recruitmentRepository
+                .findBySessionRecruitmentIdAndDeletedAtIsNull(30L))
+                .thenReturn(Optional.of(recruitment));
+
+        service.deleteSessionRecruitment(USER_ID, 30L);
+
+        assertThat(recruitment.getDeletedAt()).isNotNull();
+    }
+
+    @Test
+    @DisplayName("존재하지 않는 모집 공고는 삭제할 수 없다")
+    void deleteRecruitmentFailsWhenNotFound() {
+        when(recruitmentRepository
+                .findBySessionRecruitmentIdAndDeletedAtIsNull(30L))
+                .thenReturn(Optional.empty());
+
+        assertThatThrownBy(
+                () -> service.deleteSessionRecruitment(USER_ID, 30L)
+        )
+                .isInstanceOf(SessionException.class)
+                .extracting("baseResponseCode")
+                .isEqualTo(SessionErrorCode.SESSION_RECRUITMENT_NOT_FOUND);
+    }
+
     private void givenValidRequest(LocalDateTime deadlineAt) {
         when(request.getBandMemberId()).thenReturn(BAND_MEMBER_ID);
         when(request.getRecruitmentTitle()).thenReturn("기타 세션 모집");
@@ -134,6 +215,20 @@ class SessionRecruitmentCommandServiceImplTest {
         when(request.getPracticePlace()).thenReturn("서울");
         when(request.getDeadlineAt()).thenReturn(deadlineAt);
         when(request.getQualification()).thenReturn("합주 경험");
+    }
+
+    private void givenValidUpdateRequest(LocalDateTime deadlineAt) {
+        when(updateRequest.getRecruitmentTitle()).thenReturn("수정한 모집");
+        when(updateRequest.getSummary()).thenReturn("수정 요약");
+        when(updateRequest.getContent()).thenReturn("수정 내용");
+        when(updateRequest.getPart()).thenReturn(Part.GUITAR);
+        when(updateRequest.getSkillLevel()).thenReturn(SkillLevel.ADVANCED);
+        when(updateRequest.getGenre()).thenReturn(Genre.HARD_ROCK);
+        when(updateRequest.getRegion()).thenReturn(Region.SEOUL);
+        when(updateRequest.getPracticeSchedule()).thenReturn("매주 일요일");
+        when(updateRequest.getPracticePlace()).thenReturn("서울");
+        when(updateRequest.getDeadlineAt()).thenReturn(deadlineAt);
+        when(updateRequest.getQualification()).thenReturn("수정 자격");
     }
 
     private Band band(Long ownerId) {

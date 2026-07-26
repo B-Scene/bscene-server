@@ -281,6 +281,48 @@ class SessionApplicationQueryServiceImplTest {
         assertThat(maximum.size()).isEqualTo(50);
     }
 
+    @Test
+    @DisplayName("밴드 소유자는 제출된 지원서 상세정보를 조회한다")
+    void getSubmittedApplicationSuccess() {
+        SessionApplicationSubmission submission = submission(30L);
+        SessionApplication defaultApplication =
+                application(10L, USER_ID, DEFAULT_PURPOSE);
+        when(submissionRepository.findForRecruitmentMember(30L, 2L))
+                .thenReturn(Optional.of(submission));
+        when(basicProfileRepository.findByUser_Id(USER_ID))
+                .thenReturn(Optional.empty());
+        when(userRepository.findById(USER_ID))
+                .thenReturn(Optional.of(User.builder()
+                        .id(USER_ID)
+                        .name("지원자")
+                        .build()));
+        when(applicationRepository
+                .findFirstByUserIdAndPurposeAndDeletedAtIsNullOrderBySessionApplicationIdDesc(
+                        USER_ID, DEFAULT_PURPOSE
+                )).thenReturn(Optional.of(defaultApplication));
+
+        var response = service.getSubmittedApplication(2L, 30L);
+
+        assertThat(submission.getCheckedAt()).isNotNull();
+        assertThat(response.applicationSubmissionId()).isEqualTo(30L);
+        assertThat(response.nickname()).isEqualTo("지원자");
+        assertThat(response.recruitmentTitle()).isEqualTo("기타 모집");
+    }
+
+    @Test
+    @DisplayName("모집 밴드 구성원이 아니면 제출 지원서를 조회할 수 없다")
+    void getSubmittedApplicationFailsWhenNotAccessible() {
+        when(submissionRepository.findForRecruitmentMember(30L, 999L))
+                .thenReturn(Optional.empty());
+
+        assertThatThrownBy(
+                () -> service.getSubmittedApplication(999L, 30L)
+        )
+                .isInstanceOf(SessionApplicationException.class)
+                .extracting("baseResponseCode")
+                .isEqualTo(SessionErrorCode.APPLICATION_SUBMISSION_NOT_FOUND);
+    }
+
     private SessionApplication application(Long id, Long userId, String purpose) {
         SessionApplication application = SessionApplication.builder()
                 .userId(userId)

@@ -9,6 +9,7 @@ import com.umc.bscene.domain.session.entity.SessionRecruitmentView;
 import com.umc.bscene.domain.session.enums.Part;
 import com.umc.bscene.domain.session.enums.SessionRecruitmentSortType;
 import com.umc.bscene.domain.session.enums.SkillLevel;
+import com.umc.bscene.domain.session.enums.code.error.SessionErrorCode;
 import com.umc.bscene.domain.session.exception.SessionException;
 import com.umc.bscene.domain.session.repository.SessionRecruitmentInterestRepository;
 import com.umc.bscene.domain.session.repository.SessionRecruitmentRepository;
@@ -189,6 +190,71 @@ class SessionRecruitmentQueryServiceImplTest {
     }
 
     @Test
+    @DisplayName("밴드 소유자는 관리할 모집 공고 목록을 조회할 수 있다")
+    void getManagedRecruitmentsSuccess() {
+        Band band = band(2L);
+        SessionRecruitment first = recruitment(10L);
+        SessionRecruitment second = recruitment(9L);
+        when(bandRepository.findById(20L)).thenReturn(Optional.of(band));
+        when(recruitmentRepository.findManagedRecruitments(
+                eq(20L), eq(null), any(Pageable.class)
+        )).thenReturn(List.of(first, second));
+
+        var response = service.getManagedRecruitments(
+                2L, 20L, null, 1
+        );
+
+        assertThat(response.getBandId()).isEqualTo(20L);
+        assertThat(response.getContent()).hasSize(1);
+        assertThat(response.getHasNext()).isTrue();
+        assertThat(response.getNextCursor()).isEqualTo(10L);
+    }
+
+    @Test
+    @DisplayName("밴드 소유자가 아니면 모집 공고 관리 목록을 조회할 수 없다")
+    void getManagedRecruitmentsFailsWithoutPermission() {
+        when(bandRepository.findById(20L))
+                .thenReturn(Optional.of(band(2L)));
+
+        assertThatThrownBy(() -> service.getManagedRecruitments(
+                999L, 20L, null, 10
+        ))
+                .isInstanceOf(SessionException.class)
+                .extracting("baseResponseCode")
+                .isEqualTo(SessionErrorCode.BAND_PERMISSION_DENIED);
+    }
+
+    @Test
+    @DisplayName("밴드 소유자는 모집 공고 수정 정보를 조회할 수 있다")
+    void getRecruitmentForEditSuccess() {
+        SessionRecruitment recruitment = recruitment(10L);
+        when(recruitmentRepository
+                .findBySessionRecruitmentIdAndDeletedAtIsNull(10L))
+                .thenReturn(Optional.of(recruitment));
+
+        var response = service.getRecruitmentForEdit(2L, 10L);
+
+        assertThat(response.getRecruitmentTitle()).isEqualTo("기타 세션 모집");
+        assertThat(response.getPracticePlace()).isEqualTo("서울");
+        assertThat(response.getDeadlineAt()).isEqualTo(recruitment.getDeadlineAt());
+    }
+
+    @Test
+    @DisplayName("밴드 소유자가 아니면 모집 공고 수정 정보를 조회할 수 없다")
+    void getRecruitmentForEditFailsWithoutPermission() {
+        when(recruitmentRepository
+                .findBySessionRecruitmentIdAndDeletedAtIsNull(10L))
+                .thenReturn(Optional.of(recruitment(10L)));
+
+        assertThatThrownBy(
+                () -> service.getRecruitmentForEdit(999L, 10L)
+        )
+                .isInstanceOf(SessionException.class)
+                .extracting("baseResponseCode")
+                .isEqualTo(SessionErrorCode.BAND_PERMISSION_DENIED);
+    }
+
+    @Test
     @DisplayName("모집 공고는 생성 후 3일이 되기 전까지만 신규 공고이다")
     void isNewRecruitmentUsesThreeDayBoundary() {
         LocalDateTime createdAt = LocalDateTime.of(2026, 7, 11, 10, 0);
@@ -217,13 +283,7 @@ class SessionRecruitmentQueryServiceImplTest {
     }
 
     private SessionRecruitment recruitment(Long id) {
-        Band band = Band.builder()
-                .id(20L)
-                .owner(User.builder().id(2L).build())
-                .name("테스트 밴드")
-                .genre(Genre.HARD_ROCK)
-                .region(Region.SEOUL)
-                .build();
+        Band band = band(2L);
         SessionRecruitment recruitment = SessionRecruitment.builder()
                 .sessionRecruitmentId(id)
                 .band(band)
@@ -245,6 +305,17 @@ class SessionRecruitmentQueryServiceImplTest {
                 LocalDateTime.now().minusDays(1)
         );
         return recruitment;
+    }
+
+    private Band band(Long ownerId) {
+        return Band.builder()
+                .id(20L)
+                .owner(User.builder().id(ownerId).build())
+                .name("테스트 밴드")
+                .genre(Genre.HARD_ROCK)
+                .region(Region.SEOUL)
+                .profileImageUrl("band.jpg")
+                .build();
     }
 
     private SessionRecruitmentView view(
