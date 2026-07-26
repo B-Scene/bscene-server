@@ -180,6 +180,27 @@ class SessionApplicationCommandServiceImplTest {
     }
 
     @Test
+    @DisplayName("기본 지원서는 사용자별로 하나만 생성할 수 있다")
+    void createFailsWhenDefaultApplicationAlreadyExists() {
+        when(createRequest.getPurpose()).thenReturn(DEFAULT_PURPOSE);
+        when(applicationRepository.countByUserIdAndDeletedAtIsNull(USER_ID))
+                .thenReturn(1L);
+        when(applicationRepository
+                .existsByUserIdAndPurposeAndDeletedAtIsNull(
+                        USER_ID, DEFAULT_PURPOSE
+                )).thenReturn(true);
+
+        assertThatThrownBy(
+                () -> service.createSessionApplication(USER_ID, createRequest)
+        )
+                .isInstanceOf(SessionApplicationException.class)
+                .extracting("baseResponseCode")
+                .isEqualTo(SessionErrorCode.DEFAULT_SESSION_APPLICATION_ALREADY_EXISTS);
+
+        verify(applicationRepository, never()).saveAndFlush(any());
+    }
+
+    @Test
     @DisplayName("내 지원서의 내용을 수정한다")
     void updateApplicationSuccess() {
         SessionApplication application = application(DEFAULT_PURPOSE);
@@ -216,6 +237,29 @@ class SessionApplicationCommandServiceImplTest {
                 .isInstanceOf(SessionApplicationException.class)
                 .extracting("baseResponseCode")
                 .isEqualTo(SessionErrorCode.DEFAULT_SESSION_APPLICATION_PURPOSE_IMMUTABLE);
+    }
+
+    @Test
+    @DisplayName("다른 지원서를 기본 용도로 변경할 때 기존 기본 지원서와 중복될 수 없다")
+    void updateFailsWhenAnotherDefaultApplicationExists() {
+        SessionApplication application = application("공연 지원");
+        when(applicationRepository.findByIdAndUserIdWithPortfolioLinks(
+                APPLICATION_ID, USER_ID
+        )).thenReturn(Optional.of(application));
+        when(updateRequest.getPurpose()).thenReturn(DEFAULT_PURPOSE);
+        when(applicationRepository
+                .existsByUserIdAndPurposeAndDeletedAtIsNullAndSessionApplicationIdNot(
+                        USER_ID, DEFAULT_PURPOSE, APPLICATION_ID
+                )).thenReturn(true);
+
+        assertThatThrownBy(() -> service.updateSessionApplication(
+                USER_ID, APPLICATION_ID, updateRequest
+        ))
+                .isInstanceOf(SessionApplicationException.class)
+                .extracting("baseResponseCode")
+                .isEqualTo(SessionErrorCode.DEFAULT_SESSION_APPLICATION_ALREADY_EXISTS);
+
+        verify(applicationRepository, never()).saveAndFlush(any());
     }
 
     @Test
@@ -300,6 +344,94 @@ class SessionApplicationCommandServiceImplTest {
     }
 
     @Test
+    @DisplayName("자신이 소유한 밴드의 모집 공고에는 지원할 수 없다")
+    void submitFailsForOwnRecruitment() {
+        SessionRecruitment recruitment = SessionRecruitment.builder()
+                .sessionRecruitmentId(20L)
+                .band(Band.builder()
+                        .owner(User.builder().id(USER_ID).build())
+                        .build())
+                .deadlineAt(LocalDateTime.now().plusDays(1))
+                .build();
+        when(recruitmentRepository
+                .findBySessionRecruitmentIdAndDeletedAtIsNull(20L))
+                .thenReturn(Optional.of(recruitment));
+
+        assertThatThrownBy(
+                () -> service.submitApplication(USER_ID, 20L, APPLICATION_ID)
+        )
+                .isInstanceOf(SessionApplicationException.class)
+                .extracting("baseResponseCode")
+                .isEqualTo(SessionErrorCode.SELF_RECRUITMENT_APPLICATION_NOT_ALLOWED);
+
+        verify(applicationRepository, never())
+                .findBySessionApplicationIdAndUserIdAndDeletedAtIsNull(
+                        any(), any()
+                );
+    }
+
+    @Test
+    @DisplayName("취소되지 않은 동일 지원서의 중복 지원을 방지한다")
+    void submitFailsWhenAlreadySubmitted() {
+        SessionRecruitment recruitment = openRecruitment();
+        SessionApplication application = application(DEFAULT_PURPOSE);
+        when(recruitmentRepository
+                .findBySessionRecruitmentIdAndDeletedAtIsNull(20L))
+                .thenReturn(Optional.of(recruitment));
+        when(applicationRepository
+                .findBySessionApplicationIdAndUserIdAndDeletedAtIsNull(
+                        APPLICATION_ID, USER_ID
+                )).thenReturn(Optional.of(application));
+        when(submissionRepository
+                .existsBySessionRecruitment_SessionRecruitmentIdAndSessionApplication_SessionApplicationIdAndStatusNot(
+                        20L, APPLICATION_ID, ApplicationStatus.CANCELED
+                )).thenReturn(true);
+
+        assertThatThrownBy(
+                () -> service.submitApplication(USER_ID, 20L, APPLICATION_ID)
+        )
+                .isInstanceOf(SessionApplicationException.class)
+                .extracting("baseResponseCode")
+                .isEqualTo(SessionErrorCode.SESSION_APPLICATION_ALREADY_SUBMITTED);
+
+        verify(submissionRepository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("기존 지원을 취소했다면 동일 지원서로 다시 지원할 수 있다")
+    void submitAllowsReapplicationAfterCancellation() {
+        SessionRecruitment recruitment = openRecruitment();
+        SessionApplication application = application(DEFAULT_PURPOSE);
+        when(recruitmentRepository
+                .findBySessionRecruitmentIdAndDeletedAtIsNull(20L))
+                .thenReturn(Optional.of(recruitment));
+        when(applicationRepository
+                .findBySessionApplicationIdAndUserIdAndDeletedAtIsNull(
+                        APPLICATION_ID, USER_ID
+                )).thenReturn(Optional.of(application));
+        when(submissionRepository
+                .existsBySessionRecruitment_SessionRecruitmentIdAndSessionApplication_SessionApplicationIdAndStatusNot(
+                        20L, APPLICATION_ID, ApplicationStatus.CANCELED
+                )).thenReturn(false);
+        when(submissionRepository.save(any(SessionApplicationSubmission.class)))
+                .thenAnswer(invocation -> {
+                    SessionApplicationSubmission submission = invocation.getArgument(0);
+                    ReflectionTestUtils.setField(
+                            submission, "applicationSubmissionId", 31L
+                    );
+                    return submission;
+                });
+        when(bandMemberPort.getAcceptedMemberUserIds(3L)).thenReturn(List.of());
+
+        var response = service.submitApplication(
+                USER_ID, 20L, APPLICATION_ID
+        );
+
+        assertThat(response.applicationSubmissionId()).isEqualTo(31L);
+        verify(submissionRepository).save(any(SessionApplicationSubmission.class));
+    }
+
+    @Test
     @DisplayName("대기 중인 지원은 취소할 수 있다")
     void cancelSubmissionSuccess() {
         SessionApplicationSubmission submission =
@@ -381,5 +513,18 @@ class SessionApplicationCommandServiceImplTest {
                 application, "sessionApplicationId", APPLICATION_ID
         );
         return application;
+    }
+
+    private SessionRecruitment openRecruitment() {
+        return SessionRecruitment.builder()
+                .sessionRecruitmentId(20L)
+                .band(Band.builder()
+                        .id(3L)
+                        .owner(User.builder().id(2L).build())
+                        .name("밴드")
+                        .build())
+                .recruitmentTitle("기타 모집")
+                .deadlineAt(LocalDateTime.now().plusDays(1))
+                .build();
     }
 }

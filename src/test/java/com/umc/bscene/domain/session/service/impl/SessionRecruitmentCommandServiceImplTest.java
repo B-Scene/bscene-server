@@ -172,6 +172,27 @@ class SessionRecruitmentCommandServiceImplTest {
     }
 
     @Test
+    @DisplayName("모집 공고 수정 시 과거 마감일을 설정할 수 없다")
+    void updateRecruitmentFailsWhenDeadlineIsPast() {
+        SessionRecruitment recruitment = SessionRecruitment.builder()
+                .sessionRecruitmentId(30L)
+                .band(band(USER_ID))
+                .build();
+        when(recruitmentRepository
+                .findBySessionRecruitmentIdAndDeletedAtIsNull(30L))
+                .thenReturn(Optional.of(recruitment));
+        when(updateRequest.getDeadlineAt())
+                .thenReturn(LocalDateTime.now().minusSeconds(1));
+
+        assertThatThrownBy(() -> service.updateSessionRecruitment(
+                USER_ID, 30L, updateRequest
+        ))
+                .isInstanceOf(SessionException.class)
+                .extracting("baseResponseCode")
+                .isEqualTo(SessionErrorCode.INVALID_SESSION_RECRUITMENT_DEADLINE);
+    }
+
+    @Test
     @DisplayName("밴드 소유자는 모집 공고를 소프트 삭제할 수 있다")
     void deleteRecruitmentSuccess() {
         SessionRecruitment recruitment = SessionRecruitment.builder()
