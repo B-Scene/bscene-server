@@ -21,6 +21,7 @@ public enum SessionErrorCode implements BaseResponseCode {
     INVALID_SESSION_RECRUITMENT_FILTER("SESSION400_6", BAD_REQUEST, "유효하지 않은 세션 모집 공고 필터값입니다."),
     FIRST_SESSION_APPLICATION_MUST_BE_DEFAULT("SESSION400_7", BAD_REQUEST, "첫 지원서는 기본 지원서로 생성해야 합니다."),
     SESSION_RECRUITMENT_APPLICATION_CLOSED("SESSION400_8", BAD_REQUEST, "지원이 마감된 공고입니다."),
+    DEFAULT_SESSION_APPLICATION_PURPOSE_IMMUTABLE("SESSION400_9", BAD_REQUEST, "기본 지원서의 용도는 변경할 수 없습니다."),
     BAND_PERMISSION_DENIED("SESSION403_1", FORBIDDEN, "밴드 오너만 세션 모집 공고를 등록, 수정, 삭제할 수 있습니다."),
     SELF_RECRUITMENT_APPLICATION_NOT_ALLOWED("SESSION403_2", FORBIDDEN, "본인이 만든 공고에는 지원할 수 없습니다."),
     SELF_APPLICATION_DECISION_NOT_ALLOWED("SESSION403_3", FORBIDDEN, "본인의 지원 건은 본인이 수락하거나 거절할 수 없습니다."),
