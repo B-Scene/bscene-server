@@ -74,4 +74,14 @@ class ChatWebSocketTicketServiceTest {
 
         assertNull(ticketService.consume("valid-ticket"));
     }
+
+    @SuppressWarnings({"unchecked", "rawtypes"})
+    @Test
+    void rejectsExpiredOrAlreadyConsumedTicket() {
+        when(redisTemplate.execute(
+                any(RedisScript.class), anyList(), any(Object[].class)))
+                .thenReturn(null);
+
+        assertNull(ticketService.consume("expired-ticket"));
+    }
 }

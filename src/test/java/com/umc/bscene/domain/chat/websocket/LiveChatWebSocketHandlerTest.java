@@ -15,6 +15,7 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.web.socket.TextMessage;
+import org.springframework.web.socket.CloseStatus;
 import org.springframework.web.socket.WebSocketSession;
 
 import java.util.Map;
@@ -101,6 +102,43 @@ class LiveChatWebSocketHandlerTest {
         JsonNode frame = captureSessionFrame();
         assertEquals("system.error", frame.get("type").asText());
         assertEquals("LIVE400_6", frame.get("data").get("code").asText());
+    }
+
+    @Test
+    void respondsWithPongToPing() throws Exception {
+        handler.handleTextMessage(session, new TextMessage("""
+                {"type":"ping","data":{}}
+                """));
+
+        JsonNode frame = captureSessionFrame();
+        assertEquals("pong", frame.get("type").asText());
+    }
+
+    @Test
+    void rejectsMalformedJson() throws Exception {
+        handler.handleTextMessage(session, new TextMessage("{invalid-json"));
+
+        JsonNode frame = captureSessionFrame();
+        assertEquals("system.error", frame.get("type").asText());
+        assertEquals("LIVE400_5", frame.get("data").get("code").asText());
+    }
+
+    @Test
+    void rejectsUnsupportedFrameType() throws Exception {
+        handler.handleTextMessage(session, new TextMessage("""
+                {"type":"unknown","data":{}}
+                """));
+
+        JsonNode frame = captureSessionFrame();
+        assertEquals("system.error", frame.get("type").asText());
+        assertEquals("LIVE400_8", frame.get("data").get("code").asText());
+    }
+
+    @Test
+    void unregistersSessionAfterConnectionClosed() {
+        handler.afterConnectionClosed(session, CloseStatus.NORMAL);
+
+        verify(sessionRegistry).unregister(LIVE_ID, SESSION_ID);
     }
 
     private JsonNode captureSessionFrame() throws Exception {
