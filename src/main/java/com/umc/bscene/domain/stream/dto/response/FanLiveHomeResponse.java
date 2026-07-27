@@ -24,7 +24,7 @@ public record FanLiveHomeResponse(
     }
 
     public record ReplayItem(
-            Long replayId,
+            Long liveId,
             String title,
             String bandName,
             Long viewCount
