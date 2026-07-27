@@ -338,6 +338,7 @@ public class StreamServiceImpl implements StreamService {
 
                     return new FanLiveHomeResponse.ReplayItem(
                             r.getAudioStream().getId(),
+                            r.getAudioStream().getThumbnailImageUrl(),
                             r.getAudioStream().getTitle(),
                             band != null ? band.bandName() : "",
                             r.getViewCount()
