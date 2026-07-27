@@ -1,9 +1,21 @@
 package com.umc.bscene.domain.stream.controller;
 
+import com.umc.bscene.domain.stream.dto.request.CoHostInvitationDecisionRequest;
 import com.umc.bscene.domain.stream.dto.request.ReportUserRequest;
 import com.umc.bscene.domain.stream.dto.request.ReservationPatchRequest;
 import com.umc.bscene.domain.stream.dto.request.StreamCreateRequest;
-import com.umc.bscene.domain.stream.dto.response.*;
+import com.umc.bscene.domain.stream.dto.response.LiveAlarmToggleResponse;
+import com.umc.bscene.domain.stream.dto.response.LiveHomeResponse;
+import com.umc.bscene.domain.stream.dto.response.LiveMembersResponse;
+import com.umc.bscene.domain.stream.dto.response.LiveStreamResponse;
+import com.umc.bscene.domain.stream.dto.response.ReplayResponse;
+import com.umc.bscene.domain.stream.dto.response.ReportUserResponse;
+import com.umc.bscene.domain.stream.dto.response.ReservationEditResponse;
+import com.umc.bscene.domain.stream.dto.response.StreamCreateResponse;
+import com.umc.bscene.domain.stream.dto.response.StreamReplayResponse;
+import com.umc.bscene.domain.stream.dto.response.StreamRoomResponse;
+import com.umc.bscene.domain.stream.dto.response.StreamSummaryResponse;
+import com.umc.bscene.domain.stream.dto.response.UpcomingLiveResponse;
 import com.umc.bscene.domain.stream.enums.ReplaySort;
 import com.umc.bscene.domain.stream.enums.code.success.StreamSuccessCode;
 import com.umc.bscene.domain.stream.service.StreamReplayService;
@@ -21,7 +33,15 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.validation.annotation.Validated;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 @RestController
@@ -264,6 +284,28 @@ public class StreamController {
                 .body(new SuccessResponse<>(
                         new ReportUserResponse(request.targetUserId()
                         ), StreamSuccessCode.LIVE_REPORT_SUCCESS));
+    }
+
+    @PatchMapping("/{liveId}/co-host-invitation")
+    public ResponseEntity<SuccessResponse<Void>> decideCoHostInvitation(
+            @AuthenticationPrincipal AuthMember authMember,
+            @PathVariable Long liveId,
+            @Valid @RequestBody CoHostInvitationDecisionRequest request
+    ) {
+        streamService.decideCoHostInvitation(
+                authMember.getUser().getId(),
+                liveId,
+                request.isAccepted()
+        );
+
+        SuccessResponse<Void> body = new SuccessResponse<>(
+                null,
+                StreamSuccessCode.CO_HOST_INVITATION_DECISION_SUCCESS
+        );
+
+        return ResponseEntity
+                .status(HttpStatus.OK)
+                .body(body);
     }
 
     @GetMapping("/{liveId}/reservation")
