@@ -91,10 +91,12 @@ order by bm.id ASC
         JOIN FETCH bm.bandMemberProfile
         WHERE bm.band.id = :bandId
           AND bm.status = :status
+          AND bm.memberType = :memberType
     """)
-    List<BandMember> findWithUserAndProfileByBand_IdAndStatus(
+    List<BandMember> findWithUserAndProfileByBand_IdAndStatusAndMemberType(
             @Param("bandId") Long bandId,
-            @Param("status") BandMemberStatus status
+            @Param("status") BandMemberStatus status,
+            @Param("memberType") BandMemberType memberType
     );
 
     // 라이브 방 멤버 프로필 조회용 - 라이브 생성 시점에 확정된 밴드 기준으로 멤버 프로필까지 한 번에 조회

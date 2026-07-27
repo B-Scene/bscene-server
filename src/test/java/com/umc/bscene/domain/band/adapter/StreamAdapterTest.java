@@ -6,6 +6,7 @@ import com.umc.bscene.domain.band.entity.Band;
 import com.umc.bscene.domain.band.entity.BandMember;
 import com.umc.bscene.domain.band.entity.BandMemberProfile;
 import com.umc.bscene.domain.band.enums.BandMemberStatus;
+import com.umc.bscene.domain.band.enums.BandMemberType;
 import com.umc.bscene.domain.band.repository.BandMemberRepository;
 import com.umc.bscene.domain.band.repository.BandRepository;
 import com.umc.bscene.domain.session.enums.Part;
@@ -202,7 +203,11 @@ class StreamAdapterTest {
             Band band = band(BAND_ID, "밴드A", "https://cdn.test/a.jpg");
             BandMemberProfile profile = profile(11L, "닉A", Part.GUITAR);
             BandMember bandMember = member(21L, band, profile, StreamFixtures.bandUser(100L), BandMemberStatus.ACCEPTED);
-            when(bandMemberRepository.findWithUserAndProfileByBand_IdAndStatus(BAND_ID, BandMemberStatus.ACCEPTED))
+            when(bandMemberRepository.findWithUserAndProfileByBand_IdAndStatusAndMemberType(
+                            BAND_ID,
+                            BandMemberStatus.ACCEPTED,
+                            BandMemberType.MEMBER
+                    ))
                     .thenReturn(List.of(bandMember));
 
             List<CoHostCandidateInfo> result = adapter.getCoHostCandidatesByBandId(BAND_ID);
@@ -215,7 +220,11 @@ class StreamAdapterTest {
         @Test
         @DisplayName("정회원이 없으면 빈 리스트를 반환한다")
         void returnsEmptyWhenNoMembers() {
-            when(bandMemberRepository.findWithUserAndProfileByBand_IdAndStatus(BAND_ID, BandMemberStatus.ACCEPTED))
+            when(bandMemberRepository.findWithUserAndProfileByBand_IdAndStatusAndMemberType(
+                    BAND_ID,
+                    BandMemberStatus.ACCEPTED,
+                    BandMemberType.MEMBER
+            ))
                     .thenReturn(List.of());
 
             assertThat(adapter.getCoHostCandidatesByBandId(BAND_ID)).isEmpty();
