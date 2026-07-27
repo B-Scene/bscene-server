@@ -1139,7 +1139,7 @@ public class StreamServiceImpl implements StreamService {
                 .toList();
     }
 
-    private void replaceCoHosts(AudioStream stream, List<Long> coHostUserIds) {
+    private Set<Long> replaceCoHosts(AudioStream stream, List<Long> coHostUserIds) {
 
         Set<Long> requested = new HashSet<>(coHostUserIds);
         List<StreamMember> currentRows = findCoHostRows(stream);
@@ -1178,8 +1178,9 @@ public class StreamServiceImpl implements StreamService {
                 .toList();
         streamMemberRepository.deleteAll(toDelete);
 
-        if (toAdd.isEmpty())
-            return;
+        if (toAdd.isEmpty()) {
+            return Set.of();
+        }
 
         // 재초대 시 같은 (user, stream) 키의 INSERT가 DELETE보다 먼저 flush되면 unique 제약에 걸리므로 삭제를 먼저 반영
         if (!toDelete.isEmpty())
@@ -1206,5 +1207,7 @@ public class StreamServiceImpl implements StreamService {
             // 동시 PATCH가 같은 공동 진행자를 먼저 삽입한 경우 (uk_stream_member_user_stream)
             throw new StreamException(StreamErrorCode.CO_HOST_CONFLICT);
         }
+
+        return Set.copyOf(toAdd);
     }
 }
