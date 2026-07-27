@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>replay test</title>
+</head>
+<body>
+<video id="player" controls playsinline style="width:600px;height:60px"></video>
+
+<script src="https://cdn.jsdelivr.net/npm/hls.js@1"></script>
+<script>
+    // FIXME: 액세스 토큰 하드코딩
+    const TOKEN = "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiI3Iiwicm9sZSI6IlJPTEVfRkFOIiwidHlwZSI6ImFjY2VzcyIsImlhdCI6MTc4NTE1NzQyOCwiZXhwIjoxNzg1MTYxMDI4fQ.l-jLF9sHXxMPhjRy7MeNyB9Z5KfkgfoFj2OkvIKFMPM";
+    const SRC = "https://api.bscene.app/api/lives/45/replay/playlist";
+
+    const video = document.getElementById("player");
+
+    if (Hls.isSupported()) {
+        const hls = new Hls({
+            xhrSetup: (xhr, url) => {
+                // 매니페스트(/api/) 요청에만 헤더 부착.
+                // 세그먼트는 presigned S3 URL이라 Authorization 헤더를 붙이면 서명 충돌로 S3가 거부함
+                if (url.includes("/api/"))
+                    xhr.setRequestHeader("Authorization", "Bearer " + TOKEN);
+            },
+        });
+        hls.loadSource(SRC);
+        hls.attachMedia(video);
+        hls.on(Hls.Events.ERROR, (event, data) => {
+            console.log("hls error:", data.type, data.details, data.fatal ? "(fatal)" : "");
+        });
+    } else {
+        console.log("hls.js 미지원 브라우저 (iOS Safari 등) — MSE가 없어 이 테스트 페이지로는 확인 불가");
+    }
+
+    video.addEventListener("error", () => console.log("MediaError code:", video.error?.code));
+</script>
+</body>
+</html>
