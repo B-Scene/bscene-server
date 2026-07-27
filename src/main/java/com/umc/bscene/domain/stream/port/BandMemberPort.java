@@ -69,4 +69,6 @@ public interface BandMemberPort {
      * @return ACCEPTED 상태인 밴드 구성원 사용자 ID 목록
      */
     List<Long> getAcceptedMemberUserIds(Long bandId);
+
+    Optional<String> getBandMemberNickname(Long bandId, Long userId);
 }

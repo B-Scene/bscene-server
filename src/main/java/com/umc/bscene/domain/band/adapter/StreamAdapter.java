@@ -140,4 +140,13 @@ public class StreamAdapter implements BandMemberPort {
                 .distinct()
                 .toList();
     }
+
+    @Override
+    public Optional<String> getBandMemberNickname(Long bandId, Long userId) {
+        return bandMemberRepository.findNicknameByBandIdAndUserIdAndStatus(
+                bandId,
+                userId,
+                BandMemberStatus.ACCEPTED
+        );
+    }
 }

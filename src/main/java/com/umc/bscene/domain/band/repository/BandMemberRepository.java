@@ -192,4 +192,18 @@ where bm.user.id = :userId
             @Param("bandId") Long bandId,
             @Param("status") BandMemberStatus status
     );
+
+    @Query("""
+    SELECT bmp.nickname
+    FROM BandMember bm
+    JOIN bm.bandMemberProfile bmp
+    WHERE bm.band.id = :bandId
+      AND bm.user.id = :userId
+      AND bm.status = :status
+""")
+    Optional<String> findNicknameByBandIdAndUserIdAndStatus(
+            @Param("bandId") Long bandId,
+            @Param("userId") Long userId,
+            @Param("status") BandMemberStatus status
+    );
 }
