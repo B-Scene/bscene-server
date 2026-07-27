@@ -228,7 +228,7 @@ public class StreamReplayServiceImpl implements StreamReplayService {
                             BandInfoForGetLiveResponse.BandInfo band = bandInfoMap.get(r.getAudioStream().getBroadcasterId());
 
                             return new ReplayResponse(
-                                    r.getId(),
+                                    r.getAudioStream().getId(),
                                     r.getAudioStream().getTitle(),
                                     band != null ? band.bandName() : "",
                                     r.getViewCount()
