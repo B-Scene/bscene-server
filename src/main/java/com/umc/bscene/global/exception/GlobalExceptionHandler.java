@@ -1,20 +1,20 @@
 package com.umc.bscene.global.exception;
 
+import com.umc.bscene.domain.auth.exception.verification.PhoneVerificationException;
 import com.umc.bscene.global.response.ErrorResponse;
-import com.umc.bscene.global.response.code.BaseResponseCode;
 import com.umc.bscene.global.response.code.GeneralErrorCode;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
-import org.springframework.web.context.request.async.AsyncRequestNotUsableException;
 import org.springframework.validation.BindException;
 import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.context.request.async.AsyncRequestNotUsableException;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import org.springframework.web.multipart.support.MissingServletRequestPartException;
 import org.springframework.web.servlet.NoHandlerFoundException;
@@ -147,6 +147,29 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(AsyncRequestNotUsableException.class)
     public void handleAsyncRequestNotUsableException(AsyncRequestNotUsableException e) {
         log.debug("AsyncRequestNotUsableException : 클라이언트 연결 종료 - {}", e.getMessage());
+    }
+
+    /**
+     * 휴대폰 인증 과정에서 발생하는 예상 가능한 예외를 처리한다.
+     * SMS 발송 실패의 구체적인 원인은 SmsSender에서 이미 WARN/ERROR로 기록하므로,
+     * 여기서는 중복 장애 알림을 방지하기 위해 INFO로 기록한다.
+     */
+    @ExceptionHandler(PhoneVerificationException.class)
+    public ResponseEntity<ErrorResponse<?>> handlePhoneVerificationException(
+            PhoneVerificationException e
+    ) {
+        log.info(
+                "PhoneVerificationException : code={}, message={}",
+                e.getBaseResponseCode().getCode(),
+                e.getBaseResponseCode().getMessage()
+        );
+
+        ErrorResponse<?> errorResponse =
+                ErrorResponse.from(e.getBaseResponseCode());
+
+        return ResponseEntity
+                .status(errorResponse.getStatus())
+                .body(errorResponse);
     }
 
     /**
