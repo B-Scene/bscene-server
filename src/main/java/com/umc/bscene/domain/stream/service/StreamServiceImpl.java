@@ -206,9 +206,16 @@ public class StreamServiceImpl implements StreamService {
                             .build()
             );
 
-            if (request.coHost() != null) {
-                replaceCoHosts(save, request.coHost());
-            }
+            Set<Long> newlyInvitedUserIds = request.coHost() == null
+                    ? Set.of()
+                    : replaceCoHosts(save, request.coHost());
+
+            notifyCoHostInvitationsAfterCommit(
+                    save.getBandId(),
+                    save.getTitle(),
+                    save.getId(),
+                    newlyInvitedUserIds
+            );
 
             // 예약 라이브 생성 시 알림 수신에 동의한 팔로워와 밴드 구성원에게 알림 발송
             if(save.getScheduledAt() != null)
@@ -740,6 +747,43 @@ public class StreamServiceImpl implements StreamService {
         );
     }
 
+    private void notifyCoHostInvitationsAfterCommit(
+            Long bandId,
+            String liveTitle,
+            Long liveId,
+            Set<Long> receiverIds
+    ) {
+        if (receiverIds.isEmpty()) {
+            return;
+        }
+
+        Optional<BandSummaryResponse> bandSummary =
+                bandMemberPort.getBandSummaryByBandId(bandId);
+
+        if (bandSummary.isEmpty()) {
+            return;
+        }
+
+        StreamPushMessage message = StreamPushMessage.coHostInvited(
+                bandSummary.get().bandName(),
+                liveTitle,
+                liveId
+        );
+
+        List<Long> receivers = receiverIds.stream()
+                .distinct()
+                .toList();
+
+        TransactionSynchronizationManager.registerSynchronization(
+                new TransactionSynchronization() {
+                    @Override
+                    public void afterCommit() {
+                        notifyPort.notify(receivers, message);
+                    }
+                }
+        );
+    }
+
     @Override
     @Transactional
     public void syncLiveState(Set<String> readyPaths) {
@@ -1035,8 +1079,18 @@ public class StreamServiceImpl implements StreamService {
             throw new StreamException(StreamErrorCode.AUDIO_STREAM_NOT_SCHEDULED);
 
         // coHost 필드가 전달된 경우에만 공동 진행 목록을 변경
-        if (request.coHost() != null)
-            replaceCoHosts(stream, request.coHost());
+        if (request.coHost() != null) {
+            Set<Long> newlyInvitedUserIds = replaceCoHosts(stream, request.coHost());
+
+            String liveTitle = request.title() != null ? request.title() : stream.getTitle();
+
+            notifyCoHostInvitationsAfterCommit(
+                    stream.getBandId(),
+                    liveTitle,
+                    stream.getId(),
+                    newlyInvitedUserIds
+            );
+        }
     }
 
     @Override
