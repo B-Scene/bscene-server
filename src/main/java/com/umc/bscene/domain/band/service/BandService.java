@@ -141,6 +141,13 @@ public class BandService {
             throw new BandException(BandErrorCode.DUPLICATE_BAND_NAME);
         }
 
+        if (Boolean.TRUE.equals(request.deleteProfileImage())
+                && request.profileImageUrl() != null) {
+            throw new BandException(
+                    BandErrorCode.INVALID_PROFILE_IMAGE_UPDATE
+            );
+        }
+
         band.update(
                 request.name(),
                 request.genre(),
@@ -148,6 +155,10 @@ public class BandService {
                 request.profileImageUrl(),
                 request.description()
         );
+
+        if (Boolean.TRUE.equals(request.deleteProfileImage())) {
+            band.deleteProfileImage();
+        }
 
         // 검색 색인 동기화 (밴드명·장르·지역 변경 시 소속 공연·영상 문서까지 연쇄 재색인됨)
         eventPublisher.publishEvent(new BandChangedEvent(bandId));
