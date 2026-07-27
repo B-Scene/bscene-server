@@ -8,6 +8,7 @@ public record BandUpdateRequest(
         Genre genre,
         Region region,
         String profileImageUrl,
+        Boolean deleteProfileImage,
         String description
 ) {
 }
