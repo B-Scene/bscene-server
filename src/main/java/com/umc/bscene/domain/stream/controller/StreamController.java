@@ -119,23 +119,23 @@ public class StreamController {
                 .body(SuccessResponse.of(response, StreamSuccessCode.LIVE_SUMMARY_SUCCESS));
     }
 
-    @PostMapping("/{liveId}/replay")
+    @PostMapping("/{replayId}/replay")
     public ResponseEntity<SuccessResponse<Void>> requestReplayUpload(
             @AuthenticationPrincipal AuthMember authMember,
-            @PathVariable Long liveId
+            @PathVariable Long replayId
     ) {
-        streamReplayService.requestReplayUpload(authMember.getUser().getId(), liveId);
+        streamReplayService.requestReplayUpload(authMember.getUser().getId(), replayId);
         return ResponseEntity
                 .status(HttpStatus.ACCEPTED)
                 .body(new SuccessResponse<>(null, StreamSuccessCode.REPLAY_SAVE_REQUEST_SUCCESS));
     }
 
-    @GetMapping("/{liveId}/replay")
+    @GetMapping("/{replayId}/replay")
     public ResponseEntity<SuccessResponse<StreamReplayResponse>> watchReplay(
             @AuthenticationPrincipal AuthMember authMember,
-            @PathVariable Long liveId
+            @PathVariable Long replayId
     ) {
-        StreamReplayResponse response = streamReplayService.watchReplay(liveId);
+        StreamReplayResponse response = streamReplayService.watchReplay(replayId);
 
         return ResponseEntity
                 .status(HttpStatus.OK)
@@ -146,12 +146,12 @@ public class StreamController {
      * 다시보기 HLS 매니페스트. watchReplay 응답의 playbackUrl이 이 엔드포인트를 가리킨다.
      * 플레이어(hls.js 등)가 직접 파싱하는 리소스라 SuccessResponse로 감싸지 않는다.
      */
-    @GetMapping(value = "/{liveId}/replay/playlist", produces = "application/vnd.apple.mpegurl")
+    @GetMapping(value = "/{replayId}/replay/playlist", produces = "application/vnd.apple.mpegurl")
     public String getReplayPlaylist(
             @AuthenticationPrincipal AuthMember authMember,
-            @PathVariable Long liveId
+            @PathVariable Long replayId
     ) {
-        return streamReplayService.buildReplayPlaylist(liveId);
+        return streamReplayService.buildReplayPlaylist(replayId);
     }
 
     // 현재 라이브 중인 전체 목록 (모든 유저 동일 응답 → 서비스 계층에서 @Cacheable 캐싱)
