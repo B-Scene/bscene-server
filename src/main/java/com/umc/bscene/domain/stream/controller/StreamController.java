@@ -129,9 +129,9 @@ public class StreamController {
     @GetMapping(value = "/{replayId}/replay/playlist", produces = "application/vnd.apple.mpegurl")
     public String getReplayPlaylist(
             @AuthenticationPrincipal AuthMember authMember,
-            @PathVariable Long liveId
+            @PathVariable Long replayId
     ) {
-        return streamReplayService.buildReplayPlaylist(liveId);
+        return streamReplayService.buildReplayPlaylist(replayId);
     }
 
     // 현재 라이브 중인 전체 목록 (모든 유저 동일 응답 → 서비스 계층에서 @Cacheable 캐싱)
