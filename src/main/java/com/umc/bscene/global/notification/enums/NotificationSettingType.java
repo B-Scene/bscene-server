@@ -27,7 +27,8 @@ public enum NotificationSettingType {
 
     // 밴드 모드 라이브 알림
     BAND_SCHEDULED_LIVE_REMINDER(NotificationSettingMode.BAND, true),
-    BAND_LIVE_START_STATUS(NotificationSettingMode.BAND, true);
+    BAND_LIVE_START_STATUS(NotificationSettingMode.BAND, true),
+    BAND_LIVE_CO_HOST_INVITATION(NotificationSettingMode.BAND, true);
 
     private final NotificationSettingMode mode;
     private final boolean defaultEnabled;

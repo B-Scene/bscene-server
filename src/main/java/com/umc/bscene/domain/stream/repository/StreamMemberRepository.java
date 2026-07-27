@@ -4,10 +4,12 @@ import com.umc.bscene.domain.stream.entity.mapper.StreamMember;
 import com.umc.bscene.domain.stream.enums.StreamMemberStatus;
 import com.umc.bscene.domain.stream.enums.StreamStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import java.util.List;
+import java.util.Optional;
 
 public interface StreamMemberRepository extends JpaRepository<StreamMember, Long> {
 
@@ -27,5 +29,32 @@ where sm.user.id = :userId
             @Param("userId") Long userId,
             @Param("memberStatus") StreamMemberStatus memberStatus,
             @Param("streamStatus") StreamStatus streamStatus
+    );
+
+    // 현재 사용자의 공동 진행자 초대와 라이브 정보를 함께 조회
+    @Query("""
+    SELECT sm
+    FROM StreamMember sm
+    JOIN FETCH sm.audioStream
+    WHERE sm.audioStream.id = :liveId
+      AND sm.user.id = :userId
+""")
+    Optional<StreamMember> findWithStreamByLiveIdAndUserId(
+            @Param("liveId") Long liveId,
+            @Param("userId") Long userId
+    );
+
+    // 현재 상태가 expected일 때만 원자적으로 상태 변경
+    @Modifying
+    @Query("""
+    UPDATE StreamMember sm
+    SET sm.status = :target
+    WHERE sm.id = :streamMemberId
+      AND sm.status = :expected
+""")
+    int transitionStatus(
+            @Param("streamMemberId") Long streamMemberId,
+            @Param("expected") StreamMemberStatus expected,
+            @Param("target") StreamMemberStatus target
     );
 }

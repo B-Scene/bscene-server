@@ -4,6 +4,7 @@ import com.umc.bscene.domain.band.entity.Band;
 import com.umc.bscene.domain.band.entity.BandMember;
 import com.umc.bscene.domain.band.entity.BandMemberProfile;
 import com.umc.bscene.domain.band.enums.BandMemberStatus;
+import com.umc.bscene.domain.band.enums.BandMemberType;
 import com.umc.bscene.domain.band.repository.BandMemberRepository;
 import com.umc.bscene.domain.band.repository.BandRepository;
 import com.umc.bscene.domain.stream.dto.CoHostCandidateInfo;
@@ -55,6 +56,7 @@ public class StreamAdapter implements BandMemberPort {
     @Override
     public Optional<BandSummaryResponse> getBandSummaryByBroadcasterId(Long broadcasterId) {
         return findActiveBandMembership(broadcasterId)
+                .filter(BandMember::isMember)
                 .map(member -> {
                     Band band = member.getBand();
                     return new BandSummaryResponse(band.getId(), band.getName());
@@ -71,7 +73,12 @@ public class StreamAdapter implements BandMemberPort {
     public List<CoHostCandidateInfo> getCoHostCandidatesByBandId(Long bandId) {
         // 라이브가 확정한 밴드 기준 조회. 멤버십에 연결된 프로필로 조회하므로 멤버가 타 밴드 프로필로 전환해도 목록 유지
         return bandMemberRepository
-                .findWithUserAndProfileByBand_IdAndStatus(bandId, BandMemberStatus.ACCEPTED).stream()
+                .findWithUserAndProfileByBand_IdAndStatusAndMemberType(
+                        bandId,
+                        BandMemberStatus.ACCEPTED,
+                        BandMemberType.MEMBER
+                )
+                .stream()
                 .map(bm -> new CoHostCandidateInfo(
                         bm.getUser().getId(),
                         bm.getId(),
@@ -86,6 +93,7 @@ public class StreamAdapter implements BandMemberPort {
     @Override
     public boolean isActiveRegularMemberOfBand(Long bandId, Long userId) {
         return findActiveBandMembership(userId)
+                .filter(BandMember::isMember)
                 .map(member -> member.getBand().getId().equals(bandId))
                 .orElse(false);
     }
@@ -139,5 +147,14 @@ public class StreamAdapter implements BandMemberPort {
                 .map(member -> member.getUser().getId())
                 .distinct()
                 .toList();
+    }
+
+    @Override
+    public Optional<String> getBandMemberNickname(Long bandId, Long userId) {
+        return bandMemberRepository.findNicknameByBandIdAndUserIdAndStatus(
+                bandId,
+                userId,
+                BandMemberStatus.ACCEPTED
+        );
     }
 }

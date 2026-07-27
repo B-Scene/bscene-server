@@ -2,6 +2,7 @@ package com.umc.bscene.domain.stream.dto.request;
 
 import jakarta.validation.constraints.Future;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import org.hibernate.validator.constraints.Length;
 
@@ -22,6 +23,9 @@ public record StreamCreateRequest(
 
         @Future(message = "현재 시각과 일치하거나, 과거인 시간은 예약 시각으로 설정할 수 없습니다.")
         LocalDateTime scheduledAt,
-        List<Long> coHost
+
+        // 공동 진행자로 초대할 사용자 ID 목록
+        @Size(max = 10, message = "coHost는 최대 10명까지 지정할 수 있습니다.")
+        List<@NotNull(message = "coHost 원소는 null일 수 없습니다.") Long> coHost
 ) {
 }

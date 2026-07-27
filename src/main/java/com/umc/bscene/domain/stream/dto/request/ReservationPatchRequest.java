@@ -27,6 +27,7 @@ public record ReservationPatchRequest(
         LocalDateTime scheduledAt,
 
         // null이면 변경 없음, 빈 리스트면 공동 진행 전체 해제
+        // 공동 진행자로 초대할 사용자 ID 목록
         @Size(max = 10, message = "coHost는 최대 10명까지 지정할 수 있습니다.")
         List<@NotNull(message = "coHost 원소는 null일 수 없습니다.") Long> coHost
 ) {
