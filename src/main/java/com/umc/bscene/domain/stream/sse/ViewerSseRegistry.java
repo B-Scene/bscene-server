@@ -42,9 +42,14 @@ public class ViewerSseRegistry {
         // 새 연결을 먼저 방 구조에 등록한다.
         // (기존 연결을 끊기 전에 새 연결을 넣어야, 같은 방 재접속 시 기존 emitter의
         //  complete -> removeEmitter가 presence를 비워 onLastGone을 잘못 호출하는 것을 막는다.)
-        rooms.computeIfAbsent(liveId, k -> new ConcurrentHashMap<>())
-             .computeIfAbsent(userId, k -> new Presence(counted))
-             .emitters.add(emitter);
+        // 방 맵 획득과 emitter 추가는 rooms의 compute 락 안에서 원자적으로 수행한다.
+        // (removeEmitter가 빈 방을 제거하는 사이에 끼어들면 분리된 맵에 등록되는 경합 방지)
+        rooms.compute(liveId, (id, users) -> {
+            if (users == null) users = new ConcurrentHashMap<>();
+            users.computeIfAbsent(userId, k -> new Presence(counted))
+                 .emitters.add(emitter);
+            return users;
+        });
 
         Runnable cleanup = () -> removeEmitter(liveId, userId, emitter, onLastGone);
         emitter.onCompletion(cleanup);
@@ -91,17 +96,24 @@ public class ViewerSseRegistry {
         // (이미 새 연결이 replace 했다면 map의 값이 다르므로 지우지 않는다.)
         userLatest.remove(userId, emitter);
 
-        Map<Long, Presence> users = rooms.get(liveId);
-        if (users == null) return;
-        Presence presence = users.get(userId);
-        if (presence == null) return;
+        // 빈 방 판정과 방 제거를 rooms의 compute 락 안에서 원자적으로 수행한다. (null 반환 = 방 제거)
+        // register와 같은 락을 쓰므로, 마지막 유저 퇴장과 새 유저 입장이 겹쳐도 분리된 맵이 생기지 않는다.
+        boolean[] lastGone = {false};
+        rooms.computeIfPresent(liveId, (id, users) -> {
+            Presence presence = users.get(userId);
+            if (presence != null) {
+                presence.emitters.remove(emitter);
+                if (presence.emitters.isEmpty()) {
+                    users.remove(userId);
+                    lastGone[0] = true;
+                }
+            }
+            return users.isEmpty() ? null : users;
+        });
 
-        presence.emitters.remove(emitter);
-        if (presence.emitters.isEmpty()) {
-            users.remove(userId);
-            if (users.isEmpty()) rooms.remove(liveId);
-            onLastGone.run(); // 이 유저의 마지막 연결 → 프레젠스 제거 + 카운트 반영
-        }
+        // 이 유저의 마지막 연결 → 프레젠스 제거 + 카운트 반영.
+        // 콜백(ZREM + broadcast)이 rooms 락을 잡은 채 돌지 않도록 락 밖에서 실행한다.
+        if (lastGone[0]) onLastGone.run();
     }
 
     /** liveId 방의 모든 연결(송출자·보기 전용 포함)에 현재 카운트를 전송한다. */
