@@ -784,6 +784,37 @@ public class StreamServiceImpl implements StreamService {
         );
     }
 
+    private void notifyCoHostInvitationDecisionAfterCommit(
+            AudioStream stream,
+            Long coHostUserId,
+            String fallbackName,
+            boolean isAccepted
+    ) {
+        String coHostNickname = bandMemberPort
+                .getBandMemberNickname(stream.getBandId(), coHostUserId)
+                .orElse(fallbackName);
+
+        StreamPushMessage message =
+                StreamPushMessage.coHostInvitationDecided(
+                        coHostNickname,
+                        stream.getTitle(),
+                        isAccepted,
+                        stream.getId()
+                );
+
+        TransactionSynchronizationManager.registerSynchronization(
+                new TransactionSynchronization() {
+                    @Override
+                    public void afterCommit() {
+                        notifyPort.notify(
+                                List.of(stream.getBroadcasterId()),
+                                message
+                        );
+                    }
+                }
+        );
+    }
+
     @Override
     @Transactional
     public void syncLiveState(Set<String> readyPaths) {
@@ -1204,6 +1235,13 @@ public class StreamServiceImpl implements StreamService {
                     StreamErrorCode.CO_HOST_INVITATION_ALREADY_PROCESSED
             );
         }
+
+        notifyCoHostInvitationDecisionAfterCommit(
+                stream,
+                userId,
+                invitation.getUser().getName(),
+                isAccepted
+        );
     }
 
     private AudioStream getStream(Long liveId) {
