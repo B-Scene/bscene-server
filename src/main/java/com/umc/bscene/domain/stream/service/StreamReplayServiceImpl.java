@@ -229,6 +229,7 @@ public class StreamReplayServiceImpl implements StreamReplayService {
 
                             return new ReplayResponse(
                                     r.getAudioStream().getId(),
+                                    r.getAudioStream().getThumbnailImageUrl(),
                                     r.getAudioStream().getTitle(),
                                     band != null ? band.bandName() : "",
                                     r.getViewCount()
