@@ -231,7 +231,7 @@ class BandServiceTest {
     @Test
     void updateBandProfile_오너가_아니면_예외() {
         when(bandRepository.findById(BAND_ID)).thenReturn(Optional.of(band(BAND_ID, OWNER_ID)));
-        BandUpdateRequest request = new BandUpdateRequest("새이름", null, null, null, null);
+        BandUpdateRequest request = new BandUpdateRequest("새이름", null, null, null, false, null);
 
         BandException exception = assertThrows(BandException.class,
                 () -> service.updateBandProfile(999L, BAND_ID, request));
@@ -243,7 +243,7 @@ class BandServiceTest {
     void updateBandProfile_변경할_이름이_이미_존재하면_예외() {
         when(bandRepository.findById(BAND_ID)).thenReturn(Optional.of(band(BAND_ID, OWNER_ID)));
         when(bandRepository.existsByName("중복이름")).thenReturn(true);
-        BandUpdateRequest request = new BandUpdateRequest("중복이름", null, null, null, null);
+        BandUpdateRequest request = new BandUpdateRequest("중복이름", null, null, null, false, null);
 
         BandException exception = assertThrows(BandException.class,
                 () -> service.updateBandProfile(OWNER_ID, BAND_ID, request));
@@ -258,7 +258,7 @@ class BandServiceTest {
         when(followPort.countFollowersByBandId(BAND_ID)).thenReturn(0L);
         when(bandMemberRepository.countByBand_IdAndStatus(BAND_ID, BandMemberStatus.ACCEPTED)).thenReturn(0L);
         when(performancePort.countPerformancesByBandId(BAND_ID)).thenReturn(0L);
-        BandUpdateRequest request = new BandUpdateRequest(band.getName(), null, null, null, null);
+        BandUpdateRequest request = new BandUpdateRequest(band.getName(), null, null, null, false, null);
 
         service.updateBandProfile(OWNER_ID, BAND_ID, request);
 
