@@ -1042,6 +1042,7 @@ public class StreamServiceImpl implements StreamService {
         // 후보는 라이브 생성 시 확정된 밴드 기준으로 조회 (송출자의 현재 활성 밴드 아님)
         List<CoHostCandidateResponse> coHostCandidates = bandMemberPort.getCoHostCandidatesByBandId(stream.getBandId()).stream()
                 .map(info -> new CoHostCandidateResponse(
+                        info.userId(),
                         info.bandMemberId(),
                         info.bandMemberProfileId(),
                         info.profileImageUrl(),
