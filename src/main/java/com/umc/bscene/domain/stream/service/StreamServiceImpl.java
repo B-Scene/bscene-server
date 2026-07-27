@@ -1109,6 +1109,49 @@ public class StreamServiceImpl implements StreamService {
         });
     }
 
+    @Override
+    @Transactional
+    public void decideCoHostInvitation(Long userId, Long liveId, boolean isAccepted) {
+        StreamMember invitation = streamMemberRepository
+                .findWithStreamByLiveIdAndUserId(liveId, userId)
+                .orElseThrow(() -> new StreamException(
+                        StreamErrorCode.CO_HOST_INVITATION_NOT_FOUND
+                ));
+
+        AudioStream stream = invitation.getAudioStream();
+
+        // 송출자 자신의 ACCEPTED 행은 공동 진행자 초대가 아님
+        if (stream.getBroadcasterId().equals(userId)) {
+            throw new StreamException(
+                    StreamErrorCode.CO_HOST_INVITATION_NOT_FOUND
+            );
+        }
+
+        if (invitation.getStatus() != StreamMemberStatus.INVITED) {
+            throw new StreamException(
+                    StreamErrorCode.CO_HOST_INVITATION_ALREADY_PROCESSED
+            );
+        }
+
+        validateScheduled(stream);
+
+        StreamMemberStatus target = isAccepted
+                ? StreamMemberStatus.ACCEPTED
+                : StreamMemberStatus.REJECTED;
+
+        int updated = streamMemberRepository.transitionStatus(
+                invitation.getId(),
+                StreamMemberStatus.INVITED,
+                target
+        );
+
+        if (updated == 0) {
+            throw new StreamException(
+                    StreamErrorCode.CO_HOST_INVITATION_ALREADY_PROCESSED
+            );
+        }
+    }
+
     private AudioStream getStream(Long liveId) {
         return audioStreamRepository.findById(liveId)
                 .orElseThrow(() -> new StreamException(StreamErrorCode.AUDIO_STREAM_NOT_FOUND));
