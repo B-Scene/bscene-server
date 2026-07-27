@@ -206,6 +206,10 @@ public class StreamServiceImpl implements StreamService {
                             .build()
             );
 
+            if (request.coHost() != null) {
+                replaceCoHosts(save, request.coHost());
+            }
+
             // 예약 라이브 생성 시 알림 수신에 동의한 팔로워와 밴드 구성원에게 알림 발송
             if(save.getScheduledAt() != null)
                 notifyLiveRecipientsAfterCommit(save, false);
