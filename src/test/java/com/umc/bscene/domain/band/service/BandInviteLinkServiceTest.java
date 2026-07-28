@@ -2,6 +2,7 @@ package com.umc.bscene.domain.band.service;
 
 import com.umc.bscene.domain.auth.enums.onboarding.Genre;
 import com.umc.bscene.domain.auth.enums.onboarding.Region;
+import com.umc.bscene.domain.band.dto.response.BandInviteLinkDetailResponse;
 import com.umc.bscene.domain.band.dto.response.BandInviteLinkResponse;
 import com.umc.bscene.domain.band.entity.Band;
 import com.umc.bscene.domain.band.entity.BandInviteLink;
@@ -203,6 +204,77 @@ class BandInviteLinkServiceTest {
                 .save(any(BandInviteLink.class));
     }
 
+    // ---------- getInviteLink ----------
+
+    @Test
+    void getInviteLink_유효한_링크면_밴드와_초대정보를_반환한다() {
+        LocalDateTime expiresAt = LocalDateTime.now().plusDays(3);
+        BandInviteLink inviteLink = inviteLink(
+                "valid-token",
+                expiresAt,
+                BandMemberType.SESSION
+        );
+
+        when(bandInviteLinkRepository.findByToken("valid-token"))
+                .thenReturn(Optional.of(inviteLink));
+
+        BandInviteLinkDetailResponse response =
+                service.getInviteLink("valid-token");
+
+        assertThat(response.bandId()).isEqualTo(BAND_ID);
+        assertThat(response.bandName()).isEqualTo("밴드" + BAND_ID);
+        assertThat(response.bandProfileImageUrl())
+                .isEqualTo("https://example.com/band.jpg");
+        assertThat(response.genre()).isEqualTo(Genre.HARD_ROCK);
+        assertThat(response.region()).isEqualTo(Region.SEOUL);
+        assertThat(response.memberType())
+                .isEqualTo(BandMemberType.SESSION);
+        assertThat(response.expiresAt()).isEqualTo(expiresAt);
+
+        verify(bandInviteLinkRepository)
+                .findByToken("valid-token");
+    }
+
+    @Test
+    void getInviteLink_토큰이_존재하지_않으면_예외() {
+        when(bandInviteLinkRepository.findByToken("missing-token"))
+                .thenReturn(Optional.empty());
+
+        BandException exception = assertThrows(
+                BandException.class,
+                () -> service.getInviteLink("missing-token")
+        );
+
+        assertThat(exception.getBaseResponseCode())
+                .isEqualTo(BandErrorCode.BAND_INVITE_LINK_NOT_FOUND);
+
+        verifyNoInteractions(
+                bandRepository,
+                bandMemberRepository,
+                userRepository
+        );
+    }
+
+    @Test
+    void getInviteLink_링크가_만료됐으면_예외() {
+        BandInviteLink expiredLink = inviteLink(
+                "expired-token",
+                LocalDateTime.now().minusMinutes(1),
+                BandMemberType.MEMBER
+        );
+
+        when(bandInviteLinkRepository.findByToken("expired-token"))
+                .thenReturn(Optional.of(expiredLink));
+
+        BandException exception = assertThrows(
+                BandException.class,
+                () -> service.getInviteLink("expired-token")
+        );
+
+        assertThat(exception.getBaseResponseCode())
+                .isEqualTo(BandErrorCode.BAND_INVITE_LINK_EXPIRED);
+    }
+
     private User user(Long id) {
         return User.builder()
                 .id(id)
@@ -216,6 +288,7 @@ class BandInviteLinkServiceTest {
                 .name("밴드" + id)
                 .genre(Genre.HARD_ROCK)
                 .region(Region.SEOUL)
+                .profileImageUrl("https://example.com/band.jpg")
                 .build();
     }
 
