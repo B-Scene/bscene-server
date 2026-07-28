@@ -24,8 +24,8 @@ public record FanLiveHomeResponse(
     }
 
     public record ReplayItem(
-            Long replayId,
-            String thumbnailImageUrl,   // 원본 라이브(AudioStream)의 썸네일
+            Long liveId,
+            String thumbnailUrl,
             String title,
             String bandName,
             Long viewCount

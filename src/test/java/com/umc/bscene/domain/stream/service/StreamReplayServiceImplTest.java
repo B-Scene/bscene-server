@@ -664,8 +664,8 @@ class StreamReplayServiceImplTest {
 
             CursorPage<ReplayResponse> page = service.getAllReplays(null, 3, ReplaySort.LATEST);
 
-            assertThat(page.getItems()).extracting(ReplayResponse::replayId)
-                    .containsExactly(31L, 32L, 33L);
+            assertThat(page.getItems()).extracting(ReplayResponse::liveId)
+                    .containsExactly(1L, 2L, 3L);
             assertThat(page.getPageInfo().hasNext()).isTrue();
             assertThat(page.getPageInfo().nextCursor()).isEqualTo(33L);
 
@@ -853,7 +853,7 @@ class StreamReplayServiceImplTest {
 
             CursorPage<ReplayResponse> page = service.getFollowingReplays(10L, null, 2, ReplaySort.LATEST);
 
-            assertThat(page.getItems()).extracting(ReplayResponse::replayId).containsExactly(31L, 32L);
+            assertThat(page.getItems()).extracting(ReplayResponse::liveId).containsExactly(1L, 2L);
             assertThat(page.getItems()).extracting(ReplayResponse::durationSec).containsExactly(11, 22);
             assertThat(page.getPageInfo().hasNext()).isTrue();
             assertThat(page.getPageInfo().nextCursor()).isEqualTo(32L);
