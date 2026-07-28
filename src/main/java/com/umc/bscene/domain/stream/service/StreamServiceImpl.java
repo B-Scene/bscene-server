@@ -357,7 +357,7 @@ public class StreamServiceImpl implements StreamService {
                     BandInfoForGetLiveResponse.BandInfo band = replayBandMap.get(r.getAudioStream().getBroadcasterId());
 
                     return new FanLiveHomeResponse.ReplayItem(
-                            r.getId(),
+                            r.getAudioStream().getId(),
                             r.getAudioStream().getThumbnailImageUrl(),
                             r.getAudioStream().getTitle(),
                             band != null ? band.bandName() : "",
