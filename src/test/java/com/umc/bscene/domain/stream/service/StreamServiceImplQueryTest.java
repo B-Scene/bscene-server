@@ -603,8 +603,8 @@ class StreamServiceImplQueryTest {
                     new FanLiveHomeResponse.LiveNowItem(13L, "", "title-13", "", 7)
             );
             assertThat(fanHome.replays()).containsExactly(
-                    new FanLiveHomeResponse.ReplayItem(101L, "https://cdn.test/thumb-31.jpg", "title-31", "밴드41", 7L),
-                    new FanLiveHomeResponse.ReplayItem(102L, "https://cdn.test/thumb-32.jpg", "title-32", "", 0L)
+                    new FanLiveHomeResponse.ReplayItem(31L, "https://cdn.test/thumb-31.jpg", "title-31", "밴드41", 7L),
+                    new FanLiveHomeResponse.ReplayItem(32L, "https://cdn.test/thumb-32.jpg", "title-32", "", 0L)
             );
             assertThat(fanHome.scheduled()).containsExactly(
                     new FanLiveHomeResponse.ScheduledItem(51L, "title-51", "밴드61", "7.11. (토) 오후 9:00", false),
