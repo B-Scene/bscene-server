@@ -24,6 +24,7 @@ import org.junit.jupiter.params.provider.CsvSource;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
@@ -343,6 +344,47 @@ class AuthServiceTest {
         assertThat(savedTerms.get(1).getAgreedAt()).isNotNull();
 
         verify(phoneVerificationService).removeVerified(
+                PhoneVerificationPurpose.SIGNUP,
+                request.phone()
+        );
+    }
+
+    @Test
+    void signup_자격증명_저장_중_아이디가_충돌하면_중복_아이디_예외() {
+        SignupRequest request = signupRequest();
+        User savedUser = User.builder()
+                .id(100L)
+                .name(request.name())
+                .birthDate(LocalDate.of(1999, 1, 1))
+                .gender(Gender.MALE)
+                .phone(request.phone())
+                .build();
+
+        when(localCredentialRepository.existsByLoginId(request.loginId()))
+                .thenReturn(false);
+        when(userRepository.existsByPhone(request.phone()))
+                .thenReturn(false);
+        when(userRepository.save(any(User.class)))
+                .thenReturn(savedUser);
+        when(passwordEncoder.encode(request.password()))
+                .thenReturn("encoded-password");
+        when(localCredentialRepository.save(any(LocalCredential.class)))
+                .thenThrow(new DataIntegrityViolationException(
+                        "duplicate loginId"
+                ));
+
+        AuthException exception = assertThrows(
+                AuthException.class,
+                () -> service.signup(request)
+        );
+
+        assertThat(exception.getBaseResponseCode())
+                .isEqualTo(AuthErrorCode.DUPLICATE_LOGIN_ID);
+
+        verify(localCredentialRepository)
+                .save(any(LocalCredential.class));
+        verify(userTermsRepository, never()).saveAll(any());
+        verify(phoneVerificationService, never()).removeVerified(
                 PhoneVerificationPurpose.SIGNUP,
                 request.phone()
         );
