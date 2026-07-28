@@ -3,22 +3,31 @@ package com.umc.bscene.domain.auth.service.auth;
 import com.umc.bscene.domain.auth.dto.auth.request.SignupRequest;
 import com.umc.bscene.domain.auth.dto.auth.request.TermAgreementRequest;
 import com.umc.bscene.domain.auth.dto.auth.response.LoginIdCheckResponse;
+import com.umc.bscene.domain.auth.dto.auth.response.SignupResponse;
+import com.umc.bscene.domain.auth.entity.credential.LocalCredential;
+import com.umc.bscene.domain.auth.entity.term.UserTerms;
 import com.umc.bscene.domain.auth.enums.code.AuthErrorCode;
 import com.umc.bscene.domain.auth.enums.verification.PhoneVerificationPurpose;
 import com.umc.bscene.domain.auth.exception.auth.AuthException;
 import com.umc.bscene.domain.auth.repository.credential.LocalCredentialRepository;
 import com.umc.bscene.domain.auth.repository.term.UserTermsRepository;
 import com.umc.bscene.domain.auth.service.verification.PhoneVerificationService;
+import com.umc.bscene.domain.user.entity.User;
+import com.umc.bscene.domain.user.enums.Gender;
 import com.umc.bscene.domain.user.repository.UserRepository;
 import com.umc.bscene.global.security.util.JwtUtil;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
+import java.time.LocalDate;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -250,6 +259,93 @@ class AuthServiceTest {
         verify(userRepository, never()).save(any());
         verify(localCredentialRepository, never()).save(any());
         verify(userTermsRepository, never()).saveAll(any());
+    }
+
+    @ParameterizedTest(name = "성별 코드 {1}, 생년월일 {0}")
+    @CsvSource({
+            "990101, 1, MALE, 1999-01-01",
+            "990101, 2, FEMALE, 1999-01-01",
+            "010101, 3, MALE, 2001-01-01",
+            "010101, 4, FEMALE, 2001-01-01"
+    })
+    void signup_유효한_요청이면_회원가입_정보를_저장한다(
+            String birthDatePrefix,
+            String genderCode,
+            Gender expectedGender,
+            String expectedBirthDate
+    ) {
+        SignupRequest request = signupRequest(
+                "test@example.com",
+                "Password1!",
+                birthDatePrefix,
+                genderCode,
+                "01012345678"
+        );
+        User savedUser = User.builder()
+                .id(100L)
+                .name(request.name())
+                .birthDate(LocalDate.parse(expectedBirthDate))
+                .gender(expectedGender)
+                .phone(request.phone())
+                .build();
+
+        when(localCredentialRepository.existsByLoginId(request.loginId()))
+                .thenReturn(false);
+        when(userRepository.existsByPhone(request.phone()))
+                .thenReturn(false);
+        when(userRepository.save(any(User.class)))
+                .thenReturn(savedUser);
+        when(passwordEncoder.encode(request.password()))
+                .thenReturn("encoded-password");
+
+        SignupResponse response = service.signup(request);
+
+        assertThat(response.userId()).isEqualTo(100L);
+        assertThat(response.onboardingCompleted()).isFalse();
+
+        ArgumentCaptor<User> userCaptor =
+                ArgumentCaptor.forClass(User.class);
+        verify(userRepository).save(userCaptor.capture());
+
+        User createdUser = userCaptor.getValue();
+        assertThat(createdUser.getName()).isEqualTo("테스트유저");
+        assertThat(createdUser.getBirthDate())
+                .isEqualTo(LocalDate.parse(expectedBirthDate));
+        assertThat(createdUser.getGender()).isEqualTo(expectedGender);
+        assertThat(createdUser.getPhone()).isEqualTo(request.phone());
+
+        ArgumentCaptor<LocalCredential> credentialCaptor =
+                ArgumentCaptor.forClass(LocalCredential.class);
+        verify(localCredentialRepository).save(credentialCaptor.capture());
+
+        LocalCredential createdCredential = credentialCaptor.getValue();
+        assertThat(createdCredential.getUser()).isSameAs(savedUser);
+        assertThat(createdCredential.getLoginId())
+                .isEqualTo(request.loginId());
+        assertThat(createdCredential.getPasswordHash())
+                .isEqualTo("encoded-password");
+        assertThat(createdCredential.getPasswordChangedAt()).isNotNull();
+
+        @SuppressWarnings("unchecked")
+        ArgumentCaptor<List<UserTerms>> termsCaptor =
+                ArgumentCaptor.forClass(List.class);
+        verify(userTermsRepository).saveAll(termsCaptor.capture());
+
+        List<UserTerms> savedTerms = termsCaptor.getValue();
+        assertThat(savedTerms).hasSize(2);
+        assertThat(savedTerms.get(0).getUser()).isSameAs(savedUser);
+        assertThat(savedTerms.get(0).getTermId()).isEqualTo(1L);
+        assertThat(savedTerms.get(0).getIsAgreed()).isTrue();
+        assertThat(savedTerms.get(0).getAgreedAt()).isNotNull();
+        assertThat(savedTerms.get(1).getUser()).isSameAs(savedUser);
+        assertThat(savedTerms.get(1).getTermId()).isEqualTo(2L);
+        assertThat(savedTerms.get(1).getIsAgreed()).isFalse();
+        assertThat(savedTerms.get(1).getAgreedAt()).isNotNull();
+
+        verify(phoneVerificationService).removeVerified(
+                PhoneVerificationPurpose.SIGNUP,
+                request.phone()
+        );
     }
 
     private SignupRequest signupRequest() {
