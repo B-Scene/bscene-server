@@ -188,6 +188,70 @@ class AuthServiceTest {
                 .save(any());
     }
 
+    @Test
+    void signup_성별_코드가_올바르지_않으면_예외() {
+        SignupRequest request = signupRequest(
+                "test@example.com",
+                "Password1!",
+                "990101",
+                "5",
+                "01012345678"
+        );
+
+        when(localCredentialRepository.existsByLoginId(request.loginId()))
+                .thenReturn(false);
+        when(userRepository.existsByPhone(request.phone()))
+                .thenReturn(false);
+
+        AuthException exception = assertThrows(
+                AuthException.class,
+                () -> service.signup(request)
+        );
+
+        assertThat(exception.getBaseResponseCode())
+                .isEqualTo(AuthErrorCode.INVALID_SIGNUP_REQUEST);
+
+        verify(phoneVerificationService).validateVerified(
+                PhoneVerificationPurpose.SIGNUP,
+                request.phone()
+        );
+        verify(userRepository, never()).save(any());
+        verify(localCredentialRepository, never()).save(any());
+        verify(userTermsRepository, never()).saveAll(any());
+    }
+
+    @Test
+    void signup_존재하지_않는_생년월일이면_예외() {
+        SignupRequest request = signupRequest(
+                "test@example.com",
+                "Password1!",
+                "991332",
+                "1",
+                "01012345678"
+        );
+
+        when(localCredentialRepository.existsByLoginId(request.loginId()))
+                .thenReturn(false);
+        when(userRepository.existsByPhone(request.phone()))
+                .thenReturn(false);
+
+        AuthException exception = assertThrows(
+                AuthException.class,
+                () -> service.signup(request)
+        );
+
+        assertThat(exception.getBaseResponseCode())
+                .isEqualTo(AuthErrorCode.INVALID_SIGNUP_REQUEST);
+
+        verify(phoneVerificationService).validateVerified(
+                PhoneVerificationPurpose.SIGNUP,
+                request.phone()
+        );
+        verify(userRepository, never()).save(any());
+        verify(localCredentialRepository, never()).save(any());
+        verify(userTermsRepository, never()).saveAll(any());
+    }
+
     private SignupRequest signupRequest() {
         return signupRequest(
                 "test@example.com",
@@ -209,7 +273,7 @@ class AuthServiceTest {
                 loginId,
                 "Password1!",
                 passwordConfirm,
-                "고태영",
+                "테스트유저",
                 birthDatePrefix,
                 genderCode,
                 phone,
