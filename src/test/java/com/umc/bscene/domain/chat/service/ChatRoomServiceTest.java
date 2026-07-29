@@ -12,7 +12,9 @@ import com.umc.bscene.domain.chat.exception.ChatException;
 import com.umc.bscene.domain.chat.repository.ChatMessageRepository;
 import com.umc.bscene.domain.chat.repository.ChatRoomRepository;
 import com.umc.bscene.domain.session.entity.SessionApplication;
+import com.umc.bscene.domain.session.entity.SessionApplicationSubmission;
 import com.umc.bscene.domain.session.entity.SessionRecruitment;
+import com.umc.bscene.domain.session.enums.ApplicationStatus;
 import com.umc.bscene.domain.session.enums.Part;
 import com.umc.bscene.domain.session.enums.SkillLevel;
 import com.umc.bscene.domain.session.repository.SessionApplicationRepository;
@@ -237,6 +239,49 @@ class ChatRoomServiceTest {
     }
 
     @Test
+    @DisplayName("삭제된 지원서의 세션찾기 쪽지방도 목록에서 조회한다")
+    void getMyRoomsWithDeletedSessionSearchApplication() {
+        ChatRoom room = room(100L);
+        room.getSessionApplication().delete();
+        when(chatRoomRepository.findMyRooms(
+                eq(USER_ID), eq(null), eq(false), any(Pageable.class)
+        )).thenReturn(List.of(room));
+        when(chatMessageRepository.findMessagesForRooms(List.of(100L)))
+                .thenReturn(List.of());
+        when(basicProfileRepository.findByUser_Id(TARGET_USER_ID))
+                .thenReturn(Optional.empty());
+
+        var response = service.getMyRooms(
+                USER_ID, ChatRoomFilter.ALL, null, 20
+        );
+
+        assertThat(response.content()).hasSize(1);
+        assertThat(response.content().get(0).contextType())
+                .isEqualTo(ChatContextType.SESSION_SEARCH);
+        assertThat(response.content().get(0).contextId()).isNull();
+    }
+
+    @Test
+    @DisplayName("삭제된 모집공고의 쪽지방은 목록에서 공고 ID만 숨긴다")
+    void getMyRoomsWithDeletedRecruitment() {
+        ChatRoom room = recruitmentRoom(100L, 20L);
+        room.getSessionRecruitment().delete();
+        when(chatRoomRepository.findMyRooms(
+                eq(USER_ID), eq(null), eq(false), any(Pageable.class)
+        )).thenReturn(List.of(room));
+        when(chatMessageRepository.findMessagesForRooms(List.of(100L)))
+                .thenReturn(List.of());
+
+        var response = service.getMyRooms(
+                USER_ID, ChatRoomFilter.ALL, null, 20
+        );
+
+        assertThat(response.content()).hasSize(1);
+        assertThat(response.content().get(0).chatRoomId()).isEqualTo(100L);
+        assertThat(response.content().get(0).contextId()).isNull();
+    }
+
+    @Test
     @DisplayName("참여 중인 쪽지방 상세정보를 조회하고 읽음 처리한다")
     void getRoomDetailSuccess() {
         ChatRoom room = room(100L);
@@ -259,6 +304,25 @@ class ChatRoomServiceTest {
     }
 
     @Test
+    @DisplayName("삭제된 지원서의 세션찾기 쪽지방도 상세 조회한다")
+    void getSessionSearchRoomDetailWithDeletedApplication() {
+        ChatRoom room = room(100L);
+        room.getSessionApplication().delete();
+        when(chatRoomRepository.findDetail(100L)).thenReturn(Optional.of(room));
+        when(chatMessageRepository.findRoomMessages(
+                eq(100L), eq(null), any(Pageable.class)
+        )).thenReturn(List.of());
+        when(basicProfileRepository.findByUser_Id(TARGET_USER_ID))
+                .thenReturn(Optional.empty());
+
+        var response = service.getRoomDetail(USER_ID, 100L, null, 20);
+
+        assertThat(response.contextType()).isEqualTo(ChatContextType.SESSION_SEARCH);
+        assertThat(response.sessionApplicationId()).isNull();
+        assertThat(response.messages()).isEmpty();
+    }
+
+    @Test
     @DisplayName("모집공고 쪽지방 상세는 상대 지원서가 없어도 조회한다")
     void getRecruitmentRoomDetailWithoutApplication() {
         ChatRoom room = recruitmentRoom(100L, 20L);
@@ -274,6 +338,79 @@ class ChatRoomServiceTest {
         assertThat(response.sessionRecruitmentId()).isEqualTo(20L);
         assertThat(response.opponentName()).isEqualTo("테스트 밴드");
         assertThat(response.messages()).isEmpty();
+    }
+
+    @Test
+    @DisplayName("제출 지원서를 삭제해도 모집공고 쪽지방과 거절 상태를 유지한다")
+    void getRecruitmentRoomDetailWithDeletedSubmittedApplication() {
+        ChatRoom room = recruitmentRoom(100L, 20L);
+        SessionApplication application =
+                application(APPLICATION_ID, USER_ID, "지원자 프로필");
+        application.delete();
+        SessionApplicationSubmission submission = SessionApplicationSubmission.builder()
+                .sessionRecruitment(room.getSessionRecruitment())
+                .sessionApplication(application)
+                .status(ApplicationStatus.REJECTED)
+                .build();
+        ReflectionTestUtils.setField(
+                submission, "applicationSubmissionId", 30L
+        );
+        when(chatRoomRepository.findDetail(100L)).thenReturn(Optional.of(room));
+        when(chatMessageRepository.findRoomMessages(
+                eq(100L), eq(null), any(Pageable.class)
+        )).thenReturn(List.of());
+        when(submissionRepository
+                .findFirstBySessionRecruitment_SessionRecruitmentIdAndSessionApplication_UserIdOrderByApplicationSubmissionIdDesc(
+                        20L, USER_ID
+                )).thenReturn(Optional.of(submission));
+        when(basicProfileRepository.findByUser_Id(USER_ID))
+                .thenReturn(Optional.empty());
+
+        var response = service.getRoomDetail(
+                TARGET_USER_ID, 100L, null, 20
+        );
+
+        assertThat(response.sessionApplicationId()).isNull();
+        assertThat(response.applicationSubmissionId()).isEqualTo(30L);
+        assertThat(response.canSend()).isFalse();
+        assertThat(response.messages()).isEmpty();
+    }
+
+    @Test
+    @DisplayName("삭제된 모집공고의 쪽지방 상세는 제출 이력을 유지하고 공고 ID만 숨긴다")
+    void getRecruitmentRoomDetailWithDeletedRecruitment() {
+        ChatRoom room = recruitmentRoom(100L, 20L);
+        room.getSessionRecruitment().delete();
+        SessionApplication application =
+                application(APPLICATION_ID, USER_ID, "지원자 프로필");
+        SessionApplicationSubmission submission = SessionApplicationSubmission.builder()
+                .sessionRecruitment(room.getSessionRecruitment())
+                .sessionApplication(application)
+                .status(ApplicationStatus.ACCEPTED)
+                .build();
+        ReflectionTestUtils.setField(
+                submission, "applicationSubmissionId", 30L
+        );
+        when(chatRoomRepository.findDetail(100L)).thenReturn(Optional.of(room));
+        when(chatMessageRepository.findRoomMessages(
+                eq(100L), eq(null), any(Pageable.class)
+        )).thenReturn(List.of());
+        when(submissionRepository
+                .findFirstBySessionRecruitment_SessionRecruitmentIdAndSessionApplication_UserIdOrderByApplicationSubmissionIdDesc(
+                        20L, USER_ID
+                )).thenReturn(Optional.of(submission));
+        when(basicProfileRepository.findByUser_Id(USER_ID))
+                .thenReturn(Optional.empty());
+
+        var response = service.getRoomDetail(
+                TARGET_USER_ID, 100L, null, 20
+        );
+
+        assertThat(response.chatRoomId()).isEqualTo(100L);
+        assertThat(response.sessionRecruitmentId()).isNull();
+        assertThat(response.sessionApplicationId()).isEqualTo(APPLICATION_ID);
+        assertThat(response.applicationSubmissionId()).isEqualTo(30L);
+        assertThat(response.canSend()).isTrue();
     }
 
     @Test

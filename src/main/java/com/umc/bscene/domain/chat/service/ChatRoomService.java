@@ -76,7 +76,7 @@ public class ChatRoomService {
                     ApplicationStatus applicationStatus = resolveApplicationStatus(room);
                     SessionApplication counterpartApplication =
                             room.getContextType() == ChatContextType.SESSION_SEARCH
-                                    ? resolveSessionSearchCounterpartApplication(room, userId)
+                                    ? findSessionSearchCounterpartApplication(room, userId)
                                     : null;
                     return ChatRoomListItemResponse.of(
                             room, userId, latestMessages.get(room.getChatRoomId()),
@@ -121,7 +121,7 @@ public class ChatRoomService {
         SessionApplication counterpartApplication =
                 room.getContextType() == ChatContextType.RECRUITMENT
                         ? findRecruitmentCounterpartApplication(room)
-                        : resolveSessionSearchCounterpartApplication(room, userId);
+                        : findSessionSearchCounterpartApplication(room, userId);
         String profileImageUrl = room.getContextType() == ChatContextType.RECRUITMENT
                 && viewerIsSender
                 ? room.getSessionRecruitment().getBand().getProfileImageUrl()
@@ -134,13 +134,16 @@ public class ChatRoomService {
         Long applicationSubmissionId = null;
 
         if (room.getContextType() == ChatContextType.RECRUITMENT) {
-            recruitmentId = room.getSessionRecruitment().getSessionRecruitmentId();
+            Long storedRecruitmentId =
+                    room.getSessionRecruitment().getSessionRecruitmentId();
+            recruitmentId = room.getSessionRecruitment().getDeletedAt() == null
+                    ? storedRecruitmentId : null;
             applicationId = counterpartApplication == null
                     ? null : counterpartApplication.getSessionApplicationId();
             if (viewerIsRecipient) {
                 applicationSubmissionId = submissionRepository
                         .findFirstBySessionRecruitment_SessionRecruitmentIdAndSessionApplication_UserIdOrderByApplicationSubmissionIdDesc(
-                                recruitmentId, room.getSender().getId())
+                                storedRecruitmentId, room.getSender().getId())
                         .map(submission -> submission.getApplicationSubmissionId())
                         .orElse(null);
             }
@@ -148,7 +151,8 @@ public class ChatRoomService {
                     ? room.getSessionRecruitment().getBand().getName()
                     : room.getSender().getName();
         } else {
-            applicationId = counterpartApplication.getSessionApplicationId();
+            applicationId = counterpartApplication == null
+                    ? null : counterpartApplication.getSessionApplicationId();
             opponentName = viewerIsSender
                     ? room.getRecipient().getName() : room.getSender().getName();
         }
@@ -183,26 +187,31 @@ public class ChatRoomService {
     }
 
     private SessionApplication findRecruitmentCounterpartApplication(ChatRoom room) {
-        return submissionRepository
+        var submission = submissionRepository
                 .findFirstBySessionRecruitment_SessionRecruitmentIdAndSessionApplication_UserIdOrderByApplicationSubmissionIdDesc(
                         room.getSessionRecruitment().getSessionRecruitmentId(),
-                        room.getSender().getId())
-                .map(submission -> submission.getSessionApplication())
-                .orElseGet(() -> applicationRepository
-                        .findFirstByUserIdAndPurposeAndDeletedAtIsNullOrderBySessionApplicationIdDesc(
-                                room.getSender().getId(), DEFAULT_PURPOSE)
-                        .orElse(null));
-    }
-
-    private SessionApplication resolveSessionSearchCounterpartApplication(
-            ChatRoom room, Long viewerId) {
-        if (room.getSender().getId().equals(viewerId)) {
-            return room.getSessionApplication();
+                        room.getSender().getId());
+        if (submission.isPresent()) {
+            SessionApplication application = submission.get().getSessionApplication();
+            return application.getDeletedAt() == null ? application : null;
         }
         return applicationRepository
                 .findFirstByUserIdAndPurposeAndDeletedAtIsNullOrderBySessionApplicationIdDesc(
                         room.getSender().getId(), DEFAULT_PURPOSE)
-                .orElseThrow(() -> new ChatException(ChatErrorCode.CHAT_TARGET_NOT_FOUND));
+                .orElse(null);
+    }
+
+    private SessionApplication findSessionSearchCounterpartApplication(
+            ChatRoom room, Long viewerId) {
+        if (room.getSender().getId().equals(viewerId)) {
+            SessionApplication application = room.getSessionApplication();
+            return application != null && application.getDeletedAt() == null
+                    ? application : null;
+        }
+        return applicationRepository
+                .findFirstByUserIdAndPurposeAndDeletedAtIsNullOrderBySessionApplicationIdDesc(
+                        room.getSender().getId(), DEFAULT_PURPOSE)
+                .orElse(null);
     }
 
     private String resolveCounterpartProfileImageUrl(ChatRoom room, Long viewerId) {
