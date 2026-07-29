@@ -141,9 +141,7 @@ public class SessionApplicationCommandServiceImpl implements SessionApplicationC
                         SessionErrorCode.SESSION_APPLICATION_NOT_FOUND
                 ));
 
-        submissionRepository
-                .deleteAllBySessionApplication_SessionApplicationId(sessionApplicationId);
-        sessionApplicationRepository.delete(sessionApplication);
+        sessionApplication.delete();
     }
 
     private void validateDefaultApplicationCreation(Long userId, String purpose) {

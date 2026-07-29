@@ -149,6 +149,11 @@ public class SessionApplication extends BaseEntity {
         this.isPublic = isPublic;
     }
 
+    public void delete() {
+        this.deletedAt = LocalDateTime.now();
+        this.isPublic = false;
+    }
+
     public void replaceAvailableActivities(List<AvailableActivity> activities) {
         this.availableActivities.clear();
         this.availableActivities.addAll(activities);

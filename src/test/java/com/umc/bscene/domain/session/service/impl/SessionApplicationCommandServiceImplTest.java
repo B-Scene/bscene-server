@@ -263,7 +263,7 @@ class SessionApplicationCommandServiceImplTest {
     }
 
     @Test
-    @DisplayName("내 지원서를 삭제하면 제출 내역을 먼저 삭제한다")
+    @DisplayName("내 지원서를 삭제하면 제출 내역을 유지하고 소프트 삭제한다")
     void deleteApplicationSuccess() {
         SessionApplication application = application("공연 지원");
         when(applicationRepository
@@ -273,12 +273,11 @@ class SessionApplicationCommandServiceImplTest {
 
         service.deleteSessionApplication(USER_ID, APPLICATION_ID);
 
-        var inOrder = org.mockito.Mockito.inOrder(
-                submissionRepository, applicationRepository
-        );
-        inOrder.verify(submissionRepository)
-                .deleteAllBySessionApplication_SessionApplicationId(APPLICATION_ID);
-        inOrder.verify(applicationRepository).delete(application);
+        assertThat(application.getDeletedAt()).isNotNull();
+        assertThat(application.getIsPublic()).isFalse();
+        verify(submissionRepository, never())
+                .deleteAllBySessionApplication_SessionApplicationId(any());
+        verify(applicationRepository, never()).delete(any());
     }
 
     @Test
