@@ -74,12 +74,16 @@ public class ChatRoomService {
         List<ChatRoomListItemResponse> content = sliced.stream()
                 .map(room -> {
                     ApplicationStatus applicationStatus = resolveApplicationStatus(room);
+                    SessionApplication counterpartApplication =
+                            room.getContextType() == ChatContextType.SESSION_SEARCH
+                                    ? resolveCounterpartApplication(room, userId)
+                                    : null;
                     return ChatRoomListItemResponse.of(
                             room, userId, latestMessages.get(room.getChatRoomId()),
                             unreadCounts.getOrDefault(room.getChatRoomId(), 0L),
                             applicationStatus != ApplicationStatus.REJECTED,
                             applicationStatusLabel(applicationStatus),
-                            resolveCounterpartApplication(room, userId),
+                            counterpartApplication,
                             resolveCounterpartProfileImageUrl(room, userId));
                 })
                 .toList();

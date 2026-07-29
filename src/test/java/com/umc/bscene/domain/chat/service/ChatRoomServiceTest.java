@@ -2,6 +2,7 @@ package com.umc.bscene.domain.chat.service;
 
 import com.umc.bscene.domain.auth.enums.onboarding.Genre;
 import com.umc.bscene.domain.auth.enums.onboarding.Region;
+import com.umc.bscene.domain.band.entity.Band;
 import com.umc.bscene.domain.chat.dto.request.ChatRoomCreateRequest;
 import com.umc.bscene.domain.chat.entity.ChatRoom;
 import com.umc.bscene.domain.chat.enums.ChatContextType;
@@ -11,6 +12,7 @@ import com.umc.bscene.domain.chat.exception.ChatException;
 import com.umc.bscene.domain.chat.repository.ChatMessageRepository;
 import com.umc.bscene.domain.chat.repository.ChatRoomRepository;
 import com.umc.bscene.domain.session.entity.SessionApplication;
+import com.umc.bscene.domain.session.entity.SessionRecruitment;
 import com.umc.bscene.domain.session.enums.Part;
 import com.umc.bscene.domain.session.enums.SkillLevel;
 import com.umc.bscene.domain.session.repository.SessionApplicationRepository;
@@ -37,6 +39,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -213,6 +216,27 @@ class ChatRoomServiceTest {
     }
 
     @Test
+    @DisplayName("모집공고 쪽지방 목록은 상대 지원서가 없어도 조회한다")
+    void getMyRoomsDoesNotRequireApplicationForRecruitmentRoom() {
+        ChatRoom room = recruitmentRoom(100L, 20L);
+        when(chatRoomRepository.findMyRooms(
+                eq(USER_ID), eq(null), eq(false), any(Pageable.class)
+        )).thenReturn(List.of(room));
+        when(chatMessageRepository.findMessagesForRooms(List.of(100L)))
+                .thenReturn(List.of());
+
+        var response = service.getMyRooms(
+                USER_ID, ChatRoomFilter.ALL, null, 20
+        );
+
+        assertThat(response.content()).hasSize(1);
+        assertThat(response.content().get(0).contextType())
+                .isEqualTo(ChatContextType.RECRUITMENT);
+        assertThat(response.content().get(0).contextId()).isEqualTo(20L);
+        verifyNoInteractions(applicationRepository);
+    }
+
+    @Test
     @DisplayName("참여 중인 쪽지방 상세정보를 조회하고 읽음 처리한다")
     void getRoomDetailSuccess() {
         ChatRoom room = room(100L);
@@ -283,6 +307,29 @@ class ChatRoomServiceTest {
                 .sessionApplication(application(
                         APPLICATION_ID, TARGET_USER_ID, "상대 프로필"
                 ))
+                .build();
+        ReflectionTestUtils.setField(room, "chatRoomId", roomId);
+        return room;
+    }
+
+    private ChatRoom recruitmentRoom(Long roomId, Long recruitmentId) {
+        User sender = user(USER_ID, "지원자");
+        User recipient = user(TARGET_USER_ID, "밴드장");
+        Band band = Band.builder()
+                .owner(recipient)
+                .name("테스트 밴드")
+                .genre(Genre.HARD_ROCK)
+                .region(Region.SEOUL)
+                .build();
+        SessionRecruitment recruitment = SessionRecruitment.builder()
+                .sessionRecruitmentId(recruitmentId)
+                .band(band)
+                .build();
+        ChatRoom room = ChatRoom.builder()
+                .contextType(ChatContextType.RECRUITMENT)
+                .sender(sender)
+                .recipient(recipient)
+                .sessionRecruitment(recruitment)
                 .build();
         ReflectionTestUtils.setField(room, "chatRoomId", roomId);
         return room;
