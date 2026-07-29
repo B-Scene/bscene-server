@@ -28,6 +28,7 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Duration;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -41,7 +42,7 @@ import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
-// v2 : 장르/지역 선호 + 최근 활동 + 팔로우/관심(클릭) 밴드 유사도 기반
+// v2 : 장르/지역 선호 + 최근 활동 + 팔로우/관심(클릭) 밴드 유사도 기반 + 콜드스타트 폴백/신생 밴드 부스트
 @Primary
 @Service("bandRecommendationServiceV2")
 @RequiredArgsConstructor
@@ -81,12 +82,24 @@ public class BandRecommendationServiceV2Impl implements BandRecommendationServic
     private static final double POPULARITY_GROWTH_RATIO = 0.7;
     private static final double POPULARITY_WEIGHT = 0.5;
 
+    // 콜드스타트 폴백 : 장르/지역 선호도, 팔로우, 클릭 이력이 전부 없어 후보군이 비는 유저(신규 가입 등)에게
+    // 채워줄 풀 크기. 팔로워 상위 밴드로 우선 채우고, 모자라면 최근 생성 밴드로 보충한다.
+    private static final int COLD_START_FALLBACK_POOL_SIZE = 30;
+
+    // 신생 밴드 노출 부스트 : 팔로우/활동 이력이 없는 신생 밴드가 항상 최하위로 밀리는 걸 막기 위해
+    // 생성 후 1주일간만 아주 소폭의 가산점을 준다. 생성일로부터 선형 감쇠
+    private static final int NEW_BAND_BOOST_DAYS = 7;
+    private static final double NEW_BAND_BOOST_WEIGHT = 0.05;
+
     // reason 우선순위 : 유사도 > 장르 > 지역 > 최근 활동 (배점 GENRE(3) > REGION(2) > ACTIVITY(1) 순이라 동점은 거의 안 생김)
+    // 콜드스타트 폴백 밴드는 위 신호가 전부 0이라, 폴백 출처(신규/인기)로 reason을 대신 채운다.
     private static final String REASON_SIMILARITY_FOLLOW = "팔로우한 밴드와 유사한 스타일";
     private static final String REASON_SIMILARITY_CLICK = "관심 있게 본 밴드와 유사한 스타일";
     private static final String REASON_GENRE = "선호 장르 일치";
     private static final String REASON_REGION = "선호 지역 일치";
     private static final String REASON_ACTIVITY = "최근 활동 있는 밴드";
+    private static final String REASON_NEW_BAND = "새로 등록된 밴드";
+    private static final String REASON_POPULAR = "요즘 인기있는 밴드";
 
     private final BandRepository bandRepository;
     private final FollowRepository followRepository;
@@ -149,6 +162,12 @@ public class BandRecommendationServiceV2Impl implements BandRecommendationServic
         Map<Long, Band> candidateBands = collectCandidateBands(preferredGenres, preferredRegions, similarityWeightedSumByBandId);
         followedBandIdSet.forEach(candidateBands::remove);
 
+        // 콜드스타트 폴백 : 장르/지역/유사도 어느 쪽으로도 후보가 안 나오면 인기/신생 밴드로 채운다.
+        ColdStartFallback coldStartFallback = candidateBands.isEmpty()
+                ? collectColdStartFallback(followedBandIdSet)
+                : ColdStartFallback.EMPTY;
+        coldStartFallback.bands().forEach(band -> candidateBands.put(band.getId(), band));
+
         List<Long> candidateIds = new ArrayList<>(candidateBands.keySet());
 
         // 최근 활동 = 최근 포스트 작성 OR 최근/예정 공연 (둘 중 하나만 있어도 활동 있는 것으로 취급)
@@ -187,7 +206,7 @@ public class BandRecommendationServiceV2Impl implements BandRecommendationServic
                         band, preferredGenres, preferredRegions, recentActivityBandIds,
                         similarityWeightedSumByBandId, similarityMatchCountByBandId, followSimilarBandIds,
                         latestActivityAtByBandId, followerCountByBandId, recentFollowerCountByBandId,
-                        totalLogCap, growthLogCap))
+                        totalLogCap, growthLogCap, coldStartFallback))
                 .sorted(Comparator.comparingDouble(ScoredBand::score).reversed()
                         .thenComparing(ScoredBand::lastActivityAt, Comparator.nullsLast(Comparator.reverseOrder())))
                 .toList();
@@ -245,7 +264,8 @@ public class BandRecommendationServiceV2Impl implements BandRecommendationServic
             Map<Long, Long> followerCountByBandId,
             Map<Long, Long> recentFollowerCountByBandId,
             double totalLogCap,
-            double growthLogCap
+            double growthLogCap,
+            ColdStartFallback coldStartFallback
     ) {
         double genreScore = preferredGenres.contains(band.getGenre()) ? GENRE_MATCH_SCORE : 0;
         double regionScore = preferredRegions.contains(band.getRegion()) ? REGION_MATCH_SCORE : 0;
@@ -266,6 +286,7 @@ public class BandRecommendationServiceV2Impl implements BandRecommendationServic
         double growthNorm = Math.min(Math.log(recentFollowerCount + 1) / growthLogCap, 1.0);
         double popularityNorm = totalNorm * POPULARITY_TOTAL_RATIO + growthNorm * POPULARITY_GROWTH_RATIO;
         totalScore += popularityNorm * POPULARITY_WEIGHT;
+        totalScore += calculateNewBandBoost(band.getCreatedAt());
 
         double genreContribution = EXPLICIT_WEIGHT * (genreScore / EXPLICIT_MAX_SCORE);
         double regionContribution = EXPLICIT_WEIGHT * (regionScore / EXPLICIT_MAX_SCORE);
@@ -273,10 +294,57 @@ public class BandRecommendationServiceV2Impl implements BandRecommendationServic
         double similarityContribution = IMPLICIT_WEIGHT * implicitNorm;
         boolean similarityFromFollow = followSimilarBandIds.contains(band.getId());
         String reason = determineReason(
-                similarityContribution, genreContribution, regionContribution, activityContribution, similarityFromFollow);
+                similarityContribution, genreContribution, regionContribution, activityContribution,
+                similarityFromFollow, band.getId(), coldStartFallback);
         LocalDateTime lastActivityAt = latestActivityAtByBandId.get(band.getId());
 
         return new ScoredBand(band, totalScore, lastActivityAt, reason);
+    }
+
+    // 생성 후 NEW_BAND_BOOST_DAYS 이내인 밴드에게 선형 감쇠하는 가산점을 준다
+    private double calculateNewBandBoost(LocalDateTime createdAt) {
+        if (createdAt == null) {
+            return 0;
+        }
+        long ageDays = Duration.between(createdAt, LocalDateTime.now()).toDays();
+        if (ageDays < 0 || ageDays >= NEW_BAND_BOOST_DAYS) {
+            return 0;
+        }
+        double decay = 1.0 - ((double) ageDays / NEW_BAND_BOOST_DAYS);
+        return decay * NEW_BAND_BOOST_WEIGHT * SCORE_SCALE;
+    }
+
+    // 장르/지역 선호, 팔로우, 클릭 이력이 전부 없어 후보군이 빈 유저를 위한 폴백 후보 조회.
+    // 팔로워 상위 밴드를 우선 채우고, 풀이 덜 차면 최근 생성 밴드로 보충한다.
+    private ColdStartFallback collectColdStartFallback(Set<Long> excludedBandIds) {
+        PageRequest pageable = PageRequest.of(0, COLD_START_FALLBACK_POOL_SIZE);
+
+        Map<Long, Band> fallbackBands = new LinkedHashMap<>();
+        Set<Long> popularBandIds = new HashSet<>();
+        List<Long> topFollowedBandIds = followRepository.findTopFollowedBandIds(pageable);
+        if (!topFollowedBandIds.isEmpty()) {
+            bandRepository.findAllById(topFollowedBandIds).forEach(band -> {
+                fallbackBands.put(band.getId(), band);
+                popularBandIds.add(band.getId());
+            });
+        }
+
+        Set<Long> newBandIds = new HashSet<>();
+        if (fallbackBands.size() < COLD_START_FALLBACK_POOL_SIZE) {
+            bandRepository.findAllByOrderByCreatedAtDesc(pageable).forEach(band -> {
+                if (fallbackBands.putIfAbsent(band.getId(), band) == null) {
+                    newBandIds.add(band.getId());
+                }
+            });
+        }
+
+        excludedBandIds.forEach(bandId -> {
+            fallbackBands.remove(bandId);
+            popularBandIds.remove(bandId);
+            newBandIds.remove(bandId);
+        });
+
+        return new ColdStartFallback(new ArrayList<>(fallbackBands.values()), popularBandIds, newBandIds);
     }
 
     // 팔로우/클릭 시드 중 어느 쪽에서 온 유사도 행인지에 따른 가중치
@@ -285,17 +353,26 @@ public class BandRecommendationServiceV2Impl implements BandRecommendationServic
     }
 
     // 동점 기여 요인 우선순위 : 유사도 > 장르 > 지역 > 최근 활동. 유사도가 1등이면 팔로우/클릭 중 어느 시드에서 왔는지로 문구를 나눈다.
+    // 넷 다 0이면(콜드스타트 폴백 후보) 폴백 출처(신규 > 인기)로 문구를 대신 채운다.
     private String determineReason(
             double similarityContribution,
             double genreContribution,
             double regionContribution,
             double activityContribution,
-            boolean similarityFromFollow
+            boolean similarityFromFollow,
+            Long bandId,
+            ColdStartFallback coldStartFallback
     ) {
         double max = Math.max(
                 similarityContribution,
                 Math.max(genreContribution, Math.max(regionContribution, activityContribution)));
         if (max <= 0) {
+            if (coldStartFallback.newBandIds().contains(bandId)) {
+                return REASON_NEW_BAND;
+            }
+            if (coldStartFallback.popularBandIds().contains(bandId)) {
+                return REASON_POPULAR;
+            }
             return null;
         }
         if (similarityContribution == max) {
@@ -319,5 +396,9 @@ public class BandRecommendationServiceV2Impl implements BandRecommendationServic
     }
 
     private record ScoredBand(Band band, double score, LocalDateTime lastActivityAt, String reason) {
+    }
+
+    private record ColdStartFallback(List<Band> bands, Set<Long> popularBandIds, Set<Long> newBandIds) {
+        private static final ColdStartFallback EMPTY = new ColdStartFallback(List.of(), Set.of(), Set.of());
     }
 }
