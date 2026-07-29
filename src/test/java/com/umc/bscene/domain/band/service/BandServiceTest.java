@@ -14,6 +14,7 @@ import com.umc.bscene.domain.band.dto.response.BandMemberResponse;
 import com.umc.bscene.domain.band.dto.response.BandMemberSearchItem;
 import com.umc.bscene.domain.band.dto.response.BandNameCheckResponse;
 import com.umc.bscene.domain.band.dto.response.BandProfileResponse;
+import com.umc.bscene.domain.band.dto.response.BandPublicMemberProfileResponse;
 import com.umc.bscene.domain.band.dto.response.BandResponse;
 import com.umc.bscene.domain.band.dto.response.MusicLinkResponse;
 import com.umc.bscene.domain.band.entity.Band;
@@ -48,6 +49,8 @@ import java.util.List;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
@@ -656,6 +659,435 @@ class BandServiceTest {
         service.transferOwnership(OWNER_ID, BAND_ID, request);
 
         assertEquals(2L, band.getOwner().getId());
+    }
+
+    // ---------- additional branch coverage ----------
+
+    @Test
+    void checkBandName_이미_존재하면_사용불가능() {
+        when(bandRepository.existsByName("중복이름"))
+                .thenReturn(true);
+
+        BandNameCheckResponse response =
+                service.checkBandName("중복이름");
+
+        assertFalse(response.available());
+    }
+
+    @Test
+    void getBandDetail_라이브중이_아니면_liveId가_없다() {
+        when(bandRepository.findById(BAND_ID))
+                .thenReturn(Optional.of(band(BAND_ID, OWNER_ID)));
+        when(followPort.countFollowersByBandId(BAND_ID))
+                .thenReturn(3L);
+        when(followPort.isFollowing(2L, BAND_ID))
+                .thenReturn(false);
+        when(streamPort.findOpenLiveId(BAND_ID))
+                .thenReturn(Optional.empty());
+
+        var response = service.getBandDetail(2L, BAND_ID);
+
+        assertFalse(response.isFollowing());
+        assertFalse(response.isLive());
+        assertNull(response.liveId());
+    }
+
+    @Test
+    void updateBandProfile_이미지_변경과_삭제를_동시에_요청하면_예외() {
+        when(bandRepository.findById(BAND_ID))
+                .thenReturn(Optional.of(band(BAND_ID, OWNER_ID)));
+        BandUpdateRequest request = new BandUpdateRequest(
+                null,
+                null,
+                null,
+                "https://example.com/new-image.jpg",
+                true,
+                null
+        );
+
+        BandException exception = assertThrows(
+                BandException.class,
+                () -> service.updateBandProfile(
+                        OWNER_ID,
+                        BAND_ID,
+                        request
+                )
+        );
+
+        assertEquals(
+                BandErrorCode.INVALID_PROFILE_IMAGE_UPDATE,
+                exception.getBaseResponseCode()
+        );
+        verify(eventPublisher, never()).publishEvent(any());
+    }
+
+    @Test
+    void updateBandProfile_이미지_삭제요청이면_기존이미지를_제거한다() {
+        Band band = Band.builder()
+                .id(BAND_ID)
+                .owner(user(OWNER_ID))
+                .name("밴드" + BAND_ID)
+                .genre(Genre.HARD_ROCK)
+                .region(Region.SEOUL)
+                .profileImageUrl("https://example.com/old-image.jpg")
+                .build();
+        when(bandRepository.findById(BAND_ID))
+                .thenReturn(Optional.of(band));
+        when(followPort.countFollowersByBandId(BAND_ID))
+                .thenReturn(0L);
+        when(bandMemberRepository.countByBand_IdAndStatus(
+                BAND_ID,
+                BandMemberStatus.ACCEPTED
+        )).thenReturn(0L);
+        when(performancePort.countPerformancesByBandId(BAND_ID))
+                .thenReturn(0L);
+        BandUpdateRequest request = new BandUpdateRequest(
+                null,
+                null,
+                null,
+                null,
+                true,
+                null
+        );
+
+        BandProfileResponse response = service.updateBandProfile(
+                OWNER_ID,
+                BAND_ID,
+                request
+        );
+
+        assertNull(band.getProfileImageUrl());
+        assertNull(response.profileImageUrl());
+        verify(eventPublisher).publishEvent(any(Object.class));
+    }
+
+    @Test
+    void inviteMember_SESSION_초대면_세션_초대상태로_저장한다() {
+        Band band = band(BAND_ID, OWNER_ID);
+        User invitee = user(2L);
+        when(bandRepository.findById(BAND_ID))
+                .thenReturn(Optional.of(band));
+        when(userRepository.findById(2L))
+                .thenReturn(Optional.of(invitee));
+        when(bandMemberRepository.existsByBand_IdAndUser_Id(
+                BAND_ID,
+                2L
+        )).thenReturn(false);
+        when(bandMemberRepository.save(any(BandMember.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+        BandMemberInviteRequest request = new BandMemberInviteRequest(
+                2L,
+                BandMemberType.SESSION
+        );
+
+        BandMemberResponse response = service.inviteMember(
+                OWNER_ID,
+                BAND_ID,
+                request
+        );
+
+        assertEquals(BandMemberType.SESSION, response.memberType());
+        assertEquals(BandMemberStatus.INVITED, response.status());
+        verify(bandMemberRepository).save(argThat(member ->
+                member.getMemberType() == BandMemberType.SESSION
+                        && member.getStatus()
+                        == BandMemberStatus.INVITED
+        ));
+    }
+
+    @Test
+    void acceptInvite_SESSION_초대도_프로필을_생성하고_수락한다() {
+        Band band = band(BAND_ID, OWNER_ID);
+        BandMember invitedSession = BandMember.builder()
+                .id(1L)
+                .band(band)
+                .user(user(2L))
+                .status(BandMemberStatus.INVITED)
+                .memberType(BandMemberType.SESSION)
+                .build();
+        BandMemberProfileCreateRequest request =
+                new BandMemberProfileCreateRequest(
+                        "세션프로필",
+                        Part.DRUM
+                );
+        when(bandRepository.findById(BAND_ID))
+                .thenReturn(Optional.of(band));
+        when(bandMemberRepository.findByBand_IdAndUser_Id(BAND_ID, 2L))
+                .thenReturn(Optional.of(invitedSession));
+        when(bandMemberProfileService.createProfile(2L, request))
+                .thenReturn(new BandMemberProfileResponse(
+                        300L,
+                        "세션프로필",
+                        Part.DRUM,
+                        true,
+                        null
+                ));
+        when(bandMemberProfileRepository.findById(300L))
+                .thenReturn(Optional.of(profile(300L, 2L)));
+
+        BandMemberAcceptResponse response = service.acceptInvite(
+                2L,
+                BAND_ID,
+                request
+        );
+
+        assertEquals(BandMemberStatus.ACCEPTED, response.status());
+        assertEquals(BandMemberType.SESSION,
+                invitedSession.getMemberType());
+        assertEquals(300L, response.bandMemberProfileId());
+    }
+
+    @Test
+    void rejectInvite_SESSION_초대대기이면_멤버기록을_삭제한다() {
+        BandMember invitedSession = BandMember.builder()
+                .id(1L)
+                .band(band(BAND_ID, OWNER_ID))
+                .user(user(2L))
+                .status(BandMemberStatus.INVITED)
+                .memberType(BandMemberType.SESSION)
+                .build();
+        when(bandMemberRepository.findByBand_IdAndUser_Id(BAND_ID, 2L))
+                .thenReturn(Optional.of(invitedSession));
+
+        service.rejectInvite(2L, BAND_ID);
+
+        verify(bandMemberRepository).delete(invitedSession);
+        verify(bandMemberProfileRepository, never()).delete(any());
+    }
+
+    @Test
+    void removeMember_성공하면_멤버와_미사용_프로필을_삭제한다() {
+        Band band = band(BAND_ID, OWNER_ID);
+        BandMemberProfile profile = profile(300L, 2L);
+        BandMember targetMember = BandMember.builder()
+                .id(2L)
+                .band(band)
+                .user(user(2L))
+                .bandMemberProfile(profile)
+                .status(BandMemberStatus.ACCEPTED)
+                .memberType(BandMemberType.MEMBER)
+                .build();
+        when(bandRepository.findById(BAND_ID))
+                .thenReturn(Optional.of(band));
+        when(bandMemberRepository.findByBand_IdAndUser_Id(BAND_ID, 2L))
+                .thenReturn(Optional.of(targetMember));
+        when(bandMemberRepository.existsByBandMemberProfile_Id(300L))
+                .thenReturn(false);
+
+        service.removeMember(OWNER_ID, BAND_ID, 2L);
+
+        verify(bandMemberRepository).delete(targetMember);
+        verify(bandMemberRepository).flush();
+        verify(bandMemberProfileRepository).delete(profile);
+    }
+
+    @Test
+    void getMembers_수락멤버와_초대대기_세션을_함께_반환한다() {
+        Band band = band(BAND_ID, OWNER_ID);
+        BandMember acceptedMember = BandMember.builder()
+                .id(1L)
+                .band(band)
+                .user(user(OWNER_ID))
+                .bandMemberProfile(profile(100L, OWNER_ID))
+                .status(BandMemberStatus.ACCEPTED)
+                .memberType(BandMemberType.MEMBER)
+                .build();
+        BandMember invitedSession = BandMember.builder()
+                .id(2L)
+                .band(band)
+                .user(user(2L))
+                .status(BandMemberStatus.INVITED)
+                .memberType(BandMemberType.SESSION)
+                .build();
+        when(bandRepository.findById(BAND_ID))
+                .thenReturn(Optional.of(band));
+        when(bandMemberRepository.findByBand_IdOrderByIdAsc(BAND_ID))
+                .thenReturn(List.of(acceptedMember, invitedSession));
+
+        List<BandMemberResponse> response =
+                service.getMembers(BAND_ID);
+
+        assertEquals(2, response.size());
+        assertEquals(BandMemberStatus.ACCEPTED,
+                response.get(0).status());
+        assertEquals(BandMemberType.MEMBER,
+                response.get(0).memberType());
+        assertEquals(BandMemberStatus.INVITED,
+                response.get(1).status());
+        assertEquals(BandMemberType.SESSION,
+                response.get(1).memberType());
+    }
+
+    @Test
+    void searchInviteTargets_기존멤버와_초대대기는_초대불가능으로_표시한다() {
+        Band band = band(BAND_ID, OWNER_ID);
+        User acceptedUser = user(2L);
+        User invitedUser = user(3L);
+        User availableUser = user(4L);
+        BandMember acceptedMember = BandMember.builder()
+                .band(band)
+                .user(acceptedUser)
+                .status(BandMemberStatus.ACCEPTED)
+                .build();
+        BandMember invitedMember = BandMember.builder()
+                .band(band)
+                .user(invitedUser)
+                .status(BandMemberStatus.INVITED)
+                .build();
+        when(bandRepository.findById(BAND_ID))
+                .thenReturn(Optional.of(band));
+        when(userRepository.findByNameContaining("검색어"))
+                .thenReturn(List.of(
+                        acceptedUser,
+                        invitedUser,
+                        availableUser
+                ));
+        when(bandMemberRepository.findWithUserByBandIdAndUserIdIn(
+                eq(BAND_ID),
+                anyList()
+        )).thenReturn(List.of(acceptedMember, invitedMember));
+
+        List<BandMemberSearchItem> response =
+                service.searchInviteTargets(BAND_ID, "  검색어  ");
+
+        assertEquals(BandMemberStatus.ACCEPTED,
+                response.get(0).bandMemberStatus());
+        assertFalse(response.get(0).inviteAvailable());
+        assertEquals(BandMemberStatus.INVITED,
+                response.get(1).bandMemberStatus());
+        assertFalse(response.get(1).inviteAvailable());
+        assertNull(response.get(2).bandMemberStatus());
+        assertTrue(response.get(2).inviteAvailable());
+        verify(bandMemberRepository).findWithUserByBandIdAndUserIdIn(
+                BAND_ID,
+                List.of(2L, 3L, 4L)
+        );
+    }
+
+    @Test
+    void getMusicLink_기존링크가_있으면_저장값을_반환한다() {
+        Band band = band(BAND_ID, OWNER_ID);
+        MusicLink musicLink = MusicLink.builder()
+                .id(1L)
+                .band(band)
+                .spotifyUrl("spotify-url")
+                .youtubeUrl("youtube-url")
+                .build();
+        when(bandRepository.findById(BAND_ID))
+                .thenReturn(Optional.of(band));
+        when(musicLinkRepository.findByBand_Id(BAND_ID))
+                .thenReturn(Optional.of(musicLink));
+
+        MusicLinkResponse response = service.getMusicLink(BAND_ID);
+
+        assertEquals("spotify-url", response.spotifyUrl());
+        assertEquals("youtube-url", response.youtubeUrl());
+    }
+
+    @Test
+    void saveMusicLink_기타링크만_있고_플랫폼이_없으면_예외() {
+        when(bandRepository.findById(BAND_ID))
+                .thenReturn(Optional.of(band(BAND_ID, OWNER_ID)));
+        when(bandMemberRepository
+                .existsByBand_IdAndUser_IdAndStatus(
+                        BAND_ID,
+                        OWNER_ID,
+                        BandMemberStatus.ACCEPTED
+                )).thenReturn(true);
+        MusicLinkSaveRequest request = new MusicLinkSaveRequest(
+                null,
+                null,
+                null,
+                null,
+                "https://example.com/music",
+                null
+        );
+
+        BandException exception = assertThrows(
+                BandException.class,
+                () -> service.saveMusicLink(
+                        OWNER_ID,
+                        BAND_ID,
+                        request
+                )
+        );
+
+        assertEquals(
+                BandErrorCode.INVALID_ETC_MUSIC_LINK,
+                exception.getBaseResponseCode()
+        );
+    }
+
+    @Test
+    void transferOwnership_초대대기_MEMBER에게는_양도할수_없다() {
+        Band band = band(BAND_ID, OWNER_ID);
+        BandMember invitedMember = BandMember.builder()
+                .id(2L)
+                .band(band)
+                .user(user(2L))
+                .status(BandMemberStatus.INVITED)
+                .memberType(BandMemberType.MEMBER)
+                .build();
+        when(bandRepository.findById(BAND_ID))
+                .thenReturn(Optional.of(band));
+        when(bandMemberRepository.findByBand_IdAndUser_Id(BAND_ID, 2L))
+                .thenReturn(Optional.of(invitedMember));
+
+        BandException exception = assertThrows(
+                BandException.class,
+                () -> service.transferOwnership(
+                        OWNER_ID,
+                        BAND_ID,
+                        new BandOwnerTransferRequest(2L)
+                )
+        );
+
+        assertEquals(
+                BandErrorCode.INVALID_OWNER_TRANSFER_TARGET,
+                exception.getBaseResponseCode()
+        );
+    }
+
+    @Test
+    void getPublicMemberProfiles_수락된_MEMBER만_오너여부와_함께_반환한다() {
+        Band band = band(BAND_ID, OWNER_ID);
+        BandMember ownerMember = BandMember.builder()
+                .id(1L)
+                .band(band)
+                .user(user(OWNER_ID))
+                .bandMemberProfile(profile(100L, OWNER_ID))
+                .status(BandMemberStatus.ACCEPTED)
+                .memberType(BandMemberType.MEMBER)
+                .build();
+        BandMember normalMember = BandMember.builder()
+                .id(2L)
+                .band(band)
+                .user(user(2L))
+                .bandMemberProfile(profile(200L, 2L))
+                .status(BandMemberStatus.ACCEPTED)
+                .memberType(BandMemberType.MEMBER)
+                .build();
+        when(bandRepository.findById(BAND_ID))
+                .thenReturn(Optional.of(band));
+        when(bandMemberRepository.findPublicBandMembers(
+                BAND_ID,
+                BandMemberStatus.ACCEPTED,
+                BandMemberType.MEMBER
+        )).thenReturn(List.of(ownerMember, normalMember));
+
+        List<BandPublicMemberProfileResponse> response =
+                service.getPublicMemberProfiles(BAND_ID);
+
+        assertEquals(2, response.size());
+        assertTrue(response.get(0).owner());
+        assertEquals("닉네임", response.get(0).nickname());
+        assertFalse(response.get(1).owner());
+        assertEquals(Part.GUITAR, response.get(1).part());
+        verify(bandMemberRepository).findPublicBandMembers(
+                BAND_ID,
+                BandMemberStatus.ACCEPTED,
+                BandMemberType.MEMBER
+        );
     }
 
 }
