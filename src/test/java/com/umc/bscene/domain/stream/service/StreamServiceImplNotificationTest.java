@@ -5,6 +5,8 @@ import com.umc.bscene.domain.stream.dto.StreamPushMessage;
 import com.umc.bscene.domain.stream.dto.request.StreamCreateRequest;
 import com.umc.bscene.domain.stream.dto.response.BandSummaryResponse;
 import com.umc.bscene.domain.stream.entity.AudioStream;
+import com.umc.bscene.domain.stream.entity.mapper.StreamMember;
+import com.umc.bscene.domain.stream.enums.StreamMemberStatus;
 import com.umc.bscene.domain.stream.enums.StreamStatus;
 import com.umc.bscene.domain.stream.enums.code.error.StreamErrorCode;
 import com.umc.bscene.domain.stream.exception.StreamException;
@@ -31,6 +33,8 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Captor;
 import org.mockito.Mock;
@@ -634,6 +638,312 @@ class StreamServiceImplNotificationTest {
             verify(redisTemplate, never()).opsForValue();
             verifyNoInteractions(followPort, userTermsPort, notifyPort);
             assertThat(TxSyncSupport.registeredCount()).isZero();
+        }
+    }
+
+    @Nested
+    @DisplayName("공동 진행자 초대 수락·거절")
+    class CoHostInvitationDecision {
+
+        private static final Long CO_HOST_ID = 200L;
+        private static final Long INVITATION_ID = 300L;
+
+        private AudioStream scheduledStream() {
+            return StreamFixtures.scheduledStream(
+                    LIVE_ID,
+                    BROADCASTER_ID,
+                    BAND_ID,
+                    SCHEDULED_AT
+            );
+        }
+
+        private StreamMember invitation(
+                AudioStream stream,
+                StreamMemberStatus status
+        ) {
+            return StreamFixtures.member(
+                    INVITATION_ID,
+                    StreamFixtures.bandUser(CO_HOST_ID),
+                    stream,
+                    status
+            );
+        }
+
+        @Test
+        @DisplayName("초대 기록이 없으면 CO_HOST_INVITATION_NOT_FOUND")
+        void 초대기록이_없으면_실패한다() {
+            given(streamMemberRepository
+                    .findWithStreamByLiveIdAndUserId(
+                            LIVE_ID,
+                            CO_HOST_ID
+                    ))
+                    .willReturn(Optional.empty());
+
+            assertThatThrownBy(() ->
+                    streamService.decideCoHostInvitation(
+                            CO_HOST_ID,
+                            LIVE_ID,
+                            true
+                    ))
+                    .isInstanceOf(StreamException.class)
+                    .extracting(exception ->
+                            ((StreamException) exception)
+                                    .getBaseResponseCode())
+                    .isEqualTo(
+                            StreamErrorCode
+                                    .CO_HOST_INVITATION_NOT_FOUND
+                    );
+
+            verify(streamMemberRepository, never())
+                    .transitionStatus(any(), any(), any());
+            verifyNoInteractions(notifyPort);
+        }
+
+        @Test
+        @DisplayName("송출자 자신의 멤버 행은 공동 진행자 초대로 처리하지 않는다")
+        void 송출자_자신의_행이면_실패한다() {
+            AudioStream stream = scheduledStream();
+            StreamMember broadcasterRow = StreamFixtures.member(
+                    INVITATION_ID,
+                    StreamFixtures.bandUser(BROADCASTER_ID),
+                    stream,
+                    StreamMemberStatus.INVITED
+            );
+            given(streamMemberRepository
+                    .findWithStreamByLiveIdAndUserId(
+                            LIVE_ID,
+                            BROADCASTER_ID
+                    ))
+                    .willReturn(Optional.of(broadcasterRow));
+
+            assertThatThrownBy(() ->
+                    streamService.decideCoHostInvitation(
+                            BROADCASTER_ID,
+                            LIVE_ID,
+                            true
+                    ))
+                    .isInstanceOf(StreamException.class)
+                    .extracting(exception ->
+                            ((StreamException) exception)
+                                    .getBaseResponseCode())
+                    .isEqualTo(
+                            StreamErrorCode
+                                    .CO_HOST_INVITATION_NOT_FOUND
+                    );
+
+            verify(streamMemberRepository, never())
+                    .transitionStatus(any(), any(), any());
+        }
+
+        @ParameterizedTest(name = "{0} 상태는 재처리할 수 없다")
+        @EnumSource(
+                value = StreamMemberStatus.class,
+                names = {"ACCEPTED", "REJECTED"}
+        )
+        void 이미_처리된_초대이면_실패한다(
+                StreamMemberStatus status
+        ) {
+            AudioStream stream = scheduledStream();
+            given(streamMemberRepository
+                    .findWithStreamByLiveIdAndUserId(
+                            LIVE_ID,
+                            CO_HOST_ID
+                    ))
+                    .willReturn(Optional.of(
+                            invitation(stream, status)
+                    ));
+
+            assertThatThrownBy(() ->
+                    streamService.decideCoHostInvitation(
+                            CO_HOST_ID,
+                            LIVE_ID,
+                            true
+                    ))
+                    .isInstanceOf(StreamException.class)
+                    .extracting(exception ->
+                            ((StreamException) exception)
+                                    .getBaseResponseCode())
+                    .isEqualTo(
+                            StreamErrorCode
+                                    .CO_HOST_INVITATION_ALREADY_PROCESSED
+                    );
+
+            verify(streamMemberRepository, never())
+                    .transitionStatus(any(), any(), any());
+        }
+
+        @Test
+        @DisplayName("예약 라이브가 아니면 초대에 응답할 수 없다")
+        void 예약상태가_아니면_실패한다() {
+            AudioStream openStream = StreamFixtures.stream(
+                    LIVE_ID,
+                    BROADCASTER_ID,
+                    BAND_ID,
+                    StreamStatus.OPEN
+            );
+            given(streamMemberRepository
+                    .findWithStreamByLiveIdAndUserId(
+                            LIVE_ID,
+                            CO_HOST_ID
+                    ))
+                    .willReturn(Optional.of(invitation(
+                            openStream,
+                            StreamMemberStatus.INVITED
+                    )));
+
+            assertThatThrownBy(() ->
+                    streamService.decideCoHostInvitation(
+                            CO_HOST_ID,
+                            LIVE_ID,
+                            true
+                    ))
+                    .isInstanceOf(StreamException.class)
+                    .extracting(exception ->
+                            ((StreamException) exception)
+                                    .getBaseResponseCode())
+                    .isEqualTo(
+                            StreamErrorCode.AUDIO_STREAM_NOT_SCHEDULED
+                    );
+
+            verify(streamMemberRepository, never())
+                    .transitionStatus(any(), any(), any());
+        }
+
+        @Test
+        @DisplayName("상태 전이 경합에서 갱신 건수가 0이면 이미 처리된 초대로 응답한다")
+        void 원자적_상태전이에_실패하면_재처리_예외() {
+            AudioStream stream = scheduledStream();
+            given(streamMemberRepository
+                    .findWithStreamByLiveIdAndUserId(
+                            LIVE_ID,
+                            CO_HOST_ID
+                    ))
+                    .willReturn(Optional.of(invitation(
+                            stream,
+                            StreamMemberStatus.INVITED
+                    )));
+            given(streamMemberRepository.transitionStatus(
+                    INVITATION_ID,
+                    StreamMemberStatus.INVITED,
+                    StreamMemberStatus.ACCEPTED
+            )).willReturn(0);
+
+            assertThatThrownBy(() ->
+                    streamService.decideCoHostInvitation(
+                            CO_HOST_ID,
+                            LIVE_ID,
+                            true
+                    ))
+                    .isInstanceOf(StreamException.class)
+                    .extracting(exception ->
+                            ((StreamException) exception)
+                                    .getBaseResponseCode())
+                    .isEqualTo(
+                            StreamErrorCode
+                                    .CO_HOST_INVITATION_ALREADY_PROCESSED
+                    );
+
+            assertThat(TxSyncSupport.registeredCount()).isZero();
+            verifyNoInteractions(notifyPort);
+        }
+
+        @Test
+        @DisplayName("수락하면 ACCEPTED로 전이하고 커밋 후 송출자에게 밴드 활동명으로 알린다")
+        void 수락하면_송출자에게_결과알림을_보낸다() {
+            AudioStream stream = scheduledStream();
+            given(streamMemberRepository
+                    .findWithStreamByLiveIdAndUserId(
+                            LIVE_ID,
+                            CO_HOST_ID
+                    ))
+                    .willReturn(Optional.of(invitation(
+                            stream,
+                            StreamMemberStatus.INVITED
+                    )));
+            given(streamMemberRepository.transitionStatus(
+                    INVITATION_ID,
+                    StreamMemberStatus.INVITED,
+                    StreamMemberStatus.ACCEPTED
+            )).willReturn(1);
+            given(bandMemberPort.getBandMemberNickname(
+                    BAND_ID,
+                    CO_HOST_ID
+            )).willReturn(Optional.of("활동명"));
+
+            streamService.decideCoHostInvitation(
+                    CO_HOST_ID,
+                    LIVE_ID,
+                    true
+            );
+
+            verifyNoInteractions(notifyPort);
+            assertThat(TxSyncSupport.registeredCount()).isEqualTo(1);
+
+            TxSyncSupport.triggerAfterCommit();
+
+            verify(notifyPort).notify(
+                    receiverCaptor.capture(),
+                    messageCaptor.capture()
+            );
+            assertThat(receiverCaptor.getValue())
+                    .containsExactly(BROADCASTER_ID);
+            StreamPushMessage message =
+                    (StreamPushMessage) messageCaptor.getValue();
+            assertThat(message.settingType()).isEqualTo(
+                    NotificationSettingType
+                            .BAND_LIVE_CO_HOST_INVITATION
+            );
+            assertThat(message.body())
+                    .contains("활동명", LIVE_TITLE, "수락했어요");
+            assertThat(message.deepLink())
+                    .isEqualTo("/lives/" + LIVE_ID + "/reservation");
+            assertThat(message.referenceId()).isEqualTo(LIVE_ID);
+        }
+
+        @Test
+        @DisplayName("거절하면 REJECTED로 전이하고 활동명이 없을 때 유저 이름으로 알린다")
+        void 거절하면_송출자에게_결과알림을_보낸다() {
+            AudioStream stream = scheduledStream();
+            StreamMember invitation = invitation(
+                    stream,
+                    StreamMemberStatus.INVITED
+            );
+            given(streamMemberRepository
+                    .findWithStreamByLiveIdAndUserId(
+                            LIVE_ID,
+                            CO_HOST_ID
+                    ))
+                    .willReturn(Optional.of(invitation));
+            given(streamMemberRepository.transitionStatus(
+                    INVITATION_ID,
+                    StreamMemberStatus.INVITED,
+                    StreamMemberStatus.REJECTED
+            )).willReturn(1);
+            given(bandMemberPort.getBandMemberNickname(
+                    BAND_ID,
+                    CO_HOST_ID
+            )).willReturn(Optional.empty());
+
+            streamService.decideCoHostInvitation(
+                    CO_HOST_ID,
+                    LIVE_ID,
+                    false
+            );
+            TxSyncSupport.triggerAfterCommit();
+
+            verify(notifyPort).notify(
+                    receiverCaptor.capture(),
+                    messageCaptor.capture()
+            );
+            assertThat(receiverCaptor.getValue())
+                    .containsExactly(BROADCASTER_ID);
+            StreamPushMessage message =
+                    (StreamPushMessage) messageCaptor.getValue();
+            assertThat(message.body()).contains(
+                    invitation.getUser().getName(),
+                    LIVE_TITLE,
+                    "거절했어요"
+            );
         }
     }
 }
