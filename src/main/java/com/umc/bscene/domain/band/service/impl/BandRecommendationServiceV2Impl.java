@@ -14,6 +14,7 @@ import com.umc.bscene.domain.post.repository.PostRepository;
 import com.umc.bscene.domain.recommendation.entity.BandSimilarity;
 import com.umc.bscene.domain.recommendation.event.BandRecommendationExposedEvent;
 import com.umc.bscene.domain.recommendation.repository.BandInteractionRepository;
+import com.umc.bscene.domain.recommendation.repository.BandRecommendationLogRepository;
 import com.umc.bscene.domain.recommendation.repository.BandSimilarityRepository;
 import com.umc.bscene.domain.user.entity.User;
 import com.umc.bscene.domain.user.entity.UserGenres;
@@ -31,8 +32,10 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.Duration;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
@@ -42,7 +45,7 @@ import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
-// v2 : 장르/지역 선호 + 최근 활동 + 팔로우/관심(클릭) 밴드 유사도 기반 + 콜드스타트 폴백/신생 밴드 부스트
+// v2 : 장르/지역 선호 + 최근 활동 + 팔로우/관심(클릭) 밴드 유사도 기반 + 콜드스타트 폴백/신생 밴드 부스트/노출 피로도 감점
 @Primary
 @Service("bandRecommendationServiceV2")
 @RequiredArgsConstructor
@@ -91,6 +94,17 @@ public class BandRecommendationServiceV2Impl implements BandRecommendationServic
     private static final int NEW_BAND_BOOST_DAYS = 7;
     private static final double NEW_BAND_BOOST_WEIGHT = 0.05;
 
+    // 노출 피로도 감점 : 후보에서 완전히 빼지 않고 점수만 깎는다.
+    private static final int EXPOSURE_VISIBLE_POSITION_LIMIT = 10;
+    private static final double EXPOSURE_HALF_LIFE_DAYS = 3.0;
+
+    // half-life 7번(2^-7≈0.78%)이면 감쇠가 사실상 0에 수렴한다고 보고 조회 컷오프로 삼는다.
+    private static final int EXPOSURE_FATIGUE_LOOKBACK_DAYS = (int) Math.ceil(EXPOSURE_HALF_LIFE_DAYS * 7);
+    private static final double EXPOSURE_GRACE = 2.0; // 이 유효노출 수까지는 무페널티
+    private static final double EXPOSURE_PENALTY_ALPHA = 0.5;
+    private static final double EXPOSURE_PENALTY_FLOOR = 0.25;
+    private static final double LN2 = Math.log(2);
+
     // reason 우선순위 : 유사도 > 장르 > 지역 > 최근 활동 (배점 GENRE(3) > REGION(2) > ACTIVITY(1) 순이라 동점은 거의 안 생김)
     // 콜드스타트 폴백 밴드는 위 신호가 전부 0이라, 폴백 출처(신규/인기)로 reason을 대신 채운다.
     private static final String REASON_SIMILARITY_FOLLOW = "팔로우한 밴드와 유사한 스타일";
@@ -111,6 +125,7 @@ public class BandRecommendationServiceV2Impl implements BandRecommendationServic
     private final BandSimilarityRepository bandSimilarityRepository;
     private final ApplicationEventPublisher eventPublisher;
     private final BandInteractionRepository bandInteractionRepository;
+    private final BandRecommendationLogRepository bandRecommendationLogRepository;
 
     @Override
     public BandRecommendResponse getRecommendedBands(Long userId, Long cursor, Integer size) {
@@ -170,6 +185,9 @@ public class BandRecommendationServiceV2Impl implements BandRecommendationServic
 
         List<Long> candidateIds = new ArrayList<>(candidateBands.keySet());
 
+        // 노출 피로도 감점 : 후보에서 빼지 않고 점수만 깎는다 (FLOOR 덕에 유일한 매치는 그대로 남음).
+        Map<Long, Double> fatiguePenaltyByBandId = computeFatiguePenalties(userId, candidateIds);
+
         // 최근 활동 = 최근 포스트 작성 OR 최근/예정 공연 (둘 중 하나만 있어도 활동 있는 것으로 취급)
         LocalDateTime postActivitySince = LocalDateTime.now().minusDays(RECENT_ACTIVITY_DAYS);
         LocalDate performanceActivitySince = LocalDate.now().minusDays(RECENT_ACTIVITY_DAYS);
@@ -206,7 +224,7 @@ public class BandRecommendationServiceV2Impl implements BandRecommendationServic
                         band, preferredGenres, preferredRegions, recentActivityBandIds,
                         similarityWeightedSumByBandId, similarityMatchCountByBandId, followSimilarBandIds,
                         latestActivityAtByBandId, followerCountByBandId, recentFollowerCountByBandId,
-                        totalLogCap, growthLogCap, coldStartFallback))
+                        totalLogCap, growthLogCap, coldStartFallback, fatiguePenaltyByBandId))
                 .sorted(Comparator.comparingDouble(ScoredBand::score).reversed()
                         .thenComparing(ScoredBand::lastActivityAt, Comparator.nullsLast(Comparator.reverseOrder())))
                 .toList();
@@ -265,7 +283,8 @@ public class BandRecommendationServiceV2Impl implements BandRecommendationServic
             Map<Long, Long> recentFollowerCountByBandId,
             double totalLogCap,
             double growthLogCap,
-            ColdStartFallback coldStartFallback
+            ColdStartFallback coldStartFallback,
+            Map<Long, Double> fatiguePenaltyByBandId
     ) {
         double genreScore = preferredGenres.contains(band.getGenre()) ? GENRE_MATCH_SCORE : 0;
         double regionScore = preferredRegions.contains(band.getRegion()) ? REGION_MATCH_SCORE : 0;
@@ -287,6 +306,7 @@ public class BandRecommendationServiceV2Impl implements BandRecommendationServic
         double popularityNorm = totalNorm * POPULARITY_TOTAL_RATIO + growthNorm * POPULARITY_GROWTH_RATIO;
         totalScore += popularityNorm * POPULARITY_WEIGHT;
         totalScore += calculateNewBandBoost(band.getCreatedAt());
+        totalScore *= fatiguePenaltyByBandId.getOrDefault(band.getId(), 1.0);
 
         double genreContribution = EXPLICIT_WEIGHT * (genreScore / EXPLICIT_MAX_SCORE);
         double regionContribution = EXPLICIT_WEIGHT * (regionScore / EXPLICIT_MAX_SCORE);
@@ -312,6 +332,51 @@ public class BandRecommendationServiceV2Impl implements BandRecommendationServic
         }
         double decay = 1.0 - ((double) ageDays / NEW_BAND_BOOST_DAYS);
         return decay * NEW_BAND_BOOST_WEIGHT * SCORE_SCALE;
+    }
+
+    // 후보 밴드별 노출 피로도 감점 배율(0~1)을 계산한다. 클릭(관심)은 피로도를 영구 면제하는 게 아니라 리셋 시점으로만 쓴다.
+    private Map<Long, Double> computeFatiguePenalties(Long userId, List<Long> candidateIds) {
+        if (candidateIds.isEmpty()) {
+            return Map.of();
+        }
+
+        LocalDateTime since = LocalDateTime.now().minusDays(EXPOSURE_FATIGUE_LOOKBACK_DAYS);
+        List<Object[]> exposureRows = bandRecommendationLogRepository
+                .findRecentVisibleExposures(userId, candidateIds, EXPOSURE_VISIBLE_POSITION_LIMIT, since);
+        if (exposureRows.isEmpty()) {
+            return Map.of();
+        }
+
+        Map<Long, LocalDateTime> lastInteractedAtByBandId = bandInteractionRepository
+                .findLastInteractedAtByUserIdAndBandIdIn(userId, candidateIds).stream()
+                .filter(row -> row[1] != null)
+                .collect(Collectors.toMap(row -> (Long) row[0], row -> (LocalDateTime) row[1]));
+
+        Map<Long, Set<LocalDate>> exposureDaysByBandId = exposureRows.stream()
+                .filter(row -> {
+                    LocalDateTime lastInteractedAt = lastInteractedAtByBandId.get((Long) row[0]);
+                    return lastInteractedAt == null || ((LocalDateTime) row[1]).isAfter(lastInteractedAt);
+                })
+                .collect(Collectors.groupingBy(
+                        row -> (Long) row[0],
+                        Collectors.mapping(row -> ((LocalDateTime) row[1]).toLocalDate(), Collectors.toSet())));
+
+        LocalDate today = LocalDate.now();
+        Map<Long, Double> penaltyByBandId = new HashMap<>();
+        exposureDaysByBandId.forEach((bandId, exposureDays) -> {
+            double effectiveImpressions = exposureDays.stream()
+                    .mapToDouble(day -> Math.exp(-LN2 / EXPOSURE_HALF_LIFE_DAYS * ChronoUnit.DAYS.between(day, today)))
+                    .sum();
+            double excess = Math.max(0, effectiveImpressions - EXPOSURE_GRACE);
+            if (excess <= 0) {
+                return;
+            }
+
+            double penalty = Math.exp(-EXPOSURE_PENALTY_ALPHA * excess);
+            penaltyByBandId.put(bandId, Math.max(penalty, EXPOSURE_PENALTY_FLOOR));
+        });
+
+        return penaltyByBandId;
     }
 
     // 장르/지역 선호, 팔로우, 클릭 이력이 전부 없어 후보군이 빈 유저를 위한 폴백 후보 조회.
