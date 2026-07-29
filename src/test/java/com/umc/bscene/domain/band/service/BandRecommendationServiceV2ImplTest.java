@@ -13,6 +13,7 @@ import com.umc.bscene.domain.post.repository.PostRepository;
 import com.umc.bscene.domain.recommendation.entity.BandSimilarity;
 import com.umc.bscene.domain.recommendation.event.BandRecommendationExposedEvent;
 import com.umc.bscene.domain.recommendation.repository.BandInteractionRepository;
+import com.umc.bscene.domain.recommendation.repository.BandRecommendationLogRepository;
 import com.umc.bscene.domain.recommendation.repository.BandSimilarityRepository;
 import com.umc.bscene.domain.user.entity.User;
 import com.umc.bscene.domain.user.entity.UserGenres;
@@ -63,6 +64,8 @@ class BandRecommendationServiceV2ImplTest {
     private ApplicationEventPublisher eventPublisher;
     @Mock
     private BandInteractionRepository bandInteractionRepository;
+    @Mock
+    private BandRecommendationLogRepository bandRecommendationLogRepository;
 
     private BandRecommendationServiceV2Impl service;
 
@@ -74,7 +77,7 @@ class BandRecommendationServiceV2ImplTest {
         service = new BandRecommendationServiceV2Impl(
                 bandRepository, followRepository, userRepository, userGenresRepository, userRegionsRepository,
                 postRepository, performanceRepository, bandSimilarityRepository, eventPublisher,
-                bandInteractionRepository
+                bandInteractionRepository, bandRecommendationLogRepository
         );
         user = User.builder().id(USER_ID).build();
         when(userRepository.getReferenceById(USER_ID)).thenReturn(user);

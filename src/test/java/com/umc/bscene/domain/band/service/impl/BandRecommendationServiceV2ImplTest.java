@@ -13,6 +13,7 @@ import com.umc.bscene.domain.post.repository.PostRepository;
 import com.umc.bscene.domain.recommendation.entity.BandInteraction;
 import com.umc.bscene.domain.recommendation.entity.BandSimilarity;
 import com.umc.bscene.domain.recommendation.repository.BandInteractionRepository;
+import com.umc.bscene.domain.recommendation.repository.BandRecommendationLogRepository;
 import com.umc.bscene.domain.recommendation.repository.BandSimilarityRepository;
 import com.umc.bscene.domain.user.entity.User;
 import com.umc.bscene.domain.user.entity.UserGenres;
@@ -37,6 +38,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
@@ -66,6 +68,8 @@ class BandRecommendationServiceV2ImplTest {
     private ApplicationEventPublisher eventPublisher;
     @Mock
     private BandInteractionRepository bandInteractionRepository;
+    @Mock
+    private BandRecommendationLogRepository bandRecommendationLogRepository;
 
     private BandRecommendationServiceV2Impl service;
 
@@ -77,7 +81,7 @@ class BandRecommendationServiceV2ImplTest {
                 bandRepository, followRepository, userRepository,
                 userGenresRepository, userRegionsRepository,
                 postRepository, performanceRepository, bandSimilarityRepository, eventPublisher,
-                bandInteractionRepository
+                bandInteractionRepository, bandRecommendationLogRepository
         );
         when(userRepository.getReferenceById(USER_ID)).thenReturn(User.builder().id(USER_ID).build());
     }
@@ -474,5 +478,227 @@ class BandRecommendationServiceV2ImplTest {
         assertEquals(1, response.bands().size());
         assertEquals(300L, response.bands().get(0).bandId());
         assertEquals("요즘 인기있는 밴드", response.bands().get(0).reason());
+    }
+
+    @Test
+    void repeatedlyExposedBandWithoutClickRanksBelowFreshMatch() {
+        // 최근 3일 연속 노출됐는데 클릭이 없었던 밴드는 제외되지 않고 순위만 밀려야 한다.
+        when(followRepository.findBandIdsByUserId(USER_ID)).thenReturn(List.of());
+        when(userGenresRepository.findAllByUser(any(User.class)))
+                .thenReturn(List.of(UserGenres.builder().genre(Genre.HARD_ROCK).build()));
+        when(userRegionsRepository.findAllByUser(any(User.class))).thenReturn(List.of());
+
+        Band fatiguedBand = band(1L, Genre.HARD_ROCK, Region.SEOUL);
+        Band freshBand = band(2L, Genre.HARD_ROCK, Region.SEOUL);
+        when(bandRepository.findByGenreIn(any())).thenReturn(List.of(fatiguedBand, freshBand));
+
+        LocalDateTime now = LocalDateTime.now();
+        when(bandRecommendationLogRepository.findRecentVisibleExposures(eq(USER_ID), anyList(), anyInt(), any()))
+                .thenReturn(List.<Object[]>of(
+                        new Object[]{1L, now},
+                        new Object[]{1L, now.minusDays(1)},
+                        new Object[]{1L, now.minusDays(2)}
+                ));
+        when(postRepository.findBandIdsWithRecentPost(anyList(), any())).thenReturn(List.of());
+        when(postRepository.findLatestActivityAtByBandIds(anyList())).thenReturn(List.of());
+        when(performanceRepository.findBandIdsWithRecentPerformance(anyList(), any(), any())).thenReturn(List.of());
+        when(followRepository.countFollowersByBandIds(anyList())).thenReturn(List.of());
+        when(followRepository.countRecentFollowersByBandIdIn(anyList(), any())).thenReturn(List.of());
+
+        BandRecommendResponse response = service.getRecommendedBands(USER_ID, null, null);
+
+        assertEquals(2, response.bands().size());
+        assertEquals(2L, response.bands().get(0).bandId());
+        assertEquals(1L, response.bands().get(1).bandId());
+        assertTrue(response.bands().get(0).score() > response.bands().get(1).score());
+    }
+
+    @Test
+    void onlyMatchStaysRankedFirstDespiteHeavyFatigue() {
+        // 후보가 이 밴드 하나뿐이면, 아무리 피로도가 쌓여도(FLOOR) 제외되지 않고 그대로 1등으로 남아야 한다.
+        when(followRepository.findBandIdsByUserId(USER_ID)).thenReturn(List.of());
+        when(userGenresRepository.findAllByUser(any(User.class)))
+                .thenReturn(List.of(UserGenres.builder().genre(Genre.HARD_ROCK).build()));
+        when(userRegionsRepository.findAllByUser(any(User.class))).thenReturn(List.of());
+
+        Band onlyMatch = band(1L, Genre.HARD_ROCK, Region.SEOUL);
+        when(bandRepository.findByGenreIn(any())).thenReturn(List.of(onlyMatch));
+
+        LocalDateTime now = LocalDateTime.now();
+        List<Object[]> heavyExposures = java.util.stream.IntStream.range(0, 20)
+                .mapToObj(daysAgo -> new Object[]{1L, now.minusDays(daysAgo)})
+                .toList();
+        when(bandRecommendationLogRepository.findRecentVisibleExposures(eq(USER_ID), anyList(), anyInt(), any()))
+                .thenReturn(heavyExposures);
+        when(postRepository.findBandIdsWithRecentPost(anyList(), any())).thenReturn(List.of());
+        when(postRepository.findLatestActivityAtByBandIds(anyList())).thenReturn(List.of());
+        when(performanceRepository.findBandIdsWithRecentPerformance(anyList(), any(), any())).thenReturn(List.of());
+        when(followRepository.countFollowersByBandIds(anyList())).thenReturn(List.of());
+        when(followRepository.countRecentFollowersByBandIdIn(anyList(), any())).thenReturn(List.of());
+
+        BandRecommendResponse response = service.getRecommendedBands(USER_ID, null, null);
+
+        // genre(3)만 매치 -> base score 3.0. FLOOR(0.25) 적용 시 최저 3.0 * 0.25 = 0.75까지만 깎여야 한다.
+        assertEquals(1, response.bands().size());
+        assertEquals(1L, response.bands().get(0).bandId());
+        assertEquals(0.75, response.bands().get(0).score(), 0.05);
+    }
+
+    @Test
+    void exposuresBeforeClickAreIgnoredSoNoFatiguePenaltyApplies() {
+        // 클릭이 모든 노출보다 나중이면 - 그 노출들은 리셋되어 다 무시되고 페널티가 아예 없어야 한다.
+        when(followRepository.findBandIdsByUserId(USER_ID)).thenReturn(List.of());
+        when(userGenresRepository.findAllByUser(any(User.class)))
+                .thenReturn(List.of(UserGenres.builder().genre(Genre.HARD_ROCK).build()));
+        when(userRegionsRepository.findAllByUser(any(User.class))).thenReturn(List.of());
+
+        Band clickedBand = band(1L, Genre.HARD_ROCK, Region.SEOUL);
+        Band otherBand = band(2L, Genre.HARD_ROCK, Region.SEOUL);
+        when(bandRepository.findByGenreIn(any())).thenReturn(List.of(clickedBand, otherBand));
+
+        LocalDateTime now = LocalDateTime.now();
+        when(bandRecommendationLogRepository.findRecentVisibleExposures(eq(USER_ID), anyList(), anyInt(), any()))
+                .thenReturn(List.<Object[]>of(
+                        new Object[]{1L, now},
+                        new Object[]{1L, now.minusDays(1)},
+                        new Object[]{1L, now.minusDays(2)}
+                ));
+        when(bandInteractionRepository.findLastInteractedAtByUserIdAndBandIdIn(eq(USER_ID), anyList()))
+                .thenReturn(List.<Object[]>of(new Object[]{1L, now.plusSeconds(1)}));
+        when(postRepository.findBandIdsWithRecentPost(anyList(), any())).thenReturn(List.of());
+        when(postRepository.findLatestActivityAtByBandIds(anyList())).thenReturn(List.of());
+        when(performanceRepository.findBandIdsWithRecentPerformance(anyList(), any(), any())).thenReturn(List.of());
+        when(followRepository.countFollowersByBandIds(anyList())).thenReturn(List.of());
+        when(followRepository.countRecentFollowersByBandIdIn(anyList(), any())).thenReturn(List.of());
+
+        BandRecommendResponse response = service.getRecommendedBands(USER_ID, null, null);
+
+        assertEquals(2, response.bands().size());
+        // 둘 다 무페널티라 genre(3)만 매치한 동일 base score(3.0)를 받아야 한다.
+        assertEquals(3.0, response.bands().get(0).score(), 1e-9);
+        assertEquals(3.0, response.bands().get(1).score(), 1e-9);
+    }
+
+    @Test
+    void exposuresAfterClickStillAccumulateFatigueDespiteEarlierClick() {
+        // 클릭은 "영구 면제권"이 아니라 리셋 시점일 뿐이다 - 클릭 이후에 또 반복 노출되고
+        // 그 사이 재클릭이 없었다면, 클릭 이전 이력과 무관하게 다시 피로도가 쌓여야 한다.
+        when(followRepository.findBandIdsByUserId(USER_ID)).thenReturn(List.of());
+        when(userGenresRepository.findAllByUser(any(User.class)))
+                .thenReturn(List.of(UserGenres.builder().genre(Genre.HARD_ROCK).build()));
+        when(userRegionsRepository.findAllByUser(any(User.class))).thenReturn(List.of());
+
+        Band clickedThenIgnoredAgainBand = band(1L, Genre.HARD_ROCK, Region.SEOUL);
+        when(bandRepository.findByGenreIn(any())).thenReturn(List.of(clickedThenIgnoredAgainBand));
+
+        LocalDateTime now = LocalDateTime.now();
+        when(bandRecommendationLogRepository.findRecentVisibleExposures(eq(USER_ID), anyList(), anyInt(), any()))
+                .thenReturn(List.<Object[]>of(
+                        // 클릭(10일 전) 이전 노출 - 리셋되어 무시돼야 함
+                        new Object[]{1L, now.minusDays(20)},
+                        new Object[]{1L, now.minusDays(19)},
+                        new Object[]{1L, now.minusDays(18)},
+                        // 클릭 이후 노출 - 재클릭 없이 반복됐으므로 다시 피로도에 반영돼야 함
+                        new Object[]{1L, now},
+                        new Object[]{1L, now.minusDays(1)},
+                        new Object[]{1L, now.minusDays(2)}
+                ));
+        when(bandInteractionRepository.findLastInteractedAtByUserIdAndBandIdIn(eq(USER_ID), anyList()))
+                .thenReturn(List.<Object[]>of(new Object[]{1L, now.minusDays(10)}));
+        when(postRepository.findBandIdsWithRecentPost(anyList(), any())).thenReturn(List.of());
+        when(postRepository.findLatestActivityAtByBandIds(anyList())).thenReturn(List.of());
+        when(performanceRepository.findBandIdsWithRecentPerformance(anyList(), any(), any())).thenReturn(List.of());
+        when(followRepository.countFollowersByBandIds(anyList())).thenReturn(List.of());
+        when(followRepository.countRecentFollowersByBandIdIn(anyList(), any())).thenReturn(List.of());
+
+        BandRecommendResponse response = service.getRecommendedBands(USER_ID, null, null);
+
+        // 클릭 이전 3회는 리셋으로 버려지고, 클릭 이후 3회(오늘/어제/그제)만 계산돼야 한다.
+        // genre(3) base -> effImp≈2.42, excess≈0.42, penalty≈0.81 -> score≈2.43
+        assertEquals(1, response.bands().size());
+        assertTrue(response.bands().get(0).score() < 3.0);
+        assertEquals(2.43, response.bands().get(0).score(), 0.05);
+    }
+
+    @Test
+    void fatiguePenaltyRecoversAsExposuresAgeOut() {
+        // 노출 횟수는 같아도(3회), 오래전에 몰려있던 노출은 감쇠로 회복되어 무페널티에 가까워지고
+        // 최근에 몰린 노출은 여전히 페널티를 받아야 한다.
+        when(followRepository.findBandIdsByUserId(USER_ID)).thenReturn(List.of());
+        when(userGenresRepository.findAllByUser(any(User.class)))
+                .thenReturn(List.of(UserGenres.builder().genre(Genre.HARD_ROCK).build()));
+        when(userRegionsRepository.findAllByUser(any(User.class))).thenReturn(List.of());
+
+        Band recentlyFatiguedBand = band(10L, Genre.HARD_ROCK, Region.SEOUL);
+        Band recoveredBand = band(20L, Genre.HARD_ROCK, Region.SEOUL);
+        when(bandRepository.findByGenreIn(any())).thenReturn(List.of(recentlyFatiguedBand, recoveredBand));
+
+        LocalDateTime now = LocalDateTime.now();
+        when(bandRecommendationLogRepository.findRecentVisibleExposures(eq(USER_ID), anyList(), anyInt(), any()))
+                .thenReturn(List.<Object[]>of(
+                        new Object[]{10L, now},
+                        new Object[]{10L, now.minusDays(1)},
+                        new Object[]{10L, now.minusDays(2)},
+                        new Object[]{20L, now.minusDays(15)},
+                        new Object[]{20L, now.minusDays(16)},
+                        new Object[]{20L, now.minusDays(17)}
+                ));
+        when(postRepository.findBandIdsWithRecentPost(anyList(), any())).thenReturn(List.of());
+        when(postRepository.findLatestActivityAtByBandIds(anyList())).thenReturn(List.of());
+        when(performanceRepository.findBandIdsWithRecentPerformance(anyList(), any(), any())).thenReturn(List.of());
+        when(followRepository.countFollowersByBandIds(anyList())).thenReturn(List.of());
+        when(followRepository.countRecentFollowersByBandIdIn(anyList(), any())).thenReturn(List.of());
+
+        BandRecommendResponse response = service.getRecommendedBands(USER_ID, null, null);
+
+        assertEquals(2, response.bands().size());
+        BandRecommendItem recovered = response.bands().stream()
+                .filter(item -> item.bandId().equals(20L)).findFirst().orElseThrow();
+        BandRecommendItem stillFatigued = response.bands().stream()
+                .filter(item -> item.bandId().equals(10L)).findFirst().orElseThrow();
+
+        assertEquals(3.0, recovered.score(), 0.05); // 오래된 노출 -> 감쇠로 사실상 무페널티
+        assertTrue(stillFatigued.score() < recovered.score()); // 최근 노출 -> 아직 페널티 남아있음
+    }
+
+    @Test
+    void fullyFatiguedBandFullyRecoversFourDaysAfterExposuresStop() {
+        // 20일 연속 노출로 FLOOR까지 눌린 상태(effImp≈4.8)에서 노출이 완전히 끊겼을 때,
+        // 감쇠만으로 3일 뒤엔 아직 페널티가 남아있고(excess>0) 4일 뒤엔 완전히 회복(excess<=0)돼야 한다.
+        when(followRepository.findBandIdsByUserId(USER_ID)).thenReturn(List.of());
+        when(userGenresRepository.findAllByUser(any(User.class)))
+                .thenReturn(List.of(UserGenres.builder().genre(Genre.HARD_ROCK).build()));
+        when(userRegionsRepository.findAllByUser(any(User.class))).thenReturn(List.of());
+
+        Band stillFatiguedBand = band(3L, Genre.HARD_ROCK, Region.SEOUL); // 마지막 노출 3일 전
+        Band recoveredBand = band(4L, Genre.HARD_ROCK, Region.SEOUL); // 마지막 노출 4일 전
+        when(bandRepository.findByGenreIn(any())).thenReturn(List.of(stillFatiguedBand, recoveredBand));
+
+        LocalDateTime now = LocalDateTime.now();
+        List<Object[]> exposures = new java.util.ArrayList<>();
+        for (int daysAgo = 0; daysAgo < 20; daysAgo++) {
+            exposures.add(new Object[]{3L, now.minusDays(daysAgo + 3)});
+            exposures.add(new Object[]{4L, now.minusDays(daysAgo + 4)});
+        }
+        when(bandRecommendationLogRepository.findRecentVisibleExposures(eq(USER_ID), anyList(), anyInt(), any()))
+                .thenReturn(exposures);
+        when(postRepository.findBandIdsWithRecentPost(anyList(), any())).thenReturn(List.of());
+        when(postRepository.findLatestActivityAtByBandIds(anyList())).thenReturn(List.of());
+        when(performanceRepository.findBandIdsWithRecentPerformance(anyList(), any(), any())).thenReturn(List.of());
+        when(followRepository.countFollowersByBandIds(anyList())).thenReturn(List.of());
+        when(followRepository.countRecentFollowersByBandIdIn(anyList(), any())).thenReturn(List.of());
+
+        BandRecommendResponse response = service.getRecommendedBands(USER_ID, null, null);
+
+        BandRecommendItem stillFatigued = response.bands().stream()
+                .filter(item -> item.bandId().equals(3L)).findFirst().orElseThrow();
+        BandRecommendItem recovered = response.bands().stream()
+                .filter(item -> item.bandId().equals(4L)).findFirst().orElseThrow();
+
+        // genre(3)만 매치한 base score는 3.0. 3일 뒤엔 여전히 페널티(약 0.82배)가 남아있어야 한다.
+        assertTrue(stillFatigued.score() < 3.0);
+        assertEquals(2.46, stillFatigued.score(), 0.05);
+        // 4일 뒤엔 excess<=0으로 완전히 회복돼 base score 그대로여야 한다.
+        assertEquals(3.0, recovered.score(), 1e-6);
     }
 }
