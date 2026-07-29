@@ -259,6 +259,24 @@ class ChatRoomServiceTest {
     }
 
     @Test
+    @DisplayName("모집공고 쪽지방 상세는 상대 지원서가 없어도 조회한다")
+    void getRecruitmentRoomDetailWithoutApplication() {
+        ChatRoom room = recruitmentRoom(100L, 20L);
+        when(chatRoomRepository.findDetail(100L)).thenReturn(Optional.of(room));
+        when(chatMessageRepository.findRoomMessages(
+                eq(100L), eq(null), any(Pageable.class)
+        )).thenReturn(List.of());
+
+        var response = service.getRoomDetail(USER_ID, 100L, null, 20);
+
+        assertThat(response.contextType()).isEqualTo(ChatContextType.RECRUITMENT);
+        assertThat(response.sessionApplicationId()).isNull();
+        assertThat(response.sessionRecruitmentId()).isEqualTo(20L);
+        assertThat(response.opponentName()).isEqualTo("테스트 밴드");
+        assertThat(response.messages()).isEmpty();
+    }
+
+    @Test
     @DisplayName("참여자가 아닌 사용자는 쪽지방 상세정보를 조회할 수 없다")
     void getRoomDetailFailsForNonParticipant() {
         ChatRoom room = room(100L);
