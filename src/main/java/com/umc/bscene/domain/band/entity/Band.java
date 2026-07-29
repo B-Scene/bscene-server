@@ -58,4 +58,8 @@ public class Band extends BaseEntity {
     public void transferOwnership(User newOwner) {
         this.owner = newOwner;
     }
+
+    public void deleteProfileImage() {
+        this.profileImageUrl = null;
+    }
 }

@@ -2,8 +2,13 @@ package com.umc.bscene.domain.user.controller;
 
 import com.umc.bscene.domain.user.dto.request.MyInfoUpdateRequest;
 import com.umc.bscene.domain.user.dto.request.SessionApplyConfirmRequest;
+import com.umc.bscene.domain.user.dto.request.SessionRecruitDecisionRequest;
 import com.umc.bscene.domain.user.dto.request.UserModeUpdateRequest;
-import com.umc.bscene.domain.user.dto.response.*;
+import com.umc.bscene.domain.user.dto.response.FollowedBandResponse;
+import com.umc.bscene.domain.user.dto.response.InterestedPerformanceResponse;
+import com.umc.bscene.domain.user.dto.response.MyInfoResponse;
+import com.umc.bscene.domain.user.dto.response.MyProfileResponse;
+import com.umc.bscene.domain.user.dto.response.ParticipationHistoryResponse;
 import com.umc.bscene.domain.user.dto.response.mypage.BandMyPageResponse;
 import com.umc.bscene.domain.user.dto.response.mypage.FanMyPageResponse;
 import com.umc.bscene.domain.user.dto.response.mypage.MyPageResponse;
@@ -19,12 +24,18 @@ import com.umc.bscene.global.response.CursorPage;
 import com.umc.bscene.global.response.SuccessResponse;
 import com.umc.bscene.global.security.entity.AuthMember;
 import jakarta.validation.Valid;
-import jakarta.validation.constraints.NotNull;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping("/users")
@@ -193,10 +204,10 @@ public class UserController {
     public ResponseEntity<SuccessResponse<?>> decideSessionApply(
             @AuthenticationPrincipal AuthMember member,
             @PathVariable Long applySubmissionId,
-            @RequestBody @NotNull(message = "지원에 대한 수락, 거절 상태값은 비어있을 수 없습니다.") Boolean isApproved
+            @Valid @RequestBody SessionRecruitDecisionRequest request
     ) {
 
-        userService.decideSessionApply(member.getUser().getId(), applySubmissionId, isApproved);
+        userService.decideSessionApply(member.getUser().getId(), applySubmissionId, request.isApproved());
 
         return ResponseEntity
                 .status(HttpStatus.OK)

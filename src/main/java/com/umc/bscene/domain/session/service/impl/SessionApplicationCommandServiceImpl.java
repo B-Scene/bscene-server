@@ -102,6 +102,7 @@ public class SessionApplicationCommandServiceImpl implements SessionApplicationC
         validateDefaultApplicationUpdate(
                 userId,
                 sessionApplicationId,
+                sessionApplication.getPurpose(),
                 request.getPurpose()
         );
 
@@ -140,9 +141,7 @@ public class SessionApplicationCommandServiceImpl implements SessionApplicationC
                         SessionErrorCode.SESSION_APPLICATION_NOT_FOUND
                 ));
 
-        submissionRepository
-                .deleteAllBySessionApplication_SessionApplicationId(sessionApplicationId);
-        sessionApplicationRepository.delete(sessionApplication);
+        sessionApplication.delete();
     }
 
     private void validateDefaultApplicationCreation(Long userId, String purpose) {
@@ -165,8 +164,15 @@ public class SessionApplicationCommandServiceImpl implements SessionApplicationC
     private void validateDefaultApplicationUpdate(
             Long userId,
             Long sessionApplicationId,
+            String currentPurpose,
             String purpose
     ) {
+        if (DEFAULT_PURPOSE.equals(currentPurpose) && !DEFAULT_PURPOSE.equals(purpose)) {
+            throw new SessionApplicationException(
+                    SessionErrorCode.DEFAULT_SESSION_APPLICATION_PURPOSE_IMMUTABLE
+            );
+        }
+
         if (DEFAULT_PURPOSE.equals(purpose)
                 && sessionApplicationRepository
                 .existsByUserIdAndPurposeAndDeletedAtIsNullAndSessionApplicationIdNot(

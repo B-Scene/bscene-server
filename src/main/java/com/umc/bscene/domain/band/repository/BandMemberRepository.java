@@ -81,17 +81,22 @@ order by bm.id ASC
             @Param("status") BandMemberStatus status
     );
 
-    // 공동 진행 후보 조회용 - 밴드의 정회원 목록을 유저 정보(이름)까지 한 번에 조회
+    // 공동 진행 후보 조회용 - 밴드의 정회원을 밴드(이미지)·유저·밴드 멤버 프로필까지 한 번에 조회
+    // 멤버 프로필이 지정되지 않은 멤버(JOIN FETCH bm.bandMemberProfile)는 자동으로 제외됨
     @Query("""
         SELECT bm
         FROM BandMember bm
+        JOIN FETCH bm.band
         JOIN FETCH bm.user
+        JOIN FETCH bm.bandMemberProfile
         WHERE bm.band.id = :bandId
           AND bm.status = :status
+          AND bm.memberType = :memberType
     """)
-    List<BandMember> findWithUserByBand_IdAndStatus(
+    List<BandMember> findWithUserAndProfileByBand_IdAndStatusAndMemberType(
             @Param("bandId") Long bandId,
-            @Param("status") BandMemberStatus status
+            @Param("status") BandMemberStatus status,
+            @Param("memberType") BandMemberType memberType
     );
 
     // 라이브 방 멤버 프로필 조회용 - 라이브 생성 시점에 확정된 밴드 기준으로 멤버 프로필까지 한 번에 조회
@@ -175,6 +180,32 @@ where bm.user.id = :userId
     """)
     List<Object[]> countMembersByBandIdsAndStatus(
             @Param("bandIds") Collection<Long> bandIds,
+            @Param("status") BandMemberStatus status
+    );
+
+    @Query("""
+        SELECT bm.user.id
+        FROM BandMember bm
+        WHERE bm.band.id = :bandId
+          AND bm.status = :status
+        ORDER BY bm.id ASC
+    """)
+    List<Long> findUserIdsByBandIdAndStatus(
+            @Param("bandId") Long bandId,
+            @Param("status") BandMemberStatus status
+    );
+
+    @Query("""
+    SELECT bmp.nickname
+    FROM BandMember bm
+    JOIN bm.bandMemberProfile bmp
+    WHERE bm.band.id = :bandId
+      AND bm.user.id = :userId
+      AND bm.status = :status
+""")
+    Optional<String> findNicknameByBandIdAndUserIdAndStatus(
+            @Param("bandId") Long bandId,
+            @Param("userId") Long userId,
             @Param("status") BandMemberStatus status
     );
 }

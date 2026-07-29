@@ -35,7 +35,9 @@ public record ChatRoomListItemResponse(
                     ? recruitment.getBand().getProfileImageUrl()
                     : sessionProfileImageUrl;
             return new ChatRoomListItemResponse(room.getChatRoomId(), room.getContextType(),
-                    recruitment.getSessionRecruitmentId(), counterpart.getId(), name,
+                    recruitment.getDeletedAt() == null
+                            ? recruitment.getSessionRecruitmentId() : null,
+                    counterpart.getId(), name,
                     profileImageUrl,
                     applicationStatus,
                     lastMessage == null ? null : lastMessage.getContent(),
@@ -43,7 +45,8 @@ public record ChatRoomListItemResponse(
         }
         var application = counterpartApplication;
         return new ChatRoomListItemResponse(room.getChatRoomId(), room.getContextType(),
-                application.getSessionApplicationId(), counterpart.getId(), counterpart.getName(),
+                application == null ? null : application.getSessionApplicationId(),
+                counterpart.getId(), counterpart.getName(),
                 sessionProfileImageUrl,
                 null,
                 lastMessage == null ? null : lastMessage.getContent(),

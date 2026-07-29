@@ -126,11 +126,13 @@ where sas.applicationSubmissionId = :sasId
             Long userId
     );
 
-    // 지원 수락/거절 처리용 - 지원자(userId) 확인을 위해 지원서까지 한 번에 조회
+    // 지원 상태 변경 및 알림 정보 생성을 위해 지원서·공고·밴드를 한 번에 조회
     @Query("""
         SELECT submission
         FROM SessionApplicationSubmission submission
         JOIN FETCH submission.sessionApplication
+        JOIN FETCH submission.sessionRecruitment recruitment
+        JOIN FETCH recruitment.band
         WHERE submission.applicationSubmissionId = :submissionId
     """)
     Optional<SessionApplicationSubmission> findWithApplicationById(

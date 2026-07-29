@@ -13,7 +13,7 @@ public record StreamRoomResponse(
         LocalDateTime startedAt,
 
         Integer viewCount,
-        String bandProfileImage,
+        String bandProfileImageUrl,
         String bandName,
         String title,
         String description,

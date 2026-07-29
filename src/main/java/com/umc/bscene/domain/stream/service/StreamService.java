@@ -68,4 +68,6 @@ public interface StreamService {
 
     // 라이브 내 유저 신고 접수 (신고 이력 저장 + 모니터링 파이프라인 감지용 로그 기록)
     void reportUser(User reporter, Long liveId, ReportUserRequest request);
+
+    void decideCoHostInvitation(Long userId, Long liveId, boolean isAccepted);
 }

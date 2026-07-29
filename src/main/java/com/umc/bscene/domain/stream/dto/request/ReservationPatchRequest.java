@@ -21,10 +21,13 @@ public record ReservationPatchRequest(
         @Size(max = 100, message = "description 필드는 100자를 초과할 수 없습니다.")
         String description,
 
+        String thumbnailImageUrl,
+
         @Future(message = "현재 시각과 일치하거나, 과거인 시간은 예약 시각으로 설정할 수 없습니다.")
         LocalDateTime scheduledAt,
 
         // null이면 변경 없음, 빈 리스트면 공동 진행 전체 해제
+        // 공동 진행자로 초대할 사용자 ID 목록
         @Size(max = 10, message = "coHost는 최대 10명까지 지정할 수 있습니다.")
         List<@NotNull(message = "coHost 원소는 null일 수 없습니다.") Long> coHost
 ) {

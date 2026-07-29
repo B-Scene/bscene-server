@@ -83,4 +83,38 @@ public record StreamPushMessage(
                 liveId
         );
     }
+
+    // 공동 진행자 초대 알림
+    public static StreamPushMessage coHostInvited(
+            String bandName,
+            String liveTitle,
+            Long liveId
+    ) {
+        return new StreamPushMessage(
+                NotificationType.LIVE,
+                NotificationSettingType.BAND_LIVE_CO_HOST_INVITATION,
+                "공동 진행자로 초대됐어요",
+                bandName + "의 '" + liveTitle + "' 라이브 공동 진행자 초대를 확인해주세요.",
+                "/lives/" + liveId + "/co-host-invitation",
+                liveId
+        );
+    }
+
+    // 공동 진행자 초대 수락·거절 결과 알림
+    public static StreamPushMessage coHostInvitationDecided(
+            String coHostNickname,
+            String liveTitle,
+            boolean isAccepted,
+            Long liveId
+    ) {
+        return new StreamPushMessage(
+                NotificationType.LIVE,
+                NotificationSettingType.BAND_LIVE_CO_HOST_INVITATION,
+                "공동 진행자 초대 응답이 도착했어요",
+                coHostNickname + "님이 '" + liveTitle + "' 라이브 공동 진행자 초대를 "
+                        + (isAccepted ? "수락했어요." : "거절했어요."),
+                "/lives/" + liveId + "/reservation",
+                liveId
+        );
+    }
 }
