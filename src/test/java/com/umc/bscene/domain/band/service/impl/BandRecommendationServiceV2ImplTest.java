@@ -26,6 +26,8 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.data.domain.Pageable;
+import org.springframework.test.util.ReflectionTestUtils;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -370,5 +372,107 @@ class BandRecommendationServiceV2ImplTest {
         assertFalse(thirdPage.hasNext());
         assertNull(thirdPage.nextCursor());
         assertEquals(11L, thirdPage.bands().get(0).bandId());
+    }
+
+    @Test
+    void coldStartFallbackReturnsPopularBandWhenUserHasNoSignalsAtAll() {
+        // 장르/지역 선호, 팔로우, 클릭 이력이 전혀 없는 신규 유저 - 후보군이 비므로 인기 밴드 폴백이 채워야 한다.
+        when(followRepository.findBandIdsByUserId(USER_ID)).thenReturn(List.of());
+        when(userGenresRepository.findAllByUser(any(User.class))).thenReturn(List.of());
+        when(userRegionsRepository.findAllByUser(any(User.class))).thenReturn(List.of());
+
+        Band popularBand = band(100L, Genre.HARD_ROCK, Region.SEOUL);
+        when(followRepository.findTopFollowedBandIds(any(Pageable.class))).thenReturn(List.of(100L));
+        when(bandRepository.findAllById(anyList())).thenReturn(List.of(popularBand));
+        when(bandRepository.findAllByOrderByCreatedAtDesc(any(Pageable.class))).thenReturn(List.of());
+        when(postRepository.findBandIdsWithRecentPost(anyList(), any())).thenReturn(List.of());
+        when(postRepository.findLatestActivityAtByBandIds(anyList())).thenReturn(List.of());
+        when(performanceRepository.findBandIdsWithRecentPerformance(anyList(), any(), any())).thenReturn(List.of());
+        when(followRepository.countFollowersByBandIds(anyList())).thenReturn(List.of());
+        when(followRepository.countRecentFollowersByBandIdIn(anyList(), any())).thenReturn(List.of());
+
+        BandRecommendResponse response = service.getRecommendedBands(USER_ID, null, null);
+
+        assertEquals(1, response.bands().size());
+        assertEquals(100L, response.bands().get(0).bandId());
+        assertEquals("요즘 인기있는 밴드", response.bands().get(0).reason());
+    }
+
+    @Test
+    void coldStartFallbackUsesRecentlyCreatedBandsWhenNoBandHasFollowersYet() {
+        // 서비스 초창기라 팔로우 데이터 자체가 없는 경우 - 최근 생성된 밴드로 보충되어야 한다.
+        when(followRepository.findBandIdsByUserId(USER_ID)).thenReturn(List.of());
+        when(userGenresRepository.findAllByUser(any(User.class))).thenReturn(List.of());
+        when(userRegionsRepository.findAllByUser(any(User.class))).thenReturn(List.of());
+
+        Band newBand = band(200L, Genre.JAZZ, Region.BUSAN);
+        when(followRepository.findTopFollowedBandIds(any(Pageable.class))).thenReturn(List.of());
+        when(bandRepository.findAllByOrderByCreatedAtDesc(any(Pageable.class))).thenReturn(List.of(newBand));
+        when(postRepository.findBandIdsWithRecentPost(anyList(), any())).thenReturn(List.of());
+        when(postRepository.findLatestActivityAtByBandIds(anyList())).thenReturn(List.of());
+        when(performanceRepository.findBandIdsWithRecentPerformance(anyList(), any(), any())).thenReturn(List.of());
+        when(followRepository.countFollowersByBandIds(anyList())).thenReturn(List.of());
+        when(followRepository.countRecentFollowersByBandIdIn(anyList(), any())).thenReturn(List.of());
+
+        BandRecommendResponse response = service.getRecommendedBands(USER_ID, null, null);
+
+        assertEquals(1, response.bands().size());
+        assertEquals(200L, response.bands().get(0).bandId());
+        assertEquals("새로 등록된 밴드", response.bands().get(0).reason());
+    }
+
+    @Test
+    void recentlyCreatedBandOutscoresOlderBandWithIdenticalOtherSignals() {
+        // 팔로우/활동 신호가 동일해도 최근 생성된 밴드는 신생 밴드 부스트만큼 더 높은 점수를 받아야 한다.
+        when(followRepository.findBandIdsByUserId(USER_ID)).thenReturn(List.of());
+        when(userGenresRepository.findAllByUser(any(User.class)))
+                .thenReturn(List.of(UserGenres.builder().genre(Genre.HARD_ROCK).build()));
+        when(userRegionsRepository.findAllByUser(any(User.class))).thenReturn(List.of());
+
+        Band newBand = band(1L, Genre.HARD_ROCK, Region.SEOUL);
+        Band oldBand = band(2L, Genre.HARD_ROCK, Region.SEOUL);
+        ReflectionTestUtils.setField(newBand, "createdAt", LocalDateTime.now().minusDays(1));
+        ReflectionTestUtils.setField(oldBand, "createdAt", LocalDateTime.now().minusDays(60));
+
+        when(bandRepository.findByGenreIn(any())).thenReturn(List.of(newBand, oldBand));
+        when(postRepository.findBandIdsWithRecentPost(anyList(), any())).thenReturn(List.of());
+        when(postRepository.findLatestActivityAtByBandIds(anyList())).thenReturn(List.of());
+        when(performanceRepository.findBandIdsWithRecentPerformance(anyList(), any(), any())).thenReturn(List.of());
+        when(followRepository.countFollowersByBandIds(anyList())).thenReturn(List.of());
+        when(followRepository.countRecentFollowersByBandIdIn(anyList(), any())).thenReturn(List.of());
+
+        BandRecommendResponse response = service.getRecommendedBands(USER_ID, null, null);
+
+        assertEquals(2, response.bands().size());
+        assertEquals(1L, response.bands().get(0).bandId());
+        assertEquals(2L, response.bands().get(1).bandId());
+        assertTrue(response.bands().get(0).score() > response.bands().get(1).score());
+    }
+
+    @Test
+    void coldStartFallbackExcludesBandsTheUserAlreadyFollows() {
+        // 유일한 신호가 팔로우뿐이고 아직 유사도 데이터가 없어 후보군이 비는 경우 - 폴백이 채워주되,
+        // 팔로우한 밴드가 마침 인기 폴백 풀에도 걸리더라도 이미 팔로우 중인 밴드는 다시 추천되면 안 된다.
+        when(followRepository.findBandIdsByUserId(USER_ID)).thenReturn(List.of(100L));
+        when(userGenresRepository.findAllByUser(any(User.class))).thenReturn(List.of());
+        when(userRegionsRepository.findAllByUser(any(User.class))).thenReturn(List.of());
+        when(bandSimilarityRepository.findByBandIdIn(anyList())).thenReturn(List.of());
+
+        Band followedBand = band(100L, Genre.HARD_ROCK, Region.SEOUL);
+        Band otherPopularBand = band(300L, Genre.JAZZ, Region.BUSAN);
+        when(followRepository.findTopFollowedBandIds(any(Pageable.class))).thenReturn(List.of(100L, 300L));
+        when(bandRepository.findAllById(anyList())).thenReturn(List.of(followedBand, otherPopularBand));
+        when(bandRepository.findAllByOrderByCreatedAtDesc(any(Pageable.class))).thenReturn(List.of());
+        when(postRepository.findBandIdsWithRecentPost(anyList(), any())).thenReturn(List.of());
+        when(postRepository.findLatestActivityAtByBandIds(anyList())).thenReturn(List.of());
+        when(performanceRepository.findBandIdsWithRecentPerformance(anyList(), any(), any())).thenReturn(List.of());
+        when(followRepository.countFollowersByBandIds(anyList())).thenReturn(List.of());
+        when(followRepository.countRecentFollowersByBandIdIn(anyList(), any())).thenReturn(List.of());
+
+        BandRecommendResponse response = service.getRecommendedBands(USER_ID, null, null);
+
+        assertEquals(1, response.bands().size());
+        assertEquals(300L, response.bands().get(0).bandId());
+        assertEquals("요즘 인기있는 밴드", response.bands().get(0).reason());
     }
 }
