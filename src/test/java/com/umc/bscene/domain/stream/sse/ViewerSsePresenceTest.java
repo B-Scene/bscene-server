@@ -1,5 +1,6 @@
 package com.umc.bscene.domain.stream.sse;
 
+import com.umc.bscene.domain.stream.dto.response.CoHostUpgradeEvent;
 import com.umc.bscene.domain.stream.dto.response.StreamRoomResponse;
 import com.umc.bscene.domain.stream.entity.AudioStream;
 import com.umc.bscene.domain.stream.enums.StreamStatus;
@@ -383,6 +384,34 @@ class ViewerSsePresenceTest {
                     LIVE_ID, List.of(), new StreamRoomResponse.CoPublisher(21L, "url"));
 
             verifyNoInteractions(registry);
+        }
+    }
+
+    @Nested
+    @DisplayName("공동 송출자 업그레이드 SSE")
+    class CoHostUpgradeEvents {
+
+        @Test
+        @DisplayName("업그레이드 요청은 송출자에게만 타겟 전송(coHostUpgradeRequested)되고 브로드캐스트하지 않는다")
+        void upgradeRequestedTargetsBroadcasterOnly() {
+            CoHostUpgradeEvent event = new CoHostUpgradeEvent(20L, "닉네임");
+
+            presence.notifyCoHostUpgradeRequested(LIVE_ID, BROADCASTER_ID, event);
+
+            verify(registry).sendToUsers(LIVE_ID, List.of(BROADCASTER_ID), "coHostUpgradeRequested", event);
+            // [공격] 요청자 정보가 방 전체(청취자 포함)에 브로드캐스트되면 안 된다
+            verify(registry, never()).broadcast(anyLong(), anyLong());
+        }
+
+        @Test
+        @DisplayName("업그레이드 수락은 요청자에게만 타겟 전송(coHostUpgradeAccepted)되고 브로드캐스트하지 않는다")
+        void upgradeAcceptedTargetsRequesterOnly() {
+            CoHostUpgradeEvent event = new CoHostUpgradeEvent(20L, "닉네임");
+
+            presence.notifyCoHostUpgradeAccepted(LIVE_ID, 20L, event);
+
+            verify(registry).sendToUsers(LIVE_ID, List.of(20L), "coHostUpgradeAccepted", event);
+            verify(registry, never()).broadcast(anyLong(), anyLong());
         }
     }
 }
