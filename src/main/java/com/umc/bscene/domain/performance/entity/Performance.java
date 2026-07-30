@@ -82,7 +82,9 @@ public class Performance extends BaseEntity {
             Genre genre,
             LocalDate performanceDate,
             LocalTime startTime,
+            Region region,
             String venue,
+            String description,
             String ticketPrice,
             String ticketLink,
             String posterImageUrl,
@@ -92,7 +94,9 @@ public class Performance extends BaseEntity {
         if (genre != null) this.genre = genre;
         if (performanceDate != null) this.performanceDate = performanceDate;
         if (startTime != null) this.startTime = startTime;
+        if (region != null) this.region = region;
         if (venue != null) this.venue = venue;
+        if (description != null) this.description = description;
         if (ticketPrice != null) this.ticketPrice = ticketPrice;
         if (ticketLink != null) this.ticketLink = ticketLink;
         if (posterImageUrl != null) this.posterImageUrl = posterImageUrl;

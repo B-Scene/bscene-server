@@ -1,6 +1,7 @@
 package com.umc.bscene.domain.performance.dto.request;
 
 import com.umc.bscene.domain.auth.enums.onboarding.Genre;
+import com.umc.bscene.domain.auth.enums.onboarding.Region;
 import com.umc.bscene.domain.performance.enums.AgeRating;
 
 import java.time.LocalDate;
@@ -12,7 +13,9 @@ public record PerformanceUpdateRequest(
         Genre genre,
         LocalDate performanceDate,
         LocalTime startTime,
+        Region region,
         String venue,
+        String description,
         String ticketPrice,
         String ticketLink,
         String posterImageUrl,

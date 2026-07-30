@@ -256,7 +256,7 @@ class PerformanceServiceTest {
         when(performanceRepository.findById(PERFORMANCE_ID)).thenReturn(Optional.of(performance(LocalDate.now())));
         when(bandMemberRepository.existsByBand_IdAndUser_IdAndStatus(eq(BAND_ID), eq(USER_ID), any())).thenReturn(false);
         PerformanceUpdateRequest request = new PerformanceUpdateRequest(
-                "새제목", null, null, null, null, null, null, null, null, null
+                "새제목", null, null, null, null, null, null, null, null, null, null, null
         );
 
         PerformanceException exception = assertThrows(PerformanceException.class,
@@ -270,7 +270,7 @@ class PerformanceServiceTest {
         when(performanceRepository.findById(PERFORMANCE_ID)).thenReturn(Optional.of(performance(LocalDate.now())));
         when(bandMemberRepository.existsByBand_IdAndUser_IdAndStatus(eq(BAND_ID), eq(USER_ID), any())).thenReturn(true);
         PerformanceUpdateRequest request = new PerformanceUpdateRequest(
-                null, null, LocalDate.now().minusDays(1), null, null, null, null, null, null, null
+                null, null, LocalDate.now().minusDays(1), null, null, null, null, null, null, null, null, null
         );
 
         PerformanceException exception = assertThrows(PerformanceException.class,
@@ -289,7 +289,7 @@ class PerformanceServiceTest {
         when(performanceParticipationRepository.findUserIdsByPerformanceIdAndStatus(PERFORMANCE_ID, ParticipationStatus.SCHEDULED))
                 .thenReturn(List.of());
         PerformanceUpdateRequest request = new PerformanceUpdateRequest(
-                "새제목", null, null, null, null, null, null, null, null, null
+                "새제목", null, null, null, null, null, null, null, null, null, null, null
         );
 
         PerformanceResponse response = service.updatePerformance(USER_ID, PERFORMANCE_ID, request);
