@@ -1,11 +1,14 @@
 package com.umc.bscene.domain.stream.entity;
 
+import com.fasterxml.jackson.annotation.JsonManagedReference;
+import com.umc.bscene.domain.stream.entity.mapper.StreamMember;
 import com.umc.bscene.domain.stream.enums.StreamStatus;
 import com.umc.bscene.global.entity.BaseEntity;
 import jakarta.persistence.*;
 import lombok.*;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Entity
 @Getter
@@ -58,6 +61,10 @@ public class AudioStream extends BaseEntity {
     // 모든 녹화 세그먼트의 다시보기 등록 완료 알림 발송 시각
     @Column(name = "replay_notification_sent_at")
     private LocalDateTime replayNotificationSentAt;
+
+    @JsonManagedReference
+    @OneToMany(fetch = FetchType.LAZY)
+    private List<StreamMember> coHost;
 
     public void close(int closedViewerCount) {
         this.status = StreamStatus.CLOSED;

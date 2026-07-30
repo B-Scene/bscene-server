@@ -16,4 +16,8 @@ public interface UserPort {
      * @return 존재하는 사용자 엔티티 목록을 반환해주세요.
      */
     List<User> findAllByIds(Collection<Long> userIds);
+
+    boolean validAccessAboutStreamInBandMode(Long userId, Collection<Long> coHostIds);
+
+    String getFanName(Long userId);
 }

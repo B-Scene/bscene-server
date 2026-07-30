@@ -1,5 +1,7 @@
 package com.umc.bscene.domain.stream.service;
 
+import com.umc.bscene.domain.band.entity.BandMember;
+import com.umc.bscene.domain.band.enums.BandMemberType;
 import com.umc.bscene.domain.chat.service.LiveChatRoomCloser;
 import com.umc.bscene.domain.stream.dto.CoHostCandidateInfo;
 import com.umc.bscene.domain.stream.dto.StreamPushMessage;
@@ -854,9 +856,21 @@ public class StreamServiceImpl implements StreamService {
         AudioStream stream = audioStreamRepository.findById(liveId)
                 .orElseThrow(() -> new StreamException(StreamErrorCode.AUDIO_STREAM_NOT_FOUND));
 
+        // User.currentMode == BAND 이면서,
+        // AudioStream의 CoHost가 아닐 시, 예외
+        if (userPort.validAccessAboutStreamInBandMode(
+                userId,
+                stream.getCoHost().stream()
+                .map(e -> e.getUser().getId())
+                .toList())
+        ) {
+            throw new StreamException(StreamErrorCode.FORBIDDEN_REQUEST);
+        }
+
         // 송출자, 청취자 구분
         boolean isBroadcaster = stream.getBroadcasterId().equals(userId);
 
+        String nickname = "";
         if (isBroadcaster) {
             // 송출자일 때,
             // 닫힌 혹은 취소된 라이브에 진입하려고하면 예외 발생
@@ -868,6 +882,8 @@ public class StreamServiceImpl implements StreamService {
                 // 방송 시작(SCHEDULED→OPEN)은 타 밴드 프로필로 전환한 상태로는 불가.
                 // 이미 OPEN인 라이브 재입장은 방송 유지(재접속)를 막지 않도록 검증하지 않음
                 validateActiveBandMatches(userId, stream);
+
+                nickname = bandMemberPort.getBandName(stream.getBandId());
 
                 if (audioStreamRepository.existsByBroadcasterIdAndStatus(userId, StreamStatus.OPEN))
                     throw new StreamException(StreamErrorCode.ALREADY_LIVE);
@@ -889,6 +905,8 @@ public class StreamServiceImpl implements StreamService {
             if(stream.getStatus() != StreamStatus.OPEN) {
                 throw new StreamException(StreamErrorCode.AUDIO_STREAM_NOT_LIVE);
             }
+
+            nickname = userPort.getFanName(userId);
 
             // 시청자 등록
             redisTemplate.opsForZSet().add(
@@ -935,6 +953,7 @@ public class StreamServiceImpl implements StreamService {
         return new StreamRoomResponse(
                 stream.getId(),
                 isLive,
+                nickname,
                 stream.getStartedAt(),
                 viewCount == null ? 0 : viewCount.intValue(),
                 band != null ? band.bandProfileImageUrl() : "",

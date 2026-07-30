@@ -1,5 +1,6 @@
 package com.umc.bscene.domain.stream.entity.mapper;
 
+import com.fasterxml.jackson.annotation.JsonManagedReference;
 import com.umc.bscene.domain.stream.entity.AudioStream;
 import com.umc.bscene.domain.stream.enums.StreamMemberStatus;
 import com.umc.bscene.domain.user.entity.User;
@@ -28,6 +29,7 @@ public class StreamMember extends BaseEntity {
     @JoinColumn(name = "user_id")
     private User user;
 
+    @JsonManagedReference
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "audio_stream_id")
     private AudioStream audioStream;
