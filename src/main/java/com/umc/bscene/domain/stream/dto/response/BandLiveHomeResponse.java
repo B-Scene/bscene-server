@@ -4,6 +4,7 @@ import java.util.List;
 
 // 밴드 모드 라이브 홈 응답
 public record BandLiveHomeResponse(
+        Long userId,
         // 지금 라이브 중 3개. isMine=true면 프론트가 "내 라이브 진행중" 라벨 노출
         List<LiveNowItem> liveNow,
 
@@ -17,7 +18,11 @@ public record BandLiveHomeResponse(
             String bandName,
             String title,
             Integer viewerCount,
-            Boolean isMine
+            Boolean isMine,
+
+            // 진행자(송출자 + 공동 진행자)로 등록된 유저 ID 목록.
+            // 조회자가 이 목록에 없으면 프론트가 공동 진행자 업그레이드 요청 모달을 노출
+            List<Long> coHost
     ) {
     }
 
@@ -26,7 +31,10 @@ public record BandLiveHomeResponse(
             String bandName,
             String title,
             String scheduledAt,
-            Boolean isMine
+            Boolean isMine,
+
+            // 진행자(송출자 + 공동 진행자)로 등록된 유저 ID 목록
+            List<Long> coHost
     ) {
     }
 }

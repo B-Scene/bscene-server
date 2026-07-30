@@ -7,6 +7,9 @@ public enum StreamMemberStatus {
     ACCEPTED,
     REJECTED,
 
+    // 라이브 진행 중(OPEN) 밴드 멤버가 보낸 공동 송출자 업그레이드 요청. 송출자가 수락하면 ACCEPTED로 전이
+    REQUESTED,
+
     // 아래 값들은 예약 편집 화면 응답 표시 전용. DB(StreamMember.status)에는 저장하지 말 것
     OWNER,      // 송출자(라이브 생성자) 표시용
     APPROVED,   // ACCEPTED의 응답 표기

@@ -1,5 +1,6 @@
 package com.umc.bscene.domain.stream.entity.mapper;
 
+import com.fasterxml.jackson.annotation.JsonBackReference;
 import com.umc.bscene.domain.stream.entity.AudioStream;
 import com.umc.bscene.domain.stream.enums.StreamMemberStatus;
 import com.umc.bscene.domain.user.entity.User;
@@ -28,6 +29,8 @@ public class StreamMember extends BaseEntity {
     @JoinColumn(name = "user_id")
     private User user;
 
+    // 순환 참조 직렬화 방지: AudioStream.coHost가 @JsonManagedReference(부모), 이쪽이 @JsonBackReference(자식)
+    @JsonBackReference
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "audio_stream_id")
     private AudioStream audioStream;
@@ -35,4 +38,14 @@ public class StreamMember extends BaseEntity {
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private StreamMemberStatus status;
+
+    // 진행자 고유 path
+    @Column(unique = true, length = 64)
+    private String path;
+
+    public void assignPath(String path) {
+        // 재접속 시 동일 path를 재사용해야 MediaMTX overridePublisher가 좀비 세션을 정리한다
+        if (this.path == null)
+            this.path = path;
+    }
 }

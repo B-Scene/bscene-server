@@ -24,7 +24,7 @@ public record PerformancePushMessage(
                 NotificationSettingType.FAN_FOLLOWED_BAND_PERFORMANCE,
                 bandName + "의 새로운 공연이 등록됐어요",
                 "'" + performanceTitle + "' 공연 정보를 확인해보세요.",
-                "/performances/" + performanceId,
+                "/fan/home/concerts/" + performanceId,
                 performanceId
         );
     }
@@ -40,7 +40,7 @@ public record PerformancePushMessage(
                 NotificationSettingType.FAN_PERFORMANCE_REMINDER,
                 "공연 시작 1시간 전이에요",
                 bandName + "의 '" + performanceTitle + "' 공연이 곧 시작돼요.",
-                "/performances/" + performanceId,
+                "/fan/home/concerts/" + performanceId,
                 performanceId
         );
     }
@@ -56,7 +56,7 @@ public record PerformancePushMessage(
                 NotificationSettingType.FAN_PERFORMANCE_UPDATE,
                 "공연 정보가 변경됐어요",
                 bandName + "의 '" + performanceTitle + "' 공연 정보를 다시 확인해주세요.",
-                "/performances/" + performanceId,
+                "/fan/home/concerts/" + performanceId,
                 performanceId
         );
     }

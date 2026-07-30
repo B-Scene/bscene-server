@@ -133,7 +133,8 @@ class StreamServiceImplReservationTest {
                 liveChatRoomCloser,
                 discordMessageSender,
                 "https://hls.test",
-                "https://webrtc.test"
+                "https://webrtc.test",
+                "mixer-secret"
         );
 
         broadcaster = StreamFixtures.bandUser(BROADCASTER_ID);

@@ -307,6 +307,31 @@ class SessionApplicationQueryServiceImplTest {
         assertThat(response.applicationSubmissionId()).isEqualTo(30L);
         assertThat(response.nickname()).isEqualTo("지원자");
         assertThat(response.recruitmentTitle()).isEqualTo("기타 모집");
+        assertThat(response.isOwner()).isTrue();
+    }
+
+    @Test
+    @DisplayName("일반 밴드 구성원이 제출된 지원서를 조회하면 오너 여부는 false이다")
+    void getSubmittedApplicationReturnsFalseForNonOwner() {
+        SessionApplicationSubmission submission = submission(30L);
+        when(submissionRepository.findForRecruitmentMember(30L, 5L))
+                .thenReturn(Optional.of(submission));
+        when(basicProfileRepository.findByUser_Id(USER_ID))
+                .thenReturn(Optional.empty());
+        when(userRepository.findById(USER_ID))
+                .thenReturn(Optional.of(User.builder()
+                        .id(USER_ID)
+                        .name("지원자")
+                        .build()));
+        when(applicationRepository
+                .findFirstByUserIdAndPurposeAndDeletedAtIsNullOrderBySessionApplicationIdDesc(
+                        USER_ID, DEFAULT_PURPOSE
+                )).thenReturn(Optional.empty());
+
+        var response = service.getSubmittedApplication(5L, 30L);
+
+        assertThat(response.isOwner()).isFalse();
+        assertThat(submission.getCheckedAt()).isNull();
     }
 
     @Test

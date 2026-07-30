@@ -5,7 +5,6 @@ import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 
 import static com.umc.bscene.global.constant.StaticValue.BAD_REQUEST;
-import static com.umc.bscene.global.constant.StaticValue.CONFLICT;
 import static com.umc.bscene.global.constant.StaticValue.FORBIDDEN;
 import static com.umc.bscene.global.constant.StaticValue.INTERNAL_SERVER_ERROR;
 import static com.umc.bscene.global.constant.StaticValue.NOT_FOUND;
@@ -28,7 +27,6 @@ public enum ChatErrorCode implements BaseResponseCode {
     CHAT_TARGET_NOT_FOUND("CHAT404_1", NOT_FOUND, "쪽지를 보낼 대상을 찾을 수 없습니다."),
     CHAT_ROOM_NOT_FOUND("CHAT404_2", NOT_FOUND, "해당 쪽지방을 찾을 수 없습니다."),
     DM_READ_MESSAGE_NOT_FOUND("CHAT404_3", NOT_FOUND, "읽음 처리할 쪽지를 찾을 수 없습니다."),
-    PUBLIC_SESSION_PROFILE_REQUIRED("CHAT409_1", CONFLICT, "공개 상태의 기본 지원서를 먼저 생성해주세요."),
     DM_INTERNAL_ERROR("CHAT500_1", INTERNAL_SERVER_ERROR, "쪽지 처리 중 오류가 발생했습니다."),
     LIVE_INVALID_FRAME("LIVE400_5", BAD_REQUEST, "라이브 채팅 요청 형식이 올바르지 않습니다."),
     LIVE_EMPTY_CONTENT("LIVE400_6", BAD_REQUEST, "채팅 내용을 입력해주세요."),

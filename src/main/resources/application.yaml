@@ -95,6 +95,8 @@ mediamtx:
   hls-url: ${MEDIAMTX_HLS_URL:http://localhost:8888}
   api-url: ${MEDIAMTX_API_URL:http://localhost:9997}
   webrtc-url: ${MEDIAMTX_WEBRTC_URL:http://localhost:8889}
+  # 내부 믹서(GStreamer) 인증용 정적 토큰. 미설정 시 믹서 인증 비활성화 (mixer 컨테이너의 MIXER_TOKEN과 동일 값이어야 함)
+  mixer-token: ${MEDIAMTX_MIXER_TOKEN:}
 
 # FRONT_ORIGIN : CORS 허용 목록 (콤마로 여러 개 가능)
 # FRONT_REDIRECT_ORIGIN : 소셜 로그인 리다이렉트용 단일 프론트 주소 (경로 제외 origin만)

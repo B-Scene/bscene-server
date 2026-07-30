@@ -150,7 +150,8 @@ class StreamServiceImplNotificationTest {
                 liveChatRoomCloser,
                 discordMessageSender,
                 "https://hls.test",
-                "https://webrtc.test"
+                "https://webrtc.test",
+                "mixer-secret"
         );
         TxSyncSupport.begin();
     }
@@ -197,8 +198,14 @@ class StreamServiceImplNotificationTest {
         );
     }
 
+    /** enterRoom의 밴드 모드 접근 검증(validAccessAboutStreamInBandMode)을 통과시키는 스텁. */
+    private void givenStreamAccessAllowed() {
+        given(userPort.validAccessAboutStreamInBandMode(eq(BROADCASTER_ID), any())).willReturn(true);
+    }
+
     /** enterRoom에서 SCHEDULED -> OPEN 전환에 성공하도록 스텁을 건다. */
     private void givenScheduledStreamStartedByBroadcaster() {
+        givenStreamAccessAllowed();
         given(audioStreamRepository.findById(LIVE_ID))
                 .willReturn(Optional.of(StreamFixtures.scheduledStream(LIVE_ID, BROADCASTER_ID, BAND_ID, SCHEDULED_AT)));
         given(bandMemberPort.isActiveRegularMemberOfBand(BAND_ID, BROADCASTER_ID)).willReturn(true);
@@ -210,6 +217,13 @@ class StreamServiceImplNotificationTest {
     private void givenEnterRoomResponseStubs() {
         given(redisTemplate.opsForZSet()).willReturn(zSetOperations);
         given(bandMemberPort.getBandNameWithBandProfileByBroadcasterId(Set.of(BROADCASTER_ID))).willReturn(List.of());
+        // 송출자 개인 WHIP path 발급용 ACCEPTED StreamMember 조회
+        given(streamMemberRepository.findWithStreamByLiveIdAndUserId(LIVE_ID, BROADCASTER_ID))
+                .willReturn(Optional.of(StreamFixtures.member(
+                        901L,
+                        StreamFixtures.bandUser(BROADCASTER_ID),
+                        StreamFixtures.stream(LIVE_ID, BROADCASTER_ID, BAND_ID, StreamStatus.OPEN),
+                        StreamMemberStatus.ACCEPTED)));
     }
 
     private List<StreamPushMessage> capturedMessages() {
@@ -528,8 +542,8 @@ class StreamServiceImplNotificationTest {
         }
 
         @Test
-        @DisplayName("팬 메시지와 밴드 메시지는 settingType만 다르다")
-        void 팬_메시지와_밴드_메시지는_settingType만_다르다() {
+        @DisplayName("팬 메시지와 밴드 메시지는 settingType과 deepLink만 다르다")
+        void 팬_메시지와_밴드_메시지는_settingType과_deepLink만_다르다() {
             givenCooldown(true);
             givenBandSummary();
             givenAudience(List.of(201L), List.of(201L), List.of(301L));
@@ -547,7 +561,7 @@ class StreamServiceImplNotificationTest {
                     bandMessage.settingType(),
                     fanMessage.title(),
                     fanMessage.body(),
-                    fanMessage.deepLink(),
+                    bandMessage.deepLink(),
                     fanMessage.referenceId()
             )).isEqualTo(bandMessage);
         }
@@ -572,8 +586,8 @@ class StreamServiceImplNotificationTest {
         }
 
         @Test
-        @DisplayName("referenceId와 deepLink는 라이브 id를 담는다")
-        void referenceId와_deepLink는_라이브_id를_담는다() {
+        @DisplayName("referenceId는 라이브 id이고 팬·밴드 경로를 구분한다")
+        void referenceId와_팬_밴드_deepLink를_구분한다() {
             givenCooldown(true);
             givenBandSummary();
             givenAudience(List.of(201L), List.of(201L), List.of(301L));
@@ -583,10 +597,14 @@ class StreamServiceImplNotificationTest {
 
             verify(notifyPort, times(2)).notify(receiverCaptor.capture(), messageCaptor.capture());
             assertThat(capturedMessages())
-                    .allSatisfy(message -> {
-                        assertThat(message.referenceId()).isEqualTo(LIVE_ID);
-                        assertThat(message.deepLink()).isEqualTo("/lives/" + LIVE_ID);
-                    });
+                    .extracting(StreamPushMessage::referenceId)
+                    .containsExactly(LIVE_ID, LIVE_ID);
+            assertThat(capturedMessages())
+                    .extracting(StreamPushMessage::deepLink)
+                    .containsExactly(
+                            "/fan/live/scheduled",
+                            "/band/live"
+                    );
         }
     }
 
@@ -608,6 +626,7 @@ class StreamServiceImplNotificationTest {
         @Test
         @DisplayName("SCHEDULED -> OPEN 전환에 실패하면 예외가 발생하고 아무것도 발송되지 않는다")
         void 전환_실패시_아무것도_발송되지_않는다() {
+            givenStreamAccessAllowed();
             given(audioStreamRepository.findById(LIVE_ID))
                     .willReturn(Optional.of(StreamFixtures.scheduledStream(LIVE_ID, BROADCASTER_ID, BAND_ID, SCHEDULED_AT)));
             given(bandMemberPort.isActiveRegularMemberOfBand(BAND_ID, BROADCASTER_ID)).willReturn(true);
@@ -627,6 +646,7 @@ class StreamServiceImplNotificationTest {
         @Test
         @DisplayName("이미 OPEN인 라이브에 송출자가 재입장하면 시작 알림을 보내지 않는다")
         void 이미_OPEN인_라이브_재입장은_알림이_없다() {
+            givenStreamAccessAllowed();
             given(audioStreamRepository.findById(LIVE_ID))
                     .willReturn(Optional.of(StreamFixtures.stream(LIVE_ID, BROADCASTER_ID, BAND_ID, StreamStatus.OPEN)));
             givenEnterRoomResponseStubs();
@@ -896,7 +916,7 @@ class StreamServiceImplNotificationTest {
             assertThat(message.body())
                     .contains("활동명", LIVE_TITLE, "수락했어요");
             assertThat(message.deepLink())
-                    .isEqualTo("/lives/" + LIVE_ID + "/reservation");
+                    .isEqualTo("/band/notifications");
             assertThat(message.referenceId()).isEqualTo(LIVE_ID);
         }
 

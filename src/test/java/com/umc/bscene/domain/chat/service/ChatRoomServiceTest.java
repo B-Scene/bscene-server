@@ -83,10 +83,8 @@ class ChatRoomServiceTest {
     }
 
     @Test
-    @DisplayName("세션찾기 지원서를 대상으로 새 쪽지방을 생성한다")
+    @DisplayName("내 기본 지원서가 없어도 세션찾기 지원서를 대상으로 새 쪽지방을 생성한다")
     void createSessionSearchRoomSuccess() {
-        SessionApplication myDefault =
-                application(5L, USER_ID, "내 프로필");
         SessionApplication target =
                 application(APPLICATION_ID, TARGET_USER_ID, "상대 프로필");
         User sender = user(USER_ID, "나");
@@ -97,10 +95,6 @@ class ChatRoomServiceTest {
                 APPLICATION_ID,
                 null
         );
-        when(applicationRepository
-                .findFirstByUserIdAndPurposeAndDeletedAtIsNullOrderBySessionApplicationIdDesc(
-                        USER_ID, DEFAULT_PURPOSE
-                )).thenReturn(Optional.of(myDefault));
         when(applicationRepository.findPublicDetailWithPortfolioLinks(
                 APPLICATION_ID, DEFAULT_PURPOSE
         )).thenReturn(Optional.of(target));
@@ -128,8 +122,6 @@ class ChatRoomServiceTest {
     @Test
     @DisplayName("기존 쪽지방이 있으면 새로 저장하지 않고 나가기 상태를 복구한다")
     void createSessionSearchRoomReusesAndRejoinsExistingRoom() {
-        SessionApplication myDefault =
-                application(5L, USER_ID, "내 프로필");
         SessionApplication target =
                 application(APPLICATION_ID, TARGET_USER_ID, "상대 프로필");
         User recipient = user(TARGET_USER_ID, "상대");
@@ -141,10 +133,6 @@ class ChatRoomServiceTest {
                 APPLICATION_ID,
                 null
         );
-        when(applicationRepository
-                .findFirstByUserIdAndPurposeAndDeletedAtIsNullOrderBySessionApplicationIdDesc(
-                        USER_ID, DEFAULT_PURPOSE
-                )).thenReturn(Optional.of(myDefault));
         when(applicationRepository.findPublicDetailWithPortfolioLinks(
                 APPLICATION_ID, DEFAULT_PURPOSE
         )).thenReturn(Optional.of(target));

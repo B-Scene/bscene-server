@@ -16,4 +16,11 @@ public interface UserPort {
      * @return 존재하는 사용자 엔티티 목록을 반환해주세요.
      */
     List<User> findAllByIds(Collection<Long> userIds);
+
+    boolean validAccessAboutStreamInBandMode(Long userId, Collection<Long> coHostIds);
+
+    // 라이브 방 입장 닉네임 분기용: 현재 밴드 모드인지 여부 (모드 미정이면 false)
+    boolean isBandMode(Long userId);
+
+    String getFanName(Long userId);
 }

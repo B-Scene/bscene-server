@@ -21,7 +21,7 @@ public record PostPushMessage(
                 NotificationType.POST,
                 bandName + "의 새로운 게시물이 등록됐어요",
                 "'" + postTitle + "' 게시물을 확인해보세요.",
-                "/posts/" + postId,
+                "/fan/explore/contents/" + postId,
                 postId
         );
     }

@@ -1,6 +1,7 @@
 package com.umc.bscene.domain.stream.controller;
 
 import com.umc.bscene.domain.stream.dto.request.CoHostInvitationDecisionRequest;
+import com.umc.bscene.domain.stream.dto.request.CoHostUpgradeAcceptRequest;
 import com.umc.bscene.domain.stream.dto.request.ReportUserRequest;
 import com.umc.bscene.domain.stream.dto.request.ReservationPatchRequest;
 import com.umc.bscene.domain.stream.dto.request.StreamCreateRequest;
@@ -306,6 +307,37 @@ public class StreamController {
         return ResponseEntity
                 .status(HttpStatus.OK)
                 .body(body);
+    }
+
+    // 라이브 진행 중 밴드 멤버의 공동 송출자 업그레이드 요청. 송출자에게 coHostUpgradeRequested SSE가 전송된다
+    @PostMapping("/{liveId}/co-host")
+    public ResponseEntity<SuccessResponse<Void>> requestCoHostUpgrade(
+            @AuthenticationPrincipal AuthMember authMember,
+            @PathVariable Long liveId
+    ) {
+        streamService.requestCoHostUpgrade(authMember.getUser(), liveId);
+
+        return ResponseEntity
+                .status(HttpStatus.CREATED)
+                .body(new SuccessResponse<>(null, StreamSuccessCode.CO_HOST_UPGRADE_REQUEST_SUCCESS));
+    }
+
+    // 송출자(오너)의 업그레이드 요청 수락. 요청자에게 coHostUpgradeAccepted SSE가 전송된다
+    @PostMapping("/{liveId}/co-host/acceptance")
+    public ResponseEntity<SuccessResponse<Void>> acceptCoHostUpgrade(
+            @AuthenticationPrincipal AuthMember authMember,
+            @PathVariable Long liveId,
+            @Valid @RequestBody CoHostUpgradeAcceptRequest request
+    ) {
+        streamService.acceptCoHostUpgrade(
+                authMember.getUser().getId(),
+                liveId,
+                request.userId()
+        );
+
+        return ResponseEntity
+                .status(HttpStatus.OK)
+                .body(new SuccessResponse<>(null, StreamSuccessCode.CO_HOST_UPGRADE_ACCEPT_SUCCESS));
     }
 
     @GetMapping("/{liveId}/reservation")

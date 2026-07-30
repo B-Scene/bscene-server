@@ -46,8 +46,15 @@ public final class StreamFixtures {
         return user(id, UserMode.FAN);
     }
 
-    /** 기본 OPEN 라이브. path는 "path-{id}". */
+    /** 기본 OPEN 라이브. path는 "path-{id}". coHost 컬렉션은 빈 리스트(빌더 생성 시 null 방지). */
     public static AudioStream stream(Long id, Long broadcasterId, Long bandId, StreamStatus status) {
+        return streamWithCoHost(id, broadcasterId, bandId, status, List.of());
+    }
+
+    /** 진행자(StreamMember) 행을 지정한 라이브. enterRoom의 밴드 모드 접근 판정 테스트용. */
+    public static AudioStream streamWithCoHost(
+            Long id, Long broadcasterId, Long bandId, StreamStatus status, List<StreamMember> coHost
+    ) {
         return AudioStream.builder()
                 .id(id)
                 .broadcasterId(broadcasterId)
@@ -57,6 +64,7 @@ public final class StreamFixtures {
                 .description("description-" + id)
                 .thumbnailImageUrl("https://cdn.test/thumb-" + id + ".jpg")
                 .status(status)
+                .coHost(coHost)
                 .build();
     }
 
@@ -71,6 +79,7 @@ public final class StreamFixtures {
                 .thumbnailImageUrl("https://cdn.test/thumb-" + id + ".jpg")
                 .status(StreamStatus.SCHEDULED)
                 .scheduledAt(scheduledAt)
+                .coHost(List.of())
                 .build();
     }
 
@@ -88,6 +97,7 @@ public final class StreamFixtures {
                 .startedAt(startedAt)
                 .closedAt(closedAt)
                 .closedViewerCount(closedViewerCount)
+                .coHost(List.of())
                 .build();
     }
 

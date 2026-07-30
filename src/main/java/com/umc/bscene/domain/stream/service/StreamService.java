@@ -70,4 +70,10 @@ public interface StreamService {
     void reportUser(User reporter, Long liveId, ReportUserRequest request);
 
     void decideCoHostInvitation(Long userId, Long liveId, boolean isAccepted);
+
+    // 라이브 진행 중(OPEN) 밴드 멤버의 공동 송출자 업그레이드 요청. 송출자에게 SSE 모달 이벤트 발송
+    void requestCoHostUpgrade(User user, Long liveId);
+
+    // 송출자(오너)의 업그레이드 요청 수락. 요청자에게 SSE 이벤트 발송
+    void acceptCoHostUpgrade(Long userId, Long liveId, Long requesterId);
 }

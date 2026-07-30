@@ -3,6 +3,7 @@ package com.umc.bscene.domain.stream.sse;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 import java.io.IOException;
+import java.util.Collection;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -116,6 +117,21 @@ public class ViewerSseRegistry {
         if (lastGone[0]) onLastGone.run();
     }
 
+    /**
+     * liveId 방에서 지정한 유저들에게만 named 이벤트를 전송한다.
+     * 멤버 path 등 진행자 전용 정보를 나르므로 보기 전용(watchers)·비대상 유저에게는 절대 전송하지 않는다.
+     */
+    public void sendToUsers(Long liveId, Collection<Long> targetUserIds, String eventName, Object payload) {
+        Map<Long, Presence> users = rooms.get(liveId);
+        if (users == null) return;
+
+        for (Long userId : targetUserIds) {
+            Presence presence = users.get(userId);
+            if (presence == null) continue; // SSE 미접속 유저는 조용히 건너뛴다
+            presence.emitters.forEach(emitter -> sendEvent(emitter, eventName, payload));
+        }
+    }
+
     /** liveId 방의 모든 연결(송출자·보기 전용 포함)에 현재 카운트를 전송한다. */
     public void broadcast(Long liveId, long count) {
         Map<Long, Presence> users = rooms.get(liveId);
@@ -128,9 +144,13 @@ public class ViewerSseRegistry {
     }
 
     private void sendCount(SseEmitter emitter, long count) {
-        try { emitter.send(SseEmitter.event().name("viewerCount").data(count)); }
+        sendEvent(emitter, "viewerCount", count);
+    }
+
+    private void sendEvent(SseEmitter emitter, String eventName, Object payload) {
+        try { emitter.send(SseEmitter.event().name(eventName).data(payload)); }
         catch (IOException | IllegalStateException e) {
-            // 죽은 emitter에 completeWithError가 다시 예외를 던지면 브로드캐스트 순회 전체가 중단되므로 삼킨다.
+            // 죽은 emitter에 completeWithError가 다시 예외를 던지면 전송 순회 전체가 중단되므로 삼킨다.
             // (정리는 emitter 콜백/sweep이 담당) // → onError → cleanup
             try { emitter.completeWithError(e); } catch (Exception ignored) { }
         }
