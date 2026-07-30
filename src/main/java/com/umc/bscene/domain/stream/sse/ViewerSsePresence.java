@@ -1,5 +1,6 @@
 package com.umc.bscene.domain.stream.sse;
 
+import com.umc.bscene.domain.stream.dto.response.StreamRoomResponse;
 import com.umc.bscene.domain.stream.entity.AudioStream;
 import com.umc.bscene.domain.stream.enums.StreamStatus;
 import com.umc.bscene.domain.stream.enums.code.error.StreamErrorCode;
@@ -13,6 +14,7 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 import java.time.Instant;
+import java.util.Collection;
 
 /**
  * 시청자 수 SSE의 구독·브로드캐스트·하트비트·유령 정리를 담당한다.
@@ -66,6 +68,20 @@ public class ViewerSsePresence {
     /** liveId 방의 현재 시청자 수를 전 구독자에게 브로드캐스트한다. */
     public void broadcastCount(Long liveId) {
         registry.broadcast(liveId, currentCount(liveId));
+    }
+
+    /**
+     * 새 진행자 합류를 기존 진행자들에게만 알린다(coPublisherJoined 이벤트).
+     * payload에 멤버 path(WHEP URL)가 담기므로 브로드캐스트가 아닌 타겟 전송만 사용한다.
+     */
+    public void notifyCoPublisherJoined(
+            Long liveId,
+            Collection<Long> targetUserIds,
+            StreamRoomResponse.CoPublisher joined
+    ) {
+        if (targetUserIds.isEmpty()) return;
+
+        registry.sendToUsers(liveId, targetUserIds, "coPublisherJoined", joined);
     }
 
     private long currentCount(Long liveId) {

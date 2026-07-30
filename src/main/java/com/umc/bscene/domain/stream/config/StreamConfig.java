@@ -104,7 +104,8 @@ public class StreamConfig {
             LiveChatRoomCloser liveChatRoomCloser,
             DiscordMessageSender discordMessageSender,
             @Value("${mediamtx.hls-url}") String hlsUrl,
-            @Value("${mediamtx.webrtc-url}") String webrtcUrl
+            @Value("${mediamtx.webrtc-url}") String webrtcUrl,
+            @Value("${mediamtx.mixer-token:}") String mixerToken
     ) {
         return new StreamServiceImpl(
                 jwtUtil,
@@ -124,7 +125,8 @@ public class StreamConfig {
                 liveChatRoomCloser,
                 discordMessageSender,
                 hlsUrl,
-                webrtcUrl
+                webrtcUrl,
+                mixerToken
         );
     }
 

@@ -38,4 +38,14 @@ public class StreamMember extends BaseEntity {
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private StreamMemberStatus status;
+
+    // 진행자 고유 path
+    @Column(unique = true, length = 64)
+    private String path;
+
+    public void assignPath(String path) {
+        // 재접속 시 동일 path를 재사용해야 MediaMTX overridePublisher가 좀비 세션을 정리한다
+        if (this.path == null)
+            this.path = path;
+    }
 }

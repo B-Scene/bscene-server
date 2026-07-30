@@ -74,8 +74,10 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -87,6 +89,11 @@ public class StreamServiceImpl implements StreamService {
     private static final String LIVE_KEY_PREFIX = "live:";
     private static final String MTX_SOURCE_WEBRTC = "webRTCSession";
     private static final String VIEWER_KEY_PREFIX = "viewer:";
+
+    // 진행자 개인 송출 path 구분자. 메인 path(UUID)는 hex 문자뿐이라 "-m"과 충돌하지 않고,
+    // MediaMTX 인증 path 패턴(^[a-zA-Z0-9\-]{0,64}$)도 만족한다
+    private static final String MEMBER_PATH_INFIX = "-m";
+    private static final Pattern MEMBER_PATH_PATTERN = Pattern.compile(".+-m\\d+$");
 
     // 라이브 홈 섹션별 노출 개수
     private static final int HOME_LIVE_NOW_LIMIT = 3;
@@ -127,30 +134,67 @@ public class StreamServiceImpl implements StreamService {
     private final String hlsUrl;
     private final String webrtcUrl;
 
+    // 내부 믹서(GStreamer) 전용 정적 토큰. 멤버 path RTSP read + 믹스 결과의 메인 path publish에 사용
+    private final String mixerToken;
+
     // 방송 가능을 알리는 티켓 발급
     @Override
     public Boolean canPublish(String accessToken, String path) {
+
+        // 메인 path publish는 믹스 결과를 되돌려 넣는 내부 믹서만 가능 (진행자는 개인 멤버 path로만 송출)
+        if (isMixerToken(accessToken))
+            return audioStreamRepository.existsByPathAndStatus(path, StreamStatus.OPEN);
 
         Long userId = getUserId(accessToken);
 
         if(userId == null)
             return false;
 
-        return audioStreamRepository.findByPath(path)
-              .map(s -> s.getBroadcasterId().equals(userId) && s.getStatus() == StreamStatus.OPEN)
+        // 멤버 path publish: 본인 소유 path이면서 공동 진행이 확정(ACCEPTED)되고 소속 라이브가 OPEN일 때만
+        return streamMemberRepository.findWithUserAndStreamByPath(path)
+              .map(sm -> sm.getUser().getId().equals(userId)
+                      && sm.getStatus() == StreamMemberStatus.ACCEPTED
+                      && sm.getAudioStream().getStatus() == StreamStatus.OPEN)
               .orElse(false);
     }
 
     @Override
     public Boolean canRead(String accessToken, String path) {
 
+        // 내부 믹서는 멤버 path들을 RTSP로 pull해야 하므로 read 전면 허용
+        if (isMixerToken(accessToken))
+            return true;
+
         Long userId = getUserId(accessToken);
 
         if(userId == null)
             return false;
 
+        // 멤버 path(믹싱 전 원본)는 같은 라이브의 ACCEPTED 진행자만 WHEP으로 모니터링 가능.
+        // 메인 path 존재 검사로 폴백하지 않아 path 유효성 추측(정보 노출)도 차단한다
+        if (MEMBER_PATH_PATTERN.matcher(path).matches())
+            return canMonitorMemberPath(userId, path);
+
         // 로그인 유저는 방송 청취 가능하게 설정
-         return audioStreamRepository.existsByPathAndStatus(path, StreamStatus.OPEN);
+        return audioStreamRepository.existsByPathAndStatus(path, StreamStatus.OPEN);
+    }
+
+    /*
+     * 멤버 path 모니터링 인가: path 소유자가 유효(ACCEPTED)하고 소속 라이브가 OPEN이며,
+     * 요청자 본인도 같은 라이브의 ACCEPTED 진행자일 때만 허용 (다른 라이브 진행자 자격은 무효)
+     */
+    private boolean canMonitorMemberPath(Long userId, String path) {
+        return streamMemberRepository.findWithUserAndStreamByPath(path)
+                .map(owner -> owner.getAudioStream().getStatus() == StreamStatus.OPEN
+                        && owner.getStatus() == StreamMemberStatus.ACCEPTED
+                        && streamMemberRepository.existsByAudioStream_IdAndUser_IdAndStatus(
+                                owner.getAudioStream().getId(), userId, StreamMemberStatus.ACCEPTED))
+                .orElse(false);
+    }
+
+    private boolean isMixerToken(String credential) {
+        // 토큰 미설정(blank) 시 믹서 인증 자체를 비활성화해 빈 문자열 인증 우회를 차단
+        return mixerToken != null && !mixerToken.isBlank() && mixerToken.equals(credential);
     }
 
     @Override
@@ -250,10 +294,19 @@ public class StreamServiceImpl implements StreamService {
         audioStream.close(viewerCountOf(audioStream.getId()));  // 종료 + 시청자 수 스냅샷
         redisTemplate.delete(LIVE_KEY_PREFIX + path);           // Redis도 정리
 
+        // 진행자 개인 WHIP 세션들 정리 대상. 메인 path는 믹서(RTSP) 소스라 webrtc kick의 대상이 아니며,
+        // 멤버 path가 사라지면 믹서가 스스로 송출을 멈춘다
+        List<String> memberPaths = streamMemberRepository
+                .findAllByAudioStream_IdAndStatus(streamId, StreamMemberStatus.ACCEPTED).stream()
+                .map(StreamMember::getPath)
+                .filter(Objects::nonNull)
+                .toList();
+
         TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
             @Override
             public void afterCommit() {
                 kickPublisher(path);
+                memberPaths.forEach(memberPath -> kickPublisher(memberPath));
                 liveChatRoomCloser.close(streamId);
             }
         });
@@ -850,12 +903,17 @@ public class StreamServiceImpl implements StreamService {
     @Transactional
     public void syncLiveState(Set<String> readyPaths) {
 
+        // 진행자 개인 path는 라이브 판정에서 제외. 청취자가 실제로 들을 수 있는 메인 path(믹서 출력)만 기준으로 삼는다
+        Set<String> mainReadyPaths = readyPaths.stream()
+                .filter(path -> !MEMBER_PATH_PATTERN.matcher(path).matches())
+                .collect(Collectors.toSet());
+
         // Redis에 LIVE_KEY_PREFIX로 등록된 모든 세션 조회
         Set<String> current = scanKeys(LIVE_KEY_PREFIX + "*").stream()
                 .map(k -> k.substring(LIVE_KEY_PREFIX.length()))
                 .collect(Collectors.toSet());
 
-        for(String path : readyPaths) {
+        for(String path : mainReadyPaths) {
             // 새로 켜진 방송
             if (!current.contains(path)) {
                 redisTemplate.opsForValue().set(LIVE_KEY_PREFIX + path, "1", Duration.ofSeconds(15));
@@ -869,7 +927,7 @@ public class StreamServiceImpl implements StreamService {
         // Redis에 라이브 중으로 등록되어 있지만, 현재 MediaMTX가 관리하는 방송 리스트엔 없는 경우
         // => 비정상 종료인 경우
         for(String path : current) {
-            if(!readyPaths.contains(path)) {
+            if(!mainReadyPaths.contains(path)) {
                 redisTemplate.delete(LIVE_KEY_PREFIX + path);
 
                 // FE에서 마이크 온오프는 따로. 오프 시 무음 송출
@@ -897,8 +955,13 @@ public class StreamServiceImpl implements StreamService {
             throw new StreamException(StreamErrorCode.FORBIDDEN_REQUEST);
         }
 
-        // 송출자, 청취자 구분
+        // 송출자, 공동 진행자, 청취자 구분
         boolean isBroadcaster = stream.getBroadcasterId().equals(userId);
+
+        // 공동 진행이 확정(ACCEPTED)된 멤버는 청취자가 아니라 개인 멤버 path로 WHIP 송출한다 (송출자 본인 포함)
+        boolean isPublisher = isBroadcaster || stream.getCoHost().stream()
+                .anyMatch(sm -> sm.getStatus() == StreamMemberStatus.ACCEPTED
+                        && sm.getUser().getId().equals(userId));
 
         String nickname = "";
         if (isBroadcaster) {
@@ -929,6 +992,13 @@ public class StreamServiceImpl implements StreamService {
             }
 
             // 첫 시작뿐 아니라 이미 OPEN인 라이브 재입장에서도 밴드 이름이 내려가도록 SCHEDULED 분기 밖에서 세팅
+            nickname = bandMemberPort.getBandName(stream.getBandId());
+        } else if (isPublisher) {
+            // 공동 진행자일 때
+            // 방송 시작(SCHEDULED→OPEN) 권한은 송출자에게만 있으므로 OPEN이 아닌 라이브에는 진입 불가
+            if (stream.getStatus() != StreamStatus.OPEN)
+                throw new StreamException(StreamErrorCode.AUDIO_STREAM_NOT_LIVE);
+
             nickname = bandMemberPort.getBandName(stream.getBandId());
         } else {
             // 청취자일 때
@@ -970,12 +1040,32 @@ public class StreamServiceImpl implements StreamService {
 
         StreamRoomResponse.Playback playback;
 
-        if(isBroadcaster) {
-            // 송출자일 시, 반드시 송출 URL을 반환
+        // 진행자 전용 WHEP 모니터링 목록. 청취자에게는 멤버 path 노출을 막기 위해 null 유지
+        List<StreamRoomResponse.CoPublisher> coPublishers = null;
+
+        if(isPublisher) {
+            StreamMember publisher = requireAcceptedMember(liveId, userId);
+            boolean firstJoin = publisher.getPath() == null;
+
+            // 결정적 값이라 동시 발급이 경합해도 같은 값으로 수렴 (path unique 제약과 충돌하지 않음)
+            publisher.assignPath(publisher.getAudioStream().getPath() + MEMBER_PATH_INFIX + publisher.getId());
+
+            // 진행자(송출자·공동 진행자)일 시, 반드시 개인 멤버 path의 송출 URL을 반환.
+            // 멤버 path들의 오디오는 믹서가 합쳐 메인 path로 내보내고, 청취자는 그 결과를 HLS로 듣는다
             playback = new StreamRoomResponse.Playback(
-                    "BROADCASTER", "WHIP",
-                    webrtcUrl + "/" + stream.getPath() + "/whip"
+                    isBroadcaster ? "BROADCASTER" : "CO_HOST", "WHIP",
+                    webrtcUrl + "/" + publisher.getPath() + "/whip"
             );
+
+            List<StreamMember> acceptedMembers =
+                    streamMemberRepository.findAllByAudioStream_IdAndStatus(liveId, StreamMemberStatus.ACCEPTED);
+
+            // 다른 진행자들의 오디오는 믹스 결과(에코·지연)가 아닌 원본 path를 WHEP으로 직접 듣는다
+            coPublishers = peerPublishers(acceptedMembers, userId);
+
+            // 최초 입장이면 기존 진행자들이 새 path를 즉시 WHEP 구독할 수 있게 SSE로 알린다
+            if (firstJoin)
+                notifyPeersOfJoinAfterCommit(liveId, userId, publisher.getPath(), acceptedMembers);
         } else {
             // 청취자일 시, OPEN이면 청취 URL, !OPEN이면 null로 빌드
             playback = isLive ? new StreamRoomResponse.Playback(
@@ -994,8 +1084,62 @@ public class StreamServiceImpl implements StreamService {
                 band != null ? band.bandName() : "",
                 stream.getTitle(),
                 stream.getDescription(),
-                playback
+                playback,
+                coPublishers
         );
+    }
+
+    /*
+     * 진행자 개인 송출 path의 주체(ACCEPTED 멤버) 조회. 발급된 path는 재사용해야
+     * 재접속 시 MediaMTX overridePublisher가 이전 좀비 세션을 대체할 수 있다.
+     * markStartedIfScheduled의 clearAutomatically로 영속성 컨텍스트가 비워질 수 있어 멤버를 여기서 다시 조회한다
+     */
+    private StreamMember requireAcceptedMember(Long liveId, Long userId) {
+        return streamMemberRepository.findWithStreamByLiveIdAndUserId(liveId, userId)
+                .filter(sm -> sm.getStatus() == StreamMemberStatus.ACCEPTED)
+                .orElseThrow(() -> {
+                    // createStream이 송출자를 ACCEPTED로 등록하고 V46이 구 데이터를 백필하므로, 발생 시 정합성 문제
+                    log.error("송출 path 발급 실패: ACCEPTED StreamMember 없음 liveId={} userId={}", liveId, userId);
+                    return new StreamException(StreamErrorCode.FORBIDDEN_REQUEST);
+                });
+    }
+
+    // 본인을 제외한, 개인 path가 발급된(입장한 적 있는) 확정 진행자들의 WHEP 모니터링 정보
+    private List<StreamRoomResponse.CoPublisher> peerPublishers(List<StreamMember> acceptedMembers, Long userId) {
+        return acceptedMembers.stream()
+                .filter(sm -> sm.getPath() != null)
+                .filter(sm -> !sm.getUser().getId().equals(userId))
+                .map(sm -> new StreamRoomResponse.CoPublisher(
+                        sm.getUser().getId(),
+                        webrtcUrl + "/" + sm.getPath() + "/whep"))
+                .toList();
+    }
+
+    /*
+     * 최초 입장(신규 path 발급) 시 다른 ACCEPTED 진행자 전원에게 합류 이벤트를 예약한다.
+     * path가 커밋되기 전에 FE가 WHEP을 시도하면 canRead 인가에 실패하므로 반드시 afterCommit으로 미룬다.
+     * 대상에는 path 미발급 멤버도 포함한다(SSE만 먼저 연결해 둔 진행자도 받아야 함)
+     */
+    private void notifyPeersOfJoinAfterCommit(
+            Long liveId, Long userId, String path, List<StreamMember> acceptedMembers
+    ) {
+        List<Long> targets = acceptedMembers.stream()
+                .map(sm -> sm.getUser().getId())
+                .filter(id -> !id.equals(userId))
+                .toList();
+
+        if (targets.isEmpty())
+            return;
+
+        StreamRoomResponse.CoPublisher joined =
+                new StreamRoomResponse.CoPublisher(userId, webrtcUrl + "/" + path + "/whep");
+
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override
+            public void afterCommit() {
+                viewerSsePresence.notifyCoPublisherJoined(liveId, targets, joined);
+            }
+        });
     }
 
     @Override

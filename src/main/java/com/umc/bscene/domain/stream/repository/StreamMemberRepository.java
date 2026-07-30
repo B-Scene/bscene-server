@@ -48,6 +48,19 @@ where sm.user.id = :userId
             @Param("userId") Long userId
     );
 
+    // MediaMTX read 인증용: 요청자가 해당 라이브의 확정(ACCEPTED) 진행자인지 확인
+    boolean existsByAudioStream_IdAndUser_IdAndStatus(Long audioStreamId, Long userId, StreamMemberStatus status);
+
+    // MediaMTX publish 인증용: 진행자 개인 송출 path로 멤버·소속 라이브를 한 번에 조회
+    @Query("""
+    SELECT sm
+    FROM StreamMember sm
+    JOIN FETCH sm.user
+    JOIN FETCH sm.audioStream
+    WHERE sm.path = :path
+""")
+    Optional<StreamMember> findWithUserAndStreamByPath(@Param("path") String path);
+
     // 현재 상태가 expected일 때만 원자적으로 상태 변경
     @Modifying
     @Query("""
