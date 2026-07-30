@@ -6,7 +6,6 @@ import com.umc.bscene.domain.session.dto.SessionPushMessage;
 import com.umc.bscene.domain.user.dto.request.MyInfoUpdateRequest;
 import com.umc.bscene.domain.user.dto.request.SessionApplyConfirmRequest;
 import com.umc.bscene.domain.user.dto.request.UserModeUpdateRequest;
-import com.umc.bscene.domain.user.dto.response.BandMemberResponse;
 import com.umc.bscene.domain.user.dto.response.FollowedBandResponse;
 import com.umc.bscene.domain.user.dto.response.InterestedPerformanceResponse;
 import com.umc.bscene.domain.user.dto.response.MyBandProfile;
@@ -112,17 +111,38 @@ public class UserService {
     }
 
     public BandMyPageResponse getBandMyPage(User user) {
-        BandMemberResponse result = bandPort.getActiveBandMemberProfile(user.getId());
+        return bandPort.getActiveBandMemberProfile(user.getId())
+                .map(result -> new BandMyPageResponse(
+                        result.bandMemberProfileId(),
+                        result.nickname(),
+                        result.bandName(),
+                        result.parts(),
+                        user.getCurrentMode(),
+                        result.follower().longValue(),
+                        result.applicant().longValue(),
+                        result.performance().longValue(),
+                        result.isBandMember()
+                ))
+                .orElseGet(() -> buildFirstEntryBandMyPage(user.getId()));
+    }
+
+    // 활성 밴드 멤버 프로필이 하나도 없으면 밴드 모드 첫 진입으로 간주 :
+    // 프로필 PK 없이 닉네임 자리에 실명을 내려주고, isBandMember=false로 프로필 생성 플로우를 유도
+    private BandMyPageResponse buildFirstEntryBandMyPage(Long userId) {
+        // 인증 필터에서 로드된 User는 detached 상태 → currentMode는 직접 재조회한 값을 참조
+        User found = userRepository.findById(userId)
+                .orElseThrow(() -> new UserException(UserErrorCode.USER_NOT_FOUND));
+
         return new BandMyPageResponse(
-                result.bandMemberProfileId(),
-                result.nickname(),
-                result.bandName(),
-                result.parts(),
-                user.getCurrentMode(),
-                result.follower().longValue(),
-                result.applicant().longValue(),
-                result.performance().longValue(),
-                result.isBandMember()
+                null,
+                found.getName(),
+                null,
+                null,
+                found.getCurrentMode(),
+                null,
+                null,
+                null,
+                false
         );
     }
 
