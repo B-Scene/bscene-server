@@ -329,12 +329,6 @@ public class ChatRoomService {
                 || request.applicationSubmissionId() != null) {
             throw new ChatException(ChatErrorCode.INVALID_CHAT_CONTEXT);
         }
-        SessionApplication myDefault = applicationRepository
-                .findFirstByUserIdAndPurposeAndDeletedAtIsNullOrderBySessionApplicationIdDesc(
-                        senderId, DEFAULT_PURPOSE)
-                .filter(application -> Boolean.TRUE.equals(application.getIsPublic()))
-                .orElseThrow(() -> new ChatException(
-                        ChatErrorCode.PUBLIC_SESSION_PROFILE_REQUIRED));
         SessionApplication target = applicationRepository
                 .findPublicDetailWithPortfolioLinks(request.sessionApplicationId(), DEFAULT_PURPOSE)
                 .orElseThrow(() -> new ChatException(ChatErrorCode.CHAT_TARGET_NOT_FOUND));

@@ -2,7 +2,14 @@ package com.umc.bscene.domain.chat.websocket;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.umc.bscene.domain.band.entity.Band;
+import com.umc.bscene.domain.band.enums.BandMemberStatus;
+import com.umc.bscene.domain.band.repository.BandMemberRepository;
+import com.umc.bscene.domain.band.repository.BandRepository;
+import com.umc.bscene.domain.stream.entity.AudioStream;
+import com.umc.bscene.domain.stream.repository.AudioStreamRepository;
 import com.umc.bscene.domain.user.entity.User;
+import com.umc.bscene.domain.user.enums.UserMode;
 import com.umc.bscene.domain.user.repository.UserRepository;
 import com.umc.bscene.domain.user.repository.UserBlockRepository;
 import com.umc.bscene.domain.user.repository.FanProfileRepository;
@@ -39,9 +46,14 @@ class LiveChatWebSocketHandlerTest {
     @Mock UserBlockRepository userBlockRepository;
     @Mock ReportHistoryRepository reportHistoryRepository;
     @Mock FanProfileRepository fanProfileRepository;
+    @Mock AudioStreamRepository audioStreamRepository;
+    @Mock BandRepository bandRepository;
+    @Mock BandMemberRepository bandMemberRepository;
     @Mock WebSocketSession session;
     @Mock User user;
     @Mock FanProfile fanProfile;
+    @Mock AudioStream live;
+    @Mock Band band;
 
     private LiveChatWebSocketHandler handler;
     private ObjectMapper objectMapper;
@@ -51,7 +63,8 @@ class LiveChatWebSocketHandlerTest {
         objectMapper = new ObjectMapper();
         handler = new LiveChatWebSocketHandler(
                 sessionRegistry, userRepository, userBlockRepository,
-                reportHistoryRepository, fanProfileRepository);
+                reportHistoryRepository, fanProfileRepository, audioStreamRepository,
+                bandRepository, bandMemberRepository);
         when(session.getAttributes()).thenReturn(Map.of(
                 LiveChatWebSocketHandshakeInterceptor.USER_ID_ATTRIBUTE, USER_ID,
                 LiveChatWebSocketHandshakeInterceptor.LIVE_ID_ATTRIBUTE, LIVE_ID));
@@ -90,6 +103,34 @@ class LiveChatWebSocketHandlerTest {
         assertEquals("웨이비팬", frame.get("data").get("senderName").asText());
         assertEquals(true, frame.get("data").get("senderProfileImageUrl").isNull());
         assertEquals("라이브 자주 해주세요!", frame.get("data").get("content").asText());
+    }
+
+    @Test
+    void usesLiveBandProfileImageForAcceptedMemberInBandMode() throws Exception {
+        stubMessageSender(UserMode.BAND);
+        when(user.getId()).thenReturn(USER_ID);
+        when(audioStreamRepository.findById(LIVE_ID)).thenReturn(Optional.of(live));
+        when(live.getBroadcasterId()).thenReturn(99L);
+        when(live.getBandId()).thenReturn(20L);
+        when(bandMemberRepository.existsByBand_IdAndUser_IdAndStatus(
+                20L, USER_ID, BandMemberStatus.ACCEPTED)).thenReturn(true);
+        when(bandRepository.findById(20L)).thenReturn(Optional.of(band));
+        when(band.getProfileImageUrl()).thenReturn("https://cdn.test/band.jpg");
+
+        sendMessage();
+
+        assertEquals("https://cdn.test/band.jpg",
+                captureBroadcastFrame().get("data").get("senderProfileImageUrl").asText());
+    }
+
+    @Test
+    void usesFanProfileImageInFanMode() throws Exception {
+        stubMessageSender(UserMode.FAN);
+
+        sendMessage();
+
+        assertEquals("https://cdn.test/fan.jpg",
+                captureBroadcastFrame().get("data").get("senderProfileImageUrl").asText());
     }
 
     @Test
@@ -144,6 +185,31 @@ class LiveChatWebSocketHandlerTest {
     private JsonNode captureSessionFrame() throws Exception {
         ArgumentCaptor<TextMessage> captor = ArgumentCaptor.forClass(TextMessage.class);
         verify(sessionRegistry).sendToSession(eq(LIVE_ID), eq(SESSION_ID), captor.capture());
+        return objectMapper.readTree(captor.getValue().getPayload());
+    }
+
+    private void stubMessageSender(UserMode mode) {
+        when(userRepository.findById(USER_ID)).thenReturn(Optional.of(user));
+        when(user.getCurrentMode()).thenReturn(mode);
+        when(fanProfileRepository.findByUser(user)).thenReturn(Optional.of(fanProfile));
+        when(fanProfile.getNickname()).thenReturn("sender");
+        when(fanProfile.getProfileImageUrl()).thenReturn("https://cdn.test/fan.jpg");
+        when(userBlockRepository.findBlockedUserIdsRelatedTo(LIVE_ID, USER_ID))
+                .thenReturn(Set.of());
+        when(reportHistoryRepository.findReporterIdsByLiveIdAndTargetUserId(LIVE_ID, USER_ID))
+                .thenReturn(Set.of());
+    }
+
+    private void sendMessage() {
+        handler.handleTextMessage(session, new TextMessage("""
+                {"type":"live-chat.send","data":{"content":"message"},
+                 "clientMsgId":"550e8400-e29b-41d4-a716-446655440000"}
+                """));
+    }
+
+    private JsonNode captureBroadcastFrame() throws Exception {
+        ArgumentCaptor<TextMessage> captor = ArgumentCaptor.forClass(TextMessage.class);
+        verify(sessionRegistry).broadcastExcept(eq(LIVE_ID), eq(Set.of()), captor.capture());
         return objectMapper.readTree(captor.getValue().getPayload());
     }
 }

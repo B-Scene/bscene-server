@@ -10,7 +10,14 @@ import com.umc.bscene.domain.chat.dto.response.ChatWebSocketSystemEventData;
 import com.umc.bscene.domain.chat.dto.response.LiveChatMessageData;
 import com.umc.bscene.domain.chat.exception.ChatException;
 import com.umc.bscene.domain.chat.enums.code.error.ChatErrorCode;
+import com.umc.bscene.domain.band.entity.Band;
+import com.umc.bscene.domain.band.enums.BandMemberStatus;
+import com.umc.bscene.domain.band.repository.BandMemberRepository;
+import com.umc.bscene.domain.band.repository.BandRepository;
+import com.umc.bscene.domain.stream.entity.AudioStream;
+import com.umc.bscene.domain.stream.repository.AudioStreamRepository;
 import com.umc.bscene.domain.user.entity.User;
+import com.umc.bscene.domain.user.enums.UserMode;
 import com.umc.bscene.domain.user.repository.UserRepository;
 import com.umc.bscene.domain.user.repository.UserBlockRepository;
 import com.umc.bscene.domain.user.repository.FanProfileRepository;
@@ -44,6 +51,9 @@ public class LiveChatWebSocketHandler extends TextWebSocketHandler implements Su
     private final UserBlockRepository userBlockRepository;
     private final ReportHistoryRepository reportHistoryRepository;
     private final FanProfileRepository fanProfileRepository;
+    private final AudioStreamRepository audioStreamRepository;
+    private final BandRepository bandRepository;
+    private final BandMemberRepository bandMemberRepository;
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     @Override
@@ -100,12 +110,14 @@ public class LiveChatWebSocketHandler extends TextWebSocketHandler implements Su
         Long userId = userId(session);
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new ChatException(ChatErrorCode.LIVE_INVALID_FRAME));
-        String senderName = fanProfileRepository.findByUser(user)
-                .map(FanProfile::getNickname)
-                .orElse(user.getName());
+        FanProfile fanProfile = fanProfileRepository.findByUser(user).orElse(null);
+        String senderName = fanProfile != null ? fanProfile.getNickname() : user.getName();
+        String senderProfileImageUrl = resolveProfileImageUrl(
+                liveId(session), user, fanProfile);
         String messageId = UUID.randomUUID().toString();
         LiveChatMessageData data = new LiveChatMessageData(
-                messageId, liveId(session), userId, senderName, null, content, now());
+                messageId, liveId(session), userId, senderName,
+                senderProfileImageUrl, content, now());
         ChatWebSocketPushFrame push = new ChatWebSocketPushFrame(
                 "live-chat.message", null, data, frame.clientMsgId(), now());
         Set<Long> excludedUserIds = new HashSet<>(
@@ -114,6 +126,30 @@ public class LiveChatWebSocketHandler extends TextWebSocketHandler implements Su
                 .findReporterIdsByLiveIdAndTargetUserId(liveId(session), userId));
         sessionRegistry.broadcastExcept(liveId(session), excludedUserIds,
                 new TextMessage(objectMapper.writeValueAsString(push)));
+    }
+
+    private String resolveProfileImageUrl(Long liveId, User user, FanProfile fanProfile) {
+        String fanProfileImageUrl = fanProfile != null ? fanProfile.getProfileImageUrl() : null;
+        if (user.getCurrentMode() != UserMode.BAND) {
+            return fanProfileImageUrl;
+        }
+
+        AudioStream live = audioStreamRepository.findById(liveId).orElse(null);
+        if (live == null) {
+            return fanProfileImageUrl;
+        }
+
+        boolean isBroadcaster = user.getId().equals(live.getBroadcasterId());
+        boolean isAcceptedBandMember = bandMemberRepository
+                .existsByBand_IdAndUser_IdAndStatus(
+                        live.getBandId(), user.getId(), BandMemberStatus.ACCEPTED);
+        if (!isBroadcaster && !isAcceptedBandMember) {
+            return fanProfileImageUrl;
+        }
+
+        return bandRepository.findById(live.getBandId())
+                .map(Band::getProfileImageUrl)
+                .orElse(null);
     }
 
     private void handlePing(WebSocketSession session, ChatWebSocketFrame frame) throws Exception {
