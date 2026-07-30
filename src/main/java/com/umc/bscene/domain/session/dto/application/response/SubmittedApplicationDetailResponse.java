@@ -21,6 +21,7 @@ import java.util.List;
         "recruitmentTitle",
         "bandId",
         "bandName",
+        "isOwner",
         "deadlineAt",
         "sessionApplicationId",
         "title",
@@ -48,6 +49,7 @@ public record SubmittedApplicationDetailResponse(
         String recruitmentTitle,
         Long bandId,
         String bandName,
+        Boolean isOwner,
         LocalDateTime deadlineAt,
         Long sessionApplicationId,
         String title,
@@ -72,7 +74,8 @@ public record SubmittedApplicationDetailResponse(
     public static SubmittedApplicationDetailResponse of(
             SessionApplicationSubmission submission,
             SessionApplicationDetailResponse application,
-            SessionApplication defaultApplication
+            SessionApplication defaultApplication,
+            Boolean isOwner
     ) {
         SessionRecruitment recruitment = submission.getSessionRecruitment();
         return new SubmittedApplicationDetailResponse(
@@ -81,6 +84,7 @@ public record SubmittedApplicationDetailResponse(
                 recruitment.getRecruitmentTitle(),
                 recruitment.getBand().getId(),
                 recruitment.getBand().getName(),
+                isOwner,
                 recruitment.getDeadlineAt(),
                 application.getSessionApplicationId(),
                 application.getTitle(),

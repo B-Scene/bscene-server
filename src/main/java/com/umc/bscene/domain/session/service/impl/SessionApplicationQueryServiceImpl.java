@@ -166,7 +166,8 @@ public class SessionApplicationQueryServiceImpl implements SessionApplicationQue
                 .getBand()
                 .getOwner()
                 .getId();
-        if (bandOwnerId.equals(viewerId)) {
+        boolean isOwner = bandOwnerId.equals(viewerId);
+        if (isOwner) {
             submission.markChecked();
         }
 
@@ -191,7 +192,8 @@ public class SessionApplicationQueryServiceImpl implements SessionApplicationQue
         return SubmittedApplicationDetailResponse.of(
                 submission,
                 detail,
-                defaultApplication
+                defaultApplication,
+                isOwner
         );
     }
 
