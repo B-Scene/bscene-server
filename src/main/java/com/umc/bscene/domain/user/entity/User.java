@@ -70,4 +70,10 @@ public class User extends BaseEntity {
     public void changeMode(UserMode mode) {
         this.currentMode = mode;
     }
+    public void toggleMode() {
+        if (this.currentMode.equals(UserMode.BAND))
+            this.currentMode = UserMode.FAN;
+        else if (this.currentMode.equals(UserMode.FAN))
+            this.currentMode = UserMode.BAND;
+    }
 }

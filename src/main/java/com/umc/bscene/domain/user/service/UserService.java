@@ -177,6 +177,14 @@ public class UserService {
                 userId, appliedFilter, baseYear, range.startDate(), range.endDate(), pageNumber, pageSize);
     }
 
+    @Transactional
+    public void toggleUpdateMode(User user) {
+        User foundForDirtyCheck = userRepository.findById(user.getId())
+                .orElseThrow(() -> new UserException(UserErrorCode.USER_NOT_FOUND));
+
+        foundForDirtyCheck.toggleMode();
+    }
+
     // 연도 필터 → 조회 날짜 범위 (null이면 해당 방향 제한 없음)
     private record YearDateRange(LocalDate startDate, LocalDate endDate) {
     }
