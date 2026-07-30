@@ -1,5 +1,6 @@
 package com.umc.bscene.domain.stream.sse;
 
+import com.umc.bscene.domain.stream.dto.response.StreamRoomResponse;
 import com.umc.bscene.domain.stream.entity.AudioStream;
 import com.umc.bscene.domain.stream.enums.StreamStatus;
 import com.umc.bscene.domain.stream.enums.code.error.StreamErrorCode;
@@ -23,6 +24,7 @@ import org.springframework.data.redis.core.ZSetOperations;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 import java.time.Instant;
+import java.util.List;
 import java.util.Optional;
 import java.util.function.BiConsumer;
 
@@ -353,6 +355,34 @@ class ViewerSsePresenceTest {
             presence.sweepStale();
 
             assertThat(cursor.isClosed()).isTrue();
+        }
+    }
+
+    @Nested
+    @DisplayName("notifyCoPublisherJoined - 진행자 합류 알림")
+    class NotifyCoPublisherJoined {
+
+        @Test
+        @DisplayName("registry의 타겟 전송(coPublisherJoined)으로 위임하고 브로드캐스트는 사용하지 않는다")
+        void delegatesToTargetedSendOnly() {
+            StreamRoomResponse.CoPublisher joined =
+                    new StreamRoomResponse.CoPublisher(21L, "https://webrtc.test/path-1-m902/whep");
+
+            presence.notifyCoPublisherJoined(LIVE_ID, List.of(1L, 3L), joined);
+
+            verify(registry).sendToUsers(LIVE_ID, List.of(1L, 3L), "coPublisherJoined", joined);
+            // [공격] 멤버 path가 담긴 payload가 브로드캐스트로 전 구독자(청취자 포함)에게 새면 안 된다
+            verify(registry, never()).broadcast(anyLong(), anyLong());
+            verifyNoInteractions(redisTemplate);
+        }
+
+        @Test
+        @DisplayName("대상이 비어 있으면 registry를 호출하지 않는다")
+        void emptyTargetsSkipsSend() {
+            presence.notifyCoPublisherJoined(
+                    LIVE_ID, List.of(), new StreamRoomResponse.CoPublisher(21L, "url"));
+
+            verifyNoInteractions(registry);
         }
     }
 }

@@ -91,6 +91,7 @@ class StreamServiceImplRoomTest {
 
     private static final String HLS_URL = "https://hls.test";
     private static final String WEBRTC_URL = "https://webrtc.test";
+    private static final String MIXER_TOKEN = "mixer-secret";
 
     @Mock private JwtUtil jwtUtil;
     @Mock private AudioStreamRepository audioStreamRepository;
@@ -115,6 +116,8 @@ class StreamServiceImplRoomTest {
     @Captor private ArgumentCaptor<Collection<Long>> coHostIdsCaptor;
 
     private RestClient.RequestBodyUriSpec mtxKickUriSpec;
+    @SuppressWarnings("rawtypes")
+    private RestClient.RequestHeadersUriSpec mtxGetUriSpec;
 
     private StreamServiceImpl service;
 
@@ -138,7 +141,8 @@ class StreamServiceImplRoomTest {
                 liveChatRoomCloser,
                 discordMessageSender,
                 HLS_URL,
-                WEBRTC_URL
+                WEBRTC_URL,
+                MIXER_TOKEN
         );
         TxSyncSupport.begin();
     }
@@ -163,15 +167,23 @@ class StreamServiceImplRoomTest {
         when(jwtUtil.getUserId(token)).thenReturn(String.valueOf(userId));
     }
 
+    /** path 조회 uriSpec을 공유해 한 테스트에서 여러 path(메인 + 멤버)를 함께 스텁할 수 있게 한다. */
+    @SuppressWarnings("rawtypes")
+    private RestClient.RequestHeadersUriSpec mtxGetUriSpec() {
+        if (mtxGetUriSpec == null) {
+            mtxGetUriSpec = mock(RestClient.RequestHeadersUriSpec.class);
+            when(mtxRestClient.get()).thenReturn(mtxGetUriSpec);
+        }
+        return mtxGetUriSpec;
+    }
+
     /** MediaMTX path 조회 응답 스텁. response가 null이면 kickPublisher가 조기 종료한다. */
     @SuppressWarnings({"rawtypes", "unchecked"})
     private void stubMtxPathLookup(String path, MtxPathResponse response) {
-        RestClient.RequestHeadersUriSpec uriSpec = mock(RestClient.RequestHeadersUriSpec.class);
         RestClient.RequestHeadersSpec headersSpec = mock(RestClient.RequestHeadersSpec.class);
         RestClient.ResponseSpec responseSpec = mock(RestClient.ResponseSpec.class);
 
-        when(mtxRestClient.get()).thenReturn(uriSpec);
-        when(uriSpec.uri("v3/paths/get/{name}", path)).thenReturn(headersSpec);
+        when(mtxGetUriSpec().uri("v3/paths/get/{name}", path)).thenReturn(headersSpec);
         when(headersSpec.retrieve()).thenReturn(responseSpec);
         when(responseSpec.body(MtxPathResponse.class)).thenReturn(response);
     }
@@ -179,12 +191,10 @@ class StreamServiceImplRoomTest {
     /** MediaMTX path 조회가 예외를 던지도록 스텁. kickPublisher의 예외 처리 검증용. */
     @SuppressWarnings({"rawtypes", "unchecked"})
     private void stubMtxPathLookupFailure(String path, RuntimeException failure) {
-        RestClient.RequestHeadersUriSpec uriSpec = mock(RestClient.RequestHeadersUriSpec.class);
         RestClient.RequestHeadersSpec headersSpec = mock(RestClient.RequestHeadersSpec.class);
         RestClient.ResponseSpec responseSpec = mock(RestClient.ResponseSpec.class);
 
-        when(mtxRestClient.get()).thenReturn(uriSpec);
-        when(uriSpec.uri("v3/paths/get/{name}", path)).thenReturn(headersSpec);
+        when(mtxGetUriSpec().uri("v3/paths/get/{name}", path)).thenReturn(headersSpec);
         when(headersSpec.retrieve()).thenReturn(responseSpec);
         when(responseSpec.body(MtxPathResponse.class)).thenThrow(failure);
     }
@@ -265,43 +275,85 @@ class StreamServiceImplRoomTest {
             verifyNoInteractions(audioStreamRepository);
         }
 
-        @Test
-        @DisplayName("해당 경로의 라이브가 없으면 false를 반환한다")
-        void streamNotFoundReturnsFalse() {
-            stubValidAccessToken("token", 10L);
-            when(audioStreamRepository.findByPath("path-1")).thenReturn(Optional.empty());
-
-            assertThat(service.canPublish("token", "path-1")).isFalse();
+        /** OPEN 라이브의 ACCEPTED 진행자 멤버(개인 송출 path 발급 완료 상태)를 만든다. */
+        private StreamMember memberWithPath(Long memberId, Long userId, StreamStatus streamStatus) {
+            AudioStream stream = StreamFixtures.stream(1L, 10L, 100L, streamStatus);
+            StreamMember member = StreamFixtures.member(
+                    memberId, StreamFixtures.bandUser(userId), stream, StreamMemberStatus.ACCEPTED);
+            member.assignPath("path-1-m" + memberId);
+            return member;
         }
 
         @Test
-        @DisplayName("송출자가 아니면 false를 반환한다")
-        void otherBroadcasterReturnsFalse() {
+        @DisplayName("해당 멤버 path가 발급된 적 없으면 false를 반환한다")
+        void memberPathNotFoundReturnsFalse() {
             stubValidAccessToken("token", 10L);
-            when(audioStreamRepository.findByPath("path-1"))
-                    .thenReturn(Optional.of(StreamFixtures.stream(1L, 11L, 100L, StreamStatus.OPEN)));
+            when(streamMemberRepository.findWithUserAndStreamByPath("path-1-m901")).thenReturn(Optional.empty());
 
-            assertThat(service.canPublish("token", "path-1")).isFalse();
+            assertThat(service.canPublish("token", "path-1-m901")).isFalse();
         }
 
         @Test
-        @DisplayName("OPEN 상태가 아니면 false를 반환한다")
+        @DisplayName("본인 소유 path가 아니면 false를 반환한다")
+        void otherMemberPathReturnsFalse() {
+            stubValidAccessToken("token", 10L);
+            when(streamMemberRepository.findWithUserAndStreamByPath("path-1-m902"))
+                    .thenReturn(Optional.of(memberWithPath(902L, 11L, StreamStatus.OPEN)));
+
+            assertThat(service.canPublish("token", "path-1-m902")).isFalse();
+        }
+
+        @Test
+        @DisplayName("공동 진행이 확정(ACCEPTED)되지 않은 멤버면 false를 반환한다")
+        void notAcceptedMemberReturnsFalse() {
+            stubValidAccessToken("token", 10L);
+            StreamMember invited = StreamFixtures.member(
+                    901L, StreamFixtures.bandUser(10L),
+                    StreamFixtures.stream(1L, 10L, 100L, StreamStatus.OPEN),
+                    StreamMemberStatus.INVITED);
+            when(streamMemberRepository.findWithUserAndStreamByPath("path-1-m901"))
+                    .thenReturn(Optional.of(invited));
+
+            assertThat(service.canPublish("token", "path-1-m901")).isFalse();
+        }
+
+        @Test
+        @DisplayName("소속 라이브가 OPEN 상태가 아니면 false를 반환한다")
         void notOpenReturnsFalse() {
             stubValidAccessToken("token", 10L);
-            when(audioStreamRepository.findByPath("path-1"))
-                    .thenReturn(Optional.of(StreamFixtures.stream(1L, 10L, 100L, StreamStatus.SCHEDULED)));
+            when(streamMemberRepository.findWithUserAndStreamByPath("path-1-m901"))
+                    .thenReturn(Optional.of(memberWithPath(901L, 10L, StreamStatus.SCHEDULED)));
 
-            assertThat(service.canPublish("token", "path-1")).isFalse();
+            assertThat(service.canPublish("token", "path-1-m901")).isFalse();
         }
 
         @Test
-        @DisplayName("본인의 OPEN 라이브면 true를 반환한다")
-        void ownOpenStreamReturnsTrue() {
+        @DisplayName("본인 멤버 path이고 소속 라이브가 OPEN이면 true를 반환한다")
+        void ownMemberPathOfOpenStreamReturnsTrue() {
             stubValidAccessToken("token", 10L);
-            when(audioStreamRepository.findByPath("path-1"))
-                    .thenReturn(Optional.of(StreamFixtures.stream(1L, 10L, 100L, StreamStatus.OPEN)));
+            when(streamMemberRepository.findWithUserAndStreamByPath("path-1-m901"))
+                    .thenReturn(Optional.of(memberWithPath(901L, 10L, StreamStatus.OPEN)));
 
-            assertThat(service.canPublish("token", "path-1")).isTrue();
+            assertThat(service.canPublish("token", "path-1-m901")).isTrue();
+        }
+
+        @Test
+        @DisplayName("믹서 토큰이면 JWT 검증 없이 메인 path의 OPEN 여부만으로 판단한다")
+        void mixerTokenPublishesMainPath() {
+            when(audioStreamRepository.existsByPathAndStatus("path-1", StreamStatus.OPEN)).thenReturn(true);
+
+            assertThat(service.canPublish(MIXER_TOKEN, "path-1")).isTrue();
+
+            verifyNoInteractions(jwtUtil);
+            verifyNoInteractions(streamMemberRepository);
+        }
+
+        @Test
+        @DisplayName("믹서 토큰이라도 OPEN 라이브가 아닌 메인 path면 false를 반환한다")
+        void mixerTokenRejectedWhenNotOpen() {
+            when(audioStreamRepository.existsByPathAndStatus("path-9", StreamStatus.OPEN)).thenReturn(false);
+
+            assertThat(service.canPublish(MIXER_TOKEN, "path-9")).isFalse();
         }
     }
 
@@ -358,6 +410,155 @@ class StreamServiceImplRoomTest {
             when(audioStreamRepository.existsByPathAndStatus("path-1", StreamStatus.OPEN)).thenReturn(false);
 
             assertThat(service.canRead("token", "path-1")).isFalse();
+        }
+
+        @Test
+        @DisplayName("믹서 토큰이면 멤버 path pull을 위해 JWT/저장소 검증 없이 허용한다")
+        void mixerTokenReadsAnyPath() {
+            assertThat(service.canRead(MIXER_TOKEN, "path-1-m901")).isTrue();
+
+            verifyNoInteractions(jwtUtil);
+            verifyNoInteractions(audioStreamRepository);
+        }
+
+        /** 멤버 path "path-1-m{memberId}"의 소유자 행을 만든다. 소속 라이브는 id 1. */
+        private StreamMember memberPathOwner(
+                Long memberId, Long ownerUserId, StreamStatus streamStatus, StreamMemberStatus ownerStatus
+        ) {
+            AudioStream stream = StreamFixtures.stream(1L, 10L, 100L, streamStatus);
+            StreamMember owner = StreamFixtures.member(
+                    memberId, StreamFixtures.bandUser(ownerUserId), stream, ownerStatus);
+            owner.assignPath("path-1-m" + memberId);
+            return owner;
+        }
+
+        @Test
+        @DisplayName("같은 라이브의 ACCEPTED 진행자는 다른 진행자의 멤버 path를 WHEP으로 모니터링할 수 있다")
+        void acceptedMemberReadsPeerMemberPath() {
+            stubValidAccessToken("token", 10L);
+            when(streamMemberRepository.findWithUserAndStreamByPath("path-1-m902"))
+                    .thenReturn(Optional.of(memberPathOwner(902L, 21L, StreamStatus.OPEN, StreamMemberStatus.ACCEPTED)));
+            when(streamMemberRepository.existsByAudioStream_IdAndUser_IdAndStatus(1L, 10L, StreamMemberStatus.ACCEPTED))
+                    .thenReturn(true);
+
+            assertThat(service.canRead("token", "path-1-m902")).isTrue();
+        }
+
+        @Test
+        @DisplayName("[공격] 일반 청취자는 믹싱 전 원본인 멤버 path를 청취할 수 없다")
+        void normalUserCannotReadMemberPath() {
+            stubValidAccessToken("token", 20L);
+            when(streamMemberRepository.findWithUserAndStreamByPath("path-1-m901"))
+                    .thenReturn(Optional.of(memberPathOwner(901L, 10L, StreamStatus.OPEN, StreamMemberStatus.ACCEPTED)));
+            when(streamMemberRepository.existsByAudioStream_IdAndUser_IdAndStatus(1L, 20L, StreamMemberStatus.ACCEPTED))
+                    .thenReturn(false);
+
+            assertThat(service.canRead("token", "path-1-m901")).isFalse();
+        }
+
+        @Test
+        @DisplayName("[공격] 다른 라이브의 진행자 자격으로는 이 라이브의 멤버 path를 청취할 수 없다")
+        void crossStreamMemberCannotReadMemberPath() {
+            stubValidAccessToken("token", 30L);
+            when(streamMemberRepository.findWithUserAndStreamByPath("path-1-m902"))
+                    .thenReturn(Optional.of(memberPathOwner(902L, 21L, StreamStatus.OPEN, StreamMemberStatus.ACCEPTED)));
+            // ACCEPTED 여부는 반드시 path가 속한 라이브(id 1) 범위로만 검사되어야 한다
+            when(streamMemberRepository.existsByAudioStream_IdAndUser_IdAndStatus(1L, 30L, StreamMemberStatus.ACCEPTED))
+                    .thenReturn(false);
+
+            assertThat(service.canRead("token", "path-1-m902")).isFalse();
+        }
+
+        @Test
+        @DisplayName("[공격] 초대만 받고 수락하지 않은(INVITED) 유저는 멤버 path를 청취할 수 없다")
+        void invitedUserCannotReadMemberPath() {
+            stubValidAccessToken("token", 40L);
+            when(streamMemberRepository.findWithUserAndStreamByPath("path-1-m902"))
+                    .thenReturn(Optional.of(memberPathOwner(902L, 21L, StreamStatus.OPEN, StreamMemberStatus.ACCEPTED)));
+            // exists 검사가 ACCEPTED로 한정되므로 INVITED/REJECTED는 여기서 걸러진다
+            when(streamMemberRepository.existsByAudioStream_IdAndUser_IdAndStatus(1L, 40L, StreamMemberStatus.ACCEPTED))
+                    .thenReturn(false);
+
+            assertThat(service.canRead("token", "path-1-m902")).isFalse();
+        }
+
+        @Test
+        @DisplayName("[공격] 종료(CLOSED)된 라이브의 멤버 path는 진행자였더라도 청취할 수 없다")
+        void closedStreamMemberPathRejected() {
+            stubValidAccessToken("token", 10L);
+            when(streamMemberRepository.findWithUserAndStreamByPath("path-1-m902"))
+                    .thenReturn(Optional.of(memberPathOwner(902L, 21L, StreamStatus.CLOSED, StreamMemberStatus.ACCEPTED)));
+
+            assertThat(service.canRead("token", "path-1-m902")).isFalse();
+        }
+
+        @Test
+        @DisplayName("[공격] path 소유자가 확정 진행자(ACCEPTED)가 아니게 되면 그 path는 청취할 수 없다")
+        void demotedOwnerMemberPathRejected() {
+            stubValidAccessToken("token", 10L);
+            when(streamMemberRepository.findWithUserAndStreamByPath("path-1-m902"))
+                    .thenReturn(Optional.of(memberPathOwner(902L, 21L, StreamStatus.OPEN, StreamMemberStatus.REJECTED)));
+
+            assertThat(service.canRead("token", "path-1-m902")).isFalse();
+        }
+
+        @Test
+        @DisplayName("[공격] 발급된 적 없는 멤버 path 형식을 추측해 요청하면 거부되고, 메인 path 검사로 폴백하지 않는다")
+        void guessedMemberPathRejected() {
+            stubValidAccessToken("token", 10L);
+            when(streamMemberRepository.findWithUserAndStreamByPath("path-1-m999")).thenReturn(Optional.empty());
+
+            assertThat(service.canRead("token", "path-1-m999")).isFalse();
+            // 멤버 path 요청이 AudioStream 존재 검사로 새어 나가면 path 유효성 정보가 노출된다
+            verify(audioStreamRepository, never()).existsByPathAndStatus(anyString(), any(StreamStatus.class));
+        }
+    }
+
+    @Nested
+    @DisplayName("믹서 토큰 우회 방어")
+    class MixerTokenBypassTest {
+
+        /** 믹서 토큰이 미설정(빈 값)인 서버 구성. */
+        private StreamServiceImpl blankTokenService() {
+            return new StreamServiceImpl(
+                    jwtUtil, audioStreamRepository, streamMemberRepository, liveAlarmRepository,
+                    streamReplayRepository, reportHistoryRepository, userPort, redisTemplate,
+                    bandMemberPort, followPort, userTermsPort, notifyPort, mtxRestClient,
+                    viewerSsePresence, liveChatRoomCloser, discordMessageSender,
+                    HLS_URL, WEBRTC_URL, ""
+            );
+        }
+
+        @Test
+        @DisplayName("[공격] 토큰 미설정 서버에 빈 password를 보내도 publish/read 인증을 우회할 수 없다")
+        void blankPasswordDoesNotBypassWhenTokenUnset() {
+            StreamServiceImpl blankService = blankTokenService();
+            when(jwtUtil.isValid("")).thenReturn(false);
+
+            assertThat(blankService.canPublish("", "path-1-m901")).isFalse();
+            assertThat(blankService.canRead("", "path-1")).isFalse();
+
+            verifyNoInteractions(streamMemberRepository, audioStreamRepository);
+        }
+
+        @Test
+        @DisplayName("[공격] 공백 문자열 password로도 우회할 수 없다")
+        void whitespacePasswordDoesNotBypass() {
+            StreamServiceImpl blankService = blankTokenService();
+            when(jwtUtil.isValid(" ")).thenReturn(false);
+
+            assertThat(blankService.canRead(" ", "path-1")).isFalse();
+        }
+
+        @Test
+        @DisplayName("[공격] 틀린 믹서 토큰 값은 JWT 검증 경로로 넘어가 거부된다")
+        void wrongMixerTokenFallsThroughToJwt() {
+            when(jwtUtil.isValid("wrong-secret")).thenReturn(false);
+
+            assertThat(service.canPublish("wrong-secret", "path-1")).isFalse();
+            assertThat(service.canRead("wrong-secret", "path-1-m901")).isFalse();
+
+            verifyNoInteractions(streamMemberRepository, audioStreamRepository);
         }
     }
 
@@ -651,6 +852,37 @@ class StreamServiceImplRoomTest {
         }
 
         @Test
+        @DisplayName("커밋 후 진행자 개인 path에 남은 WHIP 세션들도 함께 kick 한다")
+        void kicksMemberPublishersAfterCommit() {
+            AudioStream stream = StreamFixtures.stream(1L, 10L, 100L, StreamStatus.OPEN);
+            when(audioStreamRepository.findById(1L)).thenReturn(Optional.of(stream));
+            when(bandMemberPort.isActiveRegularMemberOfBand(100L, 10L)).thenReturn(true);
+            when(redisTemplate.opsForZSet()).thenReturn(zSetOperations);
+            when(zSetOperations.zCard("viewer:1")).thenReturn(0L);
+
+            StreamMember owner = StreamFixtures.member(
+                    901L, StreamFixtures.bandUser(10L), stream, StreamMemberStatus.ACCEPTED);
+            owner.assignPath("path-1-m901");
+            // path 미발급(방에 실제 진입한 적 없는) 멤버는 kick 조회 대상이 아니다
+            StreamMember neverJoined = StreamFixtures.member(
+                    902L, StreamFixtures.bandUser(21L), stream, StreamMemberStatus.ACCEPTED);
+            when(streamMemberRepository.findAllByAudioStream_IdAndStatus(1L, StreamMemberStatus.ACCEPTED))
+                    .thenReturn(List.of(owner, neverJoined));
+
+            stubMtxPathLookup("path-1", null);  // 메인 path는 믹서(RTSP) 소스라 조회 응답 없음 → 조기 종료
+            stubMtxPathLookup("path-1-m901",
+                    new MtxPathResponse(new MtxPathResponse.Source("webRTCSession", "session-9")));
+            stubMtxKick("session-9");
+
+            service.closeStream(10L, 1L);
+            TxSyncSupport.triggerAfterCommit();
+
+            verify(mtxKickUriSpec).uri("v3/webrtcsessions/kick/{id}", "session-9");
+            verify(mtxGetUriSpec, never()).uri("v3/paths/get/{name}", "path-1-m902");
+            verify(liveChatRoomCloser).close(1L);
+        }
+
+        @Test
         @DisplayName("WebRTC 송출 세션이 아니면 kick 요청을 보내지 않는다")
         void doesNotKickWhenSourceIsNotWebrtc() {
             AudioStream stream = StreamFixtures.stream(1L, 10L, 100L, StreamStatus.OPEN);
@@ -886,6 +1118,10 @@ class StreamServiceImplRoomTest {
             when(zSetOperations.zCard("viewer:1")).thenReturn(3L);
             when(bandMemberPort.getBandNameWithBandProfileByBroadcasterId(Set.of(10L)))
                     .thenReturn(List.of(StreamFixtures.bandInfo(10L, "밴드", "https://cdn.test/band.jpg")));
+            // 벌크 UPDATE의 clearAutomatically 이후 개인 송출 path 발급을 위해 멤버를 재조회한다
+            when(streamMemberRepository.findWithStreamByLiveIdAndUserId(1L, 10L))
+                    .thenReturn(Optional.of(StreamFixtures.member(
+                            901L, StreamFixtures.bandUser(10L), opened, StreamMemberStatus.ACCEPTED)));
 
             StreamRoomResponse response = service.enterRoom(10L, 1L);
 
@@ -897,8 +1133,9 @@ class StreamServiceImplRoomTest {
             assertThat(response.viewCount()).isEqualTo(3);
             assertThat(response.bandName()).isEqualTo("밴드");
             assertThat(response.bandProfileImageUrl()).isEqualTo("https://cdn.test/band.jpg");
+            // 송출자도 메인 path가 아닌 개인 멤버 path({mainPath}-m{memberId})로 송출한다
             assertThat(response.playback()).isEqualTo(new StreamRoomResponse.Playback(
-                    "BROADCASTER", "WHIP", WEBRTC_URL + "/path-1/whip"
+                    "BROADCASTER", "WHIP", WEBRTC_URL + "/path-1-m901/whip"
             ));
 
             // 송출자는 시청자 ZSet에 등록되지 않는다
@@ -914,16 +1151,23 @@ class StreamServiceImplRoomTest {
         }
 
         @Test
-        @DisplayName("이미 OPEN인 라이브 재입장은 밴드 검증과 시작 처리를 건너뛴다")
+        @DisplayName("이미 OPEN인 라이브 재입장은 밴드 검증과 시작 처리를 건너뛰고 기존 개인 path를 재사용한다")
         void reentryToOpenLiveSkipsStartFlow() {
-            when(audioStreamRepository.findById(1L))
-                    .thenReturn(Optional.of(StreamFixtures.stream(1L, 10L, 100L, StreamStatus.OPEN)));
+            AudioStream stream = StreamFixtures.stream(1L, 10L, 100L, StreamStatus.OPEN);
+            when(audioStreamRepository.findById(1L)).thenReturn(Optional.of(stream));
             givenStreamAccessAllowed(10L);
             when(bandMemberPort.getBandName(100L)).thenReturn("밴드");
             when(redisTemplate.hasKey("live:path-1")).thenReturn(true);
             when(redisTemplate.opsForZSet()).thenReturn(zSetOperations);
             when(zSetOperations.zCard("viewer:1")).thenReturn(1L);
             when(bandMemberPort.getBandNameWithBandProfileByBroadcasterId(Set.of(10L))).thenReturn(List.of());
+
+            // 이미 발급된 path는 재발급 없이 그대로 재사용된다 (재접속 시 MediaMTX가 좀비 세션을 대체)
+            StreamMember owner = StreamFixtures.member(
+                    901L, StreamFixtures.bandUser(10L), stream, StreamMemberStatus.ACCEPTED);
+            owner.assignPath("path-1-m901");
+            when(streamMemberRepository.findWithStreamByLiveIdAndUserId(1L, 10L))
+                    .thenReturn(Optional.of(owner));
 
             StreamRoomResponse response = service.enterRoom(10L, 1L);
 
@@ -935,6 +1179,190 @@ class StreamServiceImplRoomTest {
             // 재입장에서도 송출자 닉네임은 밴드 이름
             assertThat(response.nickname()).isEqualTo("밴드");
             assertThat(response.playback().role()).isEqualTo("BROADCASTER");
+            assertThat(response.playback().playbackUrl()).isEqualTo(WEBRTC_URL + "/path-1-m901/whip");
+            // 다른 진행자가 없으면 WHEP 목록은 빈 리스트 (청취자의 null과 구분되는 진행자 표식)
+            assertThat(response.coPublishers()).isEmpty();
+        }
+
+        @Test
+        @DisplayName("송출자의 ACCEPTED StreamMember 행이 없으면 FORBIDDEN_REQUEST를 던진다")
+        void missingOwnerMemberRowRejected() {
+            when(audioStreamRepository.findById(1L))
+                    .thenReturn(Optional.of(StreamFixtures.stream(1L, 10L, 100L, StreamStatus.OPEN)));
+            givenStreamAccessAllowed(10L);
+            when(bandMemberPort.getBandName(100L)).thenReturn("밴드");
+            when(redisTemplate.hasKey("live:path-1")).thenReturn(true);
+            when(redisTemplate.opsForZSet()).thenReturn(zSetOperations);
+            when(zSetOperations.zCard("viewer:1")).thenReturn(1L);
+            when(bandMemberPort.getBandNameWithBandProfileByBroadcasterId(Set.of(10L))).thenReturn(List.of());
+            when(streamMemberRepository.findWithStreamByLiveIdAndUserId(1L, 10L)).thenReturn(Optional.empty());
+
+            assertStreamError(() -> service.enterRoom(10L, 1L), StreamErrorCode.FORBIDDEN_REQUEST);
+        }
+    }
+
+    @Nested
+    @DisplayName("enterRoom - 공동 진행자 진입")
+    class EnterRoomCoHostTest {
+
+        /** user 21이 ACCEPTED 공동 진행자인 OPEN 라이브. */
+        private AudioStream openStreamWithCoHost(StreamMember coHost) {
+            return StreamFixtures.streamWithCoHost(1L, 10L, 100L, StreamStatus.OPEN, List.of(
+                    StreamFixtures.member(901L, StreamFixtures.bandUser(10L), null, StreamMemberStatus.ACCEPTED),
+                    coHost
+            ));
+        }
+
+        @Test
+        @DisplayName("ACCEPTED 공동 진행자는 청취자가 아니라 개인 멤버 path의 WHIP 송출 정보를 받는다")
+        void acceptedCoHostGetsWhipPlayback() {
+            StreamMember coHost = StreamFixtures.member(
+                    902L, StreamFixtures.bandUser(21L), null, StreamMemberStatus.ACCEPTED);
+            AudioStream stream = openStreamWithCoHost(coHost);
+            when(audioStreamRepository.findById(1L)).thenReturn(Optional.of(stream));
+            givenStreamAccessAllowed(21L);
+            when(bandMemberPort.getBandName(100L)).thenReturn("밴드");
+            when(redisTemplate.hasKey("live:path-1")).thenReturn(true);
+            when(redisTemplate.opsForZSet()).thenReturn(zSetOperations);
+            when(zSetOperations.zCard("viewer:1")).thenReturn(2L);
+            when(bandMemberPort.getBandNameWithBandProfileByBroadcasterId(Set.of(10L))).thenReturn(List.of());
+            when(streamMemberRepository.findWithStreamByLiveIdAndUserId(1L, 21L))
+                    .thenReturn(Optional.of(StreamFixtures.member(
+                            902L, StreamFixtures.bandUser(21L), stream, StreamMemberStatus.ACCEPTED)));
+
+            StreamRoomResponse response = service.enterRoom(21L, 1L);
+
+            assertThat(response.nickname()).isEqualTo("밴드");
+            assertThat(response.playback()).isEqualTo(new StreamRoomResponse.Playback(
+                    "CO_HOST", "WHIP", WEBRTC_URL + "/path-1-m902/whip"
+            ));
+
+            // 공동 진행자는 시청자 ZSet에 등록되지 않는다
+            verify(zSetOperations, never()).add(anyString(), anyString(), org.mockito.ArgumentMatchers.anyDouble());
+            verify(viewerSsePresence, never()).broadcastCount(anyLong());
+        }
+
+        @Test
+        @DisplayName("진행자 응답에는 본인을 제외한, path가 발급된 다른 진행자들의 WHEP 정보만 담긴다")
+        void publisherReceivesPeerWhepUrls() {
+            StreamMember coHost = StreamFixtures.member(
+                    902L, StreamFixtures.bandUser(21L), null, StreamMemberStatus.ACCEPTED);
+            AudioStream stream = openStreamWithCoHost(coHost);
+            when(audioStreamRepository.findById(1L)).thenReturn(Optional.of(stream));
+            givenStreamAccessAllowed(21L);
+            when(bandMemberPort.getBandName(100L)).thenReturn("밴드");
+            when(redisTemplate.hasKey("live:path-1")).thenReturn(true);
+            when(redisTemplate.opsForZSet()).thenReturn(zSetOperations);
+            when(zSetOperations.zCard("viewer:1")).thenReturn(2L);
+            when(bandMemberPort.getBandNameWithBandProfileByBroadcasterId(Set.of(10L))).thenReturn(List.of());
+            when(streamMemberRepository.findWithStreamByLiveIdAndUserId(1L, 21L))
+                    .thenReturn(Optional.of(StreamFixtures.member(
+                            902L, StreamFixtures.bandUser(21L), stream, StreamMemberStatus.ACCEPTED)));
+
+            // 송출자(path 발급됨) + 본인(제외 대상) + 아직 입장 안 한 멤버(path 없음, 제외 대상)
+            StreamMember owner = StreamFixtures.member(
+                    901L, StreamFixtures.bandUser(10L), stream, StreamMemberStatus.ACCEPTED);
+            owner.assignPath("path-1-m901");
+            StreamMember self = StreamFixtures.member(
+                    902L, StreamFixtures.bandUser(21L), stream, StreamMemberStatus.ACCEPTED);
+            self.assignPath("path-1-m902");
+            StreamMember notEntered = StreamFixtures.member(
+                    903L, StreamFixtures.bandUser(22L), stream, StreamMemberStatus.ACCEPTED);
+            when(streamMemberRepository.findAllByAudioStream_IdAndStatus(1L, StreamMemberStatus.ACCEPTED))
+                    .thenReturn(List.of(owner, self, notEntered));
+
+            StreamRoomResponse response = service.enterRoom(21L, 1L);
+
+            assertThat(response.coPublishers()).containsExactly(
+                    new StreamRoomResponse.CoPublisher(10L, WEBRTC_URL + "/path-1-m901/whep")
+            );
+        }
+
+        @Test
+        @DisplayName("최초 입장으로 path가 새로 발급되면 커밋 후에만 다른 진행자 전원에게 합류 이벤트를 보낸다")
+        void firstJoinNotifiesPeersAfterCommit() {
+            StreamMember coHost = StreamFixtures.member(
+                    902L, StreamFixtures.bandUser(21L), null, StreamMemberStatus.ACCEPTED);
+            AudioStream stream = openStreamWithCoHost(coHost);
+            when(audioStreamRepository.findById(1L)).thenReturn(Optional.of(stream));
+            givenStreamAccessAllowed(21L);
+            when(bandMemberPort.getBandName(100L)).thenReturn("밴드");
+            when(redisTemplate.hasKey("live:path-1")).thenReturn(true);
+            when(redisTemplate.opsForZSet()).thenReturn(zSetOperations);
+            when(zSetOperations.zCard("viewer:1")).thenReturn(2L);
+            when(bandMemberPort.getBandNameWithBandProfileByBroadcasterId(Set.of(10L))).thenReturn(List.of());
+            // path 미발급 상태로 조회 → 최초 입장
+            when(streamMemberRepository.findWithStreamByLiveIdAndUserId(1L, 21L))
+                    .thenReturn(Optional.of(StreamFixtures.member(
+                            902L, StreamFixtures.bandUser(21L), stream, StreamMemberStatus.ACCEPTED)));
+
+            StreamMember owner = StreamFixtures.member(
+                    901L, StreamFixtures.bandUser(10L), stream, StreamMemberStatus.ACCEPTED);
+            owner.assignPath("path-1-m901");
+            StreamMember self = StreamFixtures.member(
+                    902L, StreamFixtures.bandUser(21L), stream, StreamMemberStatus.ACCEPTED);
+            StreamMember notEntered = StreamFixtures.member(
+                    903L, StreamFixtures.bandUser(22L), stream, StreamMemberStatus.ACCEPTED);
+            when(streamMemberRepository.findAllByAudioStream_IdAndStatus(1L, StreamMemberStatus.ACCEPTED))
+                    .thenReturn(List.of(owner, self, notEntered));
+
+            service.enterRoom(21L, 1L);
+
+            // 커밋 전에는 절대 전송하지 않는다 (path 저장 전에 FE가 WHEP을 시도하면 인가에 실패한다)
+            verify(viewerSsePresence, never())
+                    .notifyCoPublisherJoined(anyLong(), any(), any(StreamRoomResponse.CoPublisher.class));
+
+            TxSyncSupport.triggerAfterCommit();
+
+            // 대상: 본인(21L)을 제외한 ACCEPTED 멤버 전원 (path 미발급이어도 SSE만 연결해 둔 진행자가 받을 수 있어야 함)
+            verify(viewerSsePresence).notifyCoPublisherJoined(
+                    1L,
+                    List.of(10L, 22L),
+                    new StreamRoomResponse.CoPublisher(21L, WEBRTC_URL + "/path-1-m902/whep")
+            );
+        }
+
+        @Test
+        @DisplayName("재입장(path 기존 보유)에는 합류 이벤트를 보내지 않는다")
+        void reentryDoesNotNotifyPeers() {
+            StreamMember coHost = StreamFixtures.member(
+                    902L, StreamFixtures.bandUser(21L), null, StreamMemberStatus.ACCEPTED);
+            AudioStream stream = openStreamWithCoHost(coHost);
+            when(audioStreamRepository.findById(1L)).thenReturn(Optional.of(stream));
+            givenStreamAccessAllowed(21L);
+            when(bandMemberPort.getBandName(100L)).thenReturn("밴드");
+            when(redisTemplate.hasKey("live:path-1")).thenReturn(true);
+            when(redisTemplate.opsForZSet()).thenReturn(zSetOperations);
+            when(zSetOperations.zCard("viewer:1")).thenReturn(2L);
+            when(bandMemberPort.getBandNameWithBandProfileByBroadcasterId(Set.of(10L))).thenReturn(List.of());
+            // 이미 path를 보유한 상태로 재입장
+            StreamMember reentering = StreamFixtures.member(
+                    902L, StreamFixtures.bandUser(21L), stream, StreamMemberStatus.ACCEPTED);
+            reentering.assignPath("path-1-m902");
+            when(streamMemberRepository.findWithStreamByLiveIdAndUserId(1L, 21L))
+                    .thenReturn(Optional.of(reentering));
+
+            service.enterRoom(21L, 1L);
+            TxSyncSupport.triggerAfterCommit();
+
+            verify(viewerSsePresence, never())
+                    .notifyCoPublisherJoined(anyLong(), any(), any(StreamRoomResponse.CoPublisher.class));
+        }
+
+        @Test
+        @DisplayName("OPEN이 아닌 라이브에는 공동 진행자도 진입할 수 없다 (방송 시작 권한은 송출자 전용)")
+        void coHostCannotEnterNotOpenStream() {
+            StreamMember coHost = StreamFixtures.member(
+                    902L, StreamFixtures.bandUser(21L), null, StreamMemberStatus.ACCEPTED);
+            AudioStream scheduled = StreamFixtures.streamWithCoHost(
+                    1L, 10L, 100L, StreamStatus.SCHEDULED, List.of(coHost));
+            when(audioStreamRepository.findById(1L)).thenReturn(Optional.of(scheduled));
+            givenStreamAccessAllowed(21L);
+
+            assertStreamError(() -> service.enterRoom(21L, 1L), StreamErrorCode.AUDIO_STREAM_NOT_LIVE);
+
+            verify(audioStreamRepository, never()).markStartedIfScheduled(anyLong(), any(LocalDateTime.class));
+            verifyNoInteractions(redisTemplate, viewerSsePresence);
         }
     }
 
@@ -983,6 +1411,14 @@ class StreamServiceImplRoomTest {
             assertThat(response.playback()).isEqualTo(new StreamRoomResponse.Playback(
                     "LISTENER", "HLS", HLS_URL + "/path-1/index.m3u8"
             ));
+            // [공격 방어] 청취자에게 멤버 path가 유추될 정보(coPublishers)를 노출하지 않는다
+            assertThat(response.coPublishers()).isNull();
+            verify(streamMemberRepository, never())
+                    .findAllByAudioStream_IdAndStatus(anyLong(), any(StreamMemberStatus.class));
+            // 청취자 입장은 진행자 합류 이벤트도 발생시키지 않는다
+            TxSyncSupport.triggerAfterCommit();
+            verify(viewerSsePresence, never())
+                    .notifyCoPublisherJoined(anyLong(), any(), any(StreamRoomResponse.CoPublisher.class));
         }
 
         @Test

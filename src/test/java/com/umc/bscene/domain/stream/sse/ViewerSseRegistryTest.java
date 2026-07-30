@@ -16,6 +16,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatCode;
 
 /**
  * ViewerSseRegistry의 레퍼런스 카운팅·유저당 1연결 제한·브로드캐스트 내성 검증.
@@ -471,6 +472,84 @@ class ViewerSseRegistryTest {
             }
 
             assertThat(failures).isEmpty();
+        }
+    }
+
+    @Nested
+    @DisplayName("sendToUsers - 진행자 타겟 전송")
+    class SendToUsers {
+
+        private static final String EVENT = "coPublisherJoined";
+
+        @Test
+        @DisplayName("지정한 유저의 emitter에만 이벤트가 전송되고, 비대상 유저는 받지 못한다")
+        void deliversOnlyToTargetUsers() {
+            SseEmitter target = registry.register(LIVE_A, 100L, true, () -> { });
+            TestSseHandler targetHandler = TestSseHandler.attach(target);
+            SseEmitter other = registry.register(LIVE_A, 200L, true, () -> { });
+            TestSseHandler otherHandler = TestSseHandler.attach(other);
+
+            registry.sendToUsers(LIVE_A, List.of(100L), EVENT, "payload-1");
+
+            assertThat(targetHandler.sentEvents()).hasSize(1);
+            assertThat(targetHandler.sentEvents().getFirst())
+                    .contains(EVENT)
+                    .contains("payload-1");
+            assertThat(otherHandler.sentEvents())
+                    .as("[공격] 비대상 유저(청취자 연결)에 멤버 path 정보가 새면 안 된다")
+                    .isEmpty();
+        }
+
+        @Test
+        @DisplayName("[공격] 보기 전용(watchOnly) 구독자는 타겟 이벤트를 절대 받지 못한다")
+        void watchersNeverReceiveTargetedEvents() {
+            SseEmitter watcher = registry.registerWatchOnly(LIVE_A);
+            TestSseHandler watcherHandler = TestSseHandler.attach(watcher);
+            SseEmitter target = registry.register(LIVE_A, 100L, true, () -> { });
+            TestSseHandler targetHandler = TestSseHandler.attach(target);
+
+            registry.sendToUsers(LIVE_A, List.of(100L), EVENT, "payload-1");
+
+            assertThat(targetHandler.sentEvents()).hasSize(1);
+            assertThat(watcherHandler.sentEvents()).isEmpty();
+        }
+
+        @Test
+        @DisplayName("[공격] 다른 방에 접속한 같은 userId의 연결에는 전송되지 않는다")
+        void otherRoomConnectionOfSameUserNotDelivered() {
+            SseEmitter otherRoom = registry.register(LIVE_B, 100L, true, () -> { });
+            TestSseHandler otherRoomHandler = TestSseHandler.attach(otherRoom);
+
+            registry.sendToUsers(LIVE_A, List.of(100L), EVENT, "payload-1");
+
+            assertThat(otherRoomHandler.sentEvents()).isEmpty();
+        }
+
+        @Test
+        @DisplayName("죽은 emitter가 있어도 나머지 대상 전송이 중단되지 않는다")
+        void deadEmitterDoesNotStopDelivery() {
+            SseEmitter dead = registry.register(LIVE_A, 100L, true, () -> { });
+            TestSseHandler deadHandler = TestSseHandler.attach(dead);
+            deadHandler.failSubsequentSends();
+            SseEmitter alive = registry.register(LIVE_A, 200L, true, () -> { });
+            TestSseHandler aliveHandler = TestSseHandler.attach(alive);
+
+            registry.sendToUsers(LIVE_A, List.of(100L, 200L), EVENT, "p");
+
+            assertThat(aliveHandler.sentEvents()).hasSize(1);
+        }
+
+        @Test
+        @DisplayName("없는 방이나 미접속 유저 대상이면 예외 없이 조용히 무시된다")
+        void missingRoomOrUserIsNoop() {
+            assertThatCode(() -> registry.sendToUsers(999L, List.of(100L), EVENT, "p"))
+                    .doesNotThrowAnyException();
+
+            SseEmitter connected = registry.register(LIVE_A, 100L, true, () -> { });
+            TestSseHandler connectedHandler = TestSseHandler.attach(connected);
+            assertThatCode(() -> registry.sendToUsers(LIVE_A, List.of(777L), EVENT, "p"))
+                    .doesNotThrowAnyException();
+            assertThat(connectedHandler.sentEvents()).isEmpty();
         }
     }
 }

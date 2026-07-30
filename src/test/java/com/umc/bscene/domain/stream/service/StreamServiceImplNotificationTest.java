@@ -150,7 +150,8 @@ class StreamServiceImplNotificationTest {
                 liveChatRoomCloser,
                 discordMessageSender,
                 "https://hls.test",
-                "https://webrtc.test"
+                "https://webrtc.test",
+                "mixer-secret"
         );
         TxSyncSupport.begin();
     }
@@ -216,6 +217,13 @@ class StreamServiceImplNotificationTest {
     private void givenEnterRoomResponseStubs() {
         given(redisTemplate.opsForZSet()).willReturn(zSetOperations);
         given(bandMemberPort.getBandNameWithBandProfileByBroadcasterId(Set.of(BROADCASTER_ID))).willReturn(List.of());
+        // 송출자 개인 WHIP path 발급용 ACCEPTED StreamMember 조회
+        given(streamMemberRepository.findWithStreamByLiveIdAndUserId(LIVE_ID, BROADCASTER_ID))
+                .willReturn(Optional.of(StreamFixtures.member(
+                        901L,
+                        StreamFixtures.bandUser(BROADCASTER_ID),
+                        StreamFixtures.stream(LIVE_ID, BROADCASTER_ID, BAND_ID, StreamStatus.OPEN),
+                        StreamMemberStatus.ACCEPTED)));
     }
 
     private List<StreamPushMessage> capturedMessages() {

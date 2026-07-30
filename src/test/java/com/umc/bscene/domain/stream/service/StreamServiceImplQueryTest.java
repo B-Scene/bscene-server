@@ -127,7 +127,8 @@ class StreamServiceImplQueryTest {
                 liveChatRoomCloser,
                 discordMessageSender,
                 HLS_URL,
-                WEBRTC_URL
+                WEBRTC_URL,
+                "mixer-secret"
         );
     }
 
