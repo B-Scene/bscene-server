@@ -8,12 +8,16 @@ import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
 public interface StreamMemberRepository extends JpaRepository<StreamMember, Long> {
 
     List<StreamMember> findAllByAudioStream_Id(Long audioStreamId);
+
+    // 라이브 홈 블럭별 coHost 매핑용: 여러 라이브의 확정(ACCEPTED) 진행자 행을 한 번에 조회
+    List<StreamMember> findAllByAudioStream_IdInAndStatus(Collection<Long> audioStreamIds, StreamMemberStatus status);
 
     List<StreamMember> findAllByAudioStream_IdAndStatus(Long audioStreamId, StreamMemberStatus status);
 
@@ -43,6 +47,19 @@ where sm.user.id = :userId
             @Param("liveId") Long liveId,
             @Param("userId") Long userId
     );
+
+    // MediaMTX read 인증용: 요청자가 해당 라이브의 확정(ACCEPTED) 진행자인지 확인
+    boolean existsByAudioStream_IdAndUser_IdAndStatus(Long audioStreamId, Long userId, StreamMemberStatus status);
+
+    // MediaMTX publish 인증용: 진행자 개인 송출 path로 멤버·소속 라이브를 한 번에 조회
+    @Query("""
+    SELECT sm
+    FROM StreamMember sm
+    JOIN FETCH sm.user
+    JOIN FETCH sm.audioStream
+    WHERE sm.path = :path
+""")
+    Optional<StreamMember> findWithUserAndStreamByPath(@Param("path") String path);
 
     // 현재 상태가 expected일 때만 원자적으로 상태 변경
     @Modifying

@@ -3,12 +3,23 @@ package com.umc.bscene.domain.user.repository;
 import com.umc.bscene.domain.user.entity.FanProfile;
 import com.umc.bscene.domain.user.entity.User;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
 public interface FanProfileRepository extends JpaRepository<FanProfile, Long> {
+
+    @Query("""
+select fp
+from FanProfile fp
+    join fetch fp.user u
+where u.id = :userId
+""")
+    Optional<FanProfile> findByUser_Id(
+            @Param("userId") Long userId);
 
     Optional<FanProfile> findByUser(User user);
 

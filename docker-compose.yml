@@ -134,6 +134,7 @@ services:
     expose:
       - "8889"  # nginx 접근
       - "9997"  # spring 접근
+      - "8554"  # mixer 접근 (RTSP, 내부망 전용 — 호스트 공개 금지)
     volumes:
       - ./mediamtx/mediamtx.yml:/mediamtx.yml:ro
       - recordings:/recordings
@@ -146,6 +147,30 @@ services:
           memory: 64M
     networks:
       - bscene
+  # 진행자 개인 path(WHIP 원본)들을 믹싱해 메인 path로 되돌려 넣는 오디오 믹서 (mixer/mixer.py)
+  # 최초/변경 시 서버에서 빌드 필요: docker compose up -d --build mixer
+  mixer:
+    build: ./mixer
+    container_name: mixer
+    logging: *default-logging
+    restart: always
+    environment:
+      - TZ=Asia/Seoul
+      - MTX_API_URL=http://mediamtx:9997
+      - MTX_RTSP_URL=rtsp://mediamtx:8554
+      - MIXER_TOKEN=${MEDIAMTX_MIXER_TOKEN}  # spring의 mediamtx.mixer-token과 동일 값 (.env)
+    depends_on:
+      - mediamtx
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 512M
+        reservations:
+          memory: 128M
+    networks:
+      - bscene
+
   node-exporter:
     image: prom/node-exporter:v1.9.1
     container_name: node-exporter

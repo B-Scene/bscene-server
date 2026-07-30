@@ -5,8 +5,10 @@ import com.umc.bscene.domain.band.entity.BandMember;
 import com.umc.bscene.domain.band.entity.BandMemberProfile;
 import com.umc.bscene.domain.band.enums.BandMemberStatus;
 import com.umc.bscene.domain.band.enums.BandMemberType;
+import com.umc.bscene.domain.band.exception.BandException;
 import com.umc.bscene.domain.band.repository.BandMemberRepository;
 import com.umc.bscene.domain.band.repository.BandRepository;
+import com.umc.bscene.domain.band.response.code.BandErrorCode;
 import com.umc.bscene.domain.stream.dto.CoHostCandidateInfo;
 import com.umc.bscene.domain.stream.dto.response.BandInfoForGetLiveResponse;
 import com.umc.bscene.domain.stream.dto.response.BandSummaryResponse;
@@ -156,5 +158,14 @@ public class StreamAdapter implements BandMemberPort {
                 userId,
                 BandMemberStatus.ACCEPTED
         );
+    }
+
+    @Override
+    public String getBandName(Long bandId) {
+        return bandRepository.findById(bandId)
+                .orElseThrow(() -> new BandException(
+                        BandErrorCode.BAND_NOT_FOUND
+                ))
+                .getName();
     }
 }

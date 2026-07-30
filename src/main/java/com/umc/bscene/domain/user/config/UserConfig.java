@@ -12,8 +12,11 @@ import org.springframework.context.annotation.Configuration;
 public class UserConfig {
 
     @Bean
-    public StreamAdapter streamUserAdapter(UserRepository userRepository) {
-        return new StreamAdapter(userRepository);
+    public StreamAdapter streamUserAdapter(
+            UserRepository userRepository,
+            FanProfileRepository fanProfileRepository
+    ) {
+        return new StreamAdapter(userRepository, fanProfileRepository);
     }
 
     // 게시물 도메인 UserPort 구현 어댑터 (댓글 목록의 차단 유저 필터·작성자 팬 프로필 조회)

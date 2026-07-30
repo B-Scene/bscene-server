@@ -72,4 +72,6 @@ public interface BandMemberPort {
 
     // userId는 공동 진행자 요청의 coHost에 전달할 사용자 ID입니다.
     Optional<String> getBandMemberNickname(Long bandId, Long userId);
+
+    String getBandName(Long bandId);
 }
