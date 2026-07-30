@@ -63,7 +63,7 @@ public class AudioStream extends BaseEntity {
     private LocalDateTime replayNotificationSentAt;
 
     @JsonManagedReference
-    @OneToMany(fetch = FetchType.LAZY)
+    @OneToMany(fetch = FetchType.LAZY, mappedBy = "audioStream")
     private List<StreamMember> coHost;
 
     public void close(int closedViewerCount) {

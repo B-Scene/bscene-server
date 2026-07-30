@@ -29,11 +29,19 @@ public class StreamAdapter implements UserPort {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new UserException(UserErrorCode.USER_NOT_FOUND));
 
-        if (user.getCurrentMode().equals(UserMode.BAND) && !coHostIds.contains(user.getId())) {
+        // 온보딩 미완료 등으로 currentMode가 null일 수 있으므로 NPE가 나지 않게 enum 쪽 기준으로 비교
+        if (UserMode.BAND == user.getCurrentMode() && !coHostIds.contains(user.getId())) {
             return false;
         }
 
         return true;
+    }
+
+    @Override
+    public boolean isBandMode(Long userId) {
+        return userRepository.findById(userId)
+                .map(user -> UserMode.BAND == user.getCurrentMode())
+                .orElse(false);
     }
 
     @Override

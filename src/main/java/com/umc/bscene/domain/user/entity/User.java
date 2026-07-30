@@ -1,6 +1,5 @@
 package com.umc.bscene.domain.user.entity;
 
-import com.fasterxml.jackson.annotation.JsonBackReference;
 import com.umc.bscene.domain.user.enums.Gender;
 import com.umc.bscene.domain.user.enums.UserMode;
 import com.umc.bscene.domain.user.enums.UserRole;

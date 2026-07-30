@@ -8,7 +8,6 @@ public record StreamRoomResponse(
         Long liveId,
         Boolean isLive,
 
-        // FIXME: 해당 API를 호출한 유저의 FanProfile.nickname 반환 추가
         String nickname,
 
         // 소수점 아래 삭제

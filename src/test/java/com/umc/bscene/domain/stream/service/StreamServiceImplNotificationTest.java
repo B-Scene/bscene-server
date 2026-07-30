@@ -197,8 +197,14 @@ class StreamServiceImplNotificationTest {
         );
     }
 
+    /** enterRoom의 밴드 모드 접근 검증(validAccessAboutStreamInBandMode)을 통과시키는 스텁. */
+    private void givenStreamAccessAllowed() {
+        given(userPort.validAccessAboutStreamInBandMode(eq(BROADCASTER_ID), any())).willReturn(true);
+    }
+
     /** enterRoom에서 SCHEDULED -> OPEN 전환에 성공하도록 스텁을 건다. */
     private void givenScheduledStreamStartedByBroadcaster() {
+        givenStreamAccessAllowed();
         given(audioStreamRepository.findById(LIVE_ID))
                 .willReturn(Optional.of(StreamFixtures.scheduledStream(LIVE_ID, BROADCASTER_ID, BAND_ID, SCHEDULED_AT)));
         given(bandMemberPort.isActiveRegularMemberOfBand(BAND_ID, BROADCASTER_ID)).willReturn(true);
@@ -608,6 +614,7 @@ class StreamServiceImplNotificationTest {
         @Test
         @DisplayName("SCHEDULED -> OPEN 전환에 실패하면 예외가 발생하고 아무것도 발송되지 않는다")
         void 전환_실패시_아무것도_발송되지_않는다() {
+            givenStreamAccessAllowed();
             given(audioStreamRepository.findById(LIVE_ID))
                     .willReturn(Optional.of(StreamFixtures.scheduledStream(LIVE_ID, BROADCASTER_ID, BAND_ID, SCHEDULED_AT)));
             given(bandMemberPort.isActiveRegularMemberOfBand(BAND_ID, BROADCASTER_ID)).willReturn(true);
@@ -627,6 +634,7 @@ class StreamServiceImplNotificationTest {
         @Test
         @DisplayName("이미 OPEN인 라이브에 송출자가 재입장하면 시작 알림을 보내지 않는다")
         void 이미_OPEN인_라이브_재입장은_알림이_없다() {
+            givenStreamAccessAllowed();
             given(audioStreamRepository.findById(LIVE_ID))
                     .willReturn(Optional.of(StreamFixtures.stream(LIVE_ID, BROADCASTER_ID, BAND_ID, StreamStatus.OPEN)));
             givenEnterRoomResponseStubs();

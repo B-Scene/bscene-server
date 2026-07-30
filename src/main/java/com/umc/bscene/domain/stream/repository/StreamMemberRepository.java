@@ -8,12 +8,16 @@ import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
 public interface StreamMemberRepository extends JpaRepository<StreamMember, Long> {
 
     List<StreamMember> findAllByAudioStream_Id(Long audioStreamId);
+
+    // 라이브 홈 블럭별 coHost 매핑용: 여러 라이브의 확정(ACCEPTED) 진행자 행을 한 번에 조회
+    List<StreamMember> findAllByAudioStream_IdInAndStatus(Collection<Long> audioStreamIds, StreamMemberStatus status);
 
     List<StreamMember> findAllByAudioStream_IdAndStatus(Long audioStreamId, StreamMemberStatus status);
 

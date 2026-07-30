@@ -37,6 +37,7 @@ import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
+import org.mockito.Captor;
 import org.mockito.InOrder;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -57,6 +58,7 @@ import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDateTime;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
@@ -109,6 +111,8 @@ class StreamServiceImplRoomTest {
 
     @Mock private ZSetOperations<String, String> zSetOperations;
     @Mock private ValueOperations<String, String> valueOperations;
+
+    @Captor private ArgumentCaptor<Collection<Long>> coHostIdsCaptor;
 
     private RestClient.RequestBodyUriSpec mtxKickUriSpec;
 
@@ -718,6 +722,55 @@ class StreamServiceImplRoomTest {
         }
     }
 
+    /** enterRoom의 밴드 모드 접근 검증(validAccessAboutStreamInBandMode)을 통과시키는 스텁. */
+    private void givenStreamAccessAllowed(Long userId) {
+        when(userPort.validAccessAboutStreamInBandMode(eq(userId), any())).thenReturn(true);
+    }
+
+    @Nested
+    @DisplayName("enterRoom - 밴드 모드 접근 제어")
+    class EnterRoomAccessControlTest {
+
+        @Test
+        @DisplayName("접근 검증에 실패하면 FORBIDDEN_REQUEST를 던지고, 검증에는 ACCEPTED 진행자만 전달한다")
+        void forbiddenWhenAccessDeniedAndOnlyAcceptedCoHostsPassed() {
+            AudioStream stream = StreamFixtures.streamWithCoHost(1L, 10L, 100L, StreamStatus.OPEN, List.of(
+                    StreamFixtures.member(901L, StreamFixtures.bandUser(10L), null, StreamMemberStatus.ACCEPTED),
+                    StreamFixtures.member(902L, StreamFixtures.bandUser(21L), null, StreamMemberStatus.INVITED),
+                    StreamFixtures.member(903L, StreamFixtures.bandUser(22L), null, StreamMemberStatus.REJECTED)
+            ));
+            when(audioStreamRepository.findById(1L)).thenReturn(Optional.of(stream));
+            when(userPort.validAccessAboutStreamInBandMode(eq(20L), any())).thenReturn(false);
+
+            assertStreamError(() -> service.enterRoom(20L, 1L), StreamErrorCode.FORBIDDEN_REQUEST);
+
+            // INVITED(미수락)/REJECTED(거절)는 coHost가 아니므로 검증 대상에서 제외된다
+            verify(userPort).validAccessAboutStreamInBandMode(eq(20L), coHostIdsCaptor.capture());
+            assertThat(coHostIdsCaptor.getValue()).containsExactly(10L);
+
+            verifyNoInteractions(redisTemplate, viewerSsePresence);
+        }
+
+        @Test
+        @DisplayName("밴드 모드 공동 진행자가 청취자로 입장하면 밴드 이름을 닉네임으로 내려준다")
+        void bandModeListenerGetsBandName() {
+            when(audioStreamRepository.findById(1L))
+                    .thenReturn(Optional.of(StreamFixtures.stream(1L, 10L, 100L, StreamStatus.OPEN)));
+            givenStreamAccessAllowed(21L);
+            when(userPort.isBandMode(21L)).thenReturn(true);
+            when(bandMemberPort.getBandName(100L)).thenReturn("밴드");
+            when(redisTemplate.opsForZSet()).thenReturn(zSetOperations);
+            when(zSetOperations.zCard("viewer:1")).thenReturn(1L);
+            when(redisTemplate.hasKey("live:path-1")).thenReturn(true);
+            when(bandMemberPort.getBandNameWithBandProfileByBroadcasterId(Set.of(10L))).thenReturn(List.of());
+
+            StreamRoomResponse response = service.enterRoom(21L, 1L);
+
+            assertThat(response.nickname()).isEqualTo("밴드");
+            verify(userPort, never()).getFanName(anyLong());
+        }
+    }
+
     @Nested
     @DisplayName("enterRoom - 송출자 진입")
     class EnterRoomBroadcasterTest {
@@ -735,6 +788,7 @@ class StreamServiceImplRoomTest {
         void closedStreamRejected() {
             when(audioStreamRepository.findById(1L))
                     .thenReturn(Optional.of(StreamFixtures.stream(1L, 10L, 100L, StreamStatus.CLOSED)));
+            givenStreamAccessAllowed(10L);
 
             assertStreamError(() -> service.enterRoom(10L, 1L), StreamErrorCode.AUDIO_STREAM_NOT_LIVE);
 
@@ -746,6 +800,7 @@ class StreamServiceImplRoomTest {
         void canceledStreamRejected() {
             when(audioStreamRepository.findById(1L))
                     .thenReturn(Optional.of(StreamFixtures.stream(1L, 10L, 100L, StreamStatus.CANCELED)));
+            givenStreamAccessAllowed(10L);
 
             assertStreamError(() -> service.enterRoom(10L, 1L), StreamErrorCode.AUDIO_STREAM_NOT_LIVE);
 
@@ -757,6 +812,7 @@ class StreamServiceImplRoomTest {
         void scheduledStartRequiresActiveBand() {
             when(audioStreamRepository.findById(1L))
                     .thenReturn(Optional.of(StreamFixtures.scheduledStream(1L, 10L, 100L, LocalDateTime.now().plusHours(1))));
+            givenStreamAccessAllowed(10L);
             when(bandMemberPort.isActiveRegularMemberOfBand(100L, 10L)).thenReturn(false);
 
             assertStreamError(() -> service.enterRoom(10L, 1L), StreamErrorCode.FORBIDDEN_REQUEST);
@@ -769,6 +825,7 @@ class StreamServiceImplRoomTest {
         void alreadyLive() {
             when(audioStreamRepository.findById(1L))
                     .thenReturn(Optional.of(StreamFixtures.scheduledStream(1L, 10L, 100L, LocalDateTime.now().plusHours(1))));
+            givenStreamAccessAllowed(10L);
             when(bandMemberPort.isActiveRegularMemberOfBand(100L, 10L)).thenReturn(true);
             when(audioStreamRepository.existsByBroadcasterIdAndStatus(10L, StreamStatus.OPEN)).thenReturn(true);
 
@@ -782,6 +839,7 @@ class StreamServiceImplRoomTest {
         void markStartedNoRowUpdated() {
             when(audioStreamRepository.findById(1L))
                     .thenReturn(Optional.of(StreamFixtures.scheduledStream(1L, 10L, 100L, LocalDateTime.now().plusHours(1))));
+            givenStreamAccessAllowed(10L);
             when(bandMemberPort.isActiveRegularMemberOfBand(100L, 10L)).thenReturn(true);
             when(audioStreamRepository.existsByBroadcasterIdAndStatus(10L, StreamStatus.OPEN)).thenReturn(false);
             when(audioStreamRepository.markStartedIfScheduled(eq(1L), any(LocalDateTime.class))).thenReturn(0);
@@ -798,6 +856,7 @@ class StreamServiceImplRoomTest {
             AudioStream scheduled = StreamFixtures.scheduledStream(1L, 10L, 100L, LocalDateTime.now().plusHours(1));
             when(audioStreamRepository.findById(1L))
                     .thenReturn(Optional.of(scheduled), Optional.empty());
+            givenStreamAccessAllowed(10L);
             when(bandMemberPort.isActiveRegularMemberOfBand(100L, 10L)).thenReturn(true);
             when(audioStreamRepository.existsByBroadcasterIdAndStatus(10L, StreamStatus.OPEN)).thenReturn(false);
             when(audioStreamRepository.markStartedIfScheduled(eq(1L), any(LocalDateTime.class))).thenReturn(1);
@@ -816,7 +875,9 @@ class StreamServiceImplRoomTest {
 
             when(audioStreamRepository.findById(1L))
                     .thenReturn(Optional.of(scheduled), Optional.of(opened));
+            givenStreamAccessAllowed(10L);
             when(bandMemberPort.isActiveRegularMemberOfBand(100L, 10L)).thenReturn(true);
+            when(bandMemberPort.getBandName(100L)).thenReturn("밴드");
             when(audioStreamRepository.existsByBroadcasterIdAndStatus(10L, StreamStatus.OPEN)).thenReturn(false);
             when(audioStreamRepository.markStartedIfScheduled(eq(1L), any(LocalDateTime.class))).thenReturn(1);
             stubNotifyRecipients(100L, 10L, 20L, true);
@@ -832,6 +893,7 @@ class StreamServiceImplRoomTest {
             verify(audioStreamRepository, times(2)).findById(1L);
             assertThat(response.liveId()).isEqualTo(1L);
             assertThat(response.isLive()).isTrue();
+            assertThat(response.nickname()).isEqualTo("밴드");
             assertThat(response.viewCount()).isEqualTo(3);
             assertThat(response.bandName()).isEqualTo("밴드");
             assertThat(response.bandProfileImageUrl()).isEqualTo("https://cdn.test/band.jpg");
@@ -856,6 +918,8 @@ class StreamServiceImplRoomTest {
         void reentryToOpenLiveSkipsStartFlow() {
             when(audioStreamRepository.findById(1L))
                     .thenReturn(Optional.of(StreamFixtures.stream(1L, 10L, 100L, StreamStatus.OPEN)));
+            givenStreamAccessAllowed(10L);
+            when(bandMemberPort.getBandName(100L)).thenReturn("밴드");
             when(redisTemplate.hasKey("live:path-1")).thenReturn(true);
             when(redisTemplate.opsForZSet()).thenReturn(zSetOperations);
             when(zSetOperations.zCard("viewer:1")).thenReturn(1L);
@@ -868,6 +932,8 @@ class StreamServiceImplRoomTest {
             verify(audioStreamRepository, never()).existsByBroadcasterIdAndStatus(anyLong(), any(StreamStatus.class));
             verify(audioStreamRepository, never()).markStartedIfScheduled(anyLong(), any(LocalDateTime.class));
             assertThat(TxSyncSupport.registeredCount()).isZero();
+            // 재입장에서도 송출자 닉네임은 밴드 이름
+            assertThat(response.nickname()).isEqualTo("밴드");
             assertThat(response.playback().role()).isEqualTo("BROADCASTER");
         }
     }
@@ -881,6 +947,7 @@ class StreamServiceImplRoomTest {
         void notOpenRejected() {
             when(audioStreamRepository.findById(1L))
                     .thenReturn(Optional.of(StreamFixtures.scheduledStream(1L, 10L, 100L, LocalDateTime.now().plusHours(1))));
+            givenStreamAccessAllowed(20L);
 
             assertStreamError(() -> service.enterRoom(20L, 1L), StreamErrorCode.AUDIO_STREAM_NOT_LIVE);
 
@@ -892,6 +959,9 @@ class StreamServiceImplRoomTest {
         void registersViewerAndBroadcasts() {
             when(audioStreamRepository.findById(1L))
                     .thenReturn(Optional.of(StreamFixtures.stream(1L, 10L, 100L, StreamStatus.OPEN)));
+            givenStreamAccessAllowed(20L);
+            when(userPort.isBandMode(20L)).thenReturn(false);
+            when(userPort.getFanName(20L)).thenReturn("팬닉네임");
             when(redisTemplate.opsForZSet()).thenReturn(zSetOperations);
             when(zSetOperations.zCard("viewer:1")).thenReturn(5L);
             when(redisTemplate.hasKey("live:path-1")).thenReturn(true);
@@ -907,6 +977,8 @@ class StreamServiceImplRoomTest {
             verify(viewerSsePresence).broadcastCount(1L);
 
             assertThat(response.isLive()).isTrue();
+            // 팬 모드 청취자는 FanProfile.nickname을 노출
+            assertThat(response.nickname()).isEqualTo("팬닉네임");
             assertThat(response.viewCount()).isEqualTo(5);
             assertThat(response.playback()).isEqualTo(new StreamRoomResponse.Playback(
                     "LISTENER", "HLS", HLS_URL + "/path-1/index.m3u8"
@@ -918,6 +990,7 @@ class StreamServiceImplRoomTest {
         void noLiveKeyMeansNullPlayback() {
             when(audioStreamRepository.findById(1L))
                     .thenReturn(Optional.of(StreamFixtures.stream(1L, 10L, 100L, StreamStatus.OPEN)));
+            givenStreamAccessAllowed(20L);
             when(redisTemplate.opsForZSet()).thenReturn(zSetOperations);
             when(zSetOperations.zCard("viewer:1")).thenReturn(0L);
             when(redisTemplate.hasKey("live:path-1")).thenReturn(false);
@@ -935,6 +1008,7 @@ class StreamServiceImplRoomTest {
         void nullViewCountAndMissingBandInfo() {
             when(audioStreamRepository.findById(1L))
                     .thenReturn(Optional.of(StreamFixtures.stream(1L, 10L, 100L, StreamStatus.OPEN)));
+            givenStreamAccessAllowed(20L);
             when(redisTemplate.opsForZSet()).thenReturn(zSetOperations);
             when(zSetOperations.zCard("viewer:1")).thenReturn(null);
             when(redisTemplate.hasKey("live:path-1")).thenReturn(null);

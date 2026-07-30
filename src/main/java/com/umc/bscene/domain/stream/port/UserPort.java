@@ -19,5 +19,8 @@ public interface UserPort {
 
     boolean validAccessAboutStreamInBandMode(Long userId, Collection<Long> coHostIds);
 
+    // 라이브 방 입장 닉네임 분기용: 현재 밴드 모드인지 여부 (모드 미정이면 false)
+    boolean isBandMode(Long userId);
+
     String getFanName(Long userId);
 }

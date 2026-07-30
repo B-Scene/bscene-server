@@ -2,13 +2,16 @@ package com.umc.bscene.domain.stream.service;
 
 import com.umc.bscene.domain.chat.service.LiveChatRoomCloser;
 import com.umc.bscene.domain.stream.dto.response.BandLiveHomeResponse;
+import com.umc.bscene.domain.stream.dto.response.BandSummaryResponse;
 import com.umc.bscene.domain.stream.dto.response.FanLiveHomeResponse;
 import com.umc.bscene.domain.stream.dto.response.LiveAlarmToggleResponse;
 import com.umc.bscene.domain.stream.dto.response.LiveHomeResponse;
+import com.umc.bscene.domain.stream.dto.response.LiveMembersResponse;
 import com.umc.bscene.domain.stream.dto.response.LiveStreamResponse;
 import com.umc.bscene.domain.stream.dto.response.UpcomingLiveResponse;
 import com.umc.bscene.domain.stream.entity.AudioStream;
 import com.umc.bscene.domain.stream.entity.LiveAlarm;
+import com.umc.bscene.domain.stream.enums.StreamMemberStatus;
 import com.umc.bscene.domain.stream.enums.StreamStatus;
 import com.umc.bscene.domain.stream.enums.code.error.StreamErrorCode;
 import com.umc.bscene.domain.stream.exception.StreamException;
@@ -677,28 +680,36 @@ class StreamServiceImplQueryTest {
     class GetLiveHomeBand {
 
         @Test
-        @DisplayName("라이브 3개 / 예정 5개 상한으로 조회하고 isMine 플래그를 내려준다")
+        @DisplayName("활성 밴드의 라이브만 3개 / 예정 5개 상한으로 조회하고 isMine과 coHost를 내려준다")
         void queriesWithBandLimitsAndMarksMyLives() {
             User bandUser = StreamFixtures.bandUser(1L);
             LocalDateTime scheduledAt = LocalDateTime.of(2026, 7, 11, 21, 0);
 
-            givenLiveKeys("live:path-11", "live:path-12");
-            when(audioStreamRepository.findLivePage(anyList(), isNull(), any(Pageable.class)))
-                    .thenReturn(List.of(
-                            StreamFixtures.stream(11L, 1L, 61L, StreamStatus.OPEN),
-                            StreamFixtures.stream(12L, 22L, 62L, StreamStatus.OPEN)
-                    ));
-            when(bandMemberPort.getBandNameWithBandProfileByBroadcasterId(Set.of(1L, 22L)))
-                    .thenReturn(List.of(StreamFixtures.bandInfo(1L, "내밴드", "https://cdn.test/b1.jpg")));
+            when(bandMemberPort.getBandSummaryByBroadcasterId(1L))
+                    .thenReturn(Optional.of(new BandSummaryResponse(61L, "내밴드")));
+            when(bandMemberPort.getLiveMemberProfiles(61L, List.of(1L)))
+                    .thenReturn(List.of(new LiveMembersResponse.LiveMemberProfileResponse(
+                            "https://cdn.test/b1.jpg", "nick1", "내밴드", List.of(), false
+                    )));
 
-            when(audioStreamRepository.findByStatusAndScheduledAtAfterOrderByScheduledAtAscIdAsc(
-                    eq(StreamStatus.SCHEDULED), any(LocalDateTime.class), any(Pageable.class)))
+            AudioStream live11 = StreamFixtures.stream(11L, 1L, 61L, StreamStatus.OPEN);
+            AudioStream live12 = StreamFixtures.stream(12L, 22L, 61L, StreamStatus.OPEN);
+            AudioStream scheduled51 = StreamFixtures.scheduledStream(51L, 1L, 61L, scheduledAt);
+            AudioStream scheduled52 = StreamFixtures.scheduledStream(52L, 22L, 61L, null);
+
+            when(audioStreamRepository.findByBandIdAndStatusOrderByIdDesc(
+                    eq(61L), eq(StreamStatus.OPEN), any(Pageable.class)))
+                    .thenReturn(List.of(live11, live12));
+            when(audioStreamRepository.findByBandIdAndStatusAndScheduledAtAfterOrderByScheduledAtAscIdAsc(
+                    eq(61L), eq(StreamStatus.SCHEDULED), any(LocalDateTime.class), any(Pageable.class)))
+                    .thenReturn(List.of(scheduled51, scheduled52));
+
+            when(streamMemberRepository.findAllByAudioStream_IdInAndStatus(any(), eq(StreamMemberStatus.ACCEPTED)))
                     .thenReturn(List.of(
-                            StreamFixtures.scheduledStream(51L, 1L, 61L, scheduledAt),
-                            StreamFixtures.scheduledStream(52L, 62L, 82L, null)
+                            StreamFixtures.member(101L, StreamFixtures.bandUser(1L), live11, StreamMemberStatus.ACCEPTED),
+                            StreamFixtures.member(102L, StreamFixtures.bandUser(2L), live11, StreamMemberStatus.ACCEPTED),
+                            StreamFixtures.member(103L, StreamFixtures.bandUser(1L), scheduled51, StreamMemberStatus.ACCEPTED)
                     ));
-            when(bandMemberPort.getBandNameWithBandProfileByBroadcasterId(Set.of(1L, 62L)))
-                    .thenReturn(List.of(StreamFixtures.bandInfo(1L, "내밴드", "https://cdn.test/b1.jpg")));
 
             givenZSetOps();
             givenViewerCount(11L, 3L);
@@ -706,47 +717,70 @@ class StreamServiceImplQueryTest {
 
             LiveHomeResponse response = service.getLiveHome(bandUser);
 
-            verify(audioStreamRepository).findLivePage(anyList(), isNull(), eq(PageRequest.ofSize(3)));
-            verify(audioStreamRepository).findByStatusAndScheduledAtAfterOrderByScheduledAtAscIdAsc(
-                    eq(StreamStatus.SCHEDULED), any(LocalDateTime.class), eq(PageRequest.ofSize(5)));
+            // 섹션별 상한. 진행 중 여부는 Redis 세션 스캔이 아니라 status = OPEN으로 판정
+            verify(audioStreamRepository).findByBandIdAndStatusOrderByIdDesc(
+                    eq(61L), eq(StreamStatus.OPEN), eq(PageRequest.ofSize(3)));
+            verify(audioStreamRepository).findByBandIdAndStatusAndScheduledAtAfterOrderByScheduledAtAscIdAsc(
+                    eq(61L), eq(StreamStatus.SCHEDULED), any(LocalDateTime.class), eq(PageRequest.ofSize(5)));
+            verify(redisTemplate, never()).scan(any(ScanOptions.class));
 
             // 밴드 홈은 다시보기/알림 설정 섹션이 없으므로 해당 저장소를 건드리지 않는다
             verifyNoInteractions(streamReplayRepository, liveAlarmRepository);
 
-            // N+1 방지: 섹션마다 배치 조회 한 번씩
-            verify(bandMemberPort, times(2))
-                    .getBandNameWithBandProfileByBroadcasterId(broadcasterIdsCaptor.capture());
-            assertThat(broadcasterIdsCaptor.getAllValues())
-                    .containsExactly(Set.of(1L, 22L), Set.of(1L, 62L));
+            // N+1 방지: 두 섹션의 coHost(ACCEPTED 진행자)를 라이브 ID 전체를 담은 한 번의 배치 조회로 매핑
+            verify(streamMemberRepository, times(1)).findAllByAudioStream_IdInAndStatus(
+                    liveIdsCaptor.capture(), eq(StreamMemberStatus.ACCEPTED));
+            assertThat(liveIdsCaptor.getValue()).containsExactlyInAnyOrder(11L, 12L, 51L, 52L);
 
             assertThat(response).isInstanceOf(BandLiveHomeResponse.class);
             BandLiveHomeResponse bandHome = (BandLiveHomeResponse) response;
 
+            // 모든 블럭이 활성 밴드의 라이브이므로 이름/이미지는 밴드 자체 정보로 고정
             assertThat(bandHome.liveNow()).containsExactly(
-                    new BandLiveHomeResponse.LiveNowItem(11L, "https://cdn.test/b1.jpg", "내밴드", "title-11", 3, true),
-                    new BandLiveHomeResponse.LiveNowItem(12L, "", "", "title-12", 0, false)
+                    new BandLiveHomeResponse.LiveNowItem(11L, "https://cdn.test/b1.jpg", "내밴드", "title-11", 3, true, List.of(1L, 2L)),
+                    new BandLiveHomeResponse.LiveNowItem(12L, "https://cdn.test/b1.jpg", "내밴드", "title-12", 0, false, List.of())
             );
             assertThat(bandHome.scheduled()).containsExactly(
-                    new BandLiveHomeResponse.ScheduledItem(51L, "내밴드", "title-51", "7.11. (토) 오후 9:00", true),
-                    new BandLiveHomeResponse.ScheduledItem(52L, "", "title-52", null, false)
+                    new BandLiveHomeResponse.ScheduledItem(51L, "내밴드", "title-51", "7.11. (토) 오후 9:00", true, List.of(1L)),
+                    new BandLiveHomeResponse.ScheduledItem(52L, "내밴드", "title-52", null, false, List.of())
             );
         }
 
         @Test
-        @DisplayName("라이브 키와 예정 라이브가 모두 없으면 밴드 정보 조회 없이 빈 섹션을 반환한다")
-        void returnsEmptySectionsWithoutBandLookup() {
+        @DisplayName("활성 밴드가 없으면 라이브 조회 없이 빈 섹션을 반환한다")
+        void returnsEmptySectionsWithoutActiveBand() {
             User bandUser = StreamFixtures.bandUser(1L);
-            givenNoLiveKeys();
-            when(audioStreamRepository.findByStatusAndScheduledAtAfterOrderByScheduledAtAscIdAsc(
-                    eq(StreamStatus.SCHEDULED), any(LocalDateTime.class), any(Pageable.class)))
+            when(bandMemberPort.getBandSummaryByBroadcasterId(1L)).thenReturn(Optional.empty());
+
+            BandLiveHomeResponse bandHome = (BandLiveHomeResponse) service.getLiveHome(bandUser);
+
+            assertThat(bandHome.liveNow()).isEmpty();
+            assertThat(bandHome.scheduled()).isEmpty();
+            verifyNoInteractions(audioStreamRepository, streamMemberRepository, streamReplayRepository, liveAlarmRepository);
+            verify(redisTemplate, never()).scan(any(ScanOptions.class));
+            verify(redisTemplate, never()).opsForZSet();
+        }
+
+        @Test
+        @DisplayName("라이브와 예정 라이브가 모두 없으면 coHost 배치 조회를 건너뛴다")
+        void skipsCoHostLookupWhenAllSectionsAreEmpty() {
+            User bandUser = StreamFixtures.bandUser(1L);
+
+            when(bandMemberPort.getBandSummaryByBroadcasterId(1L))
+                    .thenReturn(Optional.of(new BandSummaryResponse(61L, "내밴드")));
+            when(bandMemberPort.getLiveMemberProfiles(61L, List.of(1L))).thenReturn(List.of());
+            when(audioStreamRepository.findByBandIdAndStatusOrderByIdDesc(
+                    eq(61L), eq(StreamStatus.OPEN), any(Pageable.class)))
+                    .thenReturn(List.of());
+            when(audioStreamRepository.findByBandIdAndStatusAndScheduledAtAfterOrderByScheduledAtAscIdAsc(
+                    eq(61L), eq(StreamStatus.SCHEDULED), any(LocalDateTime.class), any(Pageable.class)))
                     .thenReturn(List.of());
 
             BandLiveHomeResponse bandHome = (BandLiveHomeResponse) service.getLiveHome(bandUser);
 
             assertThat(bandHome.liveNow()).isEmpty();
             assertThat(bandHome.scheduled()).isEmpty();
-            verifyNoInteractions(bandMemberPort, streamReplayRepository, liveAlarmRepository);
-            verify(audioStreamRepository, never()).findLivePage(anyList(), any(), any(Pageable.class));
+            verify(streamMemberRepository, never()).findAllByAudioStream_IdInAndStatus(any(), any());
             verify(redisTemplate, never()).opsForZSet();
         }
     }

@@ -1,7 +1,5 @@
 package com.umc.bscene.domain.stream.service;
 
-import com.umc.bscene.domain.band.entity.BandMember;
-import com.umc.bscene.domain.band.enums.BandMemberType;
 import com.umc.bscene.domain.chat.service.LiveChatRoomCloser;
 import com.umc.bscene.domain.stream.dto.CoHostCandidateInfo;
 import com.umc.bscene.domain.stream.dto.StreamPushMessage;
@@ -79,6 +77,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 @Slf4j
 @RequiredArgsConstructor
@@ -318,14 +317,13 @@ public class StreamServiceImpl implements StreamService {
 
         LocalDateTime now = LocalDateTime.now();
 
-        // 지금 라이브 중 상위 3개 (팬/밴드 공통 소스)
-        List<AudioStream> liveNow = homeLiveNow();
-        Map<Long, BandInfoForGetLiveResponse.BandInfo> bandInfoMap = bandInfoMapOf(liveNow);
+        if(mode == UserMode.FAN) {
+            // 지금 라이브 중 상위 3개 (전체 밴드 대상)
+            List<AudioStream> liveNow = homeLiveNow();
+            return fanLiveHome(user, now, liveNow, bandInfoMapOf(liveNow));
+        }
 
-        if(mode == UserMode.FAN)
-            return fanLiveHome(user, now, liveNow, bandInfoMap);
-
-        return bandLiveHome(user, now, liveNow, bandInfoMap);
+        return bandLiveHome(user, now);
     }
 
     private FanLiveHomeResponse fanLiveHome(
@@ -392,47 +390,78 @@ public class StreamServiceImpl implements StreamService {
         return new FanLiveHomeResponse(liveNowItems, replayItems, scheduledItems);
     }
 
-    private BandLiveHomeResponse bandLiveHome(
-            User user, LocalDateTime now,
-            List<AudioStream> liveNow, Map<Long, BandInfoForGetLiveResponse.BandInfo> bandInfoMap
-    ) {
+    private BandLiveHomeResponse bandLiveHome(User user, LocalDateTime now) {
+
+        // 현재 활성 프로필에 연결된 밴드의 라이브만 노출. 활성 밴드가 없으면 빈 섹션 반환
+        Optional<BandSummaryResponse> myBand = bandMemberPort.getBandSummaryByBroadcasterId(user.getId());
+        if(myBand.isEmpty())
+            return new BandLiveHomeResponse(user.getId(), List.of(), List.of());
+
+        Long myBandId = myBand.get().bandId();
+        String myBandName = myBand.get().bandName();
+
+        // 노출 대상이 전부 내 활성 밴드의 라이브이므로, 송출자의 현재 활성 프로필이 아니라 밴드 자체 정보로 이름/이미지를 매핑
+        // (같은 밴드 멤버가 타 밴드 프로필로 전환해도 타 밴드 정보가 노출되지 않아야 함)
+        String myBandImageUrl = bandMemberPort.getLiveMemberProfiles(myBandId, List.of(user.getId())).stream()
+                .findFirst()
+                .map(LiveMembersResponse.LiveMemberProfileResponse::bandProfileImageUrl)
+                .orElse("");
+
+        // 지금 라이브 중 상위 3개 (활성 밴드의 라이브만). 진행 중 여부는 Redis 세션이 아니라 status = OPEN으로 판정
+        List<AudioStream> liveNow = audioStreamRepository.findByBandIdAndStatusOrderByIdDesc(
+                myBandId, StreamStatus.OPEN, PageRequest.ofSize(HOME_LIVE_NOW_LIMIT)
+        );
+
+        // 예정된 라이브 5개 (활성 밴드의 라이브만). isMine으로 내가 예약한 라이브 구분
+        List<AudioStream> scheduled = audioStreamRepository.findByBandIdAndStatusAndScheduledAtAfterOrderByScheduledAtAscIdAsc(
+                myBandId, StreamStatus.SCHEDULED, now, PageRequest.ofSize(BAND_HOME_SCHEDULED_LIMIT)
+        );
+
+        // 블럭별 진행자 등록 유저 ID 매핑. 조회자가 목록에 없으면 프론트가 공동 진행자 업그레이드 요청 모달을 노출
+        Map<Long, List<Long>> coHostIdsByLiveId = coHostIdsByLiveId(liveNow, scheduled);
+
         // isMine=true면 프론트가 "내 라이브 진행중" 라벨, false면 bandName 노출
         List<BandLiveHomeResponse.LiveNowItem> liveNowItems = liveNow.stream()
-                .map(s -> {
-                    BandInfoForGetLiveResponse.BandInfo band = bandInfoMap.get(s.getBroadcasterId());
-
-                    return new BandLiveHomeResponse.LiveNowItem(
-                            s.getId(),
-                            band != null ? band.bandProfileImageUrl() : "",
-                            band != null ? band.bandName() : "",
-                            s.getTitle(),
-                            viewerCountOf(s.getId()),
-                            s.getBroadcasterId().equals(user.getId())
-                    );
-                })
+                .map(s -> new BandLiveHomeResponse.LiveNowItem(
+                        s.getId(),
+                        myBandImageUrl,
+                        myBandName,
+                        s.getTitle(),
+                        viewerCountOf(s.getId()),
+                        s.getBroadcasterId().equals(user.getId()),
+                        coHostIdsByLiveId.getOrDefault(s.getId(), List.of())
+                ))
                 .toList();
-
-        // 예정된 라이브 5개. isMine으로 내가 예약한 라이브 구분
-        List<AudioStream> scheduled = audioStreamRepository.findByStatusAndScheduledAtAfterOrderByScheduledAtAscIdAsc(
-                StreamStatus.SCHEDULED, now, PageRequest.ofSize(BAND_HOME_SCHEDULED_LIMIT)
-        );
-        Map<Long, BandInfoForGetLiveResponse.BandInfo> scheduledBandMap = bandInfoMapOf(scheduled);
 
         List<BandLiveHomeResponse.ScheduledItem> scheduledItems = scheduled.stream()
-                .map(s -> {
-                    BandInfoForGetLiveResponse.BandInfo band = scheduledBandMap.get(s.getBroadcasterId());
-
-                    return new BandLiveHomeResponse.ScheduledItem(
-                            s.getId(),
-                            band != null ? band.bandName() : "",
-                            s.getTitle(),
-                            formatScheduledAt(s.getScheduledAt()),
-                            s.getBroadcasterId().equals(user.getId())
-                    );
-                })
+                .map(s -> new BandLiveHomeResponse.ScheduledItem(
+                        s.getId(),
+                        myBandName,
+                        s.getTitle(),
+                        formatScheduledAt(s.getScheduledAt()),
+                        s.getBroadcasterId().equals(user.getId()),
+                        coHostIdsByLiveId.getOrDefault(s.getId(), List.of())
+                ))
                 .toList();
 
-        return new BandLiveHomeResponse(liveNowItems, scheduledItems);
+        return new BandLiveHomeResponse(user.getId(), liveNowItems, scheduledItems);
+    }
+
+    // 홈 블럭별 coHost 유저 ID 매핑. 공동 진행이 확정된(ACCEPTED) 진행자만 coHost로 취급 (enterRoom의 밴드 모드 접근 판정과 동일 기준)
+    private Map<Long, List<Long>> coHostIdsByLiveId(List<AudioStream> liveNow, List<AudioStream> scheduled) {
+
+        Set<Long> liveIds = Stream.concat(liveNow.stream(), scheduled.stream())
+                .map(AudioStream::getId)
+                .collect(Collectors.toSet());
+
+        if (liveIds.isEmpty())
+            return Map.of();
+
+        return streamMemberRepository.findAllByAudioStream_IdInAndStatus(liveIds, StreamMemberStatus.ACCEPTED).stream()
+                .collect(Collectors.groupingBy(
+                        sm -> sm.getAudioStream().getId(),
+                        Collectors.mapping(sm -> sm.getUser().getId(), Collectors.toList())
+                ));
     }
 
     // 예정 라이브 목록 중 내가 알림 설정한 liveId Set
@@ -857,10 +886,11 @@ public class StreamServiceImpl implements StreamService {
                 .orElseThrow(() -> new StreamException(StreamErrorCode.AUDIO_STREAM_NOT_FOUND));
 
         // User.currentMode == BAND 이면서,
-        // AudioStream의 CoHost가 아닐 시, 예외
-        if (userPort.validAccessAboutStreamInBandMode(
+        // 공동 진행이 확정된(ACCEPTED) 진행자가 아닐 시, 예외. INVITED(미수락)/REJECTED(거절)는 coHost가 아님
+        if (!userPort.validAccessAboutStreamInBandMode(
                 userId,
                 stream.getCoHost().stream()
+                .filter(sm -> sm.getStatus() == StreamMemberStatus.ACCEPTED)
                 .map(e -> e.getUser().getId())
                 .toList())
         ) {
@@ -883,8 +913,6 @@ public class StreamServiceImpl implements StreamService {
                 // 이미 OPEN인 라이브 재입장은 방송 유지(재접속)를 막지 않도록 검증하지 않음
                 validateActiveBandMatches(userId, stream);
 
-                nickname = bandMemberPort.getBandName(stream.getBandId());
-
                 if (audioStreamRepository.existsByBroadcasterIdAndStatus(userId, StreamStatus.OPEN))
                     throw new StreamException(StreamErrorCode.ALREADY_LIVE);
 
@@ -899,6 +927,9 @@ public class StreamServiceImpl implements StreamService {
                 // 방송 시작 시 알림 수신에 동의한 팔로워와 밴드 구성원에게 알림 발송
                 notifyLiveRecipientsAfterCommit(stream, true);
             }
+
+            // 첫 시작뿐 아니라 이미 OPEN인 라이브 재입장에서도 밴드 이름이 내려가도록 SCHEDULED 분기 밖에서 세팅
+            nickname = bandMemberPort.getBandName(stream.getBandId());
         } else {
             // 청취자일 때
             // OPEN이 아닌 라이브에 진입 시 예외
@@ -906,7 +937,10 @@ public class StreamServiceImpl implements StreamService {
                 throw new StreamException(StreamErrorCode.AUDIO_STREAM_NOT_LIVE);
             }
 
-            nickname = userPort.getFanName(userId);
+            // 밴드 모드(공동 진행자)면 밴드 이름, 팬 모드면 FanProfile.nickname을 노출
+            nickname = userPort.isBandMode(userId)
+                    ? bandMemberPort.getBandName(stream.getBandId())
+                    : userPort.getFanName(userId);
 
             // 시청자 등록
             redisTemplate.opsForZSet().add(

@@ -115,6 +115,21 @@ order by a.scheduledAt asc, a.id asc
             Pageable pageable
     );
 
+    // 홈 예정 라이브 섹션용 상위 N개 (밴드 모드: 활성 밴드의 라이브만)
+    List<AudioStream> findByBandIdAndStatusAndScheduledAtAfterOrderByScheduledAtAscIdAsc(
+            Long bandId,
+            StreamStatus status,
+            LocalDateTime now,
+            Pageable pageable
+    );
+
+    // 홈 지금 라이브 중 섹션용 상위 N개 (밴드 모드: 활성 밴드의 라이브만, Redis 세션 대신 status = OPEN으로 진행 중 판정)
+    List<AudioStream> findByBandIdAndStatusOrderByIdDesc(
+            Long bandId,
+            StreamStatus status,
+            Pageable pageable
+    );
+
     Boolean existsByPath(String path);
 
     // status = SCHEDULED 조건을 DB에서 원자적으로 검사하는 조건부 벌크 UPDATE (읽기-수정 사이의 lost update 방지)

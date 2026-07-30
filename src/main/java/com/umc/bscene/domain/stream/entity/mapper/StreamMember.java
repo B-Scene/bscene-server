@@ -1,6 +1,6 @@
 package com.umc.bscene.domain.stream.entity.mapper;
 
-import com.fasterxml.jackson.annotation.JsonManagedReference;
+import com.fasterxml.jackson.annotation.JsonBackReference;
 import com.umc.bscene.domain.stream.entity.AudioStream;
 import com.umc.bscene.domain.stream.enums.StreamMemberStatus;
 import com.umc.bscene.domain.user.entity.User;
@@ -29,7 +29,8 @@ public class StreamMember extends BaseEntity {
     @JoinColumn(name = "user_id")
     private User user;
 
-    @JsonManagedReference
+    // 순환 참조 직렬화 방지: AudioStream.coHost가 @JsonManagedReference(부모), 이쪽이 @JsonBackReference(자식)
+    @JsonBackReference
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "audio_stream_id")
     private AudioStream audioStream;
