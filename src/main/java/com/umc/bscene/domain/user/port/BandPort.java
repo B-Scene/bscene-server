@@ -6,6 +6,7 @@ import com.umc.bscene.domain.user.dto.response.MyBandProfile;
 import com.umc.bscene.domain.user.entity.User;
 
 import java.util.List;
+import java.util.Optional;
 
 public interface BandPort {
 
@@ -17,7 +18,8 @@ public interface BandPort {
     // 지원 시점 지원서의 닉네임·파트로 pre-fill한 멤버 프로필도 함께 생성해 연결
     void registerSessionMember(Long bandId, User applicant, String nickname, Part part);
 
-    BandMemberResponse getActiveBandMemberProfile(Long userId);
+    // 활성 밴드 멤버 프로필 조회 - 활성 프로필이 하나도 없으면 empty (밴드 모드 첫 진입 판단은 호출부 책임)
+    Optional<BandMemberResponse> getActiveBandMemberProfile(Long userId);
     Long getActiveBandMemberProfile_BandIdIdByUserId(Long userIdl);
     List<MyBandProfile> getAssociatedBandProfiles(Long userId);
 

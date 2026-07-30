@@ -22,6 +22,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 
 @RequiredArgsConstructor
@@ -84,22 +85,22 @@ public class UserAdapter implements BandPort {
     }
 
     @Override
-    public BandMemberResponse getActiveBandMemberProfile(Long userId) {
-        // 밴드 모드 사용자는 반드시 활성 멤버 프로필을 가짐 (없으면 데이터 이상)
-        BandMemberProfile profile = bandMemberProfileRepository.findByUser_IdAndActiveTrue(userId)
-                .orElseThrow(() -> new BandException(BandErrorCode.BAND_MEMBER_PROFILE_NOT_FOUND));
+    public Optional<BandMemberResponse> getActiveBandMemberProfile(Long userId) {
+        // 활성 멤버 프로필이 하나도 없으면 밴드 모드 첫 진입 - 예외가 아니라 empty로 호출부에 위임
+        return bandMemberProfileRepository.findByUser_IdAndActiveTrue(userId)
+                .map(profile -> {
+                    // 활성 프로필로 활동 중인 소속 밴드 조회 - 소속 밴드가 없으면 밴드 정보는 null로 응답
+                    BandMember bandMember = bandMemberRepository
+                            .findWithBandByUser_IdInAndStatus(Set.of(userId), BandMemberStatus.ACCEPTED)
+                            .stream()
+                            .findFirst()
+                            .orElse(null);
 
-        // 활성 프로필로 활동 중인 소속 밴드 조회 - 소속 밴드가 없으면 밴드 정보는 null로 응답
-        BandMember bandMember = bandMemberRepository
-                .findWithBandByUser_IdInAndStatus(Set.of(userId), BandMemberStatus.ACCEPTED)
-                .stream()
-                .findFirst()
-                .orElse(null);
+                    assert bandMember != null;
+                    Band band = bandMember.getBand();
 
-        assert bandMember != null;
-        Band band = bandMember.getBand();
-
-        return buildBandMemberResponse(band, profile, bandMember.isMember());
+                    return buildBandMemberResponse(band, profile, bandMember.isMember());
+                });
     }
 
     @Override
