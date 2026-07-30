@@ -26,7 +26,7 @@ public record BandPushMessage(
                 NotificationType.BAND_INVITE,
                 bandName + "에서 " + inviteType + " 초대를 보냈어요",
                 "밴드 " + inviteType + "로 함께 활동해 주세요.",
-                "/notifications?focusInviteId=" + bandMemberId,
+                "/band/notifications",
                 bandMemberId
         );
     }

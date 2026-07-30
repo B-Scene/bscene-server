@@ -25,7 +25,7 @@ public record SessionPushMessage(
                 NotificationSettingType.BAND_NEW_SESSION_APPLICATION,
                 "새로운 지원서가 도착했어요",
                 applicationNickname + "님이 '" + recruitmentTitle + "' 모집에 지원했어요.",
-                "/sessions/recruitments/submissions/" + applicationSubmissionId,
+                "/band/my/applications/" + applicationSubmissionId,
                 applicationSubmissionId
         );
     }
@@ -43,7 +43,7 @@ public record SessionPushMessage(
                 isApproved
                         ? "'" + recruitmentTitle + "' 모집에서 지원을 수락했어요. 최종 참여 여부를 선택해주세요."
                         : "'" + recruitmentTitle + "' 모집에서 지원을 거절했어요.",
-                "/sessions/applications/submissions?focusSubmissionId=" + applicationSubmissionId,
+                "/band/notifications",
                 applicationSubmissionId
         );
     }
@@ -59,7 +59,7 @@ public record SessionPushMessage(
                 NotificationSettingType.BAND_SESSION_APPLICATION_STATUS,
                 "세션 지원서 상태가 변경되었어요",
                 applicationNickname + "님의 지원을 " + (isApproved ? "수락했어요." : "거절했어요."),
-                "/sessions/recruitments/submissions/" + applicationSubmissionId,
+                "/band/notifications",
                 applicationSubmissionId
         );
     }
@@ -75,7 +75,7 @@ public record SessionPushMessage(
                 NotificationSettingType.BAND_SESSION_APPLICATION_STATUS,
                 "지원자가 참여 여부를 결정했어요",
                 applicationNickname + "님이 세션 참여를 " + (isAccepted ? "확정했어요." : "거절했어요."),
-                "/sessions/recruitments/submissions/" + applicationSubmissionId,
+                "/band/notifications",
                 applicationSubmissionId
         );
     }
@@ -90,7 +90,7 @@ public record SessionPushMessage(
                 NotificationSettingType.BAND_SESSION_RECRUITMENT_DEADLINE,
                 "세션 모집 마감이 하루 남았어요",
                 "'" + recruitmentTitle + "' 모집 공고를 확인해주세요.",
-                "/sessions/recruitments/" + sessionRecruitmentId,
+                "/band/profile/postings",
                 sessionRecruitmentId
         );
     }
