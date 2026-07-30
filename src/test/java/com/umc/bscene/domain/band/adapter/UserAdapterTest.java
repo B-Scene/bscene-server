@@ -275,7 +275,7 @@ class UserAdapterTest {
             when(sessionPort.getActiveSessionApplicantCount(BAND_ID)).thenReturn(3L);
             when(performancePort.countPerformancesByBandIdAndStatus(BAND_ID)).thenReturn(5L);
 
-            BandMemberResponse response = adapter.getActiveBandMemberProfile(USER_ID);
+            BandMemberResponse response = adapter.getActiveBandMemberProfile(USER_ID).orElseThrow();
 
             assertThat(response.bandMemberProfileId()).isEqualTo(11L);
             assertThat(response.profileImageUrl()).isEqualTo("https://cdn.test/band.jpg");
@@ -305,7 +305,7 @@ class UserAdapterTest {
             when(sessionPort.getActiveSessionApplicantCount(BAND_ID)).thenReturn(1L);
             when(performancePort.countPerformancesByBandIdAndStatus(BAND_ID)).thenReturn(1L);
 
-            BandMemberResponse response = adapter.getActiveBandMemberProfile(USER_ID);
+            BandMemberResponse response = adapter.getActiveBandMemberProfile(USER_ID).orElseThrow();
 
             assertThat(response.bandName()).isEqualTo("첫번째밴드");
             assertThat(response.isBandMember()).isTrue();
@@ -336,7 +336,7 @@ class UserAdapterTest {
             when(sessionPort.getActiveSessionApplicantCount(BAND_ID)).thenReturn(0L);
             when(performancePort.countPerformancesByBandIdAndStatus(BAND_ID)).thenReturn(0L);
 
-            BandMemberResponse response = adapter.getActiveBandMemberProfile(USER_ID);
+            BandMemberResponse response = adapter.getActiveBandMemberProfile(USER_ID).orElseThrow();
 
             assertThat(response.profileImageUrl()).isNull();
             assertThat(response.bandName()).isEqualTo("밴드A");
@@ -350,7 +350,7 @@ class UserAdapterTest {
             when(bandMemberRepository.findWithBandByUser_IdInAndStatus(any(), any()))
                     .thenReturn(List.of(member(1L, null, profile, BandMemberStatus.ACCEPTED, BandMemberType.SESSION)));
 
-            BandMemberResponse response = adapter.getActiveBandMemberProfile(USER_ID);
+            BandMemberResponse response = adapter.getActiveBandMemberProfile(USER_ID).orElseThrow();
 
             assertThat(response.bandMemberProfileId()).isEqualTo(11L);
             assertThat(response.nickname()).isEqualTo("닉A");
@@ -366,12 +366,11 @@ class UserAdapterTest {
         }
 
         @Test
-        @DisplayName("활성 프로필이 없으면 BAND_MEMBER_PROFILE_NOT_FOUND이고 멤버 조회는 하지 않는다")
-        void failsWhenActiveProfileMissing() {
+        @DisplayName("활성 프로필이 없으면 예외가 아니라 empty를 반환하고 멤버 조회는 하지 않는다")
+        void returnsEmptyWhenActiveProfileMissing() {
             when(bandMemberProfileRepository.findByUser_IdAndActiveTrue(USER_ID)).thenReturn(Optional.empty());
 
-            assertBandError(() -> adapter.getActiveBandMemberProfile(USER_ID),
-                    BandErrorCode.BAND_MEMBER_PROFILE_NOT_FOUND);
+            assertThat(adapter.getActiveBandMemberProfile(USER_ID)).isEmpty();
 
             verifyNoInteractions(bandMemberRepository, bandRepository, followPort, sessionPort, performancePort);
         }
