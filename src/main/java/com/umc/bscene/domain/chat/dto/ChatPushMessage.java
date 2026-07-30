@@ -23,7 +23,7 @@ public record ChatPushMessage(
                 NotificationType.MESSAGE,
                 "새로운 쪽지가 도착했어요",
                 senderName + ": " + createContentPreview(content),
-                "/chat/rooms/" + chatRoomId,
+                "/band/session/messages/" + chatRoomId,
                 chatRoomId
         );
     }
