@@ -27,8 +27,10 @@ public enum StreamSuccessCode implements BaseResponseCode {
     REPLAY_LIST_SUCCESS("LIVE200_14", OK, "다시보기 목록 조회에 성공했습니다."),
     LIVE_MEMBERS_SUCCESS("LIVE200_15", OK, "밴드 멤버 조회에 성공했습니다."),
     CO_HOST_INVITATION_DECISION_SUCCESS("LIVE200_16", OK, "공동 진행자 초대 응답이 완료되었습니다."),
+    CO_HOST_UPGRADE_ACCEPT_SUCCESS("LIVE200_17", OK, "공동 송출자 업그레이드 요청을 수락했습니다."),
     LIVE_CREATE_SUCCESS("LIVE201_1", CREATED, "라이브 생성에 성공했습니다."),
     LIVE_REPORT_SUCCESS("LIVE201_2", CREATED, "유저 신고가 접수되었습니다."),
+    CO_HOST_UPGRADE_REQUEST_SUCCESS("LIVE201_3", CREATED, "공동 송출자 업그레이드 요청이 접수되었습니다."),
     REPLAY_SAVE_REQUEST_SUCCESS("LIVE202_1", 202, "다시보기 저장 요청이 접수되었습니다."),
     ;
 

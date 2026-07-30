@@ -1,5 +1,6 @@
 package com.umc.bscene.domain.stream.sse;
 
+import com.umc.bscene.domain.stream.dto.response.CoHostUpgradeEvent;
 import com.umc.bscene.domain.stream.dto.response.StreamRoomResponse;
 import com.umc.bscene.domain.stream.entity.AudioStream;
 import com.umc.bscene.domain.stream.enums.StreamStatus;
@@ -15,6 +16,7 @@ import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 import java.time.Instant;
 import java.util.Collection;
+import java.util.List;
 
 /**
  * 시청자 수 SSE의 구독·브로드캐스트·하트비트·유령 정리를 담당한다.
@@ -82,6 +84,19 @@ public class ViewerSsePresence {
         if (targetUserIds.isEmpty()) return;
 
         registry.sendToUsers(liveId, targetUserIds, "coPublisherJoined", joined);
+    }
+
+    /*
+     * 공동 송출자 업그레이드 요청을 송출자에게만 알린다(coHostUpgradeRequested).
+     * 송출자는 방송 중 이탈이 불가하므로, FE는 이 이벤트로 수락 모달을 띄운다
+     */
+    public void notifyCoHostUpgradeRequested(Long liveId, Long broadcasterId, CoHostUpgradeEvent event) {
+        registry.sendToUsers(liveId, List.of(broadcasterId), "coHostUpgradeRequested", event);
+    }
+
+    /* 업그레이드 수락 결과를 요청자에게만 알린다(coHostUpgradeAccepted). 수신 시 FE가 enterRoom을 재호출한다 */
+    public void notifyCoHostUpgradeAccepted(Long liveId, Long requesterId, CoHostUpgradeEvent event) {
+        registry.sendToUsers(liveId, List.of(requesterId), "coHostUpgradeAccepted", event);
     }
 
     private long currentCount(Long liveId) {

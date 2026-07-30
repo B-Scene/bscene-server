@@ -10,6 +10,7 @@ import com.umc.bscene.domain.stream.dto.response.BandInfoForGetLiveResponse;
 import com.umc.bscene.domain.stream.dto.response.BandLiveHomeResponse;
 import com.umc.bscene.domain.stream.dto.response.BandSummaryResponse;
 import com.umc.bscene.domain.stream.dto.response.CoHostCandidateResponse;
+import com.umc.bscene.domain.stream.dto.response.CoHostUpgradeEvent;
 import com.umc.bscene.domain.stream.dto.response.FanLiveHomeResponse;
 import com.umc.bscene.domain.stream.dto.response.LiveAlarmToggleResponse;
 import com.umc.bscene.domain.stream.dto.response.LiveHomeResponse;
@@ -1283,7 +1284,8 @@ public class StreamServiceImpl implements StreamService {
         return switch (status) {
             case OWNER -> 0;
             case APPROVED, ACCEPTED -> 1;
-            case INVITED -> 2;
+            // REQUESTED는 OPEN 라이브에서만 생기므로 예약(SCHEDULED) 편집 화면에는 사실상 등장하지 않음
+            case INVITED, REQUESTED -> 2;
             case REJECTED -> 4;
         };
     }
@@ -1440,6 +1442,116 @@ public class StreamServiceImpl implements StreamService {
                 invitation.getUser().getName(),
                 isAccepted
         );
+    }
+
+    @Override
+    @Transactional
+    public void requestCoHostUpgrade(User user, Long liveId) {
+        // 팬 모드 차단 (저장소 접근 전에 컷)
+        blockFanMode(user);
+
+        AudioStream stream = getStream(liveId);
+
+        // 권한(403) 검사를 상태 검사보다 먼저 수행해, 권한 없는 유저의 멤버십/요청 상태 열거를 차단
+        validateActiveBandMatches(user.getId(), stream);
+
+        // 업그레이드 요청은 진행 중(OPEN)인 라이브에서만 유효
+        if (stream.getStatus() != StreamStatus.OPEN)
+            throw new StreamException(StreamErrorCode.AUDIO_STREAM_NOT_LIVE);
+
+        Optional<StreamMember> existing =
+                streamMemberRepository.findWithStreamByLiveIdAndUserId(liveId, user.getId());
+
+        if (existing.isPresent()) {
+            StreamMember member = existing.get();
+
+            // 송출자 본인도 생성 시점의 ACCEPTED 행으로 여기서 걸러진다
+            if (member.getStatus() == StreamMemberStatus.ACCEPTED)
+                throw new StreamException(StreamErrorCode.CO_HOST_ALREADY_ACCEPTED);
+
+            if (member.getStatus() == StreamMemberStatus.REQUESTED)
+                throw new StreamException(StreamErrorCode.CO_HOST_UPGRADE_ALREADY_REQUESTED);
+
+            // INVITED(수락 전 초대)/REJECTED(과거 거절)는 라이브 중 재요청으로 간주.
+            // 초대 수락과의 동시 처리 경합을 조건부 UPDATE로 방어
+            if (streamMemberRepository.transitionStatus(
+                    member.getId(), member.getStatus(), StreamMemberStatus.REQUESTED) == 0)
+                throw new StreamException(StreamErrorCode.CO_HOST_CONFLICT);
+        } else {
+            try {
+                streamMemberRepository.save(StreamMember.builder()
+                        .user(user)
+                        .audioStream(stream)
+                        .status(StreamMemberStatus.REQUESTED)
+                        .build());
+            } catch (DataIntegrityViolationException e) {
+                // (user, stream) unique 제약: 동시 중복 요청 경합
+                throw new StreamException(StreamErrorCode.CO_HOST_CONFLICT);
+            }
+        }
+
+        // 송출자는 방송 이탈이 불가하므로 수락 여부는 SSE 모달로 묻는다. 요청 행 커밋 후에만 전송
+        CoHostUpgradeEvent event = new CoHostUpgradeEvent(
+                user.getId(),
+                bandMemberPort.getBandMemberNickname(stream.getBandId(), user.getId())
+                        .orElse(user.getName())
+        );
+        Long broadcasterId = stream.getBroadcasterId();
+
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override
+            public void afterCommit() {
+                viewerSsePresence.notifyCoHostUpgradeRequested(liveId, broadcasterId, event);
+            }
+        });
+    }
+
+    @Override
+    @Transactional
+    public void acceptCoHostUpgrade(Long userId, Long liveId, Long requesterId) {
+        AudioStream stream = getStream(liveId);
+
+        // 수락 권한은 방송을 만든 송출자(오너)에게만 있다. 요청 존재 여부 열거 방지를 위해 멤버 조회보다 먼저 검사
+        if (!stream.getBroadcasterId().equals(userId))
+            throw new StreamException(StreamErrorCode.FORBIDDEN_REQUEST);
+
+        // 타 밴드 프로필로 전환한 상태에서는 이 라이브의 관계자 권한 없음
+        validateActiveBandMatches(userId, stream);
+
+        if (stream.getStatus() != StreamStatus.OPEN)
+            throw new StreamException(StreamErrorCode.AUDIO_STREAM_NOT_LIVE);
+
+        StreamMember request = streamMemberRepository
+                .findWithStreamByLiveIdAndUserId(liveId, requesterId)
+                .orElseThrow(() -> new StreamException(StreamErrorCode.CO_HOST_UPGRADE_REQUEST_NOT_FOUND));
+
+        if (request.getStatus() == StreamMemberStatus.ACCEPTED)
+            throw new StreamException(StreamErrorCode.CO_HOST_ALREADY_ACCEPTED);
+
+        // INVITED/REJECTED는 업그레이드 요청이 아니다 — 이 API로 초대 수락 플로우를 우회할 수 없게 차단
+        if (request.getStatus() != StreamMemberStatus.REQUESTED)
+            throw new StreamException(StreamErrorCode.CO_HOST_UPGRADE_REQUEST_NOT_FOUND);
+
+        // 동시 수락/철회와의 경합을 조건부 UPDATE로 방어
+        if (streamMemberRepository.transitionStatus(
+                request.getId(), StreamMemberStatus.REQUESTED, StreamMemberStatus.ACCEPTED) == 0)
+            throw new StreamException(StreamErrorCode.CO_HOST_CONFLICT);
+
+        // 요청자(수락된 밴드 멤버)가 이 이벤트를 받고 enterRoom을 재호출해 송출 정보를 받는다.
+        // 송출자는 재호출 불필요 — 요청자가 입장하면 coPublisherJoined로 새 WHEP 경로가 전달된다.
+        // ACCEPTED 커밋 후에만 전송
+        CoHostUpgradeEvent event = new CoHostUpgradeEvent(
+                requesterId,
+                bandMemberPort.getBandMemberNickname(stream.getBandId(), requesterId)
+                        .orElse(request.getUser().getName())
+        );
+
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override
+            public void afterCommit() {
+                viewerSsePresence.notifyCoHostUpgradeAccepted(liveId, requesterId, event);
+            }
+        });
     }
 
     private AudioStream getStream(Long liveId) {
