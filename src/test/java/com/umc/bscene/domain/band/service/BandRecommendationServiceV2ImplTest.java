@@ -13,6 +13,7 @@ import com.umc.bscene.domain.post.repository.PostRepository;
 import com.umc.bscene.domain.recommendation.entity.BandSimilarity;
 import com.umc.bscene.domain.recommendation.event.BandRecommendationExposedEvent;
 import com.umc.bscene.domain.recommendation.repository.BandInteractionRepository;
+import com.umc.bscene.domain.recommendation.repository.BandRecommendationLogRepository;
 import com.umc.bscene.domain.recommendation.repository.BandSimilarityRepository;
 import com.umc.bscene.domain.user.entity.User;
 import com.umc.bscene.domain.user.entity.UserGenres;
@@ -63,6 +64,8 @@ class BandRecommendationServiceV2ImplTest {
     private ApplicationEventPublisher eventPublisher;
     @Mock
     private BandInteractionRepository bandInteractionRepository;
+    @Mock
+    private BandRecommendationLogRepository bandRecommendationLogRepository;
 
     private BandRecommendationServiceV2Impl service;
 
@@ -74,7 +77,7 @@ class BandRecommendationServiceV2ImplTest {
         service = new BandRecommendationServiceV2Impl(
                 bandRepository, followRepository, userRepository, userGenresRepository, userRegionsRepository,
                 postRepository, performanceRepository, bandSimilarityRepository, eventPublisher,
-                bandInteractionRepository
+                bandInteractionRepository, bandRecommendationLogRepository
         );
         user = User.builder().id(USER_ID).build();
         when(userRepository.getReferenceById(USER_ID)).thenReturn(user);
@@ -214,10 +217,20 @@ class BandRecommendationServiceV2ImplTest {
     }
 
     @Test
-    void 선호_장르와_지역이_모두_없고_유사도_시드도_없으면_추천결과가_비어있다() {
+    void 선호_장르와_지역이_모두_없고_유사도_시드도_없으면_인기_밴드로_폴백된다() {
+        // 온보딩상 장르/지역은 필수 선택이라 실제로는 드물지만, 그래도 신호가 하나도 없을 때
+        // 빈 결과 대신 인기 밴드 폴백이 채워져야 한다 (콜드스타트 대응).
+        Band popularBand = band(100L, Genre.HARD_ROCK, Region.SEOUL);
+        when(followRepository.findTopFollowedBandIds(any(Pageable.class))).thenReturn(List.of(100L));
+        when(bandRepository.findAllById(anyCollection())).thenReturn(List.of(popularBand));
+        when(bandRepository.findAllByOrderByCreatedAtDesc(any(Pageable.class))).thenReturn(List.of());
+        stubEmptyActivityAndPopularity(List.of(100L));
+
         BandRecommendResponse response = service.getRecommendedBands(USER_ID, null, null);
 
-        assertTrue(response.bands().isEmpty());
+        assertEquals(1, response.bands().size());
+        assertEquals(100L, response.bands().get(0).bandId());
+        assertEquals("요즘 인기있는 밴드", response.bands().get(0).reason());
         assertFalse(response.hasNext());
     }
 }

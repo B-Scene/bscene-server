@@ -29,6 +29,10 @@ public interface FollowRepository extends JpaRepository<Follow, Long> {
     @Query("SELECT f.band.id FROM Follow f WHERE f.user.id = :userId")
     List<Long> findBandIdsByUserId(@Param("userId") Long userId);
 
+    // 밴드 추천 콜드스타트 폴백 : 콜드스타트에게 보여줄 팔로워 수 상위 밴드 id
+    @Query("SELECT f.band.id FROM Follow f GROUP BY f.band.id ORDER BY COUNT(f) DESC")
+    List<Long> findTopFollowedBandIds(Pageable pageable);
+
     // 특정 밴드를 팔로우하는 사용자 ID 목록을 반환 (라이브 푸시 알림 발송 대상 조회용, 활성 사용자만)
     @Query("SELECT f.user.id FROM Follow f " +
             "WHERE f.band.id = :bandId AND f.user.status = :userStatus")
