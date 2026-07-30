@@ -1,5 +1,6 @@
 package com.umc.bscene.domain.stream.dto;
 
+import com.umc.bscene.global.notification.enums.NotificationSettingMode;
 import com.umc.bscene.global.notification.enums.NotificationSettingType;
 import com.umc.bscene.global.notification.enums.NotificationType;
 import com.umc.bscene.global.notification.message.PushMessage;
@@ -14,7 +15,7 @@ public record StreamPushMessage(
         Long referenceId
 ) implements PushMessage {
 
-    // FIXME: 와이어프레임 확정 후 title/body 문구, deepLink 포맷 채우기
+    // FIXME: 와이어프레임 확정 후 title/body 문구 검토
 
     // 라이브 예약 생성 알림
     public static StreamPushMessage scheduled(
@@ -29,7 +30,9 @@ public record StreamPushMessage(
                 settingType,
                 bandName + " 라이브가 예약됐어요",
                 scheduledAtText + "에 '" + liveTitle + "' 라이브가 시작될 예정이에요.",
-                "/lives/" + liveId,
+                isFanMode(settingType)
+                        ? "/fan/live/scheduled"
+                        : "/band/live",
                 liveId
         );
     }
@@ -46,7 +49,9 @@ public record StreamPushMessage(
                 settingType,
                 bandName + " 라이브가 시작됐어요",
                 "'" + liveTitle + "' 라이브에 지금 참여해보세요.",
-                "/lives/" + liveId,
+                isFanMode(settingType)
+                        ? "/fan/live/room/" + liveId
+                        : "/band/live",
                 liveId
         );
     }
@@ -63,7 +68,9 @@ public record StreamPushMessage(
                 settingType,
                 bandName + " 라이브가 30분 후 시작돼요",
                 "'" + liveTitle + "' 라이브가 곧 시작될 예정이에요.",
-                "/lives/" + liveId,
+                isFanMode(settingType)
+                        ? "/fan/live/scheduled"
+                        : "/band/live",
                 liveId
         );
     }
@@ -79,7 +86,7 @@ public record StreamPushMessage(
                 NotificationSettingType.FAN_LIVE_REPLAY_READY,
                 bandName + " 라이브 다시보기가 등록됐어요",
                 "'" + liveTitle + "' 다시보기를 지금 확인해보세요.",
-                "/lives/" + liveId + "/replay",
+                "/fan/live/replays/" + liveId,
                 liveId
         );
     }
@@ -95,7 +102,7 @@ public record StreamPushMessage(
                 NotificationSettingType.BAND_LIVE_CO_HOST_INVITATION,
                 "공동 진행자로 초대됐어요",
                 bandName + "의 '" + liveTitle + "' 라이브 공동 진행자 초대를 확인해주세요.",
-                "/lives/" + liveId + "/co-host-invitation",
+                "/band/notifications",
                 liveId
         );
     }
@@ -113,8 +120,14 @@ public record StreamPushMessage(
                 "공동 진행자 초대 응답이 도착했어요",
                 coHostNickname + "님이 '" + liveTitle + "' 라이브 공동 진행자 초대를 "
                         + (isAccepted ? "수락했어요." : "거절했어요."),
-                "/lives/" + liveId + "/reservation",
+                "/band/notifications",
                 liveId
         );
+    }
+
+    private static boolean isFanMode(
+            NotificationSettingType settingType
+    ) {
+        return settingType.getMode() == NotificationSettingMode.FAN;
     }
 }

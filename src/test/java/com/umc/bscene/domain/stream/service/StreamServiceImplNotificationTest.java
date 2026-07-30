@@ -528,8 +528,8 @@ class StreamServiceImplNotificationTest {
         }
 
         @Test
-        @DisplayName("팬 메시지와 밴드 메시지는 settingType만 다르다")
-        void 팬_메시지와_밴드_메시지는_settingType만_다르다() {
+        @DisplayName("팬 메시지와 밴드 메시지는 settingType과 deepLink만 다르다")
+        void 팬_메시지와_밴드_메시지는_settingType과_deepLink만_다르다() {
             givenCooldown(true);
             givenBandSummary();
             givenAudience(List.of(201L), List.of(201L), List.of(301L));
@@ -547,7 +547,7 @@ class StreamServiceImplNotificationTest {
                     bandMessage.settingType(),
                     fanMessage.title(),
                     fanMessage.body(),
-                    fanMessage.deepLink(),
+                    bandMessage.deepLink(),
                     fanMessage.referenceId()
             )).isEqualTo(bandMessage);
         }
@@ -572,8 +572,8 @@ class StreamServiceImplNotificationTest {
         }
 
         @Test
-        @DisplayName("referenceId와 deepLink는 라이브 id를 담는다")
-        void referenceId와_deepLink는_라이브_id를_담는다() {
+        @DisplayName("referenceId는 라이브 id이고 팬·밴드 경로를 구분한다")
+        void referenceId와_팬_밴드_deepLink를_구분한다() {
             givenCooldown(true);
             givenBandSummary();
             givenAudience(List.of(201L), List.of(201L), List.of(301L));
@@ -583,10 +583,14 @@ class StreamServiceImplNotificationTest {
 
             verify(notifyPort, times(2)).notify(receiverCaptor.capture(), messageCaptor.capture());
             assertThat(capturedMessages())
-                    .allSatisfy(message -> {
-                        assertThat(message.referenceId()).isEqualTo(LIVE_ID);
-                        assertThat(message.deepLink()).isEqualTo("/lives/" + LIVE_ID);
-                    });
+                    .extracting(StreamPushMessage::referenceId)
+                    .containsExactly(LIVE_ID, LIVE_ID);
+            assertThat(capturedMessages())
+                    .extracting(StreamPushMessage::deepLink)
+                    .containsExactly(
+                            "/fan/live/scheduled",
+                            "/band/live"
+                    );
         }
     }
 
@@ -896,7 +900,7 @@ class StreamServiceImplNotificationTest {
             assertThat(message.body())
                     .contains("활동명", LIVE_TITLE, "수락했어요");
             assertThat(message.deepLink())
-                    .isEqualTo("/lives/" + LIVE_ID + "/reservation");
+                    .isEqualTo("/band/notifications");
             assertThat(message.referenceId()).isEqualTo(LIVE_ID);
         }
 
