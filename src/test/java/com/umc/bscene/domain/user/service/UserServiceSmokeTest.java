@@ -178,10 +178,10 @@ class UserServiceSmokeTest {
     @DisplayName("밴드 마이페이지는 활성 밴드 멤버 프로필 정보를 현재 모드와 함께 매핑해 내려준다")
     void getBandMyPageMapsActiveBandMemberProfile() {
         User user = StreamFixtures.bandUser(1L);
-        when(bandPort.getActiveBandMemberProfile(1L)).thenReturn(new BandMemberResponse(
+        when(bandPort.getActiveBandMemberProfile(1L)).thenReturn(Optional.of(new BandMemberResponse(
                 10L, "https://cdn.test/profile.jpg", "예명", "밴드이름",
                 List.of("기타", "보컬"), 3, 2, 5, true
-        ));
+        )));
 
         BandMyPageResponse response = userService.getBandMyPage(user);
 
@@ -194,6 +194,42 @@ class UserServiceSmokeTest {
         assertThat(response.applicant()).isEqualTo(2L);
         assertThat(response.performance()).isEqualTo(5L);
         assertThat(response.isBandMember()).isTrue();
+    }
+
+    @Test
+    @DisplayName("활성 밴드 멤버 프로필이 없으면 밴드 모드 첫 진입으로 간주해 실명과 재조회한 현재 모드만 내려준다")
+    void getBandMyPageFallsBackToFirstEntry() {
+        User user = StreamFixtures.bandUser(1L);
+        User found = StreamFixtures.bandUser(1L);
+        when(bandPort.getActiveBandMemberProfile(1L)).thenReturn(Optional.empty());
+        when(userRepository.findById(1L)).thenReturn(Optional.of(found));
+
+        BandMyPageResponse response = userService.getBandMyPage(user);
+
+        assertThat(response.bandMemberProfileId()).isNull();
+        assertThat(response.nickname()).isEqualTo("user1");
+        assertThat(response.bandName()).isNull();
+        assertThat(response.parts()).isNull();
+        assertThat(response.currentMode()).isEqualTo(UserMode.BAND);
+        assertThat(response.follower()).isNull();
+        assertThat(response.applicant()).isNull();
+        assertThat(response.performance()).isNull();
+        assertThat(response.isBandMember()).isFalse();
+    }
+
+    @Test
+    @DisplayName("밴드 모드 첫 진입 응답을 만들 때 사용자가 존재하지 않으면 실패한다")
+    void getBandMyPageFirstEntryFailsWhenUserNotFound() {
+        User user = StreamFixtures.bandUser(1L);
+        when(bandPort.getActiveBandMemberProfile(1L)).thenReturn(Optional.empty());
+        when(userRepository.findById(1L)).thenReturn(Optional.empty());
+
+        UserException exception = assertThrows(
+                UserException.class,
+                () -> userService.getBandMyPage(user)
+        );
+
+        assertThat(exception.getBaseResponseCode()).isEqualTo(UserErrorCode.USER_NOT_FOUND);
     }
 
     @Test
