@@ -111,13 +111,12 @@ public class LiveChatWebSocketHandler extends TextWebSocketHandler implements Su
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new ChatException(ChatErrorCode.LIVE_INVALID_FRAME));
         FanProfile fanProfile = fanProfileRepository.findByUser(user).orElse(null);
-        String senderName = fanProfile != null ? fanProfile.getNickname() : user.getName();
-        String senderProfileImageUrl = resolveProfileImageUrl(
+        LiveChatSenderProfile senderProfile = resolveSenderProfile(
                 liveId(session), user, fanProfile);
         String messageId = UUID.randomUUID().toString();
         LiveChatMessageData data = new LiveChatMessageData(
-                messageId, liveId(session), userId, senderName,
-                senderProfileImageUrl, content, now());
+                messageId, liveId(session), userId, senderProfile.name(),
+                senderProfile.imageUrl(), content, now());
         ChatWebSocketPushFrame push = new ChatWebSocketPushFrame(
                 "live-chat.message", null, data, frame.clientMsgId(), now());
         Set<Long> excludedUserIds = new HashSet<>(
@@ -128,15 +127,17 @@ public class LiveChatWebSocketHandler extends TextWebSocketHandler implements Su
                 new TextMessage(objectMapper.writeValueAsString(push)));
     }
 
-    private String resolveProfileImageUrl(Long liveId, User user, FanProfile fanProfile) {
+    private LiveChatSenderProfile resolveSenderProfile(
+            Long liveId, User user, FanProfile fanProfile) {
+        String fanName = fanProfile != null ? fanProfile.getNickname() : user.getName();
         String fanProfileImageUrl = fanProfile != null ? fanProfile.getProfileImageUrl() : null;
         if (user.getCurrentMode() != UserMode.BAND) {
-            return fanProfileImageUrl;
+            return new LiveChatSenderProfile(fanName, fanProfileImageUrl);
         }
 
         AudioStream live = audioStreamRepository.findById(liveId).orElse(null);
         if (live == null) {
-            return fanProfileImageUrl;
+            return new LiveChatSenderProfile(fanName, fanProfileImageUrl);
         }
 
         boolean isBroadcaster = user.getId().equals(live.getBroadcasterId());
@@ -144,12 +145,21 @@ public class LiveChatWebSocketHandler extends TextWebSocketHandler implements Su
                 .existsByBand_IdAndUser_IdAndStatus(
                         live.getBandId(), user.getId(), BandMemberStatus.ACCEPTED);
         if (!isBroadcaster && !isAcceptedBandMember) {
-            return fanProfileImageUrl;
+            return new LiveChatSenderProfile(fanName, fanProfileImageUrl);
         }
 
-        return bandRepository.findById(live.getBandId())
+        String bandMemberName = isAcceptedBandMember
+                ? bandMemberRepository.findNicknameByBandIdAndUserIdAndStatus(
+                        live.getBandId(), user.getId(), BandMemberStatus.ACCEPTED)
+                        .orElse(fanName)
+                : fanName;
+        String bandProfileImageUrl = bandRepository.findById(live.getBandId())
                 .map(Band::getProfileImageUrl)
                 .orElse(null);
+        return new LiveChatSenderProfile(bandMemberName, bandProfileImageUrl);
+    }
+
+    private record LiveChatSenderProfile(String name, String imageUrl) {
     }
 
     private void handlePing(WebSocketSession session, ChatWebSocketFrame frame) throws Exception {

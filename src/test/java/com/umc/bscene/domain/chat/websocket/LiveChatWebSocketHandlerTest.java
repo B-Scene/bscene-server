@@ -114,13 +114,17 @@ class LiveChatWebSocketHandlerTest {
         when(live.getBandId()).thenReturn(20L);
         when(bandMemberRepository.existsByBand_IdAndUser_IdAndStatus(
                 20L, USER_ID, BandMemberStatus.ACCEPTED)).thenReturn(true);
+        when(bandMemberRepository.findNicknameByBandIdAndUserIdAndStatus(
+                20L, USER_ID, BandMemberStatus.ACCEPTED)).thenReturn(Optional.of("밴드활동명"));
         when(bandRepository.findById(20L)).thenReturn(Optional.of(band));
         when(band.getProfileImageUrl()).thenReturn("https://cdn.test/band.jpg");
 
         sendMessage();
 
+        JsonNode frame = captureBroadcastFrame();
+        assertEquals("밴드활동명", frame.get("data").get("senderName").asText());
         assertEquals("https://cdn.test/band.jpg",
-                captureBroadcastFrame().get("data").get("senderProfileImageUrl").asText());
+                frame.get("data").get("senderProfileImageUrl").asText());
     }
 
     @Test
