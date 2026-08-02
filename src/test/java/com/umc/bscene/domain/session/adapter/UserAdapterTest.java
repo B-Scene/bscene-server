@@ -128,19 +128,19 @@ class UserAdapterTest {
     }
 
     private static BandsRecruitmentsSummaryResponse row(
-            Long recruitmentId, Long applySubmissionId, Long sessionProfileId, String recruitPostTitle,
-            String applierProfileImageUrl, String applierNickname, ApplicationStatus status) {
+            Long recruitmentId, Long applySubmissionId, String recruitPostTitle,
+            String applierProfileImageUrl, String applierName, ApplicationStatus status) {
         return new BandsRecruitmentsSummaryResponse(
                 recruitmentId,
                 applySubmissionId,
-                sessionProfileId,
+                applySubmissionId + 400,
                 LocalDateTime.of(2026, 3, 1, 12, 0),
                 recruitPostTitle,
                 Part.GUITAR,
                 Genre.INDIE,
                 Region.SEOUL,
                 applierProfileImageUrl,
-                applierNickname,
+                applierName,
                 Part.BASS,
                 SkillLevel.INTERMEDIATE,
                 Region.BUSAN,
@@ -400,9 +400,9 @@ class UserAdapterTest {
                     .thenReturn(List.of(31L, 32L));
             when(sasRepository.findApplicantsByRecruitmentIds(anyCollection()))
                     .thenReturn(List.of(
-                            row(31L, 501L, 601L, "기타 모집", "https://cdn.test/a.jpg", "지원자A", ApplicationStatus.PENDING),
-                            row(32L, 502L, 602L, "베이스 모집", "https://cdn.test/b.jpg", "지원자B", ApplicationStatus.BAND_ACCEPTED),
-                            row(31L, 503L, 603L, "기타 모집", "https://cdn.test/c.jpg", "지원자C", ApplicationStatus.PENDING)
+                            row(31L, 501L,"기타 모집", "https://cdn.test/a.jpg", "지원자A", ApplicationStatus.PENDING),
+                            row(32L, 502L,"베이스 모집", "https://cdn.test/b.jpg", "지원자B", ApplicationStatus.BAND_ACCEPTED),
+                            row(31L, 503L,"기타 모집", "https://cdn.test/c.jpg", "지원자C", ApplicationStatus.PENDING)
                     ));
 
             CursorPage<SessionRecruitmentResponse> page =
@@ -480,8 +480,8 @@ class UserAdapterTest {
                     .thenReturn(List.of(31L, 32L, 33L));
             when(sasRepository.findApplicantsByRecruitmentIds(anyCollection()))
                     .thenReturn(List.of(
-                            row(31L, 501L, 601L, "기타 모집", null, "지원자A", ApplicationStatus.PENDING),
-                            row(32L, 502L, 602L, "베이스 모집", null, "지원자B", ApplicationStatus.PENDING)
+                            row(31L, 501L,"기타 모집", null, "지원자A", ApplicationStatus.PENDING),
+                            row(32L, 502L,"베이스 모집", null, "지원자B", ApplicationStatus.PENDING)
                     ));
 
             CursorPage<SessionRecruitmentResponse> page =
@@ -506,8 +506,8 @@ class UserAdapterTest {
                     .thenReturn(List.of(31L, 32L));
             when(sasRepository.findApplicantsByRecruitmentIds(anyCollection()))
                     .thenReturn(List.of(
-                            row(31L, 501L, 601L, "기타 모집", null, "지원자A", ApplicationStatus.PENDING),
-                            row(32L, 502L, 602L, "베이스 모집", null, "지원자B", ApplicationStatus.PENDING)
+                            row(31L, 501L,"기타 모집", null, "지원자A", ApplicationStatus.PENDING),
+                            row(32L, 502L,"베이스 모집", null, "지원자B", ApplicationStatus.PENDING)
                     ));
 
             CursorPage<SessionRecruitmentResponse> page =
@@ -524,10 +524,10 @@ class UserAdapterTest {
                     .thenReturn(List.of(33L, 31L, 32L));
             when(sasRepository.findApplicantsByRecruitmentIds(anyCollection()))
                     .thenReturn(List.of(
-                            row(31L, 501L, 601L, "기타 모집", null, "지원자A", ApplicationStatus.PENDING),
-                            row(32L, 502L, 602L, "베이스 모집", null, "지원자B", ApplicationStatus.PENDING),
-                            row(33L, 503L, 603L, "드럼 모집", null, "지원자C", ApplicationStatus.PENDING),
-                            row(31L, 504L, 604L, "기타 모집", null, "지원자D", ApplicationStatus.PENDING)
+                            row(31L, 501L,"기타 모집", null, "지원자A", ApplicationStatus.PENDING),
+                            row(32L, 502L,"베이스 모집", null, "지원자B", ApplicationStatus.PENDING),
+                            row(33L, 503L,"드럼 모집", null, "지원자C", ApplicationStatus.PENDING),
+                            row(31L, 504L,"기타 모집", null, "지원자D", ApplicationStatus.PENDING)
                     ));
 
             CursorPage<SessionRecruitmentResponse> page =
@@ -536,7 +536,7 @@ class UserAdapterTest {
             assertThat(page.getItems()).extracting(SessionRecruitmentResponse::recruitmentPostId)
                     .containsExactly(33L, 31L, 32L);
             assertThat(page.getItems().get(1).recruiters())
-                    .extracting(SessionRecruitmentResponse.Recruiter::nickname)
+                    .extracting(SessionRecruitmentResponse.Recruiter::name)
                     .containsExactly("지원자A", "지원자D");
         }
 
@@ -547,8 +547,8 @@ class UserAdapterTest {
                     .thenReturn(List.of(31L));
             when(sasRepository.findApplicantsByRecruitmentIds(anyCollection()))
                     .thenReturn(List.of(
-                            row(31L, 501L, 601L, "첫 행 제목", null, "지원자A", ApplicationStatus.PENDING),
-                            row(31L, 502L, 602L, "둘째 행 제목", null, "지원자B", ApplicationStatus.PENDING)
+                            row(31L, 501L,"첫 행 제목", null, "지원자A", ApplicationStatus.PENDING),
+                            row(31L, 502L,"둘째 행 제목", null, "지원자B", ApplicationStatus.PENDING)
                     ));
 
             CursorPage<SessionRecruitmentResponse> page =
@@ -567,7 +567,7 @@ class UserAdapterTest {
                     .thenReturn(List.of(31L, 32L));
             when(sasRepository.findApplicantsByRecruitmentIds(anyCollection()))
                     .thenReturn(List.of(
-                            row(32L, 502L, 602L, "베이스 모집", null, "지원자B", ApplicationStatus.PENDING)
+                            row(32L, 502L,"베이스 모집", null, "지원자B", ApplicationStatus.PENDING)
                     ));
 
             CursorPage<SessionRecruitmentResponse> page =
@@ -585,8 +585,8 @@ class UserAdapterTest {
                     .thenReturn(List.of(31L));
             when(sasRepository.findApplicantsByRecruitmentIds(anyCollection()))
                     .thenReturn(List.of(
-                            row(31L, 501L, 601L, "기타 모집", "https://cdn.test/a.jpg", "지원자A", ApplicationStatus.PENDING),
-                            row(31L, 502L, 602L, "기타 모집", null, "지원자B", ApplicationStatus.BAND_ACCEPTED)
+                            row(31L, 501L,"기타 모집", "https://cdn.test/a.jpg", "지원자A", ApplicationStatus.PENDING),
+                            row(31L, 502L,"기타 모집", null, "지원자B", ApplicationStatus.BAND_ACCEPTED)
                     ));
 
             CursorPage<SessionRecruitmentResponse> page =
@@ -599,12 +599,13 @@ class UserAdapterTest {
             assertThat(item.part()).isEqualTo("기타");
             assertThat(item.genre()).isEqualTo("인디");
             assertThat(item.region()).isEqualTo("서울");
+            assertThat(item.totalApplicants()).isEqualTo(2);
 
             SessionRecruitmentResponse.Recruiter first = item.recruiters().get(0);
-            assertThat(first.sessionProfileId()).isEqualTo(601L);
             assertThat(first.applySubmissionId()).isEqualTo(501L);
+            assertThat(first.sessionApplicationId()).isEqualTo(901L);
             assertThat(first.profileImageUrl()).isEqualTo("https://cdn.test/a.jpg");
-            assertThat(first.nickname()).isEqualTo("지원자A");
+            assertThat(first.name()).isEqualTo("지원자A");
             assertThat(first.part()).isEqualTo("베이스");
             // level은 지원자의 SkillLevel description에서 온다
             assertThat(first.level()).isEqualTo("중급");
