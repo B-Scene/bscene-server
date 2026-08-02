@@ -84,18 +84,23 @@ public class MySessionApplicationResponse {
                 .build();
     }
 
-    public static MySessionApplicationResponse from(SessionApplication sessionApplication) {
-        return from(sessionApplication, true);
+    public static MySessionApplicationResponse from(
+            SessionApplication sessionApplication,
+            String sessionProfileImageUrl
+    ) {
+        return from(sessionApplication, sessionProfileImageUrl, true);
     }
 
     public static MySessionApplicationResponse fromWithoutVisibility(
-            SessionApplication sessionApplication
+            SessionApplication sessionApplication,
+            String sessionProfileImageUrl
     ) {
-        return from(sessionApplication, false);
+        return from(sessionApplication, sessionProfileImageUrl, false);
     }
 
     private static MySessionApplicationResponse from(
             SessionApplication sessionApplication,
+            String sessionProfileImageUrl,
             boolean includeVisibility
     ) {
         return MySessionApplicationResponse.builder()
@@ -106,7 +111,7 @@ public class MySessionApplicationResponse {
                 .title(sessionApplication.getTitle())
                 .purpose(sessionApplication.getPurpose())
                 .oneLineIntro(sessionApplication.getOneLineIntro())
-                .profileImageUrl(sessionApplication.getProfileImageUrl())
+                .profileImageUrl(sessionProfileImageUrl)
                 .isPublic(includeVisibility ? sessionApplication.getIsPublic() : null)
                 .part(sessionApplication.getPart())
                 .skillLevel(sessionApplication.getSkillLevel())

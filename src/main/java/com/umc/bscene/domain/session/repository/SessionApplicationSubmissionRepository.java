@@ -44,7 +44,7 @@ select
             sr.part,
             sr.genre,
             sr.region,
-            sa.profileImageUrl,
+            sbp.profileImageUrl,
             sa.nickname,
             sa.part,
             sa.skillLevel,

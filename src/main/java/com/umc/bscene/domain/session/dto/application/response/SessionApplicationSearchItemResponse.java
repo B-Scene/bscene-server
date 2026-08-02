@@ -50,8 +50,7 @@ public class SessionApplicationSearchItemResponse {
                 .userId(application.getUserId())
                 .nickname(sessionProfileName != null
                         ? sessionProfileName : application.getNickname())
-                .profileImageUrl(sessionProfileImageUrl != null
-                        ? sessionProfileImageUrl : application.getProfileImageUrl())
+                .profileImageUrl(sessionProfileImageUrl)
                 .skillLevel(application.getSkillLevel())
                 .part(application.getPart())
                 .genre(application.getGenre())
