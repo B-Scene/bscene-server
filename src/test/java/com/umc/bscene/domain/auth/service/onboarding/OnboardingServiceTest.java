@@ -131,11 +131,10 @@ class OnboardingServiceTest {
         assertThat(response.fanNickname()).isNull();
         assertThat(response.selectedGenres()).isEmpty();
         assertThat(response.selectedRegions()).isEmpty();
+        // 닉네임/장르/지역은 팬 온보딩 단계 → FAN 모드를 고르기 전에는 필요한 단계가 아니다
         assertThat(response.requiredSteps()).containsExactly(
                 "MODE",
-                "AVAILABLE_MODE",
-                "GENRE",
-                "REGION"
+                "AVAILABLE_MODE"
         );
     }
 
@@ -374,11 +373,15 @@ class OnboardingServiceTest {
                 .thenReturn(false);
         when(fanProfileRepository.findByUser(user))
                 .thenReturn(Optional.of(fanProfile));
+        // 1번째 호출 : 저장 전 기존 모드 조회 (신규 유저라 없음) / 2번째 호출 : 저장 후 상태 응답용
         when(userAvailableModesRepository.findAllByUser(user))
-                .thenReturn(List.of(
-                        availableMode(user, UserMode.FAN),
-                        availableMode(user, UserMode.BAND)
-                ));
+                .thenReturn(
+                        List.of(),
+                        List.of(
+                                availableMode(user, UserMode.FAN),
+                                availableMode(user, UserMode.BAND)
+                        )
+                );
         when(userGenresRepository.findAllByUser(user))
                 .thenReturn(List.of(
                         userGenre(user, Genre.INDIE),
@@ -433,44 +436,184 @@ class OnboardingServiceTest {
     }
 
     @Test
-    void saveOnboarding_밴드모드만_선택하면_팬프로필을_만들지_않는다() {
+    void saveOnboarding_밴드모드만_선택하면_팬정보_없이_미완료_상태로_저장한다() {
         User user = incompleteUser();
+        // 밴드로 시작 : 닉네임/장르/지역은 화면에서 아예 받지 않는다
         OnboardingSaveRequest request = new OnboardingSaveRequest(
                 List.of(UserMode.BAND),
                 UserMode.BAND,
                 null,
-                List.of(Genre.HARD_ROCK),
-                List.of(Region.BUSAN)
+                null,
+                null
         );
 
         when(userRepository.findById(USER_ID))
                 .thenReturn(Optional.of(user));
         when(fanProfileRepository.findByUser(user))
                 .thenReturn(Optional.empty());
+        // 1번째 호출 : 저장 전 기존 모드 조회 (신규 유저라 없음) / 2번째 호출 : 저장 후 상태 응답용
         when(userAvailableModesRepository.findAllByUser(user))
-                .thenReturn(List.of(availableMode(user, UserMode.BAND)));
+                .thenReturn(
+                        List.of(),
+                        List.of(availableMode(user, UserMode.BAND))
+                );
         when(userGenresRepository.findAllByUser(user))
-                .thenReturn(List.of(
-                        userGenre(user, Genre.HARD_ROCK)
-                ));
+                .thenReturn(List.of());
         when(userRegionsRepository.findAllByUser(user))
-                .thenReturn(List.of(
-                        userRegion(user, Region.BUSAN)
-                ));
+                .thenReturn(List.of());
 
         OnboardingStatusResponse response = service.saveOnboarding(
                 new AuthMember(user),
                 request
         );
 
-        assertThat(response.completed()).isTrue();
+        // 온보딩 완료 = 팬 온보딩 완료 → 밴드로만 시작하면 미완료 상태로 앱에 진입한다
+        assertThat(user.getOnboardingCompleted()).isFalse();
+        assertThat(user.getCurrentMode()).isEqualTo(UserMode.BAND);
+        assertThat(response.completed()).isFalse();
         assertThat(response.currentMode()).isEqualTo(UserMode.BAND);
         assertThat(response.fanNickname()).isNull();
+        // 팬모드가 없는 동안에는 남은 단계도 없다 (팬모드 전환 시 온보딩 재진입)
         assertThat(response.requiredSteps()).isEmpty();
+
+        @SuppressWarnings("unchecked")
+        ArgumentCaptor<List<UserAvailableModes>> modesCaptor =
+                ArgumentCaptor.forClass(List.class);
+        verify(userAvailableModesRepository)
+                .saveAll(modesCaptor.capture());
+        assertThat(modesCaptor.getValue())
+                .extracting(UserAvailableModes::getMode)
+                .containsExactly(UserMode.BAND);
+
         verify(fanProfileRepository, never())
                 .existsByNickname(any());
         verify(fanProfileRepository, never())
                 .save(any(FanProfile.class));
+        verify(userGenresRepository, never()).saveAll(any());
+        verify(userRegionsRepository, never()).saveAll(any());
+    }
+
+    @Test
+    void saveOnboarding_밴드로_시작한_유저가_팬모드를_추가하면_기존_모드는_다시_저장하지_않는다() {
+        // 밴드로만 시작해서 미완료 상태로 앱을 쓰다가, 팬모드 전환을 위해 온보딩에 재진입한 유저
+        User user = bandOnlyIncompleteUser();
+        OnboardingSaveRequest request = new OnboardingSaveRequest(
+                List.of(UserMode.FAN, UserMode.BAND),
+                UserMode.FAN,
+                "테스트팬",
+                List.of(Genre.INDIE),
+                List.of(Region.SEOUL)
+        );
+
+        when(userRepository.findById(USER_ID))
+                .thenReturn(Optional.of(user));
+        when(fanProfileRepository.existsByNickname("테스트팬"))
+                .thenReturn(false);
+        when(fanProfileRepository.findByUser(user))
+                .thenReturn(Optional.of(fanProfile(user, "테스트팬")));
+        // 1번째 호출 : 첫 온보딩 때 저장된 BAND가 이미 있음 / 2번째 호출 : 저장 후 상태 응답용
+        when(userAvailableModesRepository.findAllByUser(user))
+                .thenReturn(
+                        List.of(availableMode(user, UserMode.BAND)),
+                        List.of(
+                                availableMode(user, UserMode.BAND),
+                                availableMode(user, UserMode.FAN)
+                        )
+                );
+        when(userGenresRepository.findAllByUser(user))
+                .thenReturn(List.of(userGenre(user, Genre.INDIE)));
+        when(userRegionsRepository.findAllByUser(user))
+                .thenReturn(List.of(userRegion(user, Region.SEOUL)));
+
+        OnboardingStatusResponse response = service.saveOnboarding(
+                new AuthMember(user),
+                request
+        );
+
+        // 팬 정보까지 채웠으므로 이제 온보딩 완료 + 팬모드로 진입
+        assertThat(user.getOnboardingCompleted()).isTrue();
+        assertThat(user.getCurrentMode()).isEqualTo(UserMode.FAN);
+        assertThat(response.completed()).isTrue();
+
+        // BAND 행은 이미 있으므로 (unique 제약) FAN만 새로 저장돼야 한다
+        @SuppressWarnings("unchecked")
+        ArgumentCaptor<List<UserAvailableModes>> modesCaptor =
+                ArgumentCaptor.forClass(List.class);
+        verify(userAvailableModesRepository)
+                .saveAll(modesCaptor.capture());
+        assertThat(modesCaptor.getValue())
+                .extracting(UserAvailableModes::getMode)
+                .containsExactly(UserMode.FAN);
+    }
+
+    @ParameterizedTest
+    @NullAndEmptySource
+    void saveOnboarding_팬모드인데_장르가_없으면_예외(
+            List<Genre> genres
+    ) {
+        User user = incompleteUser();
+        OnboardingSaveRequest request = new OnboardingSaveRequest(
+                List.of(UserMode.FAN),
+                UserMode.FAN,
+                "테스트팬",
+                genres,
+                List.of(Region.SEOUL)
+        );
+
+        when(userRepository.findById(USER_ID))
+                .thenReturn(Optional.of(user));
+
+        OnboardingException exception = assertThrows(
+                OnboardingException.class,
+                () -> service.saveOnboarding(
+                        new AuthMember(user),
+                        request
+                )
+        );
+
+        assertThat(exception.getBaseResponseCode())
+                .isEqualTo(OnboardingErrorCode.GENRE_REQUIRED);
+        verifyNoInteractions(
+                fanProfileRepository,
+                userAvailableModesRepository,
+                userGenresRepository,
+                userRegionsRepository
+        );
+    }
+
+    @ParameterizedTest
+    @NullAndEmptySource
+    void saveOnboarding_팬모드인데_지역이_없으면_예외(
+            List<Region> regions
+    ) {
+        User user = incompleteUser();
+        OnboardingSaveRequest request = new OnboardingSaveRequest(
+                List.of(UserMode.FAN),
+                UserMode.FAN,
+                "테스트팬",
+                List.of(Genre.INDIE),
+                regions
+        );
+
+        when(userRepository.findById(USER_ID))
+                .thenReturn(Optional.of(user));
+
+        OnboardingException exception = assertThrows(
+                OnboardingException.class,
+                () -> service.saveOnboarding(
+                        new AuthMember(user),
+                        request
+                )
+        );
+
+        assertThat(exception.getBaseResponseCode())
+                .isEqualTo(OnboardingErrorCode.REGION_REQUIRED);
+        verifyNoInteractions(
+                fanProfileRepository,
+                userAvailableModesRepository,
+                userGenresRepository,
+                userRegionsRepository
+        );
     }
 
     // ---------- checkFanNickname ----------
@@ -517,6 +660,19 @@ class OnboardingServiceTest {
                 .phone("01012345678")
                 .currentMode(UserMode.FAN)
                 .onboardingCompleted(true)
+                .build();
+    }
+
+    // 밴드로만 시작해서 온보딩이 미완료 상태로 남아 있는 유저
+    private User bandOnlyIncompleteUser() {
+        return User.builder()
+                .id(USER_ID)
+                .name("테스트유저")
+                .birthDate(LocalDate.of(1999, 1, 1))
+                .gender(Gender.MALE)
+                .phone("01012345678")
+                .currentMode(UserMode.BAND)
+                .onboardingCompleted(false)
                 .build();
     }
 
