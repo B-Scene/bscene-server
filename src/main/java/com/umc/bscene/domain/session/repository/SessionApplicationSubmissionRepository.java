@@ -33,19 +33,20 @@ where recruitment.band.id = :bandId
     );
 
     // 커서 페이지에 담긴 공고들의 지원서·지원자 정보를 플랫 행으로 조회 (공고 단위 그루핑은 어댑터에서)
+    // SessionBasicProfile이 없는 지원자도 조회되어야 하므로 left join (프로필 이미지는 null)
     @Query("""
 select
     new com.umc.bscene.domain.session.dto.application.response.BandsRecruitmentsSummaryResponse(
             sr.sessionRecruitmentId,
             sas.applicationSubmissionId,
-            sbp.sessionBasicProfileId,
+            sa.sessionApplicationId,
             sr.deadlineAt,
             sr.recruitmentTitle,
             sr.part,
             sr.genre,
             sr.region,
-            sa.profileImageUrl,
-            sa.nickname,
+            sbp.profileImageUrl,
+            u.name,
             sa.part,
             sa.skillLevel,
             sa.region,
@@ -55,7 +56,9 @@ from
 SessionApplicationSubmission sas
 join sas.sessionApplication sa
 join sas.sessionRecruitment sr
-join SessionBasicProfile sbp
+join User u
+    on u.id = sa.userId
+left join SessionBasicProfile sbp
     on sbp.user.id = sa.userId
 where sr.sessionRecruitmentId in :recruitmentIds
     and sas.status <> CANCELED
