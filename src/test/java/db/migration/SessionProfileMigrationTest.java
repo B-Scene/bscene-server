@@ -75,7 +75,7 @@ class SessionProfileMigrationTest {
             assertThat(columnExists(connection,
                     "session_applications", "purpose")).isTrue();
             assertThat(columnExists(connection,
-                    "session_applications", "profile_image_url")).isTrue();
+                    "session_applications", "profile_image_url")).isFalse();
             assertThat(columnExists(connection,
                     "session_applications", "is_public")).isTrue();
             assertThat(columnExists(connection,
