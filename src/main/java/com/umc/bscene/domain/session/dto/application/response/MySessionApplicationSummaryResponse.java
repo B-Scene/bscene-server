@@ -78,8 +78,7 @@ public class MySessionApplicationSummaryResponse {
                 .sessionApplicationId(defaultApplication.getSessionApplicationId())
                 .nickname(sessionProfileName != null
                         ? sessionProfileName : defaultApplication.getNickname())
-                .profileImageUrl(sessionProfileImageUrl != null
-                        ? sessionProfileImageUrl : defaultApplication.getProfileImageUrl())
+                .profileImageUrl(sessionProfileImageUrl)
                 .skillLevel(defaultApplication.getSkillLevel())
                 .part(defaultApplication.getPart())
                 .genre(defaultApplication.getGenre())

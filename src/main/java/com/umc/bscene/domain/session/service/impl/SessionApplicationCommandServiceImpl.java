@@ -20,6 +20,7 @@ import com.umc.bscene.domain.session.port.BandMemberPort;
 import com.umc.bscene.domain.session.port.NotifyPort;
 import com.umc.bscene.domain.session.repository.SessionApplicationRepository;
 import com.umc.bscene.domain.session.repository.SessionApplicationSubmissionRepository;
+import com.umc.bscene.domain.session.repository.SessionBasicProfileRepository;
 import com.umc.bscene.domain.session.repository.SessionRecruitmentRepository;
 import com.umc.bscene.domain.session.service.SessionApplicationCommandService;
 import com.umc.bscene.domain.user.entity.User;
@@ -46,6 +47,7 @@ public class SessionApplicationCommandServiceImpl implements SessionApplicationC
     private final SessionApplicationRepository sessionApplicationRepository;
     private final SessionApplicationSubmissionRepository submissionRepository;
     private final SessionRecruitmentRepository sessionRecruitmentRepository;
+    private final SessionBasicProfileRepository sessionBasicProfileRepository;
     private final UserRepository userRepository;
     private final ApplicationEventPublisher eventPublisher;
 
@@ -84,7 +86,10 @@ public class SessionApplicationCommandServiceImpl implements SessionApplicationC
                 sessionApplicationRepository.saveAndFlush(sessionApplication);
         publishPortfolioPreviewRequests(savedSessionApplication);
 
-        return MySessionApplicationResponse.fromWithoutVisibility(savedSessionApplication);
+        return MySessionApplicationResponse.fromWithoutVisibility(
+                savedSessionApplication,
+                findSessionProfileImageUrl(userId)
+        );
     }
 
     @Override
@@ -127,7 +132,16 @@ public class SessionApplicationCommandServiceImpl implements SessionApplicationC
                 sessionApplicationRepository.saveAndFlush(sessionApplication);
         publishPortfolioPreviewRequests(savedSessionApplication);
 
-        return MySessionApplicationResponse.fromWithoutVisibility(savedSessionApplication);
+        return MySessionApplicationResponse.fromWithoutVisibility(
+                savedSessionApplication,
+                findSessionProfileImageUrl(userId)
+        );
+    }
+
+    private String findSessionProfileImageUrl(Long userId) {
+        return sessionBasicProfileRepository.findByUser_Id(userId)
+                .map(profile -> profile.getProfileImageUrl())
+                .orElse(null);
     }
 
     @Override

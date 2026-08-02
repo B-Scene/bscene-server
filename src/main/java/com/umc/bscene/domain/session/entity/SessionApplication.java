@@ -54,9 +54,6 @@ public class SessionApplication extends BaseEntity {
     @Column(name = "one_line_intro", length = 50)
     private String oneLineIntro;
 
-    @Column(name = "profile_image_url", length = 500)
-    private String profileImageUrl;
-
     @Column(name = "is_public", nullable = false)
     private Boolean isPublic = true;
 
