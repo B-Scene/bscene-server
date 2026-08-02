@@ -74,8 +74,7 @@ public class SessionApplicationDetailResponse {
                 .userId(application.getUserId())
                 .nickname(sessionProfileName != null
                         ? sessionProfileName : application.getNickname())
-                .profileImageUrl(sessionProfileImageUrl != null
-                        ? sessionProfileImageUrl : application.getProfileImageUrl())
+                .profileImageUrl(sessionProfileImageUrl)
                 .isPublic(application.getIsPublic())
                 .title(application.getTitle())
                 .purpose(application.getPurpose())

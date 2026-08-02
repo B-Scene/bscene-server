@@ -8,6 +8,7 @@ import com.umc.bscene.domain.session.dto.application.request.MySessionApplicatio
 import com.umc.bscene.domain.session.dto.application.request.SessionApplicationVisibilityRequest;
 import com.umc.bscene.domain.session.entity.SessionApplication;
 import com.umc.bscene.domain.session.entity.SessionApplicationSubmission;
+import com.umc.bscene.domain.session.entity.SessionBasicProfile;
 import com.umc.bscene.domain.session.entity.SessionRecruitment;
 import com.umc.bscene.domain.session.enums.ApplicationStatus;
 import com.umc.bscene.domain.session.enums.AvailableActivity;
@@ -19,6 +20,7 @@ import com.umc.bscene.domain.session.port.BandMemberPort;
 import com.umc.bscene.domain.session.port.NotifyPort;
 import com.umc.bscene.domain.session.repository.SessionApplicationRepository;
 import com.umc.bscene.domain.session.repository.SessionApplicationSubmissionRepository;
+import com.umc.bscene.domain.session.repository.SessionBasicProfileRepository;
 import com.umc.bscene.domain.session.repository.SessionRecruitmentRepository;
 import com.umc.bscene.domain.user.entity.User;
 import com.umc.bscene.domain.user.repository.UserRepository;
@@ -56,6 +58,8 @@ class SessionApplicationCommandServiceImplTest {
     @Mock
     private SessionRecruitmentRepository recruitmentRepository;
     @Mock
+    private SessionBasicProfileRepository basicProfileRepository;
+    @Mock
     private UserRepository userRepository;
     @Mock
     private ApplicationEventPublisher eventPublisher;
@@ -78,6 +82,7 @@ class SessionApplicationCommandServiceImplTest {
                 applicationRepository,
                 submissionRepository,
                 recruitmentRepository,
+                basicProfileRepository,
                 userRepository,
                 eventPublisher,
                 bandMemberPort,
@@ -149,6 +154,10 @@ class SessionApplicationCommandServiceImplTest {
     @DisplayName("첫 지원서를 기본 지원서로 생성한다")
     void createDefaultApplicationSuccess() {
         User user = User.builder().id(USER_ID).name("사용자").build();
+        SessionBasicProfile profile = SessionBasicProfile.builder()
+                .user(user)
+                .profileImageUrl("https://cdn.test/session-profile.jpg")
+                .build();
         givenCreateRequest(DEFAULT_PURPOSE);
         when(applicationRepository.countByUserIdAndDeletedAtIsNull(USER_ID)).thenReturn(0L);
         when(applicationRepository
@@ -157,12 +166,15 @@ class SessionApplicationCommandServiceImplTest {
         when(userRepository.findById(USER_ID)).thenReturn(Optional.of(user));
         when(applicationRepository.saveAndFlush(any(SessionApplication.class)))
                 .thenAnswer(invocation -> invocation.getArgument(0));
+        when(basicProfileRepository.findByUser_Id(USER_ID)).thenReturn(Optional.of(profile));
 
         var response = service.createSessionApplication(USER_ID, createRequest);
 
         verify(applicationRepository).saveAndFlush(any(SessionApplication.class));
         assertThat(response.getNickname()).isEqualTo("사용자");
         assertThat(response.getPurpose()).isEqualTo(DEFAULT_PURPOSE);
+        assertThat(response.getProfileImageUrl())
+                .isEqualTo("https://cdn.test/session-profile.jpg");
     }
 
     @Test

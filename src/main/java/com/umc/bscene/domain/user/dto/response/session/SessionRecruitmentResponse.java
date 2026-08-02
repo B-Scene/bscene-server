@@ -14,13 +14,14 @@ public record SessionRecruitmentResponse(
         String part,
         String genre,
         String region,
+        int totalApplicants,
         List<Recruiter> recruiters
 ) {
     public record Recruiter(
-            Long sessionProfileId,
             Long applySubmissionId,
+            Long sessionApplicationId,
             String profileImageUrl,
-            String nickname,
+            String name,
             String part,
             String level,
             String region,

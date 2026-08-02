@@ -139,10 +139,10 @@ public class UserAdapter implements SessionPort {
                     BandsRecruitmentsSummaryResponse first = group.get(0);
                     List<SessionRecruitmentResponse.Recruiter> recruiters = group.stream()
                             .map(row -> new SessionRecruitmentResponse.Recruiter(
-                                    row.sessionProfileId(),
                                     row.applySubmissionId(),
+                                    row.sessionApplicationId(),
                                     row.applierProfileImageUrl(),
-                                    row.applierNickname(),
+                                    row.applierName(),
                                     row.applierPart(),
                                     row.applierSkill(),
                                     row.applierRegion(),
@@ -156,6 +156,7 @@ public class UserAdapter implements SessionPort {
                             first.recruitPart(),
                             first.recruitGenre(),
                             first.recruitRegion(),
+                            recruiters.size(),
                             recruiters
                     );
                 })
