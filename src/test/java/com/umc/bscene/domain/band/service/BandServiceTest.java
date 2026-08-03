@@ -901,7 +901,7 @@ class BandServiceTest {
                 .build();
         when(bandRepository.findById(BAND_ID))
                 .thenReturn(Optional.of(band));
-        when(bandMemberRepository.findByBand_IdOrderByIdAsc(BAND_ID))
+        when(bandMemberRepository.findWithProfileByBand_IdOrderByIdAsc(BAND_ID))
                 .thenReturn(List.of(acceptedMember, invitedSession));
 
         List<BandMemberResponse> response =
@@ -912,10 +912,14 @@ class BandServiceTest {
                 response.get(0).status());
         assertEquals(BandMemberType.MEMBER,
                 response.get(0).memberType());
+        assertTrue(response.get(0).owner());
+        assertEquals(Part.GUITAR, response.get(0).part());
         assertEquals(BandMemberStatus.INVITED,
                 response.get(1).status());
         assertEquals(BandMemberType.SESSION,
                 response.get(1).memberType());
+        assertFalse(response.get(1).owner());
+        assertNull(response.get(1).part());
     }
 
     @Test
