@@ -42,7 +42,16 @@ order by bm.id ASC
 
     Optional<BandMember> findByBand_IdAndUser_Id(Long bandId, Long userId);
 
-    List<BandMember> findByBand_IdOrderByIdAsc(Long bandId);
+    // 밴드 멤버 목록 조회용 - part 조회 시 N+1을 피하기 위해 bandMemberProfile을 함께 fetch
+    // 초대 대기 중인 멤버는 bandMemberProfile이 없을 수 있으므로 LEFT JOIN FETCH 사용
+    @Query("""
+        SELECT bm
+        FROM BandMember bm
+        LEFT JOIN FETCH bm.bandMemberProfile
+        WHERE bm.band.id = :bandId
+        ORDER BY bm.id ASC
+    """)
+    List<BandMember> findWithProfileByBand_IdOrderByIdAsc(@Param("bandId") Long bandId);
 
     List<BandMember> findByBand_IdAndStatus(Long bandId, BandMemberStatus status);
 

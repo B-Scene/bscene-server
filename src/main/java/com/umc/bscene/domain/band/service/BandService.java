@@ -252,7 +252,7 @@ public class BandService {
     public List<BandMemberResponse> getMembers(Long bandId) {
         getBand(bandId);
 
-        return bandMemberRepository.findByBand_IdOrderByIdAsc(bandId).stream()
+        return bandMemberRepository.findWithProfileByBand_IdOrderByIdAsc(bandId).stream()
                 .map(BandMemberResponse::from)
                 .toList();
     }
