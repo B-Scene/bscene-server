@@ -19,7 +19,6 @@ public record SessionRecruitmentResponse(
 ) {
     public record Recruiter(
             Long applySubmissionId,
-            Long sessionApplicationId,
             String profileImageUrl,
             String name,
             String part,

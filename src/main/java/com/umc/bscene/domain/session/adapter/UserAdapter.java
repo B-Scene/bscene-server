@@ -140,7 +140,6 @@ public class UserAdapter implements SessionPort {
                     List<SessionRecruitmentResponse.Recruiter> recruiters = group.stream()
                             .map(row -> new SessionRecruitmentResponse.Recruiter(
                                     row.applySubmissionId(),
-                                    row.sessionApplicationId(),
                                     row.applierProfileImageUrl(),
                                     row.applierName(),
                                     row.applierPart(),
