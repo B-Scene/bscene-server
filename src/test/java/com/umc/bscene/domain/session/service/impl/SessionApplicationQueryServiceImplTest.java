@@ -78,8 +78,7 @@ class SessionApplicationQueryServiceImplTest {
         when(applicationRepository.searchDefaultApplications(
                 eq(USER_ID), eq(DEFAULT_PURPOSE), eq(Region.SEOUL),
                 eq(SkillLevel.INTERMEDIATE), eq(Part.GUITAR),
-                eq(Genre.HARD_ROCK), eq(false), eq(null), eq(null),
-                eq("기타"), eq(null), any(Pageable.class)
+                eq(Genre.HARD_ROCK), eq("기타"), eq(null), any(Pageable.class)
         )).thenReturn(List.of(first, second));
         when(basicProfileRepository.findAllByUser_IdIn(List.of(2L)))
                 .thenReturn(List.of());
@@ -92,9 +91,6 @@ class SessionApplicationQueryServiceImplTest {
         );
 
         verify(searchKeywordService).record(USER_ID, "기타");
-        verify(applicationRepository, never()).existsRecommendedApplications(
-                any(), any(), any(), any()
-        );
         assertThat(response.getContent()).hasSize(1);
         assertThat(response.getContent().get(0).getNickname()).isEqualTo("검색 사용자");
         assertThat(response.getHasNext()).isTrue();
@@ -102,19 +98,10 @@ class SessionApplicationQueryServiceImplTest {
     }
 
     @Test
-    @DisplayName("검색 조건이 없고 내 기본 지원서가 있으면 장르와 지역 추천을 적용한다")
-    void searchUsesRecommendationFromMyDefaultApplication() {
-        SessionApplication myDefault = application(1L, USER_ID, DEFAULT_PURPOSE);
-        when(applicationRepository
-                .findFirstByUserIdAndPurposeAndDeletedAtIsNullOrderBySessionApplicationIdDesc(
-                        USER_ID, DEFAULT_PURPOSE
-                )).thenReturn(Optional.of(myDefault));
-        when(applicationRepository.existsRecommendedApplications(
-                USER_ID, DEFAULT_PURPOSE, Genre.HARD_ROCK, Region.SEOUL
-        )).thenReturn(true);
+    @DisplayName("검색 조건이 없어도 사용자별 추천 필터 없이 공개 기본 지원서를 검색한다")
+    void searchWithoutPersonalizedRecommendation() {
         when(applicationRepository.searchDefaultApplications(
                 eq(USER_ID), eq(DEFAULT_PURPOSE), eq(null), eq(null), eq(null), eq(null),
-                eq(true), eq(Genre.HARD_ROCK), eq(Region.SEOUL),
                 eq(null), eq(null), any(Pageable.class)
         )).thenReturn(List.of());
 

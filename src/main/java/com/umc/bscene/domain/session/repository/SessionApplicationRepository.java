@@ -83,9 +83,6 @@ public interface SessionApplicationRepository extends JpaRepository<SessionAppli
           AND (:skillLevel IS NULL OR sa.skillLevel = :skillLevel)
           AND (:part IS NULL OR sa.part = :part)
           AND (:genre IS NULL OR sa.genre = :genre)
-          AND (:recommendationEnabled = false
-               OR sa.genre = :recommendedGenre
-               OR sa.region = :recommendedRegion)
           AND (:keyword IS NULL
                OR LOWER(COALESCE(u.name, sa.nickname)) LIKE LOWER(CONCAT('%', :keyword, '%'))
                OR LOWER(sa.title) LIKE LOWER(CONCAT('%', :keyword, '%'))
@@ -100,9 +97,6 @@ public interface SessionApplicationRepository extends JpaRepository<SessionAppli
             @Param("skillLevel") SkillLevel skillLevel,
             @Param("part") Part part,
             @Param("genre") Genre genre,
-            @Param("recommendationEnabled") boolean recommendationEnabled,
-            @Param("recommendedGenre") Genre recommendedGenre,
-            @Param("recommendedRegion") Region recommendedRegion,
             @Param("keyword") String keyword,
             @Param("cursorId") Long cursorId,
             Pageable pageable
@@ -114,19 +108,4 @@ public interface SessionApplicationRepository extends JpaRepository<SessionAppli
             String purpose
     );
 
-    @Query("""
-        SELECT CASE WHEN COUNT(sa) > 0 THEN true ELSE false END
-        FROM SessionApplication sa
-        WHERE sa.deletedAt IS NULL
-          AND sa.purpose = :purpose
-          AND sa.isPublic = true
-          AND sa.userId <> :viewerUserId
-          AND (sa.genre = :genre OR sa.region = :region)
-    """)
-    boolean existsRecommendedApplications(
-            @Param("viewerUserId") Long viewerUserId,
-            @Param("purpose") String purpose,
-            @Param("genre") Genre genre,
-            @Param("region") Region region
-    );
 }
