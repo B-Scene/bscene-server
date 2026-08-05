@@ -241,27 +241,6 @@ public class SessionApplicationQueryServiceImpl implements SessionApplicationQue
                 : keyword.trim();
         searchKeywordService.record(viewerUserId, normalizedKeyword);
 
-        boolean explicitCondition = region != null
-                || skillLevel != null
-                || part != null
-                || genre != null
-                || normalizedKeyword != null;
-        SessionApplication myDefaultApplication = explicitCondition
-                ? null
-                : sessionApplicationRepository
-                        .findFirstByUserIdAndPurposeAndDeletedAtIsNullOrderBySessionApplicationIdDesc(
-                                viewerUserId,
-                                DEFAULT_PURPOSE
-                        )
-                        .orElse(null);
-        boolean recommendationEnabled = myDefaultApplication != null
-                && sessionApplicationRepository.existsRecommendedApplications(
-                        viewerUserId,
-                        DEFAULT_PURPOSE,
-                        myDefaultApplication.getGenre(),
-                        myDefaultApplication.getRegion()
-                );
-
         List<SessionApplication> applications = sessionApplicationRepository
                 .searchDefaultApplications(
                         viewerUserId,
@@ -270,9 +249,6 @@ public class SessionApplicationQueryServiceImpl implements SessionApplicationQue
                         skillLevel,
                         part,
                         genre,
-                        recommendationEnabled,
-                        recommendationEnabled ? myDefaultApplication.getGenre() : null,
-                        recommendationEnabled ? myDefaultApplication.getRegion() : null,
                         normalizedKeyword,
                         cursorId,
                         PageRequest.of(0, pageSize + 1)
