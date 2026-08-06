@@ -18,7 +18,7 @@ public record FanHomeResponse(
         // 섹션 1: 팔로우한 밴드 소식
         List<BandNewsItem> followingBandNews,
 
-        // 섹션 2: 이런 밴드는 어때요? (팔로우하는 밴드가 없을 때만 채움, 아니면 빈 리스트)
+        // 섹션 2: 이런 밴드는 어때요? (팔로우 여부와 무관하게 항상 채움, 최대 10개 — 팔로우한 밴드는 추천에서 제외)
         List<RecommendedBandItem> recommendedBands,
 
         // 섹션 3: 공연
