@@ -8,6 +8,9 @@ coolsms:
 
 # 운영 Elasticsearch : TLS + 계정 인증 (로컬 dev는 보안 없이 http — application.yaml 기본값 사용)
 spring:
+  jpa:
+    hibernate:
+      ddl-auto: validate
   ssl:
     bundle:
       pem:
