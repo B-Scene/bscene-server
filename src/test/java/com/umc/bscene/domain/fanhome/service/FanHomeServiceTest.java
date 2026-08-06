@@ -28,7 +28,6 @@ import java.util.List;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.Mockito.never;
@@ -74,7 +73,7 @@ class FanHomeServiceTest {
     void getFanHome_팔로우한_밴드가_없으면_추천_밴드와_추천_공연을_반환한다() {
         when(followPort.findFollowingBandIds(USER_ID)).thenReturn(List.of());
         when(notificationPort.hasUnread(USER_ID)).thenReturn(false);
-        when(bandPort.recommendTopBands(USER_ID, 5)).thenReturn(List.of(recommendedBand(20L)));
+        when(bandPort.recommendTopBands(USER_ID, 10)).thenReturn(List.of(recommendedBand(20L)));
         when(performancePort.recommendPerformances(3)).thenReturn(List.of(performanceItem(100L)));
 
         FanHomeResponse response = service.getFanHome(USER_ID);
@@ -90,10 +89,11 @@ class FanHomeServiceTest {
     }
 
     @Test
-    void getFanHome_팔로우한_밴드가_있으면_소식과_다가오는_공연을_반환한다() {
+    void getFanHome_팔로우한_밴드가_있으면_소식과_다가오는_공연에_더해_추천_밴드도_반환한다() {
         when(followPort.findFollowingBandIds(USER_ID)).thenReturn(FOLLOWING_BAND_IDS);
         when(notificationPort.hasUnread(USER_ID)).thenReturn(false);
         when(postPort.findRecentNews(FOLLOWING_BAND_IDS, 5)).thenReturn(List.of());
+        when(bandPort.recommendTopBands(USER_ID, 10)).thenReturn(List.of(recommendedBand(20L)));
         when(performancePort.findUpcomingByBandIds(FOLLOWING_BAND_IDS, 3))
                 .thenReturn(List.of(performanceItem(100L)));
 
@@ -102,9 +102,9 @@ class FanHomeServiceTest {
         assertEquals(true, response.hasFollowingBands());
         assertEquals(PerformanceSectionType.UPCOMING, response.performanceType());
         assertEquals(100L, response.performances().get(0).performanceId());
-        assertTrue(response.recommendedBands().isEmpty());
-        // 팔로우가 있으면 추천 밴드 조회는 하지 않는다
-        verify(bandPort, never()).recommendTopBands(any(), anyInt());
+        // 팔로우가 있어도 추천 밴드는 항상 노출한다
+        assertEquals(1, response.recommendedBands().size());
+        assertEquals(20L, response.recommendedBands().get(0).bandId());
         verify(performancePort, never()).recommendPerformances(anyInt());
     }
 
@@ -113,6 +113,7 @@ class FanHomeServiceTest {
         when(followPort.findFollowingBandIds(USER_ID)).thenReturn(FOLLOWING_BAND_IDS);
         when(notificationPort.hasUnread(USER_ID)).thenReturn(false);
         when(postPort.findRecentNews(FOLLOWING_BAND_IDS, 5)).thenReturn(List.of());
+        when(bandPort.recommendTopBands(USER_ID, 10)).thenReturn(List.of());
         when(performancePort.findUpcomingByBandIds(FOLLOWING_BAND_IDS, 3)).thenReturn(List.of());
         when(performancePort.recommendPerformances(3)).thenReturn(List.of(performanceItem(200L)));
 
@@ -126,7 +127,7 @@ class FanHomeServiceTest {
     void getFanHome_안읽은_알림_여부를_포함해_반환한다() {
         when(followPort.findFollowingBandIds(USER_ID)).thenReturn(List.of());
         when(notificationPort.hasUnread(USER_ID)).thenReturn(true);
-        when(bandPort.recommendTopBands(USER_ID, 5)).thenReturn(List.of());
+        when(bandPort.recommendTopBands(USER_ID, 10)).thenReturn(List.of());
         when(performancePort.recommendPerformances(3)).thenReturn(List.of());
 
         FanHomeResponse response = service.getFanHome(USER_ID);
