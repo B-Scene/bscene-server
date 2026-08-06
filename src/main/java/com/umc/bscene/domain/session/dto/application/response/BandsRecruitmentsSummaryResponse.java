@@ -11,7 +11,6 @@ import java.time.LocalDateTime;
 public record BandsRecruitmentsSummaryResponse(
         Long recruitmentId,
         Long applySubmissionId,
-        Long sessionApplicationId,
         LocalDateTime deadline,
         String recruitPostTitle,
         String recruitPart,
@@ -24,7 +23,7 @@ public record BandsRecruitmentsSummaryResponse(
         String applierRegion,
         ApplicationStatus status
 ) {
-    public BandsRecruitmentsSummaryResponse(Long recruitmentId, Long applySubmissionId, Long sessionApplicationId, LocalDateTime deadline, String recruitPostTitle, Part recruitPart, Genre recruitGenre, Region recruitRegion, String applierProfileImageUrl, String applierName, Part applierPart, SkillLevel applierSkill, Region applierRegion, ApplicationStatus status) {
-        this(recruitmentId, applySubmissionId, sessionApplicationId, deadline, recruitPostTitle, recruitPart.getDescription(), recruitGenre.getName(), recruitRegion.getName(), applierProfileImageUrl, applierName, applierPart.getDescription(), applierSkill.getDescription(), applierRegion.getName(), status);
+    public BandsRecruitmentsSummaryResponse(Long recruitmentId, Long applySubmissionId, LocalDateTime deadline, String recruitPostTitle, Part recruitPart, Genre recruitGenre, Region recruitRegion, String applierProfileImageUrl, String applierName, Part applierPart, SkillLevel applierSkill, Region applierRegion, ApplicationStatus status) {
+        this(recruitmentId, applySubmissionId, deadline, recruitPostTitle, recruitPart.getDescription(), recruitGenre.getName(), recruitRegion.getName(), applierProfileImageUrl, applierName, applierPart.getDescription(), applierSkill.getDescription(), applierRegion.getName(), status);
     }
 }

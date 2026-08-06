@@ -39,7 +39,6 @@ select
     new com.umc.bscene.domain.session.dto.application.response.BandsRecruitmentsSummaryResponse(
             sr.sessionRecruitmentId,
             sas.applicationSubmissionId,
-            sa.sessionApplicationId,
             sr.deadlineAt,
             sr.recruitmentTitle,
             sr.part,

@@ -133,7 +133,6 @@ class UserAdapterTest {
         return new BandsRecruitmentsSummaryResponse(
                 recruitmentId,
                 applySubmissionId,
-                applySubmissionId + 400,
                 LocalDateTime.of(2026, 3, 1, 12, 0),
                 recruitPostTitle,
                 Part.GUITAR,
@@ -603,7 +602,6 @@ class UserAdapterTest {
 
             SessionRecruitmentResponse.Recruiter first = item.recruiters().get(0);
             assertThat(first.applySubmissionId()).isEqualTo(501L);
-            assertThat(first.sessionApplicationId()).isEqualTo(901L);
             assertThat(first.profileImageUrl()).isEqualTo("https://cdn.test/a.jpg");
             assertThat(first.name()).isEqualTo("지원자A");
             assertThat(first.part()).isEqualTo("베이스");

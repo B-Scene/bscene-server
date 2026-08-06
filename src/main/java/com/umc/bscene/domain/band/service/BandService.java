@@ -34,6 +34,7 @@ import com.umc.bscene.domain.band.repository.BandRepository;
 import com.umc.bscene.domain.band.repository.MusicLinkRepository;
 import com.umc.bscene.domain.band.response.code.BandErrorCode;
 import com.umc.bscene.domain.search.event.BandChangedEvent;
+import com.umc.bscene.domain.stream.exception.StreamException;
 import com.umc.bscene.domain.user.entity.User;
 import com.umc.bscene.domain.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
@@ -119,8 +120,13 @@ public class BandService {
         Band band = getBand(bandId);
 
         Long followerCount = followPort.countFollowersByBandId(bandId);
+        Long liveId;
         boolean isFollowing = followPort.isFollowing(userId, bandId);
-        Long liveId = streamPort.findOpenLiveId(bandId).orElse(null);
+        try {
+            liveId = streamPort.findOpenLiveId(bandId).orElse(null);
+        } catch (StreamException e) {
+            liveId = null;
+        }
 
         return BandDetailResponse.of(band, followerCount, isFollowing, liveId);
     }
@@ -252,7 +258,7 @@ public class BandService {
     public List<BandMemberResponse> getMembers(Long bandId) {
         getBand(bandId);
 
-        return bandMemberRepository.findByBand_IdOrderByIdAsc(bandId).stream()
+        return bandMemberRepository.findWithProfileByBand_IdOrderByIdAsc(bandId).stream()
                 .map(BandMemberResponse::from)
                 .toList();
     }
