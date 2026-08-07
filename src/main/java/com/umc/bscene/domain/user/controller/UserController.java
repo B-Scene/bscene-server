@@ -154,7 +154,7 @@ public class UserController {
         return ResponseEntity.status(successResponse.getStatus()).body(successResponse);
     }
 
-    // 내 정보 수정 API (닉네임/관심 장르/활동 지역을 통째로 교체)
+    // 내 정보 수정 API (닉네임/프로필 이미지/관심 장르/활동 지역을 통째로 교체)
     @PatchMapping("/me/information")
     public ResponseEntity<SuccessResponse<MyInfoResponse>> updateMyInfo(
             @AuthenticationPrincipal AuthMember authMember,

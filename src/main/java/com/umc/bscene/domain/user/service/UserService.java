@@ -72,10 +72,10 @@ public class UserService {
 
     // 팬모드 마이페이지 조회
     public FanMyPageResponse getFanMyPage(User user) {
-        // 닉네임 : 팬 모드 사용자는 반드시 팬 프로필을 가짐 (없으면 데이터 이상)
-        String nickname = fanProfileRepository.findByUser(user)
-                .map(FanProfile::getNickname)
+        // 팬 모드 사용자는 반드시 팬 프로필을 가짐 (없으면 데이터 이상)
+        FanProfile fanProfile = fanProfileRepository.findByUser(user)
                 .orElseThrow(() -> new UserException(UserErrorCode.FAN_PROFILE_NOT_FOUND));
+        String nickname = fanProfile.getNickname();
 
         // 등록한 관심장르를 선택 순서(PK순)로 조회 — 대표 장르 후보 목록이자 동점 처리 기준
         List<Genre> onboardingGenres = userGenresRepository.findAllByUserOrderByIdAsc(user).stream()
@@ -100,6 +100,7 @@ public class UserService {
 
         return FanMyPageResponse.of(
                 nickname,
+                fanProfile.getProfileImageUrl(),
                 genre,
                 additionalGenreCount,
                 regions,
@@ -235,6 +236,7 @@ public class UserService {
             throw new UserException(UserErrorCode.DUPLICATE_NICKNAME);
         }
         fanProfile.updateNickname(nickname);
+        fanProfile.updateProfileImage(request.profileImageUrl());
 
         // 검사와 커밋 사이에 다른 유저가 같은 닉네임을 저장하는 race 대비 :
         // 닉네임 UPDATE를 미리 flush해서 unique 제약 위반이면 500 대신 409로 응답
