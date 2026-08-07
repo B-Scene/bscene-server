@@ -3,8 +3,6 @@ package com.umc.bscene.domain.fanhome.service;
 import com.umc.bscene.domain.fanhome.dto.response.FanHomeResponse;
 import com.umc.bscene.domain.fanhome.dto.response.FanHomeResponse.HomePerformanceItem;
 import com.umc.bscene.domain.fanhome.dto.response.FanHomeResponse.RecommendedBandItem;
-import com.umc.bscene.domain.auth.enums.onboarding.Genre;
-import com.umc.bscene.domain.auth.enums.onboarding.Region;
 import com.umc.bscene.domain.fanhome.enums.PerformanceSectionType;
 import com.umc.bscene.domain.fanhome.enums.UpcomingSortType;
 import com.umc.bscene.domain.fanhome.port.BandPort;
@@ -64,7 +62,7 @@ class FanHomeServiceTest {
     }
 
     private RecommendedBandItem recommendedBand(Long id) {
-        return new RecommendedBandItem(id, "밴드", Genre.INDIE, Region.SEOUL, null);
+        return new RecommendedBandItem(id, "밴드", "인디", "서울", null);
     }
 
     // ---------- getFanHome ----------
