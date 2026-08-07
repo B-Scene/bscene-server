@@ -38,6 +38,7 @@ import java.util.Map;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyList;
@@ -193,6 +194,22 @@ class UserServiceMyPageTest {
         assertEquals(2L, response.participatedPerformanceCount());
     }
 
+    @Test
+    void getFanMyPage_프로필_이미지를_포함해_반환한다() {
+        User user = user();
+        FanProfile fanProfile = FanProfile.builder()
+                .id(100L).user(user).nickname("세진").profileImageUrl("https://example.com/profile.png").build();
+        when(fanProfileRepository.findByUser(user)).thenReturn(Optional.of(fanProfile));
+        when(userGenresRepository.findAllByUserOrderByIdAsc(user))
+                .thenReturn(List.of(userGenre(user, Genre.INDIE)));
+        when(userRegionsRepository.findAllByUser(user)).thenReturn(List.of());
+        when(followPort.countFollowedBandsGroupedByGenre(USER_ID)).thenReturn(Map.of());
+
+        FanMyPageResponse response = service.getFanMyPage(user);
+
+        assertEquals("https://example.com/profile.png", response.profileImageUrl());
+    }
+
     // ---------- getParticipationHistory (연도 필터 → 날짜 범위 변환) ----------
 
     @Test
@@ -305,7 +322,7 @@ class UserServiceMyPageTest {
     // ---------- updateMyInfo ----------
 
     private MyInfoUpdateRequest updateRequest() {
-        return new MyInfoUpdateRequest("새닉네임", List.of(Genre.INDIE, Genre.METAL), List.of(Region.SEOUL));
+        return new MyInfoUpdateRequest("새닉네임", null, List.of(Genre.INDIE, Genre.METAL), List.of(Region.SEOUL));
     }
 
     @Test
@@ -379,13 +396,59 @@ class UserServiceMyPageTest {
     }
 
     @Test
+    void updateMyInfo_이미지_URL을_주면_프로필_이미지가_바뀐다() {
+        User user = user();
+        FanProfile fanProfile = fanProfile(user, "기존닉네임");
+        when(userRepository.findById(USER_ID)).thenReturn(Optional.of(user));
+        when(fanProfileRepository.findByUser(user)).thenReturn(Optional.of(fanProfile));
+        when(fanProfileRepository.existsByNicknameAndUser_IdNot("새닉네임", USER_ID)).thenReturn(false);
+        MyInfoUpdateRequest request = new MyInfoUpdateRequest(
+                "새닉네임", "https://example.com/new-image.png", List.of(Genre.INDIE), List.of(Region.SEOUL));
+
+        MyInfoResponse response = service.updateMyInfo(USER_ID, request);
+
+        assertEquals("https://example.com/new-image.png", fanProfile.getProfileImageUrl());
+        assertEquals("https://example.com/new-image.png", response.profileImageUrl());
+    }
+
+    @Test
+    void updateMyInfo_이미지_URL이_null이면_기존_이미지를_유지한다() {
+        User user = user();
+        FanProfile fanProfile = FanProfile.builder()
+                .id(100L).user(user).nickname("기존닉네임").profileImageUrl("https://example.com/old.png").build();
+        when(userRepository.findById(USER_ID)).thenReturn(Optional.of(user));
+        when(fanProfileRepository.findByUser(user)).thenReturn(Optional.of(fanProfile));
+        when(fanProfileRepository.existsByNicknameAndUser_IdNot("새닉네임", USER_ID)).thenReturn(false);
+
+        service.updateMyInfo(USER_ID, updateRequest());
+
+        assertEquals("https://example.com/old.png", fanProfile.getProfileImageUrl());
+    }
+
+    @Test
+    void updateMyInfo_이미지_URL이_빈_문자열이면_이미지를_삭제한다() {
+        User user = user();
+        FanProfile fanProfile = FanProfile.builder()
+                .id(100L).user(user).nickname("기존닉네임").profileImageUrl("https://example.com/old.png").build();
+        when(userRepository.findById(USER_ID)).thenReturn(Optional.of(user));
+        when(fanProfileRepository.findByUser(user)).thenReturn(Optional.of(fanProfile));
+        when(fanProfileRepository.existsByNicknameAndUser_IdNot("새닉네임", USER_ID)).thenReturn(false);
+        MyInfoUpdateRequest request = new MyInfoUpdateRequest(
+                "새닉네임", "", List.of(Genre.INDIE), List.of(Region.SEOUL));
+
+        service.updateMyInfo(USER_ID, request);
+
+        assertNull(fanProfile.getProfileImageUrl());
+    }
+
+    @Test
     void updateMyInfo_요청에_중복된_장르가_있으면_한_번만_저장한다() {
         User user = user();
         when(userRepository.findById(USER_ID)).thenReturn(Optional.of(user));
         when(fanProfileRepository.findByUser(user)).thenReturn(Optional.of(fanProfile(user, "기존닉네임")));
         when(fanProfileRepository.existsByNicknameAndUser_IdNot("새닉네임", USER_ID)).thenReturn(false);
         MyInfoUpdateRequest request = new MyInfoUpdateRequest(
-                "새닉네임", List.of(Genre.INDIE, Genre.INDIE, Genre.METAL), List.of(Region.SEOUL, Region.SEOUL));
+                "새닉네임", null, List.of(Genre.INDIE, Genre.INDIE, Genre.METAL), List.of(Region.SEOUL, Region.SEOUL));
 
         service.updateMyInfo(USER_ID, request);
 
