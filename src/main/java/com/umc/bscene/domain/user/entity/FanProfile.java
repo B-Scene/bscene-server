@@ -32,4 +32,12 @@ public class FanProfile extends BaseEntity {
     public void updateNickname(String nickname) {
         this.nickname = nickname;
     }
+
+    // 내 정보 수정에서 프로필 이미지 변경 (null: 기존 값 유지, 빈 문자열: 이미지 삭제)
+    public void updateProfileImage(String profileImageUrl) {
+        if (profileImageUrl == null) {
+            return;
+        }
+        this.profileImageUrl = profileImageUrl.isBlank() ? null : profileImageUrl.trim();
+    }
 }
