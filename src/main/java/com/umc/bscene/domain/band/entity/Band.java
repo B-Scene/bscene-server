@@ -1,11 +1,14 @@
 package com.umc.bscene.domain.band.entity;
 
+import com.fasterxml.jackson.annotation.JsonBackReference;
 import com.umc.bscene.domain.auth.enums.onboarding.Genre;
 import com.umc.bscene.domain.auth.enums.onboarding.Region;
 import com.umc.bscene.domain.user.entity.User;
 import com.umc.bscene.global.entity.BaseEntity;
 import jakarta.persistence.*;
 import lombok.*;
+
+import java.util.List;
 
 @Entity
 @Getter
@@ -40,6 +43,10 @@ public class Band extends BaseEntity {
 
     @Column(length = 1000)
     private String description;
+
+    @JsonBackReference
+    @OneToMany(mappedBy = "band")
+    private List<BandMember> bandMembers;
 
     public void update(
             String name,

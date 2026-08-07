@@ -1,5 +1,6 @@
 package com.umc.bscene.domain.band.controller;
 
+import com.umc.bscene.domain.band.dto.FollowerBlock;
 import com.umc.bscene.domain.band.dto.request.BandCreateRequest;
 import com.umc.bscene.domain.band.dto.request.BandOwnerTransferRequest;
 import com.umc.bscene.domain.band.dto.request.BandUpdateRequest;
@@ -12,12 +13,16 @@ import com.umc.bscene.domain.band.response.code.BandSuccessCode;
 import com.umc.bscene.domain.band.service.BandRecommendationService;
 import com.umc.bscene.domain.band.service.BandService;
 import com.umc.bscene.domain.recommendation.service.InteractionService;
+import com.umc.bscene.global.response.CursorPage;
 import com.umc.bscene.global.response.SuccessResponse;
 import com.umc.bscene.global.security.entity.AuthMember;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
@@ -29,6 +34,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
+@Validated
 @RequiredArgsConstructor
 @RequestMapping("/bands")
 public class BandController {
@@ -165,6 +171,26 @@ public class BandController {
         SuccessResponse<Void> successResponse = SuccessResponse.of(
                 (Void) null,
                 BandSuccessCode.BAND_OWNER_TRANSFER_SUCCESS
+        );
+
+        return ResponseEntity.status(successResponse.getStatus()).body(successResponse);
+    }
+
+    // 밴드모드 팔로워 목록 조회 API (현재 활성화된 멤버 프로필이 소속된 밴드의 팔로워 커서 페이징)
+    @GetMapping("/follower")
+    public ResponseEntity<SuccessResponse<CursorPage<FollowerBlock>>> getMyBandFollowers(
+            @AuthenticationPrincipal AuthMember authMember,
+            @RequestParam(required = false) Long cursor,
+            @RequestParam(defaultValue = "10") @Min(1) @Max(15) Integer size
+    ) {
+        CursorPage<FollowerBlock> response = bandService.findPagedMyFollowers(
+                authMember.getUser().getId(),
+                cursor,
+                size
+        );
+        SuccessResponse<CursorPage<FollowerBlock>> successResponse = SuccessResponse.of(
+                response,
+                BandSuccessCode.BAND_FOLLOWER_LIST_GET_SUCCESS
         );
 
         return ResponseEntity.status(successResponse.getStatus()).body(successResponse);
