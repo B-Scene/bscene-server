@@ -31,7 +31,7 @@ import java.util.List;
 public class FanHomeService {
 
     private static final int BAND_NEWS_LIMIT = 5;         // 팔로우한 밴드 소식 최대 5개
-    private static final int RECOMMENDED_BAND_LIMIT = 5;  // 이런 밴드는 어때요? 최대 5개
+    private static final int RECOMMENDED_BAND_LIMIT = 10; // 이런 밴드는 어때요? 최대 10개
     private static final int PERFORMANCE_LIMIT = 3;       // 공연 섹션 최대 3개
     private static final int MAX_NEWS_PAGE_SIZE = 30;     // 소식 전체조회 페이지 크기 상한
     private static final int MAX_PERFORMANCE_PAGE_SIZE = 30; // 다가오는 공연 목록 페이지 크기 상한
@@ -56,10 +56,8 @@ public class FanHomeService {
                 ? postPort.findRecentNews(followingBandIds, BAND_NEWS_LIMIT)
                 : List.of();
 
-        // 이런 밴드는 어때요? (팔로우하는 밴드가 없는 사용자에게만 노출)
-        List<RecommendedBandItem> recommendedBands = hasFollowingBands
-                ? List.of()
-                : bandPort.recommendTopBands(userId, RECOMMENDED_BAND_LIMIT);
+        // 이런 밴드는 어때요? (팔로우 여부와 무관하게 항상 노출 — 추천 로직이 이미 팔로우한 밴드는 제외해준다)
+        List<RecommendedBandItem> recommendedBands = bandPort.recommendTopBands(userId, RECOMMENDED_BAND_LIMIT);
 
         // 팔로우한 밴드들의 다가오는 공연 (팔로우 없으면 빈 리스트)
         List<HomePerformanceItem> upcomingPerformances = hasFollowingBands

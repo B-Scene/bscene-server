@@ -1,5 +1,6 @@
 package com.umc.bscene.domain.follow.repository;
 
+import com.umc.bscene.domain.follow.dto.FollowerRow;
 import com.umc.bscene.domain.follow.entity.Follow;
 import com.umc.bscene.domain.user.enums.UserStatus;
 import org.springframework.data.domain.Pageable;
@@ -72,5 +73,27 @@ public interface FollowRepository extends JpaRepository<Follow, Long> {
     List<Object[]> countRecentFollowersByBandIdIn(
             @Param("bandIds") List<Long> bandIds,
             @Param("since") LocalDateTime since
+    );
+
+    // BandAdapter에서 사용 : 밴드 팔로워 커서 페이징 조회 (최신 팔로우 순)
+    // 팬 닉네임/이미지가 필요하므로 FanProfile을 left join (팬 프로필이 없는 사용자도 목록에서 누락되지 않게)
+    @Query("""
+select new com.umc.bscene.domain.follow.dto.FollowerRow(
+    f.id,
+    u.id,
+    fp.profileImageUrl,
+    fp.nickname
+)
+from Follow f
+    join f.user u
+    left join FanProfile fp on fp.user.id = u.id
+where f.band.id = :bandId
+    and (:cursor is null or f.id < :cursor)
+order by f.id desc
+""")
+    List<FollowerRow> findPagedFollowers(
+            @Param("bandId") Long bandId,
+            @Param("cursor") Long cursor,
+            Pageable pageable
     );
 }
