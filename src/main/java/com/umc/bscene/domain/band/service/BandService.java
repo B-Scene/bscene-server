@@ -1,6 +1,7 @@
 package com.umc.bscene.domain.band.service;
 
 import com.umc.bscene.domain.band.dto.BandPushMessage;
+import com.umc.bscene.domain.band.dto.FollowerBlock;
 import com.umc.bscene.domain.band.dto.request.BandCreateRequest;
 import com.umc.bscene.domain.band.dto.request.BandMemberInviteRequest;
 import com.umc.bscene.domain.band.dto.request.BandMemberProfileCreateRequest;
@@ -37,6 +38,7 @@ import com.umc.bscene.domain.search.event.BandChangedEvent;
 import com.umc.bscene.domain.stream.exception.StreamException;
 import com.umc.bscene.domain.user.entity.User;
 import com.umc.bscene.domain.user.repository.UserRepository;
+import com.umc.bscene.global.response.CursorPage;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
@@ -492,5 +494,20 @@ public class BandService {
         if (!bandMemberRepository.existsByBandMemberProfile_Id(bandMemberProfile.getId())) {
             bandMemberProfileRepository.delete(bandMemberProfile);
         }
+    }
+
+    // 밴드모드 팔로워 목록 조회 : 현재 활성화된 멤버 프로필이 소속된 밴드의 팔로워를 커서 페이징으로 반환
+    public CursorPage<FollowerBlock> findPagedMyFollowers(Long userId, Long cursor, Integer size) {
+        List<Long> bandIds = bandRepository.findBandIdsByActiveProfile(
+                userId,
+                BandMemberType.MEMBER,
+                BandMemberStatus.ACCEPTED
+        );
+
+        if (bandIds.isEmpty()) {
+            throw new BandException(BandErrorCode.BAND_MODE_REQUIRED);
+        }
+
+        return followPort.findPagedMyBandFollowers(bandIds.getFirst(), cursor, size);
     }
 }
