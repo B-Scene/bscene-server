@@ -1,7 +1,5 @@
 package com.umc.bscene.domain.fanhome.dto.response;
 
-import com.umc.bscene.domain.auth.enums.onboarding.Genre;
-import com.umc.bscene.domain.auth.enums.onboarding.Region;
 import com.umc.bscene.domain.post.enums.PostType;
 
 import java.time.LocalDateTime;
@@ -18,8 +16,8 @@ public record FollowingBandNewsResponse(
             Long bandId,
             String bandName,
             String bandProfileImageUrl,
-            Genre genre,
-            Region region,
+            String genre,                  // 밴드 장르 한글명, 예: "메탈"
+            String region,                 // 밴드 지역 한글명, 예: "서울"
             Long postId,
             PostType type,                 // PHOTO | VIDEO | TEXT (프론트 렌더 분기)
             List<String> mediaUrls,        // PHOTO: 사진 전부(sortOrder순) / VIDEO: 썸네일 / TEXT: 빈 배열

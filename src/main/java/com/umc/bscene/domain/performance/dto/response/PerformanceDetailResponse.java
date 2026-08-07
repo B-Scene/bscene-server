@@ -1,7 +1,5 @@
 package com.umc.bscene.domain.performance.dto.response;
 
-import com.umc.bscene.domain.auth.enums.onboarding.Genre;
-import com.umc.bscene.domain.auth.enums.onboarding.Region;
 import com.umc.bscene.domain.band.entity.Band;
 import com.umc.bscene.domain.performance.entity.Performance;
 import com.umc.bscene.domain.performance.entity.PerformanceTag;
@@ -16,10 +14,10 @@ import java.util.List;
 public record PerformanceDetailResponse(
         Long performanceId,
         String title,
-        Genre genre,
+        String genre,                       // 공연 장르 한글명, 예: "하드록"
         LocalDate performanceDate,
         LocalTime startTime,
-        Region region,
+        String region,                      // 공연 지역 한글명, 예: "서울"
         String venue,
         String description,
         String ticketPrice,
@@ -37,8 +35,8 @@ public record PerformanceDetailResponse(
     public record CastingBand(
             Long bandId,
             String name,
-            Genre genre,
-            Region region,
+            String genre,                   // 밴드 장르 한글명
+            String region,                  // 밴드 지역 한글명
             String profileImageUrl
     ) {
     }
@@ -50,10 +48,10 @@ public record PerformanceDetailResponse(
         return new PerformanceDetailResponse(
                 performance.getId(),
                 performance.getTitle(),
-                performance.getGenre(),
+                performance.getGenre().getName(),
                 performance.getPerformanceDate(),
                 performance.getStartTime(),
-                performance.getRegion(),
+                performance.getRegion().getName(),
                 performance.getVenue(),
                 performance.getDescription(),
                 performance.getTicketPrice(),
@@ -67,8 +65,8 @@ public record PerformanceDetailResponse(
                 List.of(new CastingBand(
                         band.getId(),
                         band.getName(),
-                        band.getGenre(),
-                        band.getRegion(),
+                        band.getGenre().getName(),
+                        band.getRegion().getName(),
                         band.getProfileImageUrl()
                 ))
         );

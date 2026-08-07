@@ -23,8 +23,8 @@ public class FanHomeAdapter implements BandPort {
                 .map(band -> new RecommendedBandItem(
                         band.bandId(),
                         band.name(),
-                        band.genre(),
-                        band.region(),
+                        band.genre().getName(),
+                        band.region().getName(),
                         band.profileImageUrl()
                 ))
                 .toList();
