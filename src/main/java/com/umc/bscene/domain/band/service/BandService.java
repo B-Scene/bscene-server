@@ -28,6 +28,7 @@ import com.umc.bscene.domain.band.exception.BandException;
 import com.umc.bscene.domain.band.port.FollowPort;
 import com.umc.bscene.domain.band.port.NotifyPort;
 import com.umc.bscene.domain.band.port.PerformancePort;
+import com.umc.bscene.domain.band.port.PostCommentPort;
 import com.umc.bscene.domain.band.port.StreamPort;
 import com.umc.bscene.domain.band.repository.BandMemberProfileRepository;
 import com.umc.bscene.domain.band.repository.BandMemberRepository;
@@ -64,6 +65,7 @@ public class BandService {
     private final PerformancePort performancePort;
     private final StreamPort streamPort;
     private final NotifyPort notifyPort;
+    private final PostCommentPort postCommentPort;
     private final ApplicationEventPublisher eventPublisher;
     private final BandMemberProfileService bandMemberProfileService;
 
@@ -482,6 +484,10 @@ public class BandService {
 
     private void deleteBandMemberAndOrphanProfile(BandMember bandMember) {
         BandMemberProfile bandMemberProfile = bandMember.getBandMemberProfile();
+
+        // 밴드 명의로 남긴 댓글은 멤버 자격이 사라질 때 함께 삭제
+        // (아래 고아 프로필 삭제가 댓글의 FK 참조로 실패하는 것 방지 포함)
+        postCommentPort.deleteBandComments(bandMember.getBand().getId(), bandMember.getUser().getId());
 
         bandMemberRepository.delete(bandMember);
 

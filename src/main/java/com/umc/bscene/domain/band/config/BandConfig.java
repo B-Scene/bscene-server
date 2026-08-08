@@ -2,6 +2,7 @@ package com.umc.bscene.domain.band.config;
 
 import com.umc.bscene.domain.band.adapter.BandInviteNotificationAdapter;
 import com.umc.bscene.domain.band.adapter.FanHomeAdapter;
+import com.umc.bscene.domain.band.adapter.PostAdapter;
 import com.umc.bscene.domain.band.adapter.SearchAdapter;
 import com.umc.bscene.domain.band.adapter.SessionAdapter;
 import com.umc.bscene.domain.band.repository.BandMemberRepository;
@@ -34,5 +35,11 @@ public class BandConfig {
     @Bean
     public BandInviteNotificationAdapter bandInviteNotificationAdapter(BandMemberRepository bandMemberRepository) {
         return new BandInviteNotificationAdapter(bandMemberRepository);
+    }
+
+    // 게시물 도메인 BandPort 구현 어댑터 (밴드모드 댓글의 멤버십 검증·명의 프로필 조회)
+    @Bean
+    public PostAdapter postBandAdapter(BandMemberRepository bandMemberRepository) {
+        return new PostAdapter(bandMemberRepository);
     }
 }

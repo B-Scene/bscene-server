@@ -17,9 +17,12 @@ public enum PostErrorCode implements BaseResponseCode {
 
     NOT_POST_BAND_MEMBER(FORBIDDEN, "POST403_1", "콘텐츠를 수정할 권한이 없어요."),
     NOT_COMMENT_OWNER(FORBIDDEN, "POST403_2", "본인이 작성한 댓글만 수정/삭제할 수 있어요."),
+    BAND_COMMENT_NOT_MEMBER(FORBIDDEN, "POST403_3", "밴드모드에서는 소속 밴드의 게시물에만 댓글을 쓸 수 있어요."),
+    OWN_BAND_FAN_COMMENT_NOT_ALLOWED(FORBIDDEN, "POST403_4", "소속 밴드의 게시물에는 밴드모드에서만 댓글을 쓸 수 있어요."),
 
     POST_NOT_FOUND(NOT_FOUND, "POST404_1", "존재하지 않는 콘텐츠예요."),
     COMMENT_NOT_FOUND(NOT_FOUND, "POST404_2", "존재하지 않는 댓글이에요."),
+    BAND_MEMBER_PROFILE_NOT_FOUND(NOT_FOUND, "POST404_3", "밴드 멤버 프로필이 존재하지 않아요."),
 
     ALREADY_LIKED(CONFLICT, "POST409_1", "이미 좋아요한 콘텐츠예요.");
 
