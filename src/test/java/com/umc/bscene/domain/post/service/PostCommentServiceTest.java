@@ -3,6 +3,8 @@ package com.umc.bscene.domain.post.service;
 import com.umc.bscene.domain.auth.enums.onboarding.Genre;
 import com.umc.bscene.domain.auth.enums.onboarding.Region;
 import com.umc.bscene.domain.band.entity.Band;
+import com.umc.bscene.domain.band.entity.BandMemberProfile;
+import com.umc.bscene.domain.band.repository.BandMemberProfileRepository;
 import com.umc.bscene.domain.post.dto.request.PostCommentRequest;
 import com.umc.bscene.domain.post.dto.response.PostCommentListResponse;
 import com.umc.bscene.domain.post.dto.response.PostCommentListResponse.FanProfileInfo;
@@ -11,11 +13,13 @@ import com.umc.bscene.domain.post.entity.Post;
 import com.umc.bscene.domain.post.entity.PostComment;
 import com.umc.bscene.domain.post.enums.PostType;
 import com.umc.bscene.domain.post.exception.PostException;
+import com.umc.bscene.domain.post.port.BandPort;
 import com.umc.bscene.domain.post.port.UserPort;
 import com.umc.bscene.domain.post.repository.PostCommentRepository;
 import com.umc.bscene.domain.post.repository.PostRepository;
 import com.umc.bscene.domain.post.response.code.PostErrorCode;
 import com.umc.bscene.domain.user.entity.User;
+import com.umc.bscene.domain.user.enums.UserMode;
 import com.umc.bscene.domain.user.repository.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -57,6 +61,10 @@ class PostCommentServiceTest {
     private UserRepository userRepository;
     @Mock
     private UserPort userPort;
+    @Mock
+    private BandPort bandPort;
+    @Mock
+    private BandMemberProfileRepository bandMemberProfileRepository;
 
     private PostCommentService service;
 
@@ -66,23 +74,39 @@ class PostCommentServiceTest {
     private static final Long BAND_ID = 10L;
     private static final Long POST_ID = 100L;
     private static final Long COMMENT_ID = 1000L;
+    private static final Long PROFILE_ID = 77L;
 
     @BeforeEach
     void setUp() {
-        service = new PostCommentService(postRepository, postCommentRepository, userRepository, userPort);
+        service = new PostCommentService(
+                postRepository, postCommentRepository, userRepository, userPort, bandPort, bandMemberProfileRepository);
     }
 
     private User user(Long id) {
         return User.builder().id(id).build();
     }
 
+    private User user(Long id, UserMode currentMode) {
+        return User.builder().id(id).currentMode(currentMode).build();
+    }
+
     private Post post() {
-        Band band = Band.builder().id(BAND_ID).name("밴드").genre(Genre.HARD_ROCK).region(Region.SEOUL).build();
+        Band band = Band.builder().id(BAND_ID).name("밴드").genre(Genre.HARD_ROCK).region(Region.SEOUL)
+                .profileImageUrl("밴드이미지").build();
         return Post.builder().id(POST_ID).band(band).type(PostType.TEXT).title("제목").description("설명").build();
     }
 
     private PostComment comment(Long id, Long writerId, String content) {
         return PostComment.builder().id(id).post(post()).user(user(writerId)).content(content).build();
+    }
+
+    private BandMemberProfile memberProfile(Long id) {
+        return BandMemberProfile.builder().id(id).nickname("밴드닉").build();
+    }
+
+    private PostComment bandComment(Long id, Long writerId, String content) {
+        return PostComment.builder().id(id).post(post()).user(user(writerId))
+                .bandMemberProfile(memberProfile(PROFILE_ID)).content(content).build();
     }
 
     private void mockPostExists() {
@@ -107,7 +131,7 @@ class PostCommentServiceTest {
         when(userPort.findBlockedUserIds(USER_ID)).thenReturn(Set.of());
         when(postCommentRepository.findMyComments(POST_ID, USER_ID))
                 .thenReturn(List.of(comment(1L, USER_ID, "내 댓글")));
-        when(postCommentRepository.findComments(eq(POST_ID), isNull(), any(), any(Pageable.class)))
+        when(postCommentRepository.findComments(eq(POST_ID), isNull(), eq(USER_ID), any(), any(Pageable.class)))
                 .thenReturn(new SliceImpl<>(List.of(comment(2L, OTHER_USER_ID, "남의 댓글")),
                         PageRequest.of(0, 10), false));
         when(userPort.findFanProfiles(any()))
@@ -126,7 +150,7 @@ class PostCommentServiceTest {
     void getComments_다음_페이지부터는_내_댓글을_다시_내려주지_않는다() {
         mockPostExists();
         when(userPort.findBlockedUserIds(USER_ID)).thenReturn(Set.of());
-        when(postCommentRepository.findComments(eq(POST_ID), eq(5L), any(), any(Pageable.class)))
+        when(postCommentRepository.findComments(eq(POST_ID), eq(5L), eq(USER_ID), any(), any(Pageable.class)))
                 .thenReturn(new SliceImpl<>(List.of(), PageRequest.of(0, 10), false));
 
         PostCommentListResponse response = service.getComments(USER_ID, POST_ID, 5L, null);
@@ -139,14 +163,15 @@ class PostCommentServiceTest {
     void getComments_차단한_유저와_본인을_items에서_제외한다() {
         mockPostExists();
         when(userPort.findBlockedUserIds(USER_ID)).thenReturn(Set.of(BLOCKED_USER_ID));
-        when(postCommentRepository.findComments(eq(POST_ID), eq(5L), any(), any(Pageable.class)))
+        when(postCommentRepository.findComments(eq(POST_ID), eq(5L), eq(USER_ID), any(), any(Pageable.class)))
                 .thenReturn(new SliceImpl<>(List.of(), PageRequest.of(0, 10), false));
 
         service.getComments(USER_ID, POST_ID, 5L, null);
 
         @SuppressWarnings("unchecked")
         ArgumentCaptor<Set<Long>> excludedCaptor = ArgumentCaptor.captor();
-        verify(postCommentRepository).findComments(eq(POST_ID), eq(5L), excludedCaptor.capture(), any(Pageable.class));
+        verify(postCommentRepository).findComments(
+                eq(POST_ID), eq(5L), eq(USER_ID), excludedCaptor.capture(), any(Pageable.class));
         assertTrue(excludedCaptor.getValue().contains(BLOCKED_USER_ID));
         assertTrue(excludedCaptor.getValue().contains(USER_ID));
     }
@@ -155,7 +180,7 @@ class PostCommentServiceTest {
     void getComments_다음_페이지가_있으면_마지막_댓글_id를_커서로_반환한다() {
         mockPostExists();
         when(userPort.findBlockedUserIds(USER_ID)).thenReturn(Set.of());
-        when(postCommentRepository.findComments(eq(POST_ID), eq(5L), any(), any(Pageable.class)))
+        when(postCommentRepository.findComments(eq(POST_ID), eq(5L), eq(USER_ID), any(), any(Pageable.class)))
                 .thenReturn(new SliceImpl<>(
                         List.of(comment(6L, OTHER_USER_ID, "댓글6"), comment(7L, OTHER_USER_ID, "댓글7")),
                         PageRequest.of(0, 2), true));
@@ -171,7 +196,7 @@ class PostCommentServiceTest {
     void getComments_다음_페이지가_없으면_커서는_null이다() {
         mockPostExists();
         when(userPort.findBlockedUserIds(USER_ID)).thenReturn(Set.of());
-        when(postCommentRepository.findComments(eq(POST_ID), eq(5L), any(), any(Pageable.class)))
+        when(postCommentRepository.findComments(eq(POST_ID), eq(5L), eq(USER_ID), any(), any(Pageable.class)))
                 .thenReturn(new SliceImpl<>(List.of(comment(6L, OTHER_USER_ID, "댓글6")),
                         PageRequest.of(0, 10), false));
         when(userPort.findFanProfiles(any())).thenReturn(Map.of());
@@ -186,7 +211,7 @@ class PostCommentServiceTest {
     void getComments_사이즈가_없으면_10_상한을_넘으면_30으로_보정한다() {
         mockPostExists();
         when(userPort.findBlockedUserIds(USER_ID)).thenReturn(Set.of());
-        when(postCommentRepository.findComments(eq(POST_ID), eq(5L), any(), any(Pageable.class)))
+        when(postCommentRepository.findComments(eq(POST_ID), eq(5L), eq(USER_ID), any(), any(Pageable.class)))
                 .thenReturn(new SliceImpl<>(List.of(), PageRequest.of(0, 10), false));
 
         service.getComments(USER_ID, POST_ID, 5L, null);
@@ -194,16 +219,33 @@ class PostCommentServiceTest {
 
         ArgumentCaptor<Pageable> pageableCaptor = ArgumentCaptor.captor();
         verify(postCommentRepository, org.mockito.Mockito.times(2))
-                .findComments(eq(POST_ID), eq(5L), any(), pageableCaptor.capture());
+                .findComments(eq(POST_ID), eq(5L), eq(USER_ID), any(), pageableCaptor.capture());
         assertEquals(10, pageableCaptor.getAllValues().get(0).getPageSize());
         assertEquals(30, pageableCaptor.getAllValues().get(1).getPageSize());
+    }
+
+    @Test
+    void getComments_밴드_댓글은_멤버_프로필_닉네임과_밴드_이미지로_표시된다() {
+        mockPostExists();
+        when(userPort.findBlockedUserIds(USER_ID)).thenReturn(Set.of());
+        when(postCommentRepository.findComments(eq(POST_ID), eq(5L), eq(USER_ID), any(), any(Pageable.class)))
+                .thenReturn(new SliceImpl<>(List.of(bandComment(6L, OTHER_USER_ID, "밴드 댓글")),
+                        PageRequest.of(0, 10), false));
+
+        PostCommentListResponse response = service.getComments(USER_ID, POST_ID, 5L, null);
+
+        assertEquals("BAND", response.items().get(0).writerMode());
+        assertEquals("밴드닉", response.items().get(0).nickname());
+        assertEquals("밴드이미지", response.items().get(0).profileImageUrl());
+        // 밴드 댓글만 있으면 팬 프로필 조회 자체를 하지 않는다
+        verify(userPort, never()).findFanProfiles(any());
     }
 
     @Test
     void getComments_팬프로필이_없는_작성자는_닉네임이_null이다() {
         mockPostExists();
         when(userPort.findBlockedUserIds(USER_ID)).thenReturn(Set.of());
-        when(postCommentRepository.findComments(eq(POST_ID), eq(5L), any(), any(Pageable.class)))
+        when(postCommentRepository.findComments(eq(POST_ID), eq(5L), eq(USER_ID), any(), any(Pageable.class)))
                 .thenReturn(new SliceImpl<>(List.of(comment(6L, OTHER_USER_ID, "댓글")),
                         PageRequest.of(0, 10), false));
         // 팬 프로필 없는 작성자 → 맵에 항목 없음
@@ -229,9 +271,10 @@ class PostCommentServiceTest {
     }
 
     @Test
-    void createComment_성공시_댓글을_저장하고_반환한다() {
+    void createComment_팬모드면_팬_명의로_저장하고_반환한다() {
         mockPostExists();
-        when(userRepository.getReferenceById(USER_ID)).thenReturn(user(USER_ID));
+        when(userRepository.getReferenceById(USER_ID)).thenReturn(user(USER_ID, UserMode.FAN));
+        when(bandPort.isAcceptedMember(BAND_ID, USER_ID)).thenReturn(false);
         when(postCommentRepository.save(any(PostComment.class)))
                 .thenReturn(comment(COMMENT_ID, USER_ID, "새 댓글"));
 
@@ -243,6 +286,65 @@ class PostCommentServiceTest {
         ArgumentCaptor<PostComment> captor = ArgumentCaptor.captor();
         verify(postCommentRepository).save(captor.capture());
         assertEquals("새 댓글", captor.getValue().getContent());
+        assertNull(captor.getValue().getBandMemberProfile());
+    }
+
+    @Test
+    void createComment_밴드모드면_게시물_밴드의_멤버_프로필_명의로_저장한다() {
+        mockPostExists();
+        BandMemberProfile profile = memberProfile(PROFILE_ID);
+        when(userRepository.getReferenceById(USER_ID)).thenReturn(user(USER_ID, UserMode.BAND));
+        when(bandPort.isAcceptedMember(BAND_ID, USER_ID)).thenReturn(true);
+        when(bandPort.findMemberProfileId(BAND_ID, USER_ID)).thenReturn(Optional.of(PROFILE_ID));
+        when(bandMemberProfileRepository.getReferenceById(PROFILE_ID)).thenReturn(profile);
+        when(postCommentRepository.save(any(PostComment.class)))
+                .thenReturn(bandComment(COMMENT_ID, USER_ID, "밴드 댓글"));
+
+        service.createComment(USER_ID, POST_ID, new PostCommentRequest("밴드 댓글"));
+
+        ArgumentCaptor<PostComment> captor = ArgumentCaptor.captor();
+        verify(postCommentRepository).save(captor.capture());
+        assertEquals(profile, captor.getValue().getBandMemberProfile());
+    }
+
+    @Test
+    void createComment_밴드모드인데_소속_밴드의_게시물이_아니면_예외() {
+        mockPostExists();
+        when(userRepository.getReferenceById(USER_ID)).thenReturn(user(USER_ID, UserMode.BAND));
+        when(bandPort.isAcceptedMember(BAND_ID, USER_ID)).thenReturn(false);
+
+        PostException exception = assertThrows(PostException.class,
+                () -> service.createComment(USER_ID, POST_ID, new PostCommentRequest("댓글")));
+
+        assertEquals(PostErrorCode.BAND_COMMENT_NOT_MEMBER, exception.getBaseResponseCode());
+        verify(postCommentRepository, never()).save(any());
+    }
+
+    @Test
+    void createComment_밴드모드인데_멤버_프로필이_없으면_예외() {
+        mockPostExists();
+        when(userRepository.getReferenceById(USER_ID)).thenReturn(user(USER_ID, UserMode.BAND));
+        when(bandPort.isAcceptedMember(BAND_ID, USER_ID)).thenReturn(true);
+        when(bandPort.findMemberProfileId(BAND_ID, USER_ID)).thenReturn(Optional.empty());
+
+        PostException exception = assertThrows(PostException.class,
+                () -> service.createComment(USER_ID, POST_ID, new PostCommentRequest("댓글")));
+
+        assertEquals(PostErrorCode.BAND_MEMBER_PROFILE_NOT_FOUND, exception.getBaseResponseCode());
+        verify(postCommentRepository, never()).save(any());
+    }
+
+    @Test
+    void createComment_팬모드인데_소속_밴드의_게시물이면_예외() {
+        mockPostExists();
+        when(userRepository.getReferenceById(USER_ID)).thenReturn(user(USER_ID, UserMode.FAN));
+        when(bandPort.isAcceptedMember(BAND_ID, USER_ID)).thenReturn(true);
+
+        PostException exception = assertThrows(PostException.class,
+                () -> service.createComment(USER_ID, POST_ID, new PostCommentRequest("댓글")));
+
+        assertEquals(PostErrorCode.OWN_BAND_FAN_COMMENT_NOT_ALLOWED, exception.getBaseResponseCode());
+        verify(postCommentRepository, never()).save(any());
     }
 
     // ---------- updateComment ----------

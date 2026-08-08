@@ -7,6 +7,7 @@ import com.umc.bscene.domain.band.exception.BandException;
 import com.umc.bscene.domain.band.port.FollowPort;
 import com.umc.bscene.domain.band.port.NotifyPort;
 import com.umc.bscene.domain.band.port.PerformancePort;
+import com.umc.bscene.domain.band.port.PostCommentPort;
 import com.umc.bscene.domain.band.port.StreamPort;
 import com.umc.bscene.domain.band.repository.BandMemberProfileRepository;
 import com.umc.bscene.domain.band.repository.BandMemberRepository;
@@ -58,6 +59,8 @@ class BandServiceFollowerPagingTest {
     private StreamPort streamPort;
     @Mock
     private NotifyPort notifyPort;
+    @Mock
+    private PostCommentPort postCommentPort;
     @Mock
     private ApplicationEventPublisher eventPublisher;
     @Mock
