@@ -16,20 +16,39 @@ public record PostCommentListResponse(
         Long nextCursor                     // 다음 페이지 요청 시 cursor로 전달 (마지막 댓글 id, 다음 없으면 null)
 ) {
 
-    // 댓글 아이템 (작성자 표시는 팬 프로필 닉네임/이미지 — 팬 프로필이 없는 작성자는 null)
+    // 댓글 아이템
+    // FAN  : 팬 프로필 닉네임/이미지로 표시 (팬 프로필이 없는 작성자는 null)
+    // BAND : 작성 시점 멤버 프로필 닉네임 + 게시물 밴드의 프로필 이미지로 표시
     public record CommentItem(
             Long commentId,
+            String writerMode,                  // FAN | BAND (프론트 뱃지·렌더 분기용)
             String nickname,
             String profileImageUrl,
             String content,
             LocalDateTime createdAt
     ) {
 
-        public static CommentItem of(PostComment comment, Map<Long, FanProfileInfo> profileByUserId) {
+        public static CommentItem of(
+                PostComment comment,
+                Map<Long, FanProfileInfo> profileByUserId,
+                String bandProfileImageUrl
+        ) {
+            if (comment.getBandMemberProfile() != null) {
+                return new CommentItem(
+                        comment.getId(),
+                        "BAND",
+                        comment.getBandMemberProfile().getNickname(),
+                        bandProfileImageUrl,
+                        comment.getContent(),
+                        comment.getCreatedAt()
+                );
+            }
+
             FanProfileInfo profile = profileByUserId.get(comment.getUser().getId());
 
             return new CommentItem(
                     comment.getId(),
+                    "FAN",
                     profile == null ? null : profile.nickname(),
                     profile == null ? null : profile.profileImageUrl(),
                     comment.getContent(),
