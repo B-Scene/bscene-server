@@ -8,6 +8,7 @@ public enum MediaCategory {
     BAND_PROFILE,
     PERFORMANCE_POSTER,
     USER_PROFILE,
+    FAN_PROFILE,
     SESSION_PROFILE,
     SESSION_PORTFOLIO,
     ETC
