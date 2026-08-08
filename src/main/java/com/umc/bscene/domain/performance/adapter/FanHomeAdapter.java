@@ -4,7 +4,9 @@ import com.umc.bscene.domain.fanhome.dto.response.DatePerformanceResponse;
 import com.umc.bscene.domain.fanhome.dto.response.FanHomeResponse.HomePerformanceItem;
 import com.umc.bscene.domain.fanhome.dto.response.PerformanceCalendarResponse;
 import com.umc.bscene.domain.fanhome.dto.response.PerformanceListItem;
+import com.umc.bscene.domain.fanhome.dto.response.RecommendedPerformanceResponse;
 import com.umc.bscene.domain.fanhome.dto.response.UpcomingPerformanceResponse;
+import com.umc.bscene.domain.fanhome.enums.RecommendSortType;
 import com.umc.bscene.domain.fanhome.enums.UpcomingSortType;
 import com.umc.bscene.domain.fanhome.port.PerformancePort;
 import com.umc.bscene.domain.performance.entity.Performance;
@@ -78,6 +80,21 @@ public class FanHomeAdapter implements PerformancePort {
 
         List<PerformanceListItem> items = toListItems(userId, slice.getContent());
         return new UpcomingPerformanceResponse(sort, items, page, slice.hasNext());
+    }
+
+    @Override
+    public RecommendedPerformanceResponse findRecommended(Long userId, RecommendSortType sort, int page, int size) {
+        PageRequest pageable = PageRequest.of(page, size);
+        LocalDate today = LocalDate.now();
+        LocalTime now = LocalTime.now();
+
+        Slice<Performance> slice = switch (sort) {
+            case POPULAR -> performanceRepository.findRecommendedPopular(PerformanceStatus.ACTIVE, today, now, pageable);
+            case IMMINENT -> performanceRepository.findRecommendedImminent(PerformanceStatus.ACTIVE, today, now, pageable);
+        };
+
+        List<PerformanceListItem> items = toListItems(userId, slice.getContent());
+        return new RecommendedPerformanceResponse(sort, items, page, slice.hasNext());
     }
 
     @Override

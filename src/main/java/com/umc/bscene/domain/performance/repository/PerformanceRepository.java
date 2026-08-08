@@ -105,6 +105,34 @@ public interface PerformanceRepository extends JpaRepository<Performance, Long> 
             Pageable pageable
     );
 
+    // 추천 공연 목록(인기순) : 팔로우 무관 전체 공연 대상, 아직 시작 안 한 ACTIVE 공연을 관심 등록 수 많은 순으로
+    @Query("SELECT p FROM Performance p " +
+            "LEFT JOIN PerformanceInterest pi ON pi.performance = p " +
+            "WHERE p.status = :status " +
+            "AND (p.performanceDate > :today " +
+            "     OR (p.performanceDate = :today AND (p.startTime IS NULL OR p.startTime >= :now))) " +
+            "GROUP BY p " +
+            "ORDER BY COUNT(pi) DESC, p.id DESC")
+    Slice<Performance> findRecommendedPopular(
+            @Param("status") PerformanceStatus status,
+            @Param("today") LocalDate today,
+            @Param("now") LocalTime now,
+            Pageable pageable
+    );
+
+    // 추천 공연 목록(임박순) : 팔로우 무관 전체 공연 대상, 아직 시작 안 한 ACTIVE 공연을 날짜·시각 가까운 순으로
+    @Query("SELECT p FROM Performance p " +
+            "WHERE p.status = :status " +
+            "AND (p.performanceDate > :today " +
+            "     OR (p.performanceDate = :today AND (p.startTime IS NULL OR p.startTime >= :now))) " +
+            "ORDER BY p.performanceDate ASC, p.startTime ASC, p.id ASC")
+    Slice<Performance> findRecommendedImminent(
+            @Param("status") PerformanceStatus status,
+            @Param("today") LocalDate today,
+            @Param("now") LocalTime now,
+            Pageable pageable
+    );
+
     // 공연 달력 : 팔로우 밴드의 해당 월(기간) ACTIVE 공연이 있는 날짜(distinct, 지난 공연 포함)
     @Query("SELECT DISTINCT p.performanceDate FROM Performance p " +
             "WHERE p.band.id IN :bandIds AND p.status = :status " +

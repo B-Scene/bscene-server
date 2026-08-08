@@ -7,8 +7,10 @@ import com.umc.bscene.domain.fanhome.dto.response.FanHomeResponse.RecommendedBan
 import com.umc.bscene.domain.fanhome.dto.response.DatePerformanceResponse;
 import com.umc.bscene.domain.fanhome.dto.response.FollowingBandNewsResponse;
 import com.umc.bscene.domain.fanhome.dto.response.PerformanceCalendarResponse;
+import com.umc.bscene.domain.fanhome.dto.response.RecommendedPerformanceResponse;
 import com.umc.bscene.domain.fanhome.dto.response.UpcomingPerformanceResponse;
 import com.umc.bscene.domain.fanhome.enums.PerformanceSectionType;
+import com.umc.bscene.domain.fanhome.enums.RecommendSortType;
 import com.umc.bscene.domain.fanhome.enums.UpcomingSortType;
 import com.umc.bscene.domain.fanhome.port.BandPort;
 import com.umc.bscene.domain.fanhome.port.FollowPort;
@@ -98,6 +100,14 @@ public class FanHomeService {
         int pageSize = Math.min(Math.max(size, 1), MAX_PERFORMANCE_PAGE_SIZE);
         List<Long> followingBandIds = followPort.findFollowingBandIds(userId);
         return performancePort.findUpcoming(userId, followingBandIds, sort, pageNumber, pageSize);
+    }
+
+    // 추천 공연 전체 목록 (offset 기반 무한스크롤, 인기/임박순)
+    // 팔로우 밴드의 다가오는 공연이 없어 홈이 RECOMMENDED일 때의 더보기 화면 — 팔로우 무관 전체 공연 대상
+    public RecommendedPerformanceResponse getRecommendedPerformances(Long userId, RecommendSortType sort, int page, int size) {
+        int pageNumber = Math.max(page, 0);
+        int pageSize = Math.min(Math.max(size, 1), MAX_PERFORMANCE_PAGE_SIZE);
+        return performancePort.findRecommended(userId, sort, pageNumber, pageSize);
     }
 
     // 공연 달력 : 해당 년월에 팔로우 밴드 공연이 있는 날짜 목록 (year/month 없으면 서버 기준 이번 달)
