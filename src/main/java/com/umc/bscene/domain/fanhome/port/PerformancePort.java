@@ -3,7 +3,9 @@ package com.umc.bscene.domain.fanhome.port;
 import com.umc.bscene.domain.fanhome.dto.response.DatePerformanceResponse;
 import com.umc.bscene.domain.fanhome.dto.response.FanHomeResponse.HomePerformanceItem;
 import com.umc.bscene.domain.fanhome.dto.response.PerformanceCalendarResponse;
+import com.umc.bscene.domain.fanhome.dto.response.RecommendedPerformanceResponse;
 import com.umc.bscene.domain.fanhome.dto.response.UpcomingPerformanceResponse;
+import com.umc.bscene.domain.fanhome.enums.RecommendSortType;
 import com.umc.bscene.domain.fanhome.enums.UpcomingSortType;
 
 import java.time.LocalDate;
@@ -34,6 +36,17 @@ public interface PerformancePort {
      * @param size    페이지 크기
      */
     UpcomingPerformanceResponse findUpcoming(Long userId, List<Long> bandIds, UpcomingSortType sort, int page, int size);
+
+    /**
+     * 팔로우 여부와 무관하게 전체 공연 중 아직 시작하지 않은 ACTIVE 공연을 정렬 기준에 따라 페이지 단위로 조회합니다.
+     * (팔로우 밴드의 다가오는 공연이 없을 때 홈 더보기 화면의 추천 공연 전체 목록)
+     *
+     * @param userId 관심 등록 여부 판별 대상 사용자 ID
+     * @param sort   정렬 기준 (인기순/임박순)
+     * @param page   페이지 번호 (0-base)
+     * @param size   페이지 크기
+     */
+    RecommendedPerformanceResponse findRecommended(Long userId, RecommendSortType sort, int page, int size);
 
     /**
      * 팔로우한 밴드들의 해당 년월 ACTIVE 공연이 있는 날짜 목록을 조회합니다. (달력 점 표시용, 지난 공연 포함)

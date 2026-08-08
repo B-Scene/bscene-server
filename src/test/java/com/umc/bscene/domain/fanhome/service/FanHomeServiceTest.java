@@ -4,6 +4,7 @@ import com.umc.bscene.domain.fanhome.dto.response.FanHomeResponse;
 import com.umc.bscene.domain.fanhome.dto.response.FanHomeResponse.HomePerformanceItem;
 import com.umc.bscene.domain.fanhome.dto.response.FanHomeResponse.RecommendedBandItem;
 import com.umc.bscene.domain.fanhome.enums.PerformanceSectionType;
+import com.umc.bscene.domain.fanhome.enums.RecommendSortType;
 import com.umc.bscene.domain.fanhome.enums.UpcomingSortType;
 import com.umc.bscene.domain.fanhome.port.BandPort;
 import com.umc.bscene.domain.fanhome.port.FollowPort;
@@ -30,6 +31,7 @@ import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 // 팬모드 홈 (통합 조회 / 소식 전체 / 다가오는 공연 전체 / 공연 달력 / 날짜별 공연) 단위테스트.
@@ -162,6 +164,23 @@ class FanHomeServiceTest {
         service.getUpcomingPerformances(USER_ID, UpcomingSortType.POPULAR, -1, 100);
 
         verify(performancePort).findUpcoming(USER_ID, FOLLOWING_BAND_IDS, UpcomingSortType.POPULAR, 0, 30);
+    }
+
+    // ---------- getRecommendedPerformances ----------
+
+    @Test
+    void getRecommendedPerformances_보정된_페이징과_정렬로_조회한다() {
+        service.getRecommendedPerformances(USER_ID, RecommendSortType.POPULAR, -1, 100);
+
+        verify(performancePort).findRecommended(USER_ID, RecommendSortType.POPULAR, 0, 30);
+    }
+
+    @Test
+    void getRecommendedPerformances_팔로우_조회_없이_전체_공연을_대상으로_조회한다() {
+        service.getRecommendedPerformances(USER_ID, RecommendSortType.IMMINENT, 0, 10);
+
+        verify(performancePort).findRecommended(USER_ID, RecommendSortType.IMMINENT, 0, 10);
+        verifyNoInteractions(followPort);
     }
 
     // ---------- getPerformanceCalendar ----------

@@ -4,7 +4,9 @@ import com.umc.bscene.domain.fanhome.dto.response.DatePerformanceResponse;
 import com.umc.bscene.domain.fanhome.dto.response.FanHomeResponse;
 import com.umc.bscene.domain.fanhome.dto.response.FollowingBandNewsResponse;
 import com.umc.bscene.domain.fanhome.dto.response.PerformanceCalendarResponse;
+import com.umc.bscene.domain.fanhome.dto.response.RecommendedPerformanceResponse;
 import com.umc.bscene.domain.fanhome.dto.response.UpcomingPerformanceResponse;
+import com.umc.bscene.domain.fanhome.enums.RecommendSortType;
 import com.umc.bscene.domain.fanhome.enums.UpcomingSortType;
 import com.umc.bscene.domain.fanhome.response.code.FanHomeSuccessCode;
 import com.umc.bscene.domain.fanhome.service.FanHomeService;
@@ -70,6 +72,25 @@ public class FanHomeController {
         SuccessResponse<UpcomingPerformanceResponse> successResponse = SuccessResponse.of(
                 response,
                 FanHomeSuccessCode.UPCOMING_PERFORMANCE_GET_SUCCESS
+        );
+
+        return ResponseEntity.status(successResponse.getStatus()).body(successResponse);
+    }
+
+    // 추천 공연 전체 목록 조회 API (offset 기반 무한스크롤, 인기/임박순)
+    // 팔로우 밴드의 다가오는 공연이 없어 홈 공연 섹션이 RECOMMENDED일 때의 더보기 화면
+    @GetMapping("/performances/recommend")
+    public ResponseEntity<SuccessResponse<RecommendedPerformanceResponse>> getRecommendedPerformances(
+            @AuthenticationPrincipal AuthMember authMember,
+            @RequestParam(defaultValue = "POPULAR") RecommendSortType sort,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size
+    ) {
+        RecommendedPerformanceResponse response = fanHomeService.getRecommendedPerformances(
+                authMember.getUser().getId(), sort, page, size);
+        SuccessResponse<RecommendedPerformanceResponse> successResponse = SuccessResponse.of(
+                response,
+                FanHomeSuccessCode.RECOMMENDED_PERFORMANCE_GET_SUCCESS
         );
 
         return ResponseEntity.status(successResponse.getStatus()).body(successResponse);
