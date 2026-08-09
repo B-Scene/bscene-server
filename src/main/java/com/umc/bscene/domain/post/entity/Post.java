@@ -50,6 +50,15 @@ public class Post extends BaseEntity {
     @OneToMany(mappedBy = "post", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<PostTag> tagList = new ArrayList<>();
 
+    // 포스트 삭제 시 좋아요/댓글도 같이 지워지도록 cascade (FK 제약 위반 방지 목적, 생성/조회는 각자 repository로 처리)
+    @Builder.Default
+    @OneToMany(mappedBy = "post", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<PostLike> likeList = new ArrayList<>();
+
+    @Builder.Default
+    @OneToMany(mappedBy = "post", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<PostComment> commentList = new ArrayList<>();
+
     // 수정 API에서 전달된 값만 부분 반영
     public void update(String title, String description, String thumbnailUrl) {
         if (title != null) this.title = title;

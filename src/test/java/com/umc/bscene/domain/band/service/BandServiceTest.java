@@ -26,6 +26,7 @@ import com.umc.bscene.domain.band.enums.BandMemberType;
 import com.umc.bscene.domain.band.exception.BandException;
 import com.umc.bscene.domain.band.port.FollowPort;
 import com.umc.bscene.domain.band.port.NotifyPort;
+import com.umc.bscene.domain.band.port.PostCommentPort;
 import com.umc.bscene.domain.band.port.PerformancePort;
 import com.umc.bscene.domain.band.port.StreamPort;
 import com.umc.bscene.domain.band.repository.BandMemberProfileRepository;
@@ -83,6 +84,8 @@ class BandServiceTest {
     @Mock
     private NotifyPort notifyPort;
     @Mock
+    private PostCommentPort postCommentPort;
+    @Mock
     private ApplicationEventPublisher eventPublisher;
     @Mock
     private BandMemberProfileService bandMemberProfileService;
@@ -96,8 +99,8 @@ class BandServiceTest {
     void setUp() {
         service = new BandService(
                 bandRepository, bandMemberRepository, bandMemberProfileRepository, musicLinkRepository,
-                userRepository, followPort, performancePort, streamPort, notifyPort, eventPublisher,
-                bandMemberProfileService
+                userRepository, followPort, performancePort, streamPort, notifyPort, postCommentPort,
+                eventPublisher, bandMemberProfileService
         );
         // 알림 발송이 TransactionSynchronizationManager.registerSynchronization 을 거치므로,
         // 트랜잭션 밖에서 호출되는 단위테스트에서도 예외 없이 등록만 되도록 동기화를 열어둔다.
@@ -561,6 +564,8 @@ class BandServiceTest {
         service.leaveBand(2L, BAND_ID);
 
         verify(bandMemberRepository).delete(accepted);
+        // 밴드 명의로 쓴 댓글도 함께 삭제된다
+        verify(postCommentPort).deleteBandComments(BAND_ID, 2L);
     }
 
     @Test

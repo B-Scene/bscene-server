@@ -6,6 +6,7 @@ import com.umc.bscene.domain.band.dto.response.BandMemberProfileResponse;
 import com.umc.bscene.domain.band.entity.BandMemberProfile;
 import com.umc.bscene.domain.band.exception.BandException;
 import com.umc.bscene.domain.band.repository.BandMemberProfileRepository;
+import com.umc.bscene.domain.band.port.PostCommentPort;
 import com.umc.bscene.domain.band.repository.BandMemberRepository;
 import com.umc.bscene.domain.band.response.code.BandErrorCode;
 import com.umc.bscene.domain.user.repository.UserRepository;
@@ -23,6 +24,7 @@ public class BandMemberProfileService {
     private final BandMemberProfileRepository bandMemberProfileRepository;
     private final BandMemberRepository bandMemberRepository;
     private final UserRepository userRepository;
+    private final PostCommentPort postCommentPort;
 
     // 멤버 프로필 생성 (첫 프로필이면 자동으로 활성화)
     @Transactional
@@ -77,6 +79,9 @@ public class BandMemberProfileService {
         if (bandMemberRepository.existsByBandMemberProfile_Id(profileId)) {
             throw new BandException(BandErrorCode.BAND_MEMBER_PROFILE_IN_USE);
         }
+
+        // 이 프로필 명의로 남은 밴드 댓글을 먼저 삭제 (댓글이 프로필을 FK로 참조 — 명의 소멸 시 댓글도 함께 정리)
+        postCommentPort.deleteCommentsByProfileId(profileId);
 
         bandMemberProfileRepository.delete(profile);
     }

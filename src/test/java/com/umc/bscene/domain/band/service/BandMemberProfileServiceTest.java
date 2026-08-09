@@ -5,6 +5,7 @@ import com.umc.bscene.domain.band.dto.request.BandMemberProfileUpdateRequest;
 import com.umc.bscene.domain.band.dto.response.BandMemberProfileResponse;
 import com.umc.bscene.domain.band.entity.BandMemberProfile;
 import com.umc.bscene.domain.band.exception.BandException;
+import com.umc.bscene.domain.band.port.PostCommentPort;
 import com.umc.bscene.domain.band.repository.BandMemberProfileRepository;
 import com.umc.bscene.domain.band.repository.BandMemberRepository;
 import com.umc.bscene.domain.band.response.code.BandErrorCode;
@@ -38,6 +39,8 @@ class BandMemberProfileServiceTest {
     private BandMemberRepository bandMemberRepository;
     @Mock
     private UserRepository userRepository;
+    @Mock
+    private PostCommentPort postCommentPort;
 
     private BandMemberProfileService service;
 
@@ -46,7 +49,8 @@ class BandMemberProfileServiceTest {
 
     @BeforeEach
     void setUp() {
-        service = new BandMemberProfileService(bandMemberProfileRepository, bandMemberRepository, userRepository);
+        service = new BandMemberProfileService(
+                bandMemberProfileRepository, bandMemberRepository, userRepository, postCommentPort);
     }
 
     private BandMemberProfile profile(Long id, boolean active) {
@@ -146,13 +150,14 @@ class BandMemberProfileServiceTest {
     }
 
     @Test
-    void deleteProfile_사용중이_아니면_삭제된다() {
+    void deleteProfile_사용중이_아니면_명의로_쓴_댓글과_함께_삭제된다() {
         BandMemberProfile profile = profile(PROFILE_ID, true);
         when(bandMemberProfileRepository.findByIdAndUser_Id(PROFILE_ID, USER_ID)).thenReturn(Optional.of(profile));
         when(bandMemberRepository.existsByBandMemberProfile_Id(PROFILE_ID)).thenReturn(false);
 
         service.deleteProfile(USER_ID, PROFILE_ID);
 
+        verify(postCommentPort).deleteCommentsByProfileId(PROFILE_ID);
         verify(bandMemberProfileRepository).delete(profile);
     }
 
