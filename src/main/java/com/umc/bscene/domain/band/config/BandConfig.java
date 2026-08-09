@@ -2,6 +2,7 @@ package com.umc.bscene.domain.band.config;
 
 import com.umc.bscene.domain.band.adapter.BandInviteNotificationAdapter;
 import com.umc.bscene.domain.band.adapter.FanHomeAdapter;
+import com.umc.bscene.domain.band.adapter.FollowAdapter;
 import com.umc.bscene.domain.band.adapter.PostAdapter;
 import com.umc.bscene.domain.band.adapter.SearchAdapter;
 import com.umc.bscene.domain.band.adapter.SessionAdapter;
@@ -41,5 +42,14 @@ public class BandConfig {
     @Bean
     public PostAdapter postBandAdapter(BandMemberRepository bandMemberRepository) {
         return new PostAdapter(bandMemberRepository);
+    }
+
+    // 팔로우 도메인 BandPort 구현 어댑터 (밴드 존재 확인·자기 밴드 팔로우 차단)
+    @Bean
+    public FollowAdapter followBandAdapter(
+            BandRepository bandRepository,
+            BandMemberRepository bandMemberRepository
+    ) {
+        return new FollowAdapter(bandRepository, bandMemberRepository);
     }
 }
