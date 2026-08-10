@@ -150,6 +150,8 @@ class UserServiceSessionApplyTest {
             assertThat(applicantMessage.settingType())
                     .isEqualTo(NotificationSettingType.FAN_SESSION_APPLICATION_STATUS);
             assertThat(applicantMessage.title()).isEqualTo("세션 지원이 수락되었어요");
+            assertThat(applicantMessage.body()).isEqualTo("'" + RECRUITMENT_TITLE + "' 모집에서 지원을 수락했어요.");
+            assertThat(applicantMessage.body()).doesNotContain("최종 참여 여부");
             assertThat(applicantMessage.referenceId()).isEqualTo(SUBMISSION_ID);
 
             assertThat(receivers.get(1)).containsExactly(30L, 40L);
@@ -157,6 +159,14 @@ class UserServiceSessionApplyTest {
             assertThat(bandMessage.settingType())
                     .isEqualTo(NotificationSettingType.BAND_SESSION_APPLICATION_STATUS);
             assertThat(bandMessage.body()).contains(APPLICATION_NICKNAME, "수락했어요");
+
+            verify(bandPort, never())
+                    .registerSessionMember(
+                            anyLong(),
+                            any(User.class),
+                            any(),
+                            any()
+                    );
         }
 
         @Test

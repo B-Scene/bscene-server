@@ -31,6 +31,11 @@ class SessionPushMessageTest {
                         true
                 );
 
+        assertThat(message.body())
+                .isEqualTo("'기타 모집' 모집에서 지원을 수락했어요.");
+
+        assertThat(message.body())
+                .doesNotContain("최종 참여 여부");
         assertThat(message.deepLink())
                 .isEqualTo("/band/notifications");
         assertThat(message.referenceId()).isEqualTo(SUBMISSION_ID);
