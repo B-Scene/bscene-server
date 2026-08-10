@@ -114,6 +114,8 @@ public class NotificationService {
                         NotificationErrorCode.RECEIVER_NOT_FOUND
                 ));
 
+        deletePreviousMessageNotification(receiverId, message);
+
         Notification notification = notificationRepository.save(
                 Notification.of(receiver, message)
         );
@@ -127,16 +129,21 @@ public class NotificationService {
         }
     }
 
-    // 사용자의 알림 목록을 최신순으로 조회
+    // 읽지 않은 알림을 먼저, 같은 읽음 상태에서는 최신순으로 조회
     @Transactional(readOnly = true)
     public CursorPage<NotificationListItemResponse> getNotifications(Long userId, Long cursor, int size) {
+        Long cursorId = decodeCursorId(cursor);
+        boolean cursorIsRead = isReadCursor(cursor);
+
         List<Notification> notifications = notificationRepository.findNotificationPage(
                 userId,
-                cursor,
+                cursorId,
+                cursorIsRead,
                 PageRequest.ofSize(size + 1)
         );
 
         boolean hasNext = notifications.size() > size;
+
         List<Notification> page = hasNext ? notifications.subList(0, size) : notifications;
 
         List<Long> bandMemberIds = page.stream()
@@ -158,7 +165,7 @@ public class NotificationService {
                 ))
                 .toList();
 
-        Long nextCursor = hasNext ? page.getLast().getId() : null;
+        Long nextCursor = hasNext ? encodeCursor(page.getLast()) : null;
 
         return CursorPage.of(items, nextCursor, hasNext);
     }
@@ -319,5 +326,42 @@ public class NotificationService {
         }
 
         return result;
+    }
+
+    private void deletePreviousMessageNotification(
+            Long receiverId,
+            PushMessage message
+    ) {
+        if (message.type() != NotificationType.MESSAGE
+                || message.referenceId() == null) {
+            return;
+        }
+
+        notificationRepository.deleteByUser_IdAndTypeAndReferenceId(
+                receiverId,
+                NotificationType.MESSAGE,
+                message.referenceId()
+        );
+    }
+
+    // 양수 커서는 읽지 않은 알림, 음수 커서는 읽은 알림을 의미
+    private Long decodeCursorId(Long cursor) {
+        if (cursor == null) {
+            return null;
+        }
+
+        return Math.abs(cursor);
+    }
+
+    private boolean isReadCursor(Long cursor) {
+        return cursor != null && cursor < 0;
+    }
+
+    private Long encodeCursor(Notification notification) {
+        Long notificationId = notification.getId();
+
+        return Boolean.TRUE.equals(notification.getIsRead())
+                ? -notificationId
+                : notificationId;
     }
 }
