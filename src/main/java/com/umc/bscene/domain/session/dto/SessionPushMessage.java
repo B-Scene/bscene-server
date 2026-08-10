@@ -41,7 +41,7 @@ public record SessionPushMessage(
                 NotificationSettingType.FAN_SESSION_APPLICATION_STATUS,
                 isApproved ? "세션 지원이 수락되었어요" : "세션 지원이 거절되었어요",
                 isApproved
-                        ? "'" + recruitmentTitle + "' 모집에서 지원을 수락했어요. 최종 참여 여부를 선택해주세요."
+                        ? "'" + recruitmentTitle + "' 모집에서 지원을 수락했어요."
                         : "'" + recruitmentTitle + "' 모집에서 지원을 거절했어요.",
                 "/band/notifications",
                 applicationSubmissionId
