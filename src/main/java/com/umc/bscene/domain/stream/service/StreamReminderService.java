@@ -6,7 +6,6 @@ import com.umc.bscene.domain.stream.entity.AudioStream;
 import com.umc.bscene.domain.stream.entity.LiveAlarm;
 import com.umc.bscene.domain.stream.port.BandMemberPort;
 import com.umc.bscene.domain.stream.port.NotifyPort;
-import com.umc.bscene.domain.stream.port.UserTermsPort;
 import com.umc.bscene.domain.stream.repository.AudioStreamRepository;
 import com.umc.bscene.domain.stream.repository.LiveAlarmRepository;
 import com.umc.bscene.global.notification.enums.NotificationSettingType;
@@ -30,7 +29,6 @@ public class StreamReminderService {
     private final AudioStreamRepository audioStreamRepository;
     private final LiveAlarmRepository liveAlarmRepository;
     private final BandMemberPort bandMemberPort;
-    private final UserTermsPort userTermsPort;
     private final NotifyPort notifyPort;
 
     // 라이브 시작 30분 전 팬과 밴드 구성원에게 리마인드 알림을 발송합니다.
@@ -95,9 +93,6 @@ public class StreamReminderService {
                     .map(target -> target.getUser().getId())
                     .toList();
 
-            List<Long> agreedFanIds =
-                    userTermsPort.filterNotificationAgreedUserIds(fanUserIds);
-
             List<Long> memberIds = memberReminderRequired
                     ? bandMemberPort.getAcceptedMemberUserIds(stream.getBandId())
                     : List.of();
@@ -110,7 +105,7 @@ public class StreamReminderService {
             Set<Long> memberReceiverIdSet = new HashSet<>(memberReceiverIds);
 
             // 밴드 구성원이면서 팬 알림 대상인 사용자는 밴드 알림으로 한 번만 발송합니다.
-            List<Long> fanReceiverIds = agreedFanIds.stream()
+            List<Long> fanReceiverIds = fanUserIds.stream()
                     .filter(userId -> !userId.equals(stream.getBroadcasterId()))
                     .filter(userId -> !memberReceiverIdSet.contains(userId))
                     .distinct()

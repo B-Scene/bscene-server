@@ -17,7 +17,6 @@ import com.umc.bscene.domain.stream.port.BandMemberPort;
 import com.umc.bscene.domain.stream.port.FollowPort;
 import com.umc.bscene.domain.stream.port.NotifyPort;
 import com.umc.bscene.domain.stream.port.UserPort;
-import com.umc.bscene.domain.stream.port.UserTermsPort;
 import com.umc.bscene.domain.stream.repository.AudioStreamRepository;
 import com.umc.bscene.domain.stream.repository.LiveAlarmRepository;
 import com.umc.bscene.domain.stream.repository.ReportHistoryRepository;
@@ -103,7 +102,6 @@ class StreamServiceImplRoomTest {
     @Mock private StringRedisTemplate redisTemplate;
     @Mock private BandMemberPort bandMemberPort;
     @Mock private FollowPort followPort;
-    @Mock private UserTermsPort userTermsPort;
     @Mock private NotifyPort notifyPort;
     @Mock private RestClient mtxRestClient;
     @Mock private ViewerSsePresence viewerSsePresence;
@@ -134,7 +132,6 @@ class StreamServiceImplRoomTest {
                 redisTemplate,
                 bandMemberPort,
                 followPort,
-                userTermsPort,
                 notifyPort,
                 mtxRestClient,
                 viewerSsePresence,
@@ -236,8 +233,6 @@ class StreamServiceImplRoomTest {
                 started ? Duration.ofMinutes(30) : Duration.ofMinutes(5)
         )).thenReturn(true);
         when(followPort.getFollowerUserIdsByBandId(bandId)).thenReturn(List.of(fanId, broadcasterId));
-        when(userTermsPort.filterNotificationAgreedUserIds(List.of(fanId, broadcasterId)))
-                .thenReturn(List.of(fanId, broadcasterId));
         when(bandMemberPort.getAcceptedMemberUserIds(bandId)).thenReturn(List.of(broadcasterId));
     }
 
@@ -523,7 +518,7 @@ class StreamServiceImplRoomTest {
             return new StreamServiceImpl(
                     jwtUtil, audioStreamRepository, streamMemberRepository, liveAlarmRepository,
                     streamReplayRepository, reportHistoryRepository, userPort, redisTemplate,
-                    bandMemberPort, followPort, userTermsPort, notifyPort, mtxRestClient,
+                    bandMemberPort, followPort, notifyPort, mtxRestClient,
                     viewerSsePresence, liveChatRoomCloser, discordMessageSender,
                     HLS_URL, WEBRTC_URL, ""
             );
