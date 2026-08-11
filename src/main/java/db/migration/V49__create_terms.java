@@ -39,9 +39,9 @@ public class V49__create_terms extends BaseJavaMigration {
                 .toLowerCase(Locale.ROOT)
                 .contains("mysql");
 
-        String termsTable = findTable(connection, "Terms", "terms");
+        String termsTable = findTable(connection, "terms", "Terms");
         if (termsTable == null) {
-            termsTable = "Terms";
+            termsTable = "terms";
             createTermsTable(connection, termsTable, mysql);
         }
 
