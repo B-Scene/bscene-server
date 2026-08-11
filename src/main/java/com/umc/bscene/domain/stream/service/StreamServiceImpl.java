@@ -1414,7 +1414,7 @@ public class StreamServiceImpl implements StreamService {
             );
         }
 
-        validateScheduled(stream);
+        validateCoHostInvitationDecidable(stream);
 
         StreamMemberStatus target = isAccepted
                 ? StreamMemberStatus.ACCEPTED
@@ -1558,6 +1558,12 @@ public class StreamServiceImpl implements StreamService {
     // 상태(409) 검사는 권한(403) 검사 이후에 수행해, 권한 없는 유저가 예약 상태를 열거하지 못하게 함
     private void validateScheduled(AudioStream stream) {
         if (stream.getStatus() != StreamStatus.SCHEDULED)
+            throw new StreamException(StreamErrorCode.AUDIO_STREAM_NOT_SCHEDULED);
+    }
+
+    private void validateCoHostInvitationDecidable(AudioStream stream) {
+        if (stream.getStatus() != StreamStatus.SCHEDULED
+                && stream.getStatus() != StreamStatus.OPEN)
             throw new StreamException(StreamErrorCode.AUDIO_STREAM_NOT_SCHEDULED);
     }
 

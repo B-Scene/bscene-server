@@ -668,6 +668,17 @@ class StreamServiceImplNotificationTest {
             );
         }
 
+        private AudioStream stream(StreamStatus status) {
+            return status == StreamStatus.SCHEDULED
+                    ? scheduledStream()
+                    : StreamFixtures.stream(
+                            LIVE_ID,
+                            BROADCASTER_ID,
+                            BAND_ID,
+                            status
+                    );
+        }
+
         private StreamMember invitation(
                 AudioStream stream,
                 StreamMemberStatus status
@@ -783,22 +794,19 @@ class StreamServiceImplNotificationTest {
                     .transitionStatus(any(), any(), any());
         }
 
-        @Test
-        @DisplayName("예약 라이브가 아니면 초대에 응답할 수 없다")
-        void 예약상태가_아니면_실패한다() {
-            AudioStream openStream = StreamFixtures.stream(
-                    LIVE_ID,
-                    BROADCASTER_ID,
-                    BAND_ID,
-                    StreamStatus.OPEN
-            );
+        @ParameterizedTest(name = "{0} 상태에서는 초대에 응답할 수 없다")
+        @EnumSource(
+                value = StreamStatus.class,
+                names = {"CLOSED", "CANCELED"}
+        )
+        void 종료나_취소_상태에서는_실패한다(StreamStatus status) {
             given(streamMemberRepository
                     .findWithStreamByLiveIdAndUserId(
                             LIVE_ID,
                             CO_HOST_ID
                     ))
                     .willReturn(Optional.of(invitation(
-                            openStream,
+                            stream(status),
                             StreamMemberStatus.INVITED
                     )));
 
@@ -858,10 +866,13 @@ class StreamServiceImplNotificationTest {
             verifyNoInteractions(notifyPort);
         }
 
-        @Test
-        @DisplayName("수락하면 ACCEPTED로 전이하고 커밋 후 송출자에게 밴드 활동명으로 알린다")
-        void 수락하면_송출자에게_결과알림을_보낸다() {
-            AudioStream stream = scheduledStream();
+        @ParameterizedTest(name = "{0} 상태에서 수락하면 ACCEPTED로 전이한다")
+        @EnumSource(
+                value = StreamStatus.class,
+                names = {"SCHEDULED", "OPEN"}
+        )
+        void 수락하면_송출자에게_결과알림을_보낸다(StreamStatus status) {
+            AudioStream stream = stream(status);
             given(streamMemberRepository
                     .findWithStreamByLiveIdAndUserId(
                             LIVE_ID,
@@ -911,10 +922,13 @@ class StreamServiceImplNotificationTest {
             assertThat(message.referenceId()).isEqualTo(LIVE_ID);
         }
 
-        @Test
-        @DisplayName("거절하면 REJECTED로 전이하고 활동명이 없을 때 유저 이름으로 알린다")
-        void 거절하면_송출자에게_결과알림을_보낸다() {
-            AudioStream stream = scheduledStream();
+        @ParameterizedTest(name = "{0} 상태에서 거절하면 REJECTED로 전이한다")
+        @EnumSource(
+                value = StreamStatus.class,
+                names = {"SCHEDULED", "OPEN"}
+        )
+        void 거절하면_송출자에게_결과알림을_보낸다(StreamStatus status) {
+            AudioStream stream = stream(status);
             StreamMember invitation = invitation(
                     stream,
                     StreamMemberStatus.INVITED
