@@ -6,7 +6,6 @@ import com.umc.bscene.domain.stream.entity.AudioStream;
 import com.umc.bscene.domain.stream.entity.LiveAlarm;
 import com.umc.bscene.domain.stream.port.BandMemberPort;
 import com.umc.bscene.domain.stream.port.NotifyPort;
-import com.umc.bscene.domain.stream.port.UserTermsPort;
 import com.umc.bscene.domain.stream.repository.AudioStreamRepository;
 import com.umc.bscene.domain.stream.repository.LiveAlarmRepository;
 import com.umc.bscene.global.notification.enums.NotificationSettingType;
@@ -50,8 +49,6 @@ class StreamReminderServiceTest {
     @Mock
     private BandMemberPort bandMemberPort;
     @Mock
-    private UserTermsPort userTermsPort;
-    @Mock
     private NotifyPort notifyPort;
 
     @Captor
@@ -67,13 +64,12 @@ class StreamReminderServiceTest {
                 audioStreamRepository,
                 liveAlarmRepository,
                 bandMemberPort,
-                userTermsPort,
                 notifyPort
         );
     }
 
     @Test
-    @DisplayName("팬 알림 대상만 있으면 동의한 팬에게 팬 리마인드를 보내고 알림별 발송 시각을 기록한다")
+    @DisplayName("팬 알림 대상에게 팬 리마인드를 보내고 알림별 발송 시각을 기록한다")
     void sendsFanReminderAndMarksAlarms() {
         AudioStream stream = scheduledStream(LIVE_ID);
         LiveAlarm alarm1 = alarm(1L, stream, 200L);
@@ -84,9 +80,6 @@ class StreamReminderServiceTest {
                 .willReturn(List.of());
         given(bandMemberPort.getBandSummaryByBandId(BAND_ID))
                 .willReturn(Optional.of(new BandSummaryResponse(BAND_ID, BAND_NAME)));
-        given(userTermsPort.filterNotificationAgreedUserIds(List.of(200L, 300L)))
-                .willReturn(List.of(200L, 300L));
-
         reminderService.sendUpcomingReminders(NOW);
 
         verify(notifyPort).notify(receiverCaptor.capture(), messageCaptor.capture());
@@ -111,7 +104,6 @@ class StreamReminderServiceTest {
                 .willReturn(List.of(stream));
         given(bandMemberPort.getBandSummaryByBandId(BAND_ID))
                 .willReturn(Optional.of(new BandSummaryResponse(BAND_ID, BAND_NAME)));
-        given(userTermsPort.filterNotificationAgreedUserIds(List.of())).willReturn(List.of());
         given(bandMemberPort.getAcceptedMemberUserIds(BAND_ID))
                 .willReturn(List.of(BROADCASTER_ID, 400L, 500L));
 
@@ -137,8 +129,6 @@ class StreamReminderServiceTest {
                 .willReturn(List.of(stream));
         given(bandMemberPort.getBandSummaryByBandId(BAND_ID))
                 .willReturn(Optional.of(new BandSummaryResponse(BAND_ID, BAND_NAME)));
-        given(userTermsPort.filterNotificationAgreedUserIds(List.of(200L, 400L)))
-                .willReturn(List.of(200L, 400L));
         given(bandMemberPort.getAcceptedMemberUserIds(BAND_ID))
                 .willReturn(List.of(400L, 500L));
 
@@ -168,9 +158,6 @@ class StreamReminderServiceTest {
                 .willReturn(List.of());
         given(bandMemberPort.getBandSummaryByBandId(BAND_ID))
                 .willReturn(Optional.of(new BandSummaryResponse(BAND_ID, BAND_NAME)));
-        given(userTermsPort.filterNotificationAgreedUserIds(List.of(BROADCASTER_ID)))
-                .willReturn(List.of(BROADCASTER_ID));
-
         reminderService.sendUpcomingReminders(NOW);
 
         verifyNoInteractions(notifyPort);
@@ -178,26 +165,23 @@ class StreamReminderServiceTest {
     }
 
     @Test
-    @DisplayName("알림 수신에 동의하지 않은 팬은 발송 대상에서 빠지지만 발송 시각은 기록된다")
-    void nonAgreedFanIsFilteredButStillMarked() {
+    @DisplayName("팬 알림 대상은 별도 약관 동의 없이 모두 발송 대상에 포함된다")
+    void allFanTargetsAreIncludedWithoutTermsAgreement() {
         AudioStream stream = scheduledStream(LIVE_ID);
-        LiveAlarm agreedAlarm = alarm(1L, stream, 200L);
-        LiveAlarm notAgreedAlarm = alarm(2L, stream, 300L);
+        LiveAlarm firstAlarm = alarm(1L, stream, 200L);
+        LiveAlarm secondAlarm = alarm(2L, stream, 300L);
         given(liveAlarmRepository.findReminderTargets(NOW, NOW.plusMinutes(30)))
-                .willReturn(List.of(agreedAlarm, notAgreedAlarm));
+                .willReturn(List.of(firstAlarm, secondAlarm));
         given(audioStreamRepository.findMemberReminderTargets(NOW, NOW.plusMinutes(30)))
                 .willReturn(List.of());
         given(bandMemberPort.getBandSummaryByBandId(BAND_ID))
                 .willReturn(Optional.of(new BandSummaryResponse(BAND_ID, BAND_NAME)));
-        given(userTermsPort.filterNotificationAgreedUserIds(List.of(200L, 300L)))
-                .willReturn(List.of(200L));
-
         reminderService.sendUpcomingReminders(NOW);
 
         verify(notifyPort).notify(receiverCaptor.capture(), messageCaptor.capture());
-        assertThat(receiverCaptor.getValue()).containsExactly(200L);
-        assertThat(agreedAlarm.getReminderSentAt()).isEqualTo(NOW);
-        assertThat(notAgreedAlarm.getReminderSentAt()).isEqualTo(NOW);
+        assertThat(receiverCaptor.getValue()).containsExactly(200L, 300L);
+        assertThat(firstAlarm.getReminderSentAt()).isEqualTo(NOW);
+        assertThat(secondAlarm.getReminderSentAt()).isEqualTo(NOW);
     }
 
     @Test
@@ -213,7 +197,7 @@ class StreamReminderServiceTest {
 
         reminderService.sendUpcomingReminders(NOW);
 
-        verifyNoInteractions(userTermsPort, notifyPort);
+        verifyNoInteractions(notifyPort);
         assertThat(alarm.getReminderSentAt()).isEqualTo(NOW);
         assertThat(stream.getMemberReminderSentAt()).isEqualTo(NOW);
     }
@@ -228,7 +212,7 @@ class StreamReminderServiceTest {
 
         reminderService.sendUpcomingReminders(NOW);
 
-        verifyNoInteractions(bandMemberPort, userTermsPort, notifyPort);
+        verifyNoInteractions(bandMemberPort, notifyPort);
     }
 
     @Test
@@ -241,7 +225,6 @@ class StreamReminderServiceTest {
                 .willReturn(List.of(stream));
         given(bandMemberPort.getBandSummaryByBandId(BAND_ID))
                 .willReturn(Optional.of(new BandSummaryResponse(BAND_ID, BAND_NAME)));
-        given(userTermsPort.filterNotificationAgreedUserIds(List.of())).willReturn(List.of());
         given(bandMemberPort.getAcceptedMemberUserIds(BAND_ID))
                 .willReturn(List.of(400L, 400L, 500L));
 
@@ -266,11 +249,6 @@ class StreamReminderServiceTest {
                 .willReturn(Optional.of(new BandSummaryResponse(BAND_ID, BAND_NAME)));
         given(bandMemberPort.getBandSummaryByBandId(8L))
                 .willReturn(Optional.of(new BandSummaryResponse(8L, "다른밴드")));
-        given(userTermsPort.filterNotificationAgreedUserIds(List.of(200L)))
-                .willReturn(List.of(200L));
-        given(userTermsPort.filterNotificationAgreedUserIds(List.of(300L)))
-                .willReturn(List.of(300L));
-
         reminderService.sendUpcomingReminders(NOW);
 
         verify(notifyPort, times(2)).notify(receiverCaptor.capture(), messageCaptor.capture());

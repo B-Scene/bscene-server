@@ -35,7 +35,6 @@ import com.umc.bscene.domain.stream.port.BandMemberPort;
 import com.umc.bscene.domain.stream.port.FollowPort;
 import com.umc.bscene.domain.stream.port.NotifyPort;
 import com.umc.bscene.domain.stream.port.UserPort;
-import com.umc.bscene.domain.stream.port.UserTermsPort;
 import com.umc.bscene.domain.stream.repository.AudioStreamRepository;
 import com.umc.bscene.domain.stream.repository.LiveAlarmRepository;
 import com.umc.bscene.domain.stream.repository.ReportHistoryRepository;
@@ -125,7 +124,6 @@ public class StreamServiceImpl implements StreamService {
     private final StringRedisTemplate redisTemplate;
     private final BandMemberPort bandMemberPort;
     private final FollowPort followPort;
-    private final UserTermsPort userTermsPort;
     private final NotifyPort notifyPort;
     private final RestClient mtxRestClient;
     private final ViewerSsePresence viewerSsePresence;
@@ -754,8 +752,6 @@ public class StreamServiceImpl implements StreamService {
         }
 
         List<Long> followerIds = followPort.getFollowerUserIdsByBandId(band.bandId());
-        List<Long> agreedFollowerIds =
-                userTermsPort.filterNotificationAgreedUserIds(followerIds);
 
         List<Long> memberIds =
                 bandMemberPort.getAcceptedMemberUserIds(band.bandId());
@@ -768,7 +764,7 @@ public class StreamServiceImpl implements StreamService {
         Set<Long> memberReceiverIdSet = new HashSet<>(memberReceiverIds);
 
         // 밴드 구성원이면서 팔로워인 사용자는 밴드 알림으로 한 번만 발송합니다.
-        List<Long> fanReceiverIds = agreedFollowerIds.stream()
+        List<Long> fanReceiverIds = followerIds.stream()
                 .filter(userId -> !userId.equals(stream.getBroadcasterId()))
                 .filter(userId -> !memberReceiverIdSet.contains(userId))
                 .distinct()
