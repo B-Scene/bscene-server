@@ -406,6 +406,52 @@ class NotificationServiceTest {
                 .findByUser_IdAndSettingType(any(), any());
         verify(notificationRepository).save(any(Notification.class));
         verifyNoInteractions(pushPort);
+
+        verify(notificationRepository, never())
+                .deleteByUser_IdAndTypeAndReferenceId(
+                        any(),
+                        any(),
+                        any()
+                );
+    }
+
+    @Test
+    void send_쪽지_알림이면_같은_쪽지방의_기존_알림을_삭제하고_새로_저장한다() {
+        Long chatRoomId = 77L;
+        User receiver = user(USER_ID);
+
+        TestPushMessage message = message(
+                null,
+                NotificationType.MESSAGE,
+                chatRoomId,
+                "/band/session/messages/" + chatRoomId
+        );
+
+        Notification savedNotification = notification(
+                500L,
+                receiver,
+                NotificationType.MESSAGE,
+                chatRoomId
+        );
+
+        when(userRepository.findById(USER_ID))
+                .thenReturn(Optional.of(receiver));
+        when(notificationRepository.save(any(Notification.class)))
+                .thenReturn(savedNotification);
+        when(pushTokenRepository.findAllByUser_Id(USER_ID))
+                .thenReturn(List.of());
+
+        service.send(USER_ID, message);
+
+        verify(notificationRepository)
+                .deleteByUser_IdAndTypeAndReferenceId(
+                        USER_ID,
+                        NotificationType.MESSAGE,
+                        chatRoomId
+                );
+
+        verify(notificationRepository)
+                .save(any(Notification.class));
     }
 
     // ---------- notification list ----------
@@ -436,6 +482,7 @@ class NotificationServiceTest {
         when(notificationRepository.findNotificationPage(
                 eq(USER_ID),
                 eq(40L),
+                eq(false),
                 any(Pageable.class)
         )).thenReturn(List.of(bandInvite, live, extra));
         when(bandInvitePort.getBandInviteDetails(
@@ -459,6 +506,7 @@ class NotificationServiceTest {
         verify(notificationRepository).findNotificationPage(
                 eq(USER_ID),
                 eq(40L),
+                eq(false),
                 pageableCaptor.capture()
         );
         assertThat(pageableCaptor.getValue().getPageSize())
@@ -482,6 +530,7 @@ class NotificationServiceTest {
         when(notificationRepository.findNotificationPage(
                 eq(USER_ID),
                 eq(null),
+                eq(false),
                 any(Pageable.class)
         )).thenReturn(List.of(first, second));
         when(bandInvitePort.getBandInviteDetails(
@@ -497,6 +546,47 @@ class NotificationServiceTest {
         verify(bandInvitePort).getBandInviteDetails(
                 USER_ID,
                 List.of(700L)
+        );
+    }
+
+    @Test
+    void getNotifications_읽은_알림은_음수_커서를_사용한다() {
+        Notification first = notification(
+                30L,
+                user(USER_ID),
+                NotificationType.LIVE,
+                50L
+        );
+        first.markAsRead();
+
+        Notification extra = notification(
+                20L,
+                user(USER_ID),
+                NotificationType.POST,
+                40L
+        );
+        extra.markAsRead();
+
+        when(notificationRepository.findNotificationPage(
+                eq(USER_ID),
+                eq(100L),
+                eq(true),
+                any(Pageable.class)
+        )).thenReturn(List.of(first, extra));
+
+        CursorPage<NotificationListItemResponse> response =
+                service.getNotifications(USER_ID, -100L, 1);
+
+        assertThat(response.getItems()).hasSize(1);
+        assertThat(response.getPageInfo().hasNext()).isTrue();
+        assertThat(response.getPageInfo().nextCursor())
+                .isEqualTo(-30L);
+
+        verify(notificationRepository).findNotificationPage(
+                eq(USER_ID),
+                eq(100L),
+                eq(true),
+                any(Pageable.class)
         );
     }
 

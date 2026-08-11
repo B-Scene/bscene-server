@@ -77,7 +77,8 @@ public class NotificationController {
         return ResponseEntity.status(successResponse.getStatus()).body(successResponse);
     }
 
-    // 사용자의 알림 목록을 최신순으로 조회합니다.
+    // 읽지 않은 알림을 먼저, 같은 읽음 상태에서는 최신순으로 조회
+    // nextCursor는 불투명한 값이며 클라이언트는 해석하지 않고 다음 요청에 그대로 전달
     @GetMapping
     public ResponseEntity<SuccessResponse<CursorPage<NotificationListItemResponse>>> getNotifications(
             @AuthenticationPrincipal AuthMember authMember,
