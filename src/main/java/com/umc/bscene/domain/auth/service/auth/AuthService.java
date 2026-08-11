@@ -8,6 +8,7 @@ import com.umc.bscene.domain.auth.enums.code.AuthErrorCode;
 import com.umc.bscene.domain.auth.enums.verification.PhoneVerificationPurpose;
 import com.umc.bscene.domain.auth.exception.auth.AuthException;
 import com.umc.bscene.domain.auth.repository.credential.LocalCredentialRepository;
+import com.umc.bscene.domain.auth.repository.term.TermsRepository;
 import com.umc.bscene.domain.auth.repository.term.UserTermsRepository;
 import com.umc.bscene.domain.auth.service.verification.PhoneVerificationService;
 import com.umc.bscene.domain.user.entity.User;
@@ -48,6 +49,7 @@ public class AuthService {
     private final PhoneVerificationService phoneVerificationService;
 
     private final UserTermsRepository userTermsRepository;
+    private final TermsRepository termsRepository;
 
     @Transactional
     public SignupResponse signup(SignupRequest request) {
@@ -148,7 +150,7 @@ public class AuthService {
         List<UserTerms> userTerms = termAgreements.stream()
                 .map(agreement -> UserTerms.builder()
                         .user(user)
-                        .termId(agreement.termId())
+                        .terms(termsRepository.getReferenceById(agreement.termId()))
                         .isAgreed(agreement.agreed())
                         .agreedAt(LocalDateTime.now())
                         .build())
