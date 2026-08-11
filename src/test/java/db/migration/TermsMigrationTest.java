@@ -31,6 +31,9 @@ class TermsMigrationTest {
                 .migrate();
 
         try (Connection connection = DriverManager.getConnection(URL, "sa", "")) {
+            assertThat(tableNames(connection))
+                    .contains("terms")
+                    .doesNotContain("Terms");
             assertThat(terms(connection)).containsExactly(
                     "1:만 14세 이상 확인:MANDATORY",
                     "2:서비스 이용약관:MANDATORY",
@@ -78,7 +81,7 @@ class TermsMigrationTest {
         List<String> terms = new ArrayList<>();
         try (Statement statement = connection.createStatement();
              ResultSet resultSet = statement.executeQuery(
-                     "SELECT \"termId\", \"name\", \"type\" FROM \"Terms\" "
+                     "SELECT \"termId\", \"name\", \"type\" FROM \"terms\" "
                              + "ORDER BY \"termId\"")) {
             while (resultSet.next()) {
                 terms.add(resultSet.getLong(1) + ":" + resultSet.getString(2)
@@ -86,6 +89,17 @@ class TermsMigrationTest {
             }
         }
         return terms;
+    }
+
+    private List<String> tableNames(Connection connection) throws Exception {
+        List<String> tableNames = new ArrayList<>();
+        try (ResultSet tables = connection.getMetaData().getTables(
+                connection.getCatalog(), connection.getSchema(), "%", new String[]{"TABLE"})) {
+            while (tables.next()) {
+                tableNames.add(tables.getString("TABLE_NAME"));
+            }
+        }
+        return tableNames;
     }
 
     private List<String> userTerms(Connection connection) throws Exception {
@@ -105,7 +119,7 @@ class TermsMigrationTest {
     private String firstTermsContent(Connection connection) throws Exception {
         try (Statement statement = connection.createStatement();
              ResultSet resultSet = statement.executeQuery(
-                    "SELECT \"content\" FROM \"Terms\" WHERE \"termId\" = 2")) {
+                    "SELECT \"content\" FROM \"terms\" WHERE \"termId\" = 2")) {
             assertThat(resultSet.next()).isTrue();
             return resultSet.getString(1);
         }
@@ -115,7 +129,7 @@ class TermsMigrationTest {
         try (ResultSet keys = connection.getMetaData().getImportedKeys(
                 connection.getCatalog(), connection.getSchema(), "USERTERMS")) {
             while (keys.next()) {
-                if ("Terms".equalsIgnoreCase(keys.getString("PKTABLE_NAME"))) {
+                if ("terms".equals(keys.getString("PKTABLE_NAME"))) {
                     return true;
                 }
             }
