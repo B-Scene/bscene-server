@@ -37,5 +37,6 @@ public class BandInteraction extends BaseEntity {
     @Column(nullable = false)
     private Integer clickCount = 0;
 
+    @Column(nullable = false)
     private LocalDateTime lastInteractedAt;
 }
