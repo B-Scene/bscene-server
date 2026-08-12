@@ -90,9 +90,15 @@ public class StreamServiceImpl implements StreamService {
     private static final String MTX_SOURCE_WEBRTC = "webRTCSession";
     private static final String VIEWER_KEY_PREFIX = "viewer:";
 
-    // 방에 실제 입장해 있는 진행자 프레젠스 (member = userId, score = 입장 epoch초).
-    // ACCEPTED는 진행자 자격일 뿐이라, /lives/{liveId}/members에는 이 키와 교집합인 멤버만 노출한다
+    // 방에 실제 입장해 있는 진행자 프레젠스 (member = userId, score = 마지막 생존 확인 epoch초).
+    // ACCEPTED는 진행자 자격일 뿐이라, /lives/{liveId}/members에는 이 키와 교집합인 멤버만 노출한다.
+    // 생존 근거는 SSE가 아니라 "개인 path로 송출 중"이다: enterRoom이 등록(유예 시작)하고,
+    // syncLiveState(5초 폴링)가 송출 중인 멤버의 score를 갱신·유령을 스윕하며, leaveRoom/closeStream이 제거한다
     private static final String MEMBER_PRESENCE_KEY_PREFIX = "live-member:";
+
+    // 진행자 프레젠스 유예 시간. 이 시간 동안 송출이 확인되지 않으면 /members에서 제거된다.
+    // 입장(enterRoom)~WHIP 연결까지의 지연과 WebRTC 순단·재협상을 흡수해야 하므로 폴링 주기(5초)보다 넉넉히 크게 둔다
+    private static final long MEMBER_STALE_SECONDS = 45L;
 
     // 진행자 개인 송출 path 구분자. 메인 path(UUID)는 hex 문자뿐이라 "-m"과 충돌하지 않고,
     // MediaMTX 인증 path 패턴(^[a-zA-Z0-9\-]{0,64}$)도 만족한다
@@ -953,6 +959,75 @@ public class StreamServiceImpl implements StreamService {
                 audioStreamRepository.findByPath(path).ifPresent(s -> s.close(viewerCountOf(s.getId())));
             }
         }
+
+        // 진행자 프레젠스(/members) 갱신·정리. 폴링 성공 시에만 이 메서드가 호출되므로
+        // MediaMTX 장애 중에는 갱신과 스윕이 같이 멈춰, 멀쩡한 진행자가 오삭제되는 일이 없다
+        refreshMemberPresence(readyPaths, mainReadyPaths);
+    }
+
+    /*
+     * 진행자 프레젠스(live-member:{liveId}, /lives/{liveId}/members의 소스) 갱신·정리.
+     * "목록에 있다 = 개인 path로 송출 중이다"가 원칙이며, 생존 근거를 SSE가 아닌 MediaMTX 폴링에 둔다.
+     * (마이크 오프는 무음 송출이라 path가 ready로 유지되므로 목록에 남는다)
+     */
+    private void refreshMemberPresence(Set<String> readyPaths, Set<String> mainReadyPaths) {
+        // ready인 진행자 개인 path 중, 메인 path(믹서 출력)가 살아있는 라이브의 것만 인정.
+        // 종료된 라이브의 좀비 WHIP 세션이 정리된 live-member: 키를 되살리는 것 방지
+        Set<String> readyMemberPaths = readyPaths.stream()
+                .filter(path -> MEMBER_PATH_PATTERN.matcher(path).matches())
+                .filter(path -> mainReadyPaths.contains(path.substring(0, path.lastIndexOf(MEMBER_PATH_INFIX))))
+                .collect(Collectors.toSet());
+
+        // 구성이 실제로 바뀐 라이브만 모아, 폴 사이클당 스냅샷 1회로 합쳐 보낸다
+        Set<Long> changedLiveIds = new HashSet<>();
+
+        // 송출 중인 진행자의 score 일괄 갱신 (폴 주기 5초 → 정상 송출 중엔 항상 신선)
+        if (!readyMemberPaths.isEmpty()) {
+            long now = Instant.now().getEpochSecond();
+            streamMemberRepository.findAllWithUserAndStreamByPathIn(readyMemberPaths).forEach(sm -> {
+                Long liveId = sm.getAudioStream().getId();
+
+                // ZADD는 "새로 추가됐을 때"만 true, 이미 송출 중이라 score만 갱신되면 false다.
+                // 이 구분이 없으면 5초마다 전원에게 스냅샷이 도배된다
+                Boolean added = redisTemplate.opsForZSet().add(
+                        MEMBER_PRESENCE_KEY_PREFIX + liveId,
+                        String.valueOf(sm.getUser().getId()),
+                        now
+                );
+
+                // 스윕된 뒤(긴 네트워크 단절 등) enterRoom 재호출 없이 WHIP만 복구된 경우가 여기 걸린다.
+                // 이때 알리지 않으면 동료들이 그 사람을 영영 구독하지 못해 목소리가 안 들린다
+                if (Boolean.TRUE.equals(added))
+                    changedLiveIds.add(liveId);
+            });
+        }
+
+        // 유령 정리: 입장 후 WHIP 미연결이거나 송출이 끊긴 지 MEMBER_STALE_SECONDS가 지난 진행자 제거.
+        // leaveRoom 없이 끊긴(브라우저 강제 종료 등) 진행자는 이 경로로만 빠진다
+        long cutoff = Instant.now().getEpochSecond() - MEMBER_STALE_SECONDS;
+        for (String key : scanKeys(MEMBER_PRESENCE_KEY_PREFIX + "*")) {
+            Long removed = redisTemplate.opsForZSet().removeRangeByScore(key, 0, cutoff);
+            if (removed == null || removed == 0)
+                continue;
+
+            liveIdFromPresenceKey(key).ifPresent(changedLiveIds::add);
+        }
+
+        // 남은 진행자들이 새 상대를 구독하고 사라진 상대의 WHEP 연결을 정리하도록 스냅샷을 보낸다
+        changedLiveIds.forEach(this::notifyCoPublishersChangedAfterCommit);
+    }
+
+    /*
+     * live-member:{liveId} 키에서 liveId를 뽑는다. 폴링 경로에서 도는 코드라 예상 밖의 키가 섞여도
+     * 전체 사이클이 죽지 않도록 파싱 실패는 값 없음으로 흘린다
+     */
+    private Optional<Long> liveIdFromPresenceKey(String key) {
+        try {
+            return Optional.of(Long.valueOf(key.substring(MEMBER_PRESENCE_KEY_PREFIX.length())));
+        } catch (NumberFormatException e) {
+            log.warn("진행자 프레젠스 키에서 liveId 파싱 실패: {}", key);
+            return Optional.empty();
+        }
     }
 
     @Override
@@ -1064,12 +1139,12 @@ public class StreamServiceImpl implements StreamService {
 
         if(isPublisher) {
             StreamMember publisher = requireAcceptedMember(liveId, userId);
-            boolean firstJoin = publisher.getPath() == null;
 
             // 결정적 값이라 동시 발급이 경합해도 같은 값으로 수렴 (path unique 제약과 충돌하지 않음)
             publisher.assignPath(publisher.getAudioStream().getPath() + MEMBER_PATH_INFIX + publisher.getId());
 
-            // 실참여 프레젠스 등록. /lives/{liveId}/members에는 입장 중인 진행자만 노출되며, leaveRoom에서 제거된다
+            // 실참여 프레젠스 등록(WHIP 연결까지의 유예 시작). 이후 생존은 syncLiveState가 송출 여부로 판정하며,
+            // 유예(MEMBER_STALE_SECONDS) 내에 송출이 시작되지 않으면 /members에서 제거된다
             redisTemplate.opsForZSet().add(
                     MEMBER_PRESENCE_KEY_PREFIX + liveId,
                     String.valueOf(userId),
@@ -1086,12 +1161,14 @@ public class StreamServiceImpl implements StreamService {
             List<StreamMember> acceptedMembers =
                     streamMemberRepository.findAllByAudioStream_IdAndStatus(liveId, StreamMemberStatus.ACCEPTED);
 
-            // 다른 진행자들의 오디오는 믹스 결과(에코·지연)가 아닌 원본 path를 WHEP으로 직접 듣는다
-            coPublishers = peerPublishers(acceptedMembers, userId);
+            // 다른 진행자들의 오디오는 믹스 결과(에코·지연)가 아닌 원본 path를 WHEP으로 직접 듣는다.
+            // 바로 위에서 본인 프레젠스를 등록했으므로, 이 목록은 아래 SSE 스냅샷과 같은 기준이다
+            coPublishers = peerPublishers(acceptedMembers, presentMemberIds(liveId), userId);
 
-            // 최초 입장이면 기존 진행자들이 새 path를 즉시 WHEP 구독할 수 있게 SSE로 알린다
-            if (firstJoin)
-                notifyPeersOfJoinAfterCommit(liveId, userId, publisher.getPath(), acceptedMembers);
+            // 기존 진행자들이 새 path를 즉시 WHEP 구독할 수 있게 전원에게 스냅샷을 보낸다.
+            // 재입장(path 재사용)에도 반드시 보내야 한다 — 안 보내면 남아 있던 진행자들이
+            // 재입장자를 구독하지 못해 그 사람 목소리만 영영 안 들린다
+            notifyCoPublishersChangedAfterCommit(liveId);
         } else {
             // 청취자일 시, OPEN이면 청취 URL, !OPEN이면 null로 빌드
             playback = isLive ? new StreamRoomResponse.Playback(
@@ -1130,10 +1207,16 @@ public class StreamServiceImpl implements StreamService {
                 });
     }
 
-    // 본인을 제외한, 개인 path가 발급된(입장한 적 있는) 확정 진행자들의 WHEP 모니터링 정보
-    private List<StreamRoomResponse.CoPublisher> peerPublishers(List<StreamMember> acceptedMembers, Long userId) {
+    /*
+     * 본인을 제외한, "지금 이 방에 입장해 있는" 확정 진행자들의 WHEP 모니터링 정보.
+     * path만 보면 퇴장한 진행자가 그대로 남으므로, /members와 동일한 프레젠스 키로 교집합을 낸다
+     */
+    private List<StreamRoomResponse.CoPublisher> peerPublishers(
+            List<StreamMember> acceptedMembers, Set<String> presentIds, Long userId
+    ) {
         return acceptedMembers.stream()
                 .filter(sm -> sm.getPath() != null)
+                .filter(sm -> presentIds.contains(String.valueOf(sm.getUser().getId())))
                 .filter(sm -> !sm.getUser().getId().equals(userId))
                 .map(sm -> new StreamRoomResponse.CoPublisher(
                         sm.getUser().getId(),
@@ -1141,29 +1224,46 @@ public class StreamServiceImpl implements StreamService {
                 .toList();
     }
 
-    /*
-     * 최초 입장(신규 path 발급) 시 다른 ACCEPTED 진행자 전원에게 합류 이벤트를 예약한다.
-     * path가 커밋되기 전에 FE가 WHEP을 시도하면 canRead 인가에 실패하므로 반드시 afterCommit으로 미룬다.
-     * 대상에는 path 미발급 멤버도 포함한다(SSE만 먼저 연결해 둔 진행자도 받아야 함)
-     */
-    private void notifyPeersOfJoinAfterCommit(
-            Long liveId, Long userId, String path, List<StreamMember> acceptedMembers
-    ) {
-        List<Long> targets = acceptedMembers.stream()
-                .map(sm -> sm.getUser().getId())
-                .filter(id -> !id.equals(userId))
-                .toList();
+    // 현재 방에 입장해 있는 진행자 userId 집합 (문자열). /members와 같은 소스를 쓴다
+    private Set<String> presentMemberIds(Long liveId) {
+        Set<String> present = redisTemplate.opsForZSet().range(MEMBER_PRESENCE_KEY_PREFIX + liveId, 0, -1);
+        return present == null ? Set.of() : present;
+    }
 
-        if (targets.isEmpty())
+    /*
+     * 진행자 구성이 바뀔 때(입장·퇴장·비정상 종료) 확정 진행자 전원에게 스냅샷 전송을 예약한다.
+     *
+     * 델타(합류 1건)가 아니라 전체 목록을 보내므로 FE 처리가 멱등해지고, 이벤트 유실·순서 뒤바뀜에도
+     * 다음 이벤트에서 복구된다. 수신자마다 본인이 빠진 목록이어야 해서 대상별로 따로 만든다.
+     *
+     * payload는 트랜잭션 안에서 미리 만들고 전송만 afterCommit으로 미룬다:
+     * path가 커밋되기 전에 FE가 WHEP을 시도하면 canRead 인가에 실패하고,
+     * afterCommit 시점에는 영속성 컨텍스트가 닫혀 지연 로딩을 할 수 없기 때문이다.
+     *
+     * 수신 대상은 입장 중인 진행자가 아니라 ACCEPTED 전원이다 — 아직 enterRoom 전이라도
+     * SSE만 먼저 연결해 둔 진행자가 받을 수 있어야 한다 (미접속자는 sendToUsers가 조용히 건너뛴다)
+     */
+    private void notifyCoPublishersChangedAfterCommit(Long liveId) {
+        List<StreamMember> acceptedMembers =
+                streamMemberRepository.findAllByAudioStream_IdAndStatus(liveId, StreamMemberStatus.ACCEPTED);
+
+        if (acceptedMembers.isEmpty())
             return;
 
-        StreamRoomResponse.CoPublisher joined =
-                new StreamRoomResponse.CoPublisher(userId, webrtcUrl + "/" + path + "/whep");
+        Set<String> presentIds = presentMemberIds(liveId);
+
+        Map<Long, List<StreamRoomResponse.CoPublisher>> snapshotByUserId = acceptedMembers.stream()
+                .map(sm -> sm.getUser().getId())
+                .distinct()
+                .collect(Collectors.toMap(
+                        id -> id,
+                        id -> peerPublishers(acceptedMembers, presentIds, id)
+                ));
 
         TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
             @Override
             public void afterCommit() {
-                viewerSsePresence.notifyCoPublisherJoined(liveId, targets, joined);
+                viewerSsePresence.notifyCoPublishersChanged(liveId, snapshotByUserId);
             }
         });
     }
@@ -1175,6 +1275,30 @@ public class StreamServiceImpl implements StreamService {
 
         // 진행자 퇴장을 라이브 멤버 목록(/members)에 반영. 청취자는 이 키에 없으므로 no-op
         redisTemplate.opsForZSet().remove(MEMBER_PRESENCE_KEY_PREFIX + liveId, String.valueOf(userId));
+
+        // 공동 진행자는 WHIP 세션도 끊는다. 세션이 남으면 syncLiveState(5초 폴링)가 프레젠스를 되살려
+        // 나간 사람이 /members에 다시 나타나기 때문. 송출자는 kick 대상이 아니다 —
+        // 개인 path가 끊기면 믹서 출력(메인 path)이 멎어 라이브 전체가 비정상 종료 처리되며, 방송 종료는 closeStream 전용
+        streamMemberRepository.findWithStreamByLiveIdAndUserId(liveId, userId)
+                .filter(sm -> sm.getStatus() == StreamMemberStatus.ACCEPTED)
+                .filter(sm -> sm.getPath() != null)
+                .filter(sm -> !sm.getAudioStream().getBroadcasterId().equals(userId))
+                .ifPresent(sm -> {
+                    String memberPath = sm.getPath();
+                    TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                        @Override
+                        public void afterCommit() {
+                            kickPublisher(memberPath);
+                            // kick 직전의 폴링 스냅샷이 ZADD로 새치기하는 창을 좁히기 위한 재제거.
+                            // 그래도 새치기당하면 다음 폴부터 갱신이 멎어 유예 시간 내에 스윕된다
+                            redisTemplate.opsForZSet().remove(MEMBER_PRESENCE_KEY_PREFIX + liveId, String.valueOf(userId));
+                        }
+                    });
+                });
+
+        // 남은 진행자들이 퇴장자의 WHEP 연결을 정리하도록 스냅샷을 다시 보낸다.
+        // 위에서 프레젠스를 이미 제거했으므로 퇴장자는 목록에서 빠진 채로 나간다
+        notifyCoPublishersChangedAfterCommit(liveId);
 
         viewerSsePresence.broadcastCount(liveId);
     }
@@ -1573,7 +1697,7 @@ public class StreamServiceImpl implements StreamService {
             throw new StreamException(StreamErrorCode.CO_HOST_CONFLICT);
 
         // 요청자(수락된 밴드 멤버)가 이 이벤트를 받고 enterRoom을 재호출해 송출 정보를 받는다.
-        // 송출자는 재호출 불필요 — 요청자가 입장하면 coPublisherJoined로 새 WHEP 경로가 전달된다.
+        // 송출자는 재호출 불필요 — 요청자가 입장하면 coPublishersChanged 스냅샷으로 새 WHEP 경로가 전달된다.
         // ACCEPTED 커밋 후에만 전송
         CoHostUpgradeEvent event = new CoHostUpgradeEvent(
                 requesterId,
