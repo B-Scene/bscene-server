@@ -28,6 +28,7 @@ public record BandLiveHomeResponse(
 
     public record ScheduledItem(
             Long liveId,
+            String bandProfileImageUrl,
             String bandName,
             String title,
             String scheduledAt,
