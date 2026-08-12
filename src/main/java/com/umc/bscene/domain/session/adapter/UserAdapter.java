@@ -145,7 +145,8 @@ public class UserAdapter implements SessionPort {
                                     row.applierPart(),
                                     row.applierSkill(),
                                     row.applierRegion(),
-                                    row.status()
+                                    row.status(),
+                                    row.isChecked()
                             ))
                             .toList();
                     return new SessionRecruitmentResponse(

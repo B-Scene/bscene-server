@@ -608,8 +608,8 @@ class StreamServiceImplQueryTest {
                     new FanLiveHomeResponse.ReplayItem(32L, "https://cdn.test/thumb-32.jpg", "title-32", "", 0L)
             );
             assertThat(fanHome.scheduled()).containsExactly(
-                    new FanLiveHomeResponse.ScheduledItem(51L, "title-51", "밴드61", "7.11. (토) 오후 9:00", false),
-                    new FanLiveHomeResponse.ScheduledItem(52L, "title-52", "", "12.25. (금) 오전 9:05", true)
+                    new FanLiveHomeResponse.ScheduledItem(51L, "https://cdn.test/b61.jpg", "title-51", "밴드61", "7.11. (토) 오후 9:00", false),
+                    new FanLiveHomeResponse.ScheduledItem(52L, "", "title-52", "", "12.25. (금) 오전 9:05", true)
             );
         }
 
@@ -739,8 +739,8 @@ class StreamServiceImplQueryTest {
                     new BandLiveHomeResponse.LiveNowItem(12L, "https://cdn.test/b1.jpg", "내밴드", "title-12", 0, false, List.of())
             );
             assertThat(bandHome.scheduled()).containsExactly(
-                    new BandLiveHomeResponse.ScheduledItem(51L, "내밴드", "title-51", "7.11. (토) 오후 9:00", true, List.of(1L)),
-                    new BandLiveHomeResponse.ScheduledItem(52L, "내밴드", "title-52", null, false, List.of())
+                    new BandLiveHomeResponse.ScheduledItem(51L, "https://cdn.test/b1.jpg", "내밴드", "title-51", "7.11. (토) 오후 9:00", true, List.of(1L)),
+                    new BandLiveHomeResponse.ScheduledItem(52L, "https://cdn.test/b1.jpg", "내밴드", "title-52", null, false, List.of())
             );
         }
 

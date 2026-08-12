@@ -431,6 +431,7 @@ public class StreamServiceImpl implements StreamService {
 
                     return new FanLiveHomeResponse.ScheduledItem(
                             s.getId(),
+                            band != null ? band.bandProfileImageUrl() : "",
                             s.getTitle(),
                             band != null ? band.bandName() : "",
                             formatScheduledAt(s.getScheduledAt()),
@@ -488,6 +489,7 @@ public class StreamServiceImpl implements StreamService {
         List<BandLiveHomeResponse.ScheduledItem> scheduledItems = scheduled.stream()
                 .map(s -> new BandLiveHomeResponse.ScheduledItem(
                         s.getId(),
+                        myBandImageUrl,
                         myBandName,
                         s.getTitle(),
                         formatScheduledAt(s.getScheduledAt()),

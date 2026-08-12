@@ -34,6 +34,7 @@ public record FanLiveHomeResponse(
 
     public record ScheduledItem(
             Long liveId,
+            String bandProfileImageUrl,
             String title,
             String bandName,
             String scheduledAt,
