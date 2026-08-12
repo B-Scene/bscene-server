@@ -90,6 +90,10 @@ public class StreamServiceImpl implements StreamService {
     private static final String MTX_SOURCE_WEBRTC = "webRTCSession";
     private static final String VIEWER_KEY_PREFIX = "viewer:";
 
+    // 방에 실제 입장해 있는 진행자 프레젠스 (member = userId, score = 입장 epoch초).
+    // ACCEPTED는 진행자 자격일 뿐이라, /lives/{liveId}/members에는 이 키와 교집합인 멤버만 노출한다
+    private static final String MEMBER_PRESENCE_KEY_PREFIX = "live-member:";
+
     // 진행자 개인 송출 path 구분자. 메인 path(UUID)는 hex 문자뿐이라 "-m"과 충돌하지 않고,
     // MediaMTX 인증 path 패턴(^[a-zA-Z0-9\-]{0,64}$)도 만족한다
     private static final String MEMBER_PATH_INFIX = "-m";
@@ -292,6 +296,7 @@ public class StreamServiceImpl implements StreamService {
         String path = audioStream.getPath();
         audioStream.close(viewerCountOf(audioStream.getId()));  // 종료 + 시청자 수 스냅샷
         redisTemplate.delete(LIVE_KEY_PREFIX + path);           // Redis도 정리
+        redisTemplate.delete(MEMBER_PRESENCE_KEY_PREFIX + streamId);   // 진행자 프레젠스 정리 (종료 후 /members는 빈 목록)
 
         // 진행자 개인 WHIP 세션들 정리 대상. 메인 path는 믹서(RTSP) 소스라 webrtc kick의 대상이 아니며,
         // 멤버 path가 사라지면 믹서가 스스로 송출을 멈춘다
@@ -1064,6 +1069,13 @@ public class StreamServiceImpl implements StreamService {
             // 결정적 값이라 동시 발급이 경합해도 같은 값으로 수렴 (path unique 제약과 충돌하지 않음)
             publisher.assignPath(publisher.getAudioStream().getPath() + MEMBER_PATH_INFIX + publisher.getId());
 
+            // 실참여 프레젠스 등록. /lives/{liveId}/members에는 입장 중인 진행자만 노출되며, leaveRoom에서 제거된다
+            redisTemplate.opsForZSet().add(
+                    MEMBER_PRESENCE_KEY_PREFIX + liveId,
+                    String.valueOf(userId),
+                    Instant.now().getEpochSecond()
+            );
+
             // 진행자(송출자·공동 진행자)일 시, 반드시 개인 멤버 path의 송출 URL을 반환.
             // 멤버 path들의 오디오는 믹서가 합쳐 메인 path로 내보내고, 청취자는 그 결과를 HLS로 듣는다
             playback = new StreamRoomResponse.Playback(
@@ -1160,6 +1172,10 @@ public class StreamServiceImpl implements StreamService {
     @Transactional
     public void leaveRoom(Long userId, Long liveId) {
         redisTemplate.opsForZSet().remove(VIEWER_KEY_PREFIX + liveId, String.valueOf(userId));
+
+        // 진행자 퇴장을 라이브 멤버 목록(/members)에 반영. 청취자는 이 키에 없으므로 no-op
+        redisTemplate.opsForZSet().remove(MEMBER_PRESENCE_KEY_PREFIX + liveId, String.valueOf(userId));
+
         viewerSsePresence.broadcastCount(liveId);
     }
 
@@ -1362,9 +1378,15 @@ public class StreamServiceImpl implements StreamService {
 
         AudioStream stream = getStream(liveId);
 
-        // 송출자 포함, 공동 진행이 확정된(ACCEPTED) 멤버만 조회. 수락 전(INVITED)이거나 거절(REJECTED)한 멤버는 제외
+        // 현재 방에 입장해 있는(퇴장하지 않은) 진행자 프레젠스. enterRoom에서 등록, leaveRoom/closeStream에서 제거된다
+        Set<String> present = redisTemplate.opsForZSet().range(MEMBER_PRESENCE_KEY_PREFIX + liveId, 0, -1);
+        Set<String> presentIds = present == null ? Set.of() : present;
+
+        // 송출자 포함, 공동 진행이 확정된(ACCEPTED) 멤버 중 실제 입장 중인 멤버만 조회.
+        // 수락 전(INVITED)/거절(REJECTED)은 물론, 자격만 있고 미입장이거나 퇴장한 멤버도 제외
         List<Long> memberUserIds = streamMemberRepository.findAllByAudioStream_IdAndStatus(stream.getId(), StreamMemberStatus.ACCEPTED).stream()
                 .map(sm -> sm.getUser().getId())
+                .filter(id -> presentIds.contains(String.valueOf(id)))
                 .toList();
 
         // 유저의 활성 프로필이 아니라, 라이브가 생성 시점에 확정한 밴드 기준의 멤버 프로필로 조회 (밴드마다 예명이 다를 수 있음)
