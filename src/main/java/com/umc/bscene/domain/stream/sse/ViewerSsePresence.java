@@ -15,8 +15,8 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 import java.time.Instant;
-import java.util.Collection;
 import java.util.List;
+import java.util.Map;
 
 /**
  * 시청자 수 SSE의 구독·브로드캐스트·하트비트·유령 정리를 담당한다.
@@ -25,8 +25,8 @@ import java.util.List;
  * 하트비트가 살아있는 시청자의 score를 갱신하고, 갱신되지 않은(끊긴/유령) 시청자는 sweep이 제거한다.
  * 따라서 브라우저를 그냥 닫아 leaveRoom이 호출되지 않아도 최대 STALE_SECONDS 안에 카운트에서 빠진다.
  * <p>
- * 진행자 프레젠스(live-member:{liveId}, /lives/{liveId}/members의 소스)도 같은 방식으로 관리한다:
- * enterRoom이 등록한 항목의 score를 하트비트가 갱신하고, 끊긴 진행자는 sweepStaleMembers가 제거한다.
+ * 진행자 프레젠스(live-member:{liveId})는 이 클래스가 관리하지 않는다 — 진행자의 생존 근거는
+ * SSE가 아니라 MediaMTX 개인 path 송출 여부이며, StreamServiceImpl.syncLiveState가 갱신·정리한다.
  */
 @RequiredArgsConstructor
 public class ViewerSsePresence {
@@ -36,10 +36,6 @@ public class ViewerSsePresence {
     private final AudioStreamRepository audioStreamRepository;
 
     private static final String VIEWER_KEY_PREFIX = "viewer:";
-
-    // 방에 입장해 있는 진행자 프레젠스(StreamServiceImpl과 동일 키). enterRoom에서 등록되고,
-    // 하트비트가 score를 갱신하며, leaveRoom 없이 끊긴 진행자는 sweepStaleMembers가 제거한다
-    private static final String MEMBER_PRESENCE_KEY_PREFIX = "live-member:";
 
     private static final long HEARTBEAT_MS = 15_000L;
     // 반드시 하트비트 주기(15s)보다 넉넉히 커야 한다. 비트 사이에 살아있는 시청자가 잘리는 것을 방지(3비트 허용).
@@ -81,17 +77,21 @@ public class ViewerSsePresence {
     }
 
     /**
-     * 새 진행자 합류를 기존 진행자들에게만 알린다(coPublisherJoined 이벤트).
-     * payload에 멤버 path(WHEP URL)가 담기므로 브로드캐스트가 아닌 타겟 전송만 사용한다.
+     * 진행자 구성 변경(입장·퇴장·비정상 종료)을 진행자들에게만 알린다(coPublishersChanged 이벤트).
+     * <p>
+     * payload는 합류 1건의 델타가 아니라 "지금 구독해야 할 상대 전원"의 <b>전체 스냅샷</b>이다.
+     * FE는 받은 목록으로 peer 집합을 통째로 맞추기만 하면 되므로 처리가 멱등해지고,
+     * 이벤트가 유실되거나 순서가 뒤바뀌어도 다음 이벤트에서 저절로 복구된다.
+     * <p>
+     * 수신자마다 본인이 빠진 목록이어야 하므로 대상별 payload를 받아 개별 전송한다.
+     * 멤버 path(WHEP URL)를 나르므로 브로드캐스트가 아닌 타겟 전송만 사용한다.
      */
-    public void notifyCoPublisherJoined(
+    public void notifyCoPublishersChanged(
             Long liveId,
-            Collection<Long> targetUserIds,
-            StreamRoomResponse.CoPublisher joined
+            Map<Long, List<StreamRoomResponse.CoPublisher>> snapshotByUserId
     ) {
-        if (targetUserIds.isEmpty()) return;
-
-        registry.sendToUsers(liveId, targetUserIds, "coPublisherJoined", joined);
+        snapshotByUserId.forEach((userId, peers) ->
+                registry.sendToUsers(liveId, List.of(userId), "coPublishersChanged", peers));
     }
 
     /*
@@ -117,25 +117,10 @@ public class ViewerSsePresence {
                 VIEWER_KEY_PREFIX + liveId, String.valueOf(userId), Instant.now().getEpochSecond());
     }
 
-    /** 하트비트: 살아있는 연결에 ping을 보내고, 시청자·진행자 프레젠스 score를 갱신한다. */
+    /** 하트비트: 살아있는 연결에 ping을 보내고, 그 시청자의 프레젠스 score를 갱신한다. */
     @Scheduled(fixedRate = HEARTBEAT_MS)
     public void heartbeat() {
-        registry.pingAndCollectAlive((liveId, userId, counted) -> {
-            if (counted) touch(liveId, userId);     // 시청자 수 프레젠스 (송출자는 미포함)
-            touchMemberPresence(liveId, userId);    // 진행자 프레젠스 (등록된 유저만 갱신됨)
-        });
-    }
-
-    /*
-     * 진행자 프레젠스 score 갱신. enterRoom에서 등록된(존재하는) 멤버만 갱신한다 —
-     * 무조건 add하면 청취자나 leaveRoom으로 퇴장한 진행자가 /members 목록에 다시 들어가기 때문.
-     * (score 조회와 add 사이에 leaveRoom이 끼면 잠깐 재등록될 수 있지만, SSE가 닫히면 sweep이 제거한다)
-     */
-    private void touchMemberPresence(Long liveId, Long userId) {
-        String key = MEMBER_PRESENCE_KEY_PREFIX + liveId;
-        Double score = redisTemplate.opsForZSet().score(key, String.valueOf(userId));
-        if (score != null)
-            redisTemplate.opsForZSet().add(key, String.valueOf(userId), Instant.now().getEpochSecond());
+        registry.pingAndCollectAlive(this::touch);
     }
 
     /** 유령 정리: score가 갱신되지 않은(끊긴) 시청자를 ZSet에서 제거하고 카운트를 반영한다. */
@@ -152,20 +137,6 @@ public class ViewerSsePresence {
                     broadcastCount(liveId);
                 }
             }
-        }
-    }
-
-    /*
-     * 유령 진행자 정리: leaveRoom 없이 끊긴(SSE 하트비트가 멎은) 진행자를 프레젠스에서 제거해
-     * /lives/{liveId}/members 응답에서 빠지게 한다. 멤버 목록은 SSE로 내려가지 않으므로 브로드캐스트는 없다
-     */
-    @Scheduled(fixedRate = HEARTBEAT_MS)
-    public void sweepStaleMembers() {
-        long cutoff = Instant.now().getEpochSecond() - STALE_SECONDS;
-        try (Cursor<String> cursor = redisTemplate.scan(
-                ScanOptions.scanOptions().match(MEMBER_PRESENCE_KEY_PREFIX + "*").count(200).build())) {
-            while (cursor.hasNext())
-                redisTemplate.opsForZSet().removeRangeByScore(cursor.next(), 0, cutoff);
         }
     }
 }

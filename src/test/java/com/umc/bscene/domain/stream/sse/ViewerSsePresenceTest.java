@@ -26,7 +26,9 @@ import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 import java.time.Instant;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
+import java.util.function.BiConsumer;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -67,7 +69,6 @@ class ViewerSsePresenceTest {
     private static final long BROADCASTER_ID = 1L;
     private static final long LISTENER_ID = 2L;
     private static final String VIEWER_KEY = "viewer:" + LIVE_ID;
-    private static final String MEMBER_KEY = "live-member:" + LIVE_ID;
 
     @BeforeEach
     void setUp() {
@@ -247,59 +248,23 @@ class ViewerSsePresenceTest {
     @DisplayName("heartbeat")
     class Heartbeat {
 
-        private ViewerSseRegistry.AliveListener capturedOnAlive() {
-            ArgumentCaptor<ViewerSseRegistry.AliveListener> onAlive =
-                    ArgumentCaptor.forClass(ViewerSseRegistry.AliveListener.class);
-            verify(registry).pingAndCollectAlive(onAlive.capture());
-            return onAlive.getValue();
-        }
-
         @Test
-        @DisplayName("살아있는 시청자(counted=true)의 시청자 프레젠스 score를 현재 시각으로 갱신한다")
+        @DisplayName("살아있는 시청자의 프레젠스 score를 현재 시각으로 갱신한다")
         void aliveViewersAreTouched() {
             when(redisTemplate.opsForZSet()).thenReturn(zSetOperations);
 
             presence.heartbeat();
 
+            ArgumentCaptor<BiConsumer<Long, Long>> onAlive = ArgumentCaptor.forClass(BiConsumer.class);
+            verify(registry).pingAndCollectAlive(onAlive.capture());
+
             long before = Instant.now().getEpochSecond();
-            capturedOnAlive().onAlive(LIVE_ID, LISTENER_ID, true);
+            onAlive.getValue().accept(LIVE_ID, LISTENER_ID);
             long after = Instant.now().getEpochSecond();
 
             ArgumentCaptor<Double> score = ArgumentCaptor.forClass(Double.class);
             verify(zSetOperations).add(eq(VIEWER_KEY), eq(String.valueOf(LISTENER_ID)), score.capture());
             assertThat(score.getValue()).isBetween((double) before, (double) after);
-        }
-
-        @Test
-        @DisplayName("진행자 프레젠스에 등록된 유저는 counted와 무관하게 score가 갱신된다")
-        void memberPresenceIsRefreshedForRegisteredPublisher() {
-            when(redisTemplate.opsForZSet()).thenReturn(zSetOperations);
-            when(zSetOperations.score(MEMBER_KEY, String.valueOf(BROADCASTER_ID))).thenReturn(100d);
-
-            presence.heartbeat();
-
-            long before = Instant.now().getEpochSecond();
-            capturedOnAlive().onAlive(LIVE_ID, BROADCASTER_ID, false);
-            long after = Instant.now().getEpochSecond();
-
-            ArgumentCaptor<Double> score = ArgumentCaptor.forClass(Double.class);
-            verify(zSetOperations).add(eq(MEMBER_KEY), eq(String.valueOf(BROADCASTER_ID)), score.capture());
-            assertThat(score.getValue()).isBetween((double) before, (double) after);
-            // 송출자(counted=false)는 시청자 프레젠스에는 등록되지 않는다
-            verify(zSetOperations, never()).add(eq(VIEWER_KEY), any(), org.mockito.ArgumentMatchers.anyDouble());
-        }
-
-        @Test
-        @DisplayName("진행자 프레젠스에 없는(퇴장했거나 청취자인) 유저는 멤버 키에 추가되지 않는다")
-        void unregisteredUserIsNotAddedToMemberPresence() {
-            when(redisTemplate.opsForZSet()).thenReturn(zSetOperations);
-            when(zSetOperations.score(MEMBER_KEY, String.valueOf(LISTENER_ID))).thenReturn(null);
-
-            presence.heartbeat();
-
-            capturedOnAlive().onAlive(LIVE_ID, LISTENER_ID, false);
-
-            verify(zSetOperations, never()).add(eq(MEMBER_KEY), any(), org.mockito.ArgumentMatchers.anyDouble());
         }
 
         @Test
@@ -394,74 +359,41 @@ class ViewerSsePresenceTest {
     }
 
     @Nested
-    @DisplayName("sweepStaleMembers - 유령 진행자 정리")
-    class SweepStaleMembers {
+    @DisplayName("notifyCoPublishersChanged - 진행자 구성 스냅샷 알림")
+    class NotifyCoPublishersChanged {
 
         @Test
-        @DisplayName("하트비트 주기의 3배(45초) 이전 score의 진행자를 프레젠스에서 제거한다")
-        void removesStalePublishersWithSameCutoff() {
-            when(redisTemplate.opsForZSet()).thenReturn(zSetOperations);
-            when(redisTemplate.scan(any(ScanOptions.class)))
-                    .thenReturn(StreamFixtures.redisCursor(MEMBER_KEY));
+        @DisplayName("수신자마다 본인이 빠진 목록을 타겟 전송(coPublishersChanged)하고 브로드캐스트는 사용하지 않는다")
+        void sendsPerRecipientSnapshotOnly() {
+            StreamRoomResponse.CoPublisher one =
+                    new StreamRoomResponse.CoPublisher(1L, "https://webrtc.test/path-1-m901/whep");
+            StreamRoomResponse.CoPublisher three =
+                    new StreamRoomResponse.CoPublisher(3L, "https://webrtc.test/path-1-m903/whep");
 
-            long before = Instant.now().getEpochSecond();
-            presence.sweepStaleMembers();
-            long after = Instant.now().getEpochSecond();
+            presence.notifyCoPublishersChanged(LIVE_ID, Map.of(
+                    1L, List.of(three),
+                    3L, List.of(one)
+            ));
 
-            ArgumentCaptor<Double> cutoff = ArgumentCaptor.forClass(Double.class);
-            verify(zSetOperations).removeRangeByScore(eq(MEMBER_KEY), eq(0d), cutoff.capture());
-            assertThat(cutoff.getValue()).isBetween((double) (before - 45), (double) (after - 45));
-        }
-
-        @Test
-        @DisplayName("멤버 목록은 SSE로 내려가지 않으므로 제거가 있어도 브로드캐스트하지 않는다")
-        void neverBroadcasts() {
-            when(redisTemplate.opsForZSet()).thenReturn(zSetOperations);
-            when(redisTemplate.scan(any(ScanOptions.class)))
-                    .thenReturn(StreamFixtures.redisCursor(MEMBER_KEY));
-            when(zSetOperations.removeRangeByScore(eq(MEMBER_KEY), eq(0d), org.mockito.ArgumentMatchers.anyDouble()))
-                    .thenReturn(3L);
-
-            presence.sweepStaleMembers();
-
-            verifyNoInteractions(registry);
-        }
-
-        @Test
-        @DisplayName("SCAN 커서는 정리 후 닫힌다")
-        void cursorIsClosed() {
-            StreamFixtures.FakeCursor cursor = StreamFixtures.redisCursor();
-            when(redisTemplate.scan(any(ScanOptions.class))).thenReturn(cursor);
-
-            presence.sweepStaleMembers();
-
-            assertThat(cursor.isClosed()).isTrue();
-        }
-    }
-
-    @Nested
-    @DisplayName("notifyCoPublisherJoined - 진행자 합류 알림")
-    class NotifyCoPublisherJoined {
-
-        @Test
-        @DisplayName("registry의 타겟 전송(coPublisherJoined)으로 위임하고 브로드캐스트는 사용하지 않는다")
-        void delegatesToTargetedSendOnly() {
-            StreamRoomResponse.CoPublisher joined =
-                    new StreamRoomResponse.CoPublisher(21L, "https://webrtc.test/path-1-m902/whep");
-
-            presence.notifyCoPublisherJoined(LIVE_ID, List.of(1L, 3L), joined);
-
-            verify(registry).sendToUsers(LIVE_ID, List.of(1L, 3L), "coPublisherJoined", joined);
+            verify(registry).sendToUsers(LIVE_ID, List.of(1L), "coPublishersChanged", List.of(three));
+            verify(registry).sendToUsers(LIVE_ID, List.of(3L), "coPublishersChanged", List.of(one));
             // [공격] 멤버 path가 담긴 payload가 브로드캐스트로 전 구독자(청취자 포함)에게 새면 안 된다
             verify(registry, never()).broadcast(anyLong(), anyLong());
             verifyNoInteractions(redisTemplate);
         }
 
         @Test
+        @DisplayName("혼자 남은 진행자에게는 빈 목록을 보내 좀비 WHEP 연결을 정리하게 한다")
+        void sendsEmptySnapshotToLastPublisher() {
+            presence.notifyCoPublishersChanged(LIVE_ID, Map.of(1L, List.of()));
+
+            verify(registry).sendToUsers(LIVE_ID, List.of(1L), "coPublishersChanged", List.of());
+        }
+
+        @Test
         @DisplayName("대상이 비어 있으면 registry를 호출하지 않는다")
         void emptyTargetsSkipsSend() {
-            presence.notifyCoPublisherJoined(
-                    LIVE_ID, List.of(), new StreamRoomResponse.CoPublisher(21L, "url"));
+            presence.notifyCoPublishersChanged(LIVE_ID, Map.of());
 
             verifyNoInteractions(registry);
         }

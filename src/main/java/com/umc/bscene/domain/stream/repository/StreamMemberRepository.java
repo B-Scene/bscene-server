@@ -61,6 +61,16 @@ where sm.user.id = :userId
 """)
     Optional<StreamMember> findWithUserAndStreamByPath(@Param("path") String path);
 
+    // 진행자 프레젠스 갱신용(syncLiveState): 송출 중(ready)인 개인 path들의 멤버·유저·라이브를 폴 사이클당 한 번에 조회
+    @Query("""
+    SELECT sm
+    FROM StreamMember sm
+    JOIN FETCH sm.user
+    JOIN FETCH sm.audioStream
+    WHERE sm.path IN :paths
+""")
+    List<StreamMember> findAllWithUserAndStreamByPathIn(@Param("paths") Collection<String> paths);
+
     // 현재 상태가 expected일 때만 원자적으로 상태 변경
     @Modifying
     @Query("""
