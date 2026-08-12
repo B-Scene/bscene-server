@@ -205,12 +205,16 @@ class UserAdapterTest {
         void savesProfileAndMember() {
             User applicant = StreamFixtures.bandUser(USER_ID);
             Band band = band(BAND_ID, "밴드A", "https://cdn.test/band.jpg");
+            BandMemberProfile persistedProfile = profile(11L, "지원닉", Part.BASS, false);
             when(bandMemberRepository.existsByBand_IdAndUser_Id(BAND_ID, USER_ID)).thenReturn(false);
             when(bandRepository.findById(BAND_ID)).thenReturn(Optional.of(band));
             when(bandMemberProfileRepository.save(any(BandMemberProfile.class)))
-                    .thenAnswer(invocation -> invocation.getArgument(0));
+                    .thenReturn(persistedProfile);
 
-            adapter.registerSessionMember(BAND_ID, applicant, "지원닉", Part.BASS);
+            Long profileId = adapter.registerSessionMember(BAND_ID, applicant, "지원닉", Part.BASS);
+
+            // 확정된 멤버 프로필 PK를 돌려줘야 호출부가 응답에 실을 수 있다
+            assertThat(profileId).isEqualTo(11L);
 
             ArgumentCaptor<BandMemberProfile> savedProfile = ArgumentCaptor.forClass(BandMemberProfile.class);
             verify(bandMemberProfileRepository, times(1)).save(savedProfile.capture());
@@ -223,8 +227,8 @@ class UserAdapterTest {
             verify(bandMemberRepository, times(1)).save(savedMember.capture());
             assertThat(savedMember.getValue().getBand()).isSameAs(band);
             assertThat(savedMember.getValue().getUser()).isSameAs(applicant);
-            // 저장된 프로필 인스턴스가 그대로 멤버에 연결되어야 한다
-            assertThat(savedMember.getValue().getBandMemberProfile()).isSameAs(savedProfile.getValue());
+            // 저장 결과로 돌아온 프로필 인스턴스가 그대로 멤버에 연결되어야 한다
+            assertThat(savedMember.getValue().getBandMemberProfile()).isSameAs(persistedProfile);
             assertThat(savedMember.getValue().getStatus()).isEqualTo(BandMemberStatus.ACCEPTED);
             assertThat(savedMember.getValue().getMemberType()).isEqualTo(BandMemberType.SESSION);
 
@@ -232,13 +236,14 @@ class UserAdapterTest {
         }
 
         @Test
-        @DisplayName("이미 소속된 유저면 아무 것도 저장하지 않고 즉시 반환한다")
+        @DisplayName("이미 소속된 유저면 아무 것도 저장하지 않고 null을 반환한다")
         void shortCircuitsWhenAlreadyMember() {
             User applicant = StreamFixtures.bandUser(USER_ID);
             when(bandMemberRepository.existsByBand_IdAndUser_Id(BAND_ID, USER_ID)).thenReturn(true);
 
-            adapter.registerSessionMember(BAND_ID, applicant, "지원닉", Part.BASS);
+            Long profileId = adapter.registerSessionMember(BAND_ID, applicant, "지원닉", Part.BASS);
 
+            assertThat(profileId).isNull();
             verify(bandMemberRepository, never()).save(any());
             verifyNoInteractions(bandRepository, bandMemberProfileRepository);
         }

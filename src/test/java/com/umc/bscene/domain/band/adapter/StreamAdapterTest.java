@@ -25,6 +25,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 
@@ -141,6 +142,37 @@ class StreamAdapterTest {
 
             assertThat(result).containsExactly(
                     new BandInfoForGetLiveResponse(100L, "첫번째밴드", "https://cdn.test/first.jpg")
+            );
+        }
+    }
+
+    @Nested
+    @DisplayName("getBandInfoByBandIds")
+    class GetBandInfoByBandIds {
+
+        @Test
+        @DisplayName("bandIds가 비어있으면 리포지토리를 호출하지 않고 빈 Map을 반환한다")
+        void returnsEmptyWithoutRepoCallWhenBandIdsEmpty() {
+            Map<Long, BandInfoForGetLiveResponse.BandInfo> result = adapter.getBandInfoByBandIds(Set.of());
+
+            assertThat(result).isEmpty();
+            verifyNoInteractions(bandRepository);
+        }
+
+        @Test
+        @DisplayName("bandId를 key로 밴드명과 프로필 이미지(null 포함)를 매핑하고, 없는 밴드는 결과에서 제외한다")
+        void mapsBandInfoByBandIdExcludingMissingBands() {
+            when(bandRepository.findAllById(Set.of(7L, 8L, 9L))).thenReturn(List.of(
+                    band(7L, "밴드A", "https://cdn.test/a.jpg"),
+                    band(8L, "밴드B", null)
+            ));
+
+            Map<Long, BandInfoForGetLiveResponse.BandInfo> result =
+                    adapter.getBandInfoByBandIds(Set.of(7L, 8L, 9L));
+
+            assertThat(result).containsOnly(
+                    Map.entry(7L, new BandInfoForGetLiveResponse.BandInfo("밴드A", "https://cdn.test/a.jpg")),
+                    Map.entry(8L, new BandInfoForGetLiveResponse.BandInfo("밴드B", null))
             );
         }
     }

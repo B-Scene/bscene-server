@@ -45,6 +45,9 @@ public class StreamCleanupScheduler {
             if (!live) {
                 Long count = redisTemplate.opsForZSet().zCard("viewer:" + audioStream.getId());
                 audioStream.close(count != null ? count.intValue() : 0);
+
+                // closeStream과 동일하게 진행자 프레젠스 정리 (키 잔존 방지)
+                redisTemplate.delete("live-member:" + audioStream.getId());
             }
         }
     }

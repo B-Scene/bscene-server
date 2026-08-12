@@ -24,6 +24,9 @@ import java.util.List;
  * 프레젠스는 viewer:{liveId} ZSet(member = userId, score = epoch초)로 관리한다.
  * 하트비트가 살아있는 시청자의 score를 갱신하고, 갱신되지 않은(끊긴/유령) 시청자는 sweep이 제거한다.
  * 따라서 브라우저를 그냥 닫아 leaveRoom이 호출되지 않아도 최대 STALE_SECONDS 안에 카운트에서 빠진다.
+ * <p>
+ * 진행자 프레젠스(live-member:{liveId}, /lives/{liveId}/members의 소스)도 같은 방식으로 관리한다:
+ * enterRoom이 등록한 항목의 score를 하트비트가 갱신하고, 끊긴 진행자는 sweepStaleMembers가 제거한다.
  */
 @RequiredArgsConstructor
 public class ViewerSsePresence {
@@ -33,6 +36,11 @@ public class ViewerSsePresence {
     private final AudioStreamRepository audioStreamRepository;
 
     private static final String VIEWER_KEY_PREFIX = "viewer:";
+
+    // 방에 입장해 있는 진행자 프레젠스(StreamServiceImpl과 동일 키). enterRoom에서 등록되고,
+    // 하트비트가 score를 갱신하며, leaveRoom 없이 끊긴 진행자는 sweepStaleMembers가 제거한다
+    private static final String MEMBER_PRESENCE_KEY_PREFIX = "live-member:";
+
     private static final long HEARTBEAT_MS = 15_000L;
     // 반드시 하트비트 주기(15s)보다 넉넉히 커야 한다. 비트 사이에 살아있는 시청자가 잘리는 것을 방지(3비트 허용).
     private static final long STALE_SECONDS = 45L;
@@ -109,10 +117,25 @@ public class ViewerSsePresence {
                 VIEWER_KEY_PREFIX + liveId, String.valueOf(userId), Instant.now().getEpochSecond());
     }
 
-    /** 하트비트: 살아있는 연결에 ping을 보내고, 그 시청자의 프레젠스 score를 갱신한다. */
+    /** 하트비트: 살아있는 연결에 ping을 보내고, 시청자·진행자 프레젠스 score를 갱신한다. */
     @Scheduled(fixedRate = HEARTBEAT_MS)
     public void heartbeat() {
-        registry.pingAndCollectAlive(this::touch);
+        registry.pingAndCollectAlive((liveId, userId, counted) -> {
+            if (counted) touch(liveId, userId);     // 시청자 수 프레젠스 (송출자는 미포함)
+            touchMemberPresence(liveId, userId);    // 진행자 프레젠스 (등록된 유저만 갱신됨)
+        });
+    }
+
+    /*
+     * 진행자 프레젠스 score 갱신. enterRoom에서 등록된(존재하는) 멤버만 갱신한다 —
+     * 무조건 add하면 청취자나 leaveRoom으로 퇴장한 진행자가 /members 목록에 다시 들어가기 때문.
+     * (score 조회와 add 사이에 leaveRoom이 끼면 잠깐 재등록될 수 있지만, SSE가 닫히면 sweep이 제거한다)
+     */
+    private void touchMemberPresence(Long liveId, Long userId) {
+        String key = MEMBER_PRESENCE_KEY_PREFIX + liveId;
+        Double score = redisTemplate.opsForZSet().score(key, String.valueOf(userId));
+        if (score != null)
+            redisTemplate.opsForZSet().add(key, String.valueOf(userId), Instant.now().getEpochSecond());
     }
 
     /** 유령 정리: score가 갱신되지 않은(끊긴) 시청자를 ZSet에서 제거하고 카운트를 반영한다. */
@@ -129,6 +152,20 @@ public class ViewerSsePresence {
                     broadcastCount(liveId);
                 }
             }
+        }
+    }
+
+    /*
+     * 유령 진행자 정리: leaveRoom 없이 끊긴(SSE 하트비트가 멎은) 진행자를 프레젠스에서 제거해
+     * /lives/{liveId}/members 응답에서 빠지게 한다. 멤버 목록은 SSE로 내려가지 않으므로 브로드캐스트는 없다
+     */
+    @Scheduled(fixedRate = HEARTBEAT_MS)
+    public void sweepStaleMembers() {
+        long cutoff = Instant.now().getEpochSecond() - STALE_SECONDS;
+        try (Cursor<String> cursor = redisTemplate.scan(
+                ScanOptions.scanOptions().match(MEMBER_PRESENCE_KEY_PREFIX + "*").count(200).build())) {
+            while (cursor.hasNext())
+                redisTemplate.opsForZSet().removeRangeByScore(cursor.next(), 0, cutoff);
         }
     }
 }

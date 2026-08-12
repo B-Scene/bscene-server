@@ -42,6 +42,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.redis.core.StringRedisTemplate;
+import org.springframework.data.redis.core.ZSetOperations;
 import org.springframework.web.client.RestClient;
 
 import java.time.LocalDateTime;
@@ -105,6 +106,8 @@ class StreamServiceImplReservationTest {
     private LiveChatRoomCloser liveChatRoomCloser;
     @Mock
     private DiscordMessageSender discordMessageSender;
+    @Mock
+    private ZSetOperations<String, String> zSetOperations;
 
     private StreamServiceImpl streamService;
 
@@ -945,8 +948,14 @@ class StreamServiceImplReservationTest {
             );
         }
 
+        private void givenPresence(String... userIds) {
+            when(redisTemplate.opsForZSet()).thenReturn(zSetOperations);
+            when(zSetOperations.range("live-member:" + LIVE_ID, 0, -1))
+                    .thenReturn(java.util.Set.of(userIds));
+        }
+
         @Test
-        @DisplayName("ACCEPTED 멤버만 조회하고, 라이브 생성 밴드 기준으로 프로필을 조회한다")
+        @DisplayName("입장 중인 ACCEPTED 멤버만 조회하고, 라이브 생성 밴드 기준으로 프로필을 조회한다")
         void queriesAcceptedMembersAndResolvesProfilesByStreamBandId() {
             AudioStream stream = StreamFixtures.stream(LIVE_ID, BROADCASTER_ID, BAND_ID, StreamStatus.OPEN);
             LiveMembersResponse.LiveMemberProfileResponse profile =
@@ -955,6 +964,7 @@ class StreamServiceImplReservationTest {
                     );
 
             when(audioStreamRepository.findById(LIVE_ID)).thenReturn(Optional.of(stream));
+            givenPresence(String.valueOf(BROADCASTER_ID), "101");
             when(streamMemberRepository.findAllByAudioStream_IdAndStatus(LIVE_ID, StreamMemberStatus.ACCEPTED))
                     .thenReturn(List.of(
                             StreamFixtures.member(1L, broadcaster, stream, StreamMemberStatus.ACCEPTED),
@@ -971,10 +981,32 @@ class StreamServiceImplReservationTest {
         }
 
         @Test
+        @DisplayName("ACCEPTED여도 퇴장했거나 입장한 적 없는(프레젠스에 없는) 멤버는 응답에서 제외된다")
+        void excludesAcceptedMembersWhoAreNotPresent() {
+            AudioStream stream = StreamFixtures.stream(LIVE_ID, BROADCASTER_ID, BAND_ID, StreamStatus.OPEN);
+            when(audioStreamRepository.findById(LIVE_ID)).thenReturn(Optional.of(stream));
+
+            // 101은 leaveRoom으로 퇴장, 102는 수락만 하고 미입장 → 송출자만 프레젠스에 존재
+            givenPresence(String.valueOf(BROADCASTER_ID));
+            when(streamMemberRepository.findAllByAudioStream_IdAndStatus(LIVE_ID, StreamMemberStatus.ACCEPTED))
+                    .thenReturn(List.of(
+                            StreamFixtures.member(1L, broadcaster, stream, StreamMemberStatus.ACCEPTED),
+                            StreamFixtures.member(2L, StreamFixtures.bandUser(101L), stream, StreamMemberStatus.ACCEPTED),
+                            StreamFixtures.member(3L, StreamFixtures.bandUser(102L), stream, StreamMemberStatus.ACCEPTED)
+                    ));
+            when(bandMemberPort.getLiveMemberProfiles(BAND_ID, List.of(BROADCASTER_ID))).thenReturn(List.of());
+
+            streamService.getLiveMembers(LIVE_ID);
+
+            verify(bandMemberPort).getLiveMemberProfiles(BAND_ID, List.of(BROADCASTER_ID));
+        }
+
+        @Test
         @DisplayName("확정 멤버가 없어도 빈 리스트로 프로필 포트를 1회 호출한다")
         void callsProfilePortOnceEvenWithNoMembers() {
             AudioStream stream = StreamFixtures.stream(LIVE_ID, BROADCASTER_ID, BAND_ID, StreamStatus.OPEN);
             when(audioStreamRepository.findById(LIVE_ID)).thenReturn(Optional.of(stream));
+            givenPresence();
             when(streamMemberRepository.findAllByAudioStream_IdAndStatus(LIVE_ID, StreamMemberStatus.ACCEPTED))
                     .thenReturn(List.of());
             when(bandMemberPort.getLiveMemberProfiles(BAND_ID, List.of())).thenReturn(List.of());

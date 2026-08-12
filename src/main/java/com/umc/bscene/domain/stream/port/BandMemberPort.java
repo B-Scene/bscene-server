@@ -6,6 +6,7 @@ import com.umc.bscene.domain.stream.dto.response.BandSummaryResponse;
 import com.umc.bscene.domain.stream.dto.response.LiveMembersResponse.LiveMemberProfileResponse;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 
@@ -17,6 +18,15 @@ public interface BandMemberPort {
      * @return BandInfoForGetLiveResponse를 반환해주세요.
      */
     List<BandInfoForGetLiveResponse> getBandNameWithBandProfileByBroadcasterId(Set<Long> broadcasterIds);
+
+    /**
+     * 예정 라이브/다시보기처럼 조회 시점의 송출자 활성 프로필 상태와 무관해야 하는 화면에서,
+     * 라이브가 생성 시점에 확정한 밴드 ID로 밴드 이름과 프로필 이미지를 조회하는 메소드입니다.
+     * (송출자가 팬 모드로 전환하거나 타 밴드 프로필로 전환해도 라이브의 밴드 정보가 유지되어야 함)
+     * @param bandIds 라이브가 확정한 밴드 ID를 Set으로 전달합니다.
+     * @return bandId를 key로 한 밴드 정보 Map을 반환해주세요. (존재하지 않는 밴드는 제외)
+     */
+    Map<Long, BandInfoForGetLiveResponse.BandInfo> getBandInfoByBandIds(Set<Long> bandIds);
 
     /**
      * 라이브 예약/시작 푸시 알림 발송을 위해, 송출자가 활성화된 밴드의 ID와 이름을 전송받기 위한 메소드입니다.

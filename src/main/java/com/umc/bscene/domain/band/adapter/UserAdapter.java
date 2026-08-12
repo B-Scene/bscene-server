@@ -58,11 +58,11 @@ public class UserAdapter implements BandPort {
 
     @Override
     @Transactional
-    public void registerSessionMember(Long bandId, User applicant, String nickname, Part part) {
+    public Long registerSessionMember(Long bandId, User applicant, String nickname, Part part) {
 
         // (bandId, userId) 유니크 제약 - 이미 소속(정회원/세션)이면 중복 등록하지 않음
         if (bandMemberRepository.existsByBand_IdAndUser_Id(bandId, applicant.getId())) {
-            return;
+            return null;
         }
 
         Band band = bandRepository.findById(bandId)
@@ -82,6 +82,8 @@ public class UserAdapter implements BandPort {
                 .status(BandMemberStatus.ACCEPTED)
                 .memberType(BandMemberType.SESSION)
                 .build());
+
+        return profile.getId();
     }
 
     @Override

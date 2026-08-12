@@ -7,7 +7,6 @@ import java.util.Collection;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.function.BiConsumer;
 
 /**
  * 시청자 SSE emitter를 in-memory로 보관한다.
@@ -156,12 +155,18 @@ public class ViewerSseRegistry {
         }
     }
 
+    /** 하트비트 생존 보고 콜백. counted=true면 시청자 수 프레젠스 대상(청취자), false면 송출자다. */
+    @FunctionalInterface
+    public interface AliveListener {
+        void onAlive(Long liveId, Long userId, boolean counted);
+    }
+
     /**
      * 하트비트: 모든 연결에 ping을 보내(끊긴 연결 정리를 유발) keep-alive 한다.
-     * 단 시청자 수에 포함되는(counted) 유저만 onAlive로 넘겨 프레젠스 score를 갱신하게 한다.
-     * (송출자는 ping은 받아 연결이 유지되지만 프레젠스엔 들어가지 않는다.)
+     * 살아있는 유저는 counted 여부와 함께 onAlive로 보고한다.
+     * (시청자 수 프레젠스는 counted=true만, 진행자 프레젠스는 counted와 무관하게 갱신 대상)
      */
-    public void pingAndCollectAlive(BiConsumer<Long, Long> onAlive) {
+    public void pingAndCollectAlive(AliveListener onAlive) {
         rooms.forEach((liveId, users) -> users.forEach((userId, presence) -> {
             boolean alive = false;
             for (SseEmitter emitter : presence.emitters) {
@@ -172,7 +177,7 @@ public class ViewerSseRegistry {
                     try { emitter.completeWithError(e); } catch (Exception ignored) { }
                 }
             }
-            if (alive && presence.counted) onAlive.accept(liveId, userId);
+            if (alive) onAlive.onAlive(liveId, userId, presence.counted);
         }));
 
         // 보기 전용 연결도 ping으로 keep-alive (죽은 연결은 onError → cleanup으로 정리, 프레젠스 갱신은 없음)
