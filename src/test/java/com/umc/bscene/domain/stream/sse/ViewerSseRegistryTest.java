@@ -238,7 +238,7 @@ class ViewerSseRegistryTest {
             TestSseHandler handler = TestSseHandler.attach(watcher);
 
             List<Long> alive = new ArrayList<>();
-            registry.pingAndCollectAlive((liveId, userId) -> alive.add(userId));
+            registry.pingAndCollectAlive((liveId, userId, counted) -> alive.add(userId));
 
             assertThat(handler.countOfEventsContaining("ping"))
                     .as("keep-alive ping은 받아야 한다")
@@ -304,8 +304,8 @@ class ViewerSseRegistryTest {
     class Heartbeat {
 
         @Test
-        @DisplayName("counted=true 유저만 프레젠스 갱신 대상으로 넘긴다")
-        void onlyCountedUsersAreReported() {
+        @DisplayName("살아있는 유저는 counted 여부와 함께 보고된다 (송출자는 counted=false)")
+        void aliveUsersAreReportedWithCountedFlag() {
             SseEmitter broadcaster = registry.register(LIVE_A, 10L, false, () -> {
             });
             SseEmitter listener = registry.register(LIVE_A, 20L, true, () -> {
@@ -313,10 +313,16 @@ class ViewerSseRegistryTest {
             TestSseHandler broadcasterHandler = TestSseHandler.attach(broadcaster);
             TestSseHandler listenerHandler = TestSseHandler.attach(listener);
 
-            List<Long> alive = new ArrayList<>();
-            registry.pingAndCollectAlive((liveId, userId) -> alive.add(userId));
+            List<Long> countedAlive = new ArrayList<>();
+            List<Long> uncountedAlive = new ArrayList<>();
+            registry.pingAndCollectAlive((liveId, userId, counted) -> {
+                if (counted) countedAlive.add(userId);
+                else uncountedAlive.add(userId);
+            });
 
-            assertThat(alive).containsExactly(20L);
+            // 시청자 수 프레젠스는 counted=true(청취자)만, 진행자 프레젠스 갱신을 위해 송출자도 counted=false로 보고된다
+            assertThat(countedAlive).containsExactly(20L);
+            assertThat(uncountedAlive).containsExactly(10L);
             assertThat(broadcasterHandler.countOfEventsContaining("ping"))
                     .as("송출자도 keep-alive ping은 받는다")
                     .isEqualTo(1);
@@ -332,7 +338,7 @@ class ViewerSseRegistryTest {
             handler.failSubsequentSends();
 
             List<Long> alive = new ArrayList<>();
-            registry.pingAndCollectAlive((liveId, userId) -> alive.add(userId));
+            registry.pingAndCollectAlive((liveId, userId, counted) -> alive.add(userId));
 
             assertThat(alive).isEmpty();
             assertThat(handler.completedWithErrors()).hasSize(1);
@@ -351,7 +357,7 @@ class ViewerSseRegistryTest {
             firstHandler.failSubsequentSends();
 
             List<Long> alive = new ArrayList<>();
-            registry.pingAndCollectAlive((liveId, userId) -> alive.add(userId));
+            registry.pingAndCollectAlive((liveId, userId, counted) -> alive.add(userId));
 
             assertThat(alive).containsExactly(USER);
         }
@@ -369,7 +375,7 @@ class ViewerSseRegistryTest {
             deadHandler.failSubsequentSends();
 
             List<Long> reported = new ArrayList<>();
-            registry.pingAndCollectAlive((liveId, userId) -> reported.add(userId));
+            registry.pingAndCollectAlive((liveId, userId, counted) -> reported.add(userId));
 
             assertThat(reported).containsExactly(2L);
         }
@@ -378,7 +384,7 @@ class ViewerSseRegistryTest {
         @DisplayName("구독자가 없으면 아무도 보고되지 않는다")
         void emptyRegistryReportsNobody() {
             List<Long> alive = new ArrayList<>();
-            registry.pingAndCollectAlive((liveId, userId) -> alive.add(userId));
+            registry.pingAndCollectAlive((liveId, userId, counted) -> alive.add(userId));
 
             assertThat(alive).isEmpty();
         }
@@ -425,7 +431,7 @@ class ViewerSseRegistryTest {
 
             // 모든 연결이 정리되면 방도 비어 브로드캐스트가 아무에게도 가지 않는다
             List<Long> alive = new ArrayList<>();
-            registry.pingAndCollectAlive((liveId, userId) -> alive.add(userId));
+            registry.pingAndCollectAlive((liveId, userId, counted) -> alive.add(userId));
             assertThat(alive).isEmpty();
         }
 

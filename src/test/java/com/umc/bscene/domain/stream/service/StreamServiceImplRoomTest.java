@@ -1133,8 +1133,10 @@ class StreamServiceImplRoomTest {
                     "BROADCASTER", "WHIP", WEBRTC_URL + "/path-1-m901/whip"
             ));
 
-            // 송출자는 시청자 ZSet에 등록되지 않는다
-            verify(zSetOperations, never()).add(anyString(), anyString(), org.mockito.ArgumentMatchers.anyDouble());
+            // 송출자는 시청자 ZSet에는 등록되지 않고, 진행자 프레젠스(live-member)에 등록된다
+            verify(zSetOperations, never()).add(
+                    org.mockito.ArgumentMatchers.startsWith("viewer:"), anyString(), org.mockito.ArgumentMatchers.anyDouble());
+            verify(zSetOperations).add(eq("live-member:1"), eq("10"), org.mockito.ArgumentMatchers.anyDouble());
             verify(viewerSsePresence, never()).broadcastCount(anyLong());
 
             assertThat(TxSyncSupport.registeredCount()).isEqualTo(1);
@@ -1232,8 +1234,10 @@ class StreamServiceImplRoomTest {
                     "CO_HOST", "WHIP", WEBRTC_URL + "/path-1-m902/whip"
             ));
 
-            // 공동 진행자는 시청자 ZSet에 등록되지 않는다
-            verify(zSetOperations, never()).add(anyString(), anyString(), org.mockito.ArgumentMatchers.anyDouble());
+            // 공동 진행자는 시청자 ZSet에는 등록되지 않고, 진행자 프레젠스(live-member)에 등록된다
+            verify(zSetOperations, never()).add(
+                    org.mockito.ArgumentMatchers.startsWith("viewer:"), anyString(), org.mockito.ArgumentMatchers.anyDouble());
+            verify(zSetOperations).add(eq("live-member:1"), eq("21"), org.mockito.ArgumentMatchers.anyDouble());
             verify(viewerSsePresence, never()).broadcastCount(anyLong());
         }
 
@@ -1462,7 +1466,7 @@ class StreamServiceImplRoomTest {
     class LeaveRoomTest {
 
         @Test
-        @DisplayName("ZSet에서 제거한 뒤에 시청자 수를 브로드캐스트한다")
+        @DisplayName("시청자·진행자 프레젠스 ZSet에서 제거한 뒤에 시청자 수를 브로드캐스트한다")
         void removesThenBroadcastsInOrder() {
             when(redisTemplate.opsForZSet()).thenReturn(zSetOperations);
 
@@ -1470,6 +1474,8 @@ class StreamServiceImplRoomTest {
 
             InOrder inOrder = inOrder(zSetOperations, viewerSsePresence);
             inOrder.verify(zSetOperations).remove("viewer:1", "20");
+            // 진행자 퇴장 시 /members 목록에서 빠지도록 프레젠스도 제거 (청취자는 no-op)
+            inOrder.verify(zSetOperations).remove("live-member:1", "20");
             inOrder.verify(viewerSsePresence).broadcastCount(1L);
             inOrder.verifyNoMoreInteractions();
         }
