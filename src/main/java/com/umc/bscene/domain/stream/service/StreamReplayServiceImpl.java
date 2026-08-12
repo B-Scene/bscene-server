@@ -98,11 +98,11 @@ public class StreamReplayServiceImpl implements StreamReplayService {
 
         AudioStream audioStream = replay.getAudioStream();
 
-        // 밴드 정보
-        BandInfoForGetLiveResponse.BandInfo band = bandMemberPort.getBandNameWithBandProfileByBroadcasterId(Set.of(audioStream.getBroadcasterId()))
-                .stream().findFirst()
-                .map(BandInfoForGetLiveResponse::bandInfo)
-                .orElse(null);
+        // 밴드 정보. 송출자의 현재 활성 프로필이 아니라 라이브가 확정한 밴드 기준으로 조회
+        // (송출자가 팬 모드/타 밴드 프로필로 전환해도 밴드 이름·이미지 유지)
+        BandInfoForGetLiveResponse.BandInfo band = bandMemberPort
+                .getBandInfoByBandIds(Set.of(audioStream.getBandId()))
+                .get(audioStream.getBandId());
 
         // 재생 URL은 HLS 매니페스트 엔드포인트. 세그먼트가 여러 개여도 플레이어가 이어 재생한다
         int totalDurationSec = segments.stream().mapToInt(StreamReplay::getDurationSec).sum();
@@ -209,19 +209,15 @@ public class StreamReplayServiceImpl implements StreamReplayService {
         List<StreamReplay> page = hasNext ? rows.subList(0, size) : rows;
         Long nextCursor = hasNext ? page.getLast().getId() : null;
 
-        // 송출자 ID를 key로 밴드 정보 매핑
-        Set<Long> broadcasterIds = page.stream()
-                .map(r -> r.getAudioStream().getBroadcasterId())
+        // 라이브가 확정한 bandId를 key로 밴드 정보 매핑
+        // (송출자 활성 프로필 기준이 아니므로 송출자가 팬 모드/타 밴드 프로필로 전환해도 유지)
+        Set<Long> bandIds = page.stream()
+                .map(r -> r.getAudioStream().getBandId())
                 .collect(Collectors.toSet());
 
-        Map<Long, BandInfoForGetLiveResponse.BandInfo> bandInfoMap = broadcasterIds.isEmpty()
+        Map<Long, BandInfoForGetLiveResponse.BandInfo> bandInfoMap = bandIds.isEmpty()
                 ? Map.of()
-                : bandMemberPort.getBandNameWithBandProfileByBroadcasterId(broadcasterIds).stream()
-                        .collect(Collectors.toMap(
-                                BandInfoForGetLiveResponse::broadcasterId,
-                                BandInfoForGetLiveResponse::bandInfo,
-                                (a, b) -> a
-                        ));
+                : bandMemberPort.getBandInfoByBandIds(bandIds);
 
         // 라이브별 총 재생 길이 매핑. 목록 행은 대표(첫) 세그먼트라, 세그먼트가 여러 개인 라이브는 합산 필요 (watchReplay와 동일 기준)
         Set<Long> audioStreamIds = page.stream()
@@ -239,7 +235,7 @@ public class StreamReplayServiceImpl implements StreamReplayService {
         return CursorPage.of(
                 page.stream()
                         .map(r -> {
-                            BandInfoForGetLiveResponse.BandInfo band = bandInfoMap.get(r.getAudioStream().getBroadcasterId());
+                            BandInfoForGetLiveResponse.BandInfo band = bandInfoMap.get(r.getAudioStream().getBandId());
 
                             return new ReplayResponse(
                                     r.getAudioStream().getId(),
