@@ -24,6 +24,7 @@ public record SessionRecruitmentResponse(
             String part,
             String level,
             String region,
-            ApplicationStatus status
+            ApplicationStatus status,
+            boolean isChecked
     ) {}
 }

@@ -49,7 +49,8 @@ select
             sa.part,
             sa.skillLevel,
             sa.region,
-            sas.status
+            sas.status,
+            sas.checkedAt
     )
 from
 SessionApplicationSubmission sas

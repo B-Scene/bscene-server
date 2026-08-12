@@ -130,6 +130,14 @@ class UserAdapterTest {
     private static BandsRecruitmentsSummaryResponse row(
             Long recruitmentId, Long applySubmissionId, String recruitPostTitle,
             String applierProfileImageUrl, String applierName, ApplicationStatus status) {
+        return row(recruitmentId, applySubmissionId, recruitPostTitle,
+                applierProfileImageUrl, applierName, status, null);
+    }
+
+    private static BandsRecruitmentsSummaryResponse row(
+            Long recruitmentId, Long applySubmissionId, String recruitPostTitle,
+            String applierProfileImageUrl, String applierName, ApplicationStatus status,
+            LocalDateTime checkedAt) {
         return new BandsRecruitmentsSummaryResponse(
                 recruitmentId,
                 applySubmissionId,
@@ -143,7 +151,8 @@ class UserAdapterTest {
                 Part.BASS,
                 SkillLevel.INTERMEDIATE,
                 Region.BUSAN,
-                status
+                status,
+                checkedAt
         );
     }
 
@@ -584,7 +593,8 @@ class UserAdapterTest {
                     .thenReturn(List.of(31L));
             when(sasRepository.findApplicantsByRecruitmentIds(anyCollection()))
                     .thenReturn(List.of(
-                            row(31L, 501L,"기타 모집", "https://cdn.test/a.jpg", "지원자A", ApplicationStatus.PENDING),
+                            row(31L, 501L,"기타 모집", "https://cdn.test/a.jpg", "지원자A", ApplicationStatus.PENDING,
+                                    LocalDateTime.of(2026, 3, 2, 9, 0)),
                             row(31L, 502L,"기타 모집", null, "지원자B", ApplicationStatus.BAND_ACCEPTED)
                     ));
 
@@ -609,10 +619,13 @@ class UserAdapterTest {
             assertThat(first.level()).isEqualTo("중급");
             assertThat(first.region()).isEqualTo("부산");
             assertThat(first.status()).isEqualTo(ApplicationStatus.PENDING);
+            // checkedAt이 있으면 확인한 지원서로 내려간다
+            assertThat(first.isChecked()).isTrue();
 
             SessionRecruitmentResponse.Recruiter second = item.recruiters().get(1);
             assertThat(second.profileImageUrl()).isNull();
             assertThat(second.status()).isEqualTo(ApplicationStatus.BAND_ACCEPTED);
+            assertThat(second.isChecked()).isFalse();
         }
     }
 }
