@@ -12,6 +12,7 @@ import com.umc.bscene.domain.user.port.FollowPort;
 import com.umc.bscene.domain.user.port.NotifyPort;
 import com.umc.bscene.domain.user.port.PerformancePort;
 import com.umc.bscene.domain.user.port.SessionPort;
+import com.umc.bscene.domain.user.dto.response.SessionApplyConfirmResponse;
 import com.umc.bscene.domain.user.dto.response.session.SessionApplicationStatusResult;
 import com.umc.bscene.domain.user.repository.FanProfileRepository;
 import com.umc.bscene.domain.user.repository.UserGenresRepository;
@@ -63,6 +64,7 @@ class UserServiceSessionApplyTest {
     private static final Long BAND_ID = 7L;
     private static final String APPLICATION_NICKNAME = "지원자닉";
     private static final String RECRUITMENT_TITLE = "모집제목";
+    private static final Long PROFILE_ID = 55L;
 
     @Mock
     private UserRepository userRepository;
@@ -275,13 +277,17 @@ class UserServiceSessionApplyTest {
             given(sessionPort.finalizeApplicationSubmission(SUBMISSION_ID, APPLICANT_ID, true))
                     .willReturn(statusResult());
             given(userRepository.findById(APPLICANT_ID)).willReturn(Optional.of(applicant));
+            given(bandPort.registerSessionMember(BAND_ID, applicant, "확정닉", Part.GUITAR))
+                    .willReturn(PROFILE_ID);
             given(bandPort.getAcceptedMemberUserIds(BAND_ID))
                     .willReturn(List.of(APPLICANT_ID, 30L, 40L));
 
-            userService.confirmSessionApply(
+            SessionApplyConfirmResponse response = userService.confirmSessionApply(
                     APPLICANT_ID, SUBMISSION_ID,
                     new SessionApplyConfirmRequest(true, "확정닉", Part.GUITAR));
 
+            // 확정된 프로필은 비활성이라, FE가 이어서 모드 전환할 수 있도록 PK를 응답에 담는다
+            assertThat(response.bandMemberProfileId()).isEqualTo(PROFILE_ID);
             verify(bandPort).registerSessionMember(BAND_ID, applicant, "확정닉", Part.GUITAR);
             verifyNoInteractions(notifyPort);
 
@@ -303,10 +309,12 @@ class UserServiceSessionApplyTest {
                     .willReturn(statusResult());
             given(bandPort.getAcceptedMemberUserIds(BAND_ID)).willReturn(List.of(30L));
 
-            userService.confirmSessionApply(
+            SessionApplyConfirmResponse response = userService.confirmSessionApply(
                     APPLICANT_ID, SUBMISSION_ID,
                     new SessionApplyConfirmRequest(false, null, null));
 
+            // 거절이면 생성되는 프로필이 없다
+            assertThat(response.bandMemberProfileId()).isNull();
             verify(bandPort, never()).registerSessionMember(anyLong(), any(User.class), any(), any());
             verifyNoInteractions(userRepository);
 
