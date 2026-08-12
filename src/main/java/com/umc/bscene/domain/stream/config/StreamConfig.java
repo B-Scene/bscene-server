@@ -16,11 +16,14 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.data.redis.core.StringRedisTemplate;
+import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.scheduling.annotation.EnableAsync;
 import org.springframework.scheduling.annotation.EnableScheduling;
 import org.springframework.security.core.parameters.P;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.service.registry.ImportHttpServices;
+
+import java.time.Duration;
 
 @EnableAsync
 @EnableScheduling
@@ -39,7 +42,14 @@ public class StreamConfig {
     public RestClient mtxRestClient(
            @Value("${mediamtx.api-url}") String apiUrl
     ) {
-        return RestClient.builder().baseUrl(apiUrl).build();
+        // 폴러(5초 주기)가 공유 스케줄러 스레드에서 호출하므로 타임아웃 필수.
+        // 무제한이면 MediaMTX 무응답 시 스레드가 잡혀 하트비트·정리 등 @Scheduled 작업 전체가 멈춘다.
+        // 타임아웃은 ResourceAccessException(RestClientException)으로 던져져 기존 catch에서 처리된다
+        SimpleClientHttpRequestFactory requestFactory = new SimpleClientHttpRequestFactory();
+        requestFactory.setConnectTimeout(Duration.ofSeconds(2));
+        requestFactory.setReadTimeout(Duration.ofSeconds(3));
+
+        return RestClient.builder().baseUrl(apiUrl).requestFactory(requestFactory).build();
     }
 
     @Bean
