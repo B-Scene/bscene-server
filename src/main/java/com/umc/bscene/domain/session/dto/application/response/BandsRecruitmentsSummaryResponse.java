@@ -21,9 +21,10 @@ public record BandsRecruitmentsSummaryResponse(
         String applierPart,
         String applierSkill,
         String applierRegion,
-        ApplicationStatus status
+        ApplicationStatus status,
+        boolean isChecked
 ) {
-    public BandsRecruitmentsSummaryResponse(Long recruitmentId, Long applySubmissionId, LocalDateTime deadline, String recruitPostTitle, Part recruitPart, Genre recruitGenre, Region recruitRegion, String applierProfileImageUrl, String applierName, Part applierPart, SkillLevel applierSkill, Region applierRegion, ApplicationStatus status) {
-        this(recruitmentId, applySubmissionId, deadline, recruitPostTitle, recruitPart.getDescription(), recruitGenre.getName(), recruitRegion.getName(), applierProfileImageUrl, applierName, applierPart.getDescription(), applierSkill.getDescription(), applierRegion.getName(), status);
+    public BandsRecruitmentsSummaryResponse(Long recruitmentId, Long applySubmissionId, LocalDateTime deadline, String recruitPostTitle, Part recruitPart, Genre recruitGenre, Region recruitRegion, String applierProfileImageUrl, String applierName, Part applierPart, SkillLevel applierSkill, Region applierRegion, ApplicationStatus status, LocalDateTime checkedAt) {
+        this(recruitmentId, applySubmissionId, deadline, recruitPostTitle, recruitPart.getDescription(), recruitGenre.getName(), recruitRegion.getName(), applierProfileImageUrl, applierName, applierPart.getDescription(), applierSkill.getDescription(), applierRegion.getName(), status, checkedAt != null);
     }
 }
