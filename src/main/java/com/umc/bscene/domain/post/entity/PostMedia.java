@@ -25,6 +25,7 @@ public class PostMedia extends BaseEntity {
     private String mediaUrl;
 
     // 노출 순서 (PHOTO 다중 이미지 정렬 기준)
+    @Builder.Default
     @Column(nullable = false)
-    private Integer sortOrder;
+    private Integer sortOrder = 0;
 }

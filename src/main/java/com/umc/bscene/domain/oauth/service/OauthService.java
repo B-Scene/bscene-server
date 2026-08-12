@@ -7,6 +7,7 @@ import com.umc.bscene.domain.auth.dto.auth.response.LoginUserResponse;
 import com.umc.bscene.domain.auth.dto.auth.response.TokenResponse;
 import com.umc.bscene.domain.auth.entity.term.UserTerms;
 import com.umc.bscene.domain.auth.enums.verification.PhoneVerificationPurpose;
+import com.umc.bscene.domain.auth.repository.term.TermsRepository;
 import com.umc.bscene.domain.auth.repository.term.UserTermsRepository;
 import com.umc.bscene.domain.auth.service.verification.PhoneVerificationService;
 import com.umc.bscene.domain.oauth.dto.request.OauthSignupRequest;
@@ -51,6 +52,7 @@ public class OauthService {
     private final UserRepository userRepository;
     private final OauthAccountRepository oauthAccountRepository;
     private final UserTermsRepository userTermsRepository;
+    private final TermsRepository termsRepository;
     private final PhoneVerificationService phoneVerificationService;
     private final StringRedisTemplate stringRedisTemplate;
     private final JwtUtil jwtUtil;
@@ -165,7 +167,7 @@ public class OauthService {
         List<UserTerms> entities = terms.stream()
                 .map(term -> UserTerms.builder()
                         .user(user)
-                        .termId(term.termId())
+                        .terms(termsRepository.getReferenceById(term.termId()))
                         .isAgreed(term.agreed())
                         .agreedAt(LocalDateTime.now())
                         .build())

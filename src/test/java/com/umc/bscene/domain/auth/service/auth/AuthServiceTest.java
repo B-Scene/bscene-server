@@ -12,11 +12,13 @@ import com.umc.bscene.domain.auth.dto.auth.response.ReissueResponse;
 import com.umc.bscene.domain.auth.dto.auth.response.SignupResponse;
 import com.umc.bscene.domain.auth.dto.auth.response.TokenResponse;
 import com.umc.bscene.domain.auth.entity.credential.LocalCredential;
+import com.umc.bscene.domain.auth.entity.term.Terms;
 import com.umc.bscene.domain.auth.entity.term.UserTerms;
 import com.umc.bscene.domain.auth.enums.code.AuthErrorCode;
 import com.umc.bscene.domain.auth.enums.verification.PhoneVerificationPurpose;
 import com.umc.bscene.domain.auth.exception.auth.AuthException;
 import com.umc.bscene.domain.auth.repository.credential.LocalCredentialRepository;
+import com.umc.bscene.domain.auth.repository.term.TermsRepository;
 import com.umc.bscene.domain.auth.repository.term.UserTermsRepository;
 import com.umc.bscene.domain.auth.service.verification.PhoneVerificationService;
 import com.umc.bscene.domain.user.entity.User;
@@ -47,9 +49,11 @@ import java.util.Optional;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
@@ -81,6 +85,9 @@ class AuthServiceTest {
     @Mock
     private UserTermsRepository userTermsRepository;
 
+    @Mock
+    private TermsRepository termsRepository;
+
     private AuthService service;
 
     @BeforeEach
@@ -92,8 +99,13 @@ class AuthServiceTest {
                 stringRedisTemplate,
                 jwtUtil,
                 phoneVerificationService,
-                userTermsRepository
+                userTermsRepository,
+                termsRepository
         );
+        lenient().when(termsRepository.getReferenceById(anyLong()))
+                .thenAnswer(invocation -> Terms.builder()
+                        .termId(invocation.getArgument(0))
+                        .build());
     }
 
     // ---------- checkLoginId ----------
@@ -353,11 +365,11 @@ class AuthServiceTest {
         List<UserTerms> savedTerms = termsCaptor.getValue();
         assertThat(savedTerms).hasSize(2);
         assertThat(savedTerms.get(0).getUser()).isSameAs(savedUser);
-        assertThat(savedTerms.get(0).getTermId()).isEqualTo(1L);
+        assertThat(savedTerms.get(0).getTerms().getTermId()).isEqualTo(1L);
         assertThat(savedTerms.get(0).getIsAgreed()).isTrue();
         assertThat(savedTerms.get(0).getAgreedAt()).isNotNull();
         assertThat(savedTerms.get(1).getUser()).isSameAs(savedUser);
-        assertThat(savedTerms.get(1).getTermId()).isEqualTo(2L);
+        assertThat(savedTerms.get(1).getTerms().getTermId()).isEqualTo(2L);
         assertThat(savedTerms.get(1).getIsAgreed()).isFalse();
         assertThat(savedTerms.get(1).getAgreedAt()).isNotNull();
 

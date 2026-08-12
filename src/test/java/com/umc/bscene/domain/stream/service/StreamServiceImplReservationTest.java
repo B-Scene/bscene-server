@@ -19,7 +19,6 @@ import com.umc.bscene.domain.stream.port.BandMemberPort;
 import com.umc.bscene.domain.stream.port.FollowPort;
 import com.umc.bscene.domain.stream.port.NotifyPort;
 import com.umc.bscene.domain.stream.port.UserPort;
-import com.umc.bscene.domain.stream.port.UserTermsPort;
 import com.umc.bscene.domain.stream.repository.AudioStreamRepository;
 import com.umc.bscene.domain.stream.repository.LiveAlarmRepository;
 import com.umc.bscene.domain.stream.repository.ReportHistoryRepository;
@@ -97,8 +96,6 @@ class StreamServiceImplReservationTest {
     @Mock
     private FollowPort followPort;
     @Mock
-    private UserTermsPort userTermsPort;
-    @Mock
     private NotifyPort notifyPort;
     @Mock
     private RestClient mtxRestClient;
@@ -126,7 +123,6 @@ class StreamServiceImplReservationTest {
                 redisTemplate,
                 bandMemberPort,
                 followPort,
-                userTermsPort,
                 notifyPort,
                 mtxRestClient,
                 viewerSsePresence,

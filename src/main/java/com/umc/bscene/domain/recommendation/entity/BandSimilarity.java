@@ -32,6 +32,6 @@ public class BandSimilarity {
     private Double score;
 
     // 배치가 적재한 값을 읽기만 하는 필드. Spring 쪽에서 값을 채우지 않으므로 insert/update 대상에서 제외한다.
-    @Column(insertable = false, updatable = false)
+    @Column(insertable = false, updatable = false, nullable = false)
     private LocalDateTime createdAt;
 }

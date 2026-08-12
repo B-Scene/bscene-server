@@ -6,7 +6,6 @@ import com.umc.bscene.domain.stream.entity.AudioStream;
 import com.umc.bscene.domain.stream.port.BandMemberPort;
 import com.umc.bscene.domain.stream.port.FollowPort;
 import com.umc.bscene.domain.stream.port.NotifyPort;
-import com.umc.bscene.domain.stream.port.UserTermsPort;
 import com.umc.bscene.domain.stream.repository.AudioStreamRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -23,10 +22,9 @@ public class ReplayNotificationService {
     private final AudioStreamRepository audioStreamRepository;
     private final BandMemberPort bandMemberPort;
     private final FollowPort followPort;
-    private final UserTermsPort userTermsPort;
     private final NotifyPort notifyPort;
 
-    // 모든 다시보기 세그먼트 등록 완료 후 팔로워 중 알림 수신 약관 동의자에게 한 번만 알림 발송
+    // 모든 다시보기 세그먼트 등록 완료 후 팔로워에게 한 번만 알림 발송
     @Transactional
     public void notifyReplayReady(AudioStream stream) {
         Optional<BandSummaryResponse> bandSummary =
@@ -35,7 +33,6 @@ public class ReplayNotificationService {
         List<Long> receiverIds = bandSummary
                 .map(band -> followPort.getFollowerUserIdsByBandId(band.bandId()))
                 .filter(followerIds -> !followerIds.isEmpty())
-                .map(userTermsPort::filterNotificationAgreedUserIds)
                 .orElseGet(List::of);
 
         int marked = audioStreamRepository.markReplayNotificationSentIfAbsent(

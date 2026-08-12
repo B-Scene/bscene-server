@@ -14,7 +14,6 @@ import com.umc.bscene.domain.stream.port.BandMemberPort;
 import com.umc.bscene.domain.stream.port.FollowPort;
 import com.umc.bscene.domain.stream.port.NotifyPort;
 import com.umc.bscene.domain.stream.port.UserPort;
-import com.umc.bscene.domain.stream.port.UserTermsPort;
 import com.umc.bscene.domain.stream.repository.AudioStreamRepository;
 import com.umc.bscene.domain.stream.repository.LiveAlarmRepository;
 import com.umc.bscene.domain.stream.repository.ReportHistoryRepository;
@@ -94,8 +93,6 @@ class StreamServiceImplNotificationTest {
     @Mock
     private FollowPort followPort;
     @Mock
-    private UserTermsPort userTermsPort;
-    @Mock
     private NotifyPort notifyPort;
     @Mock
     private RestClient mtxRestClient;
@@ -143,7 +140,6 @@ class StreamServiceImplNotificationTest {
                 redisTemplate,
                 bandMemberPort,
                 followPort,
-                userTermsPort,
                 notifyPort,
                 mtxRestClient,
                 viewerSsePresence,
@@ -173,9 +169,8 @@ class StreamServiceImplNotificationTest {
                 .willReturn(Optional.of(new BandSummaryResponse(BAND_ID, BAND_NAME)));
     }
 
-    private void givenAudience(List<Long> followerIds, List<Long> agreedFollowerIds, List<Long> memberIds) {
+    private void givenAudience(List<Long> followerIds, List<Long> memberIds) {
         given(followPort.getFollowerUserIdsByBandId(BAND_ID)).willReturn(followerIds);
-        given(userTermsPort.filterNotificationAgreedUserIds(followerIds)).willReturn(agreedFollowerIds);
         given(bandMemberPort.getAcceptedMemberUserIds(BAND_ID)).willReturn(memberIds);
     }
 
@@ -241,7 +236,7 @@ class StreamServiceImplNotificationTest {
         void 예약_알림은_커밋_이후에만_발송된다() {
             givenCooldown(true);
             givenBandSummary();
-            givenAudience(List.of(201L), List.of(201L), List.of(301L));
+            givenAudience(List.of(201L), List.of(301L));
 
             callCreateStream(SCHEDULED_AT);
 
@@ -259,7 +254,7 @@ class StreamServiceImplNotificationTest {
             givenScheduledStreamStartedByBroadcaster();
             givenCooldown(true);
             givenBandSummary();
-            givenAudience(List.of(201L), List.of(201L), List.of(301L));
+            givenAudience(List.of(201L), List.of(301L));
             givenEnterRoomResponseStubs();
 
             streamService.enterRoom(BROADCASTER_ID, LIVE_ID);
@@ -282,7 +277,7 @@ class StreamServiceImplNotificationTest {
         void 예약_쿨다운_키와_TTL() {
             givenCooldown(true);
             givenBandSummary();
-            givenAudience(List.of(201L), List.of(201L), List.of());
+            givenAudience(List.of(201L), List.of());
 
             callCreateStream(SCHEDULED_AT);
 
@@ -297,7 +292,7 @@ class StreamServiceImplNotificationTest {
             givenScheduledStreamStartedByBroadcaster();
             givenCooldown(true);
             givenBandSummary();
-            givenAudience(List.of(201L), List.of(201L), List.of());
+            givenAudience(List.of(201L), List.of());
             givenEnterRoomResponseStubs();
 
             streamService.enterRoom(BROADCASTER_ID, LIVE_ID);
@@ -315,7 +310,7 @@ class StreamServiceImplNotificationTest {
 
             callCreateStream(SCHEDULED_AT);
 
-            verifyNoInteractions(followPort, userTermsPort, notifyPort);
+            verifyNoInteractions(followPort, notifyPort);
             verify(bandMemberPort, never()).getAcceptedMemberUserIds(any());
             assertThat(TxSyncSupport.registeredCount()).isZero();
         }
@@ -328,7 +323,7 @@ class StreamServiceImplNotificationTest {
 
             callCreateStream(SCHEDULED_AT);
 
-            verifyNoInteractions(followPort, userTermsPort, notifyPort);
+            verifyNoInteractions(followPort, notifyPort);
             verify(bandMemberPort, never()).getAcceptedMemberUserIds(any());
             assertThat(TxSyncSupport.registeredCount()).isZero();
         }
@@ -346,7 +341,7 @@ class StreamServiceImplNotificationTest {
             callCreateStream(SCHEDULED_AT);
 
             verify(redisTemplate, never()).opsForValue();
-            verifyNoInteractions(followPort, userTermsPort, notifyPort);
+            verifyNoInteractions(followPort, notifyPort);
             assertThat(TxSyncSupport.registeredCount()).isZero();
         }
     }
@@ -356,28 +351,27 @@ class StreamServiceImplNotificationTest {
     class RecipientSet {
 
         @Test
-        @DisplayName("알림 수신에 동의한 팔로워만 팬 알림을 받는다")
-        void 동의한_팔로워만_수신한다() {
+        @DisplayName("모든 팔로워가 팬 알림 대상에 포함된다")
+        void 모든_팔로워가_수신_대상에_포함된다() {
             givenCooldown(true);
             givenBandSummary();
-            givenAudience(List.of(201L, 202L, 203L), List.of(201L, 203L), List.of());
+            givenAudience(List.of(201L, 202L, 203L), List.of());
 
             callCreateStream(SCHEDULED_AT);
             TxSyncSupport.triggerAfterCommit();
 
             verify(notifyPort, times(1)).notify(receiverCaptor.capture(), messageCaptor.capture());
-            assertThat(receiverCaptor.getValue()).containsExactly(201L, 203L);
+            assertThat(receiverCaptor.getValue()).containsExactly(201L, 202L, 203L);
             assertThat(capturedMessages().getFirst().settingType())
                     .isEqualTo(NotificationSettingType.FAN_SCHEDULED_LIVE_REMINDER);
         }
 
         @Test
-        @DisplayName("밴드 구성원은 약관 동의 필터와 무관하게 수신한다")
-        void 밴드_구성원은_약관_필터와_무관하다() {
+        @DisplayName("밴드 구성원도 알림 대상에 포함된다")
+        void 밴드_구성원도_수신한다() {
             givenCooldown(true);
             givenBandSummary();
-            // 팔로워 전원이 약관 미동의여도 밴드 구성원은 그대로 수신
-            givenAudience(List.of(201L), List.of(), List.of(301L, 302L));
+            givenAudience(List.of(), List.of(301L, 302L));
 
             callCreateStream(SCHEDULED_AT);
             TxSyncSupport.triggerAfterCommit();
@@ -395,7 +389,6 @@ class StreamServiceImplNotificationTest {
             givenBandSummary();
             givenAudience(
                     List.of(BROADCASTER_ID, 201L),
-                    List.of(BROADCASTER_ID, 201L),
                     List.of(BROADCASTER_ID, 301L)
             );
 
@@ -412,7 +405,7 @@ class StreamServiceImplNotificationTest {
         void 팔로워이자_밴드_구성원은_밴드_알림만_받는다() {
             givenCooldown(true);
             givenBandSummary();
-            givenAudience(List.of(201L, 301L), List.of(201L, 301L), List.of(301L, 302L));
+            givenAudience(List.of(201L, 301L), List.of(301L, 302L));
 
             callCreateStream(SCHEDULED_AT);
             TxSyncSupport.triggerAfterCommit();
@@ -433,7 +426,6 @@ class StreamServiceImplNotificationTest {
             givenBandSummary();
             givenAudience(
                     List.of(201L, 201L, 202L),
-                    List.of(201L, 201L, 202L),
                     List.of(301L, 301L)
             );
 
@@ -450,7 +442,7 @@ class StreamServiceImplNotificationTest {
         void 팬_수신자만_있으면_1회_발송한다() {
             givenCooldown(true);
             givenBandSummary();
-            givenAudience(List.of(201L), List.of(201L), List.of(BROADCASTER_ID));
+            givenAudience(List.of(201L), List.of(BROADCASTER_ID));
 
             callCreateStream(SCHEDULED_AT);
             TxSyncSupport.triggerAfterCommit();
@@ -466,7 +458,7 @@ class StreamServiceImplNotificationTest {
         void 수신자가_모두_비면_발송하지_않는다() {
             givenCooldown(true);
             givenBandSummary();
-            givenAudience(List.of(BROADCASTER_ID), List.of(BROADCASTER_ID), List.of(BROADCASTER_ID));
+            givenAudience(List.of(BROADCASTER_ID), List.of(BROADCASTER_ID));
 
             callCreateStream(SCHEDULED_AT);
 
@@ -483,7 +475,6 @@ class StreamServiceImplNotificationTest {
             givenCooldown(true);
             givenBandSummary();
             givenAudience(
-                    List.of(201L, 202L, 203L),
                     List.of(201L, 202L, 203L),
                     List.of(301L, 302L, 303L)
             );
@@ -506,7 +497,7 @@ class StreamServiceImplNotificationTest {
         void 예약_알림_settingType() {
             givenCooldown(true);
             givenBandSummary();
-            givenAudience(List.of(201L), List.of(201L), List.of(301L));
+            givenAudience(List.of(201L), List.of(301L));
 
             callCreateStream(SCHEDULED_AT);
             TxSyncSupport.triggerAfterCommit();
@@ -526,7 +517,7 @@ class StreamServiceImplNotificationTest {
             givenScheduledStreamStartedByBroadcaster();
             givenCooldown(true);
             givenBandSummary();
-            givenAudience(List.of(201L), List.of(201L), List.of(301L));
+            givenAudience(List.of(201L), List.of(301L));
             givenEnterRoomResponseStubs();
 
             streamService.enterRoom(BROADCASTER_ID, LIVE_ID);
@@ -546,7 +537,7 @@ class StreamServiceImplNotificationTest {
         void 팬_메시지와_밴드_메시지는_settingType과_deepLink만_다르다() {
             givenCooldown(true);
             givenBandSummary();
-            givenAudience(List.of(201L), List.of(201L), List.of(301L));
+            givenAudience(List.of(201L), List.of(301L));
 
             callCreateStream(SCHEDULED_AT);
             TxSyncSupport.triggerAfterCommit();
@@ -571,7 +562,7 @@ class StreamServiceImplNotificationTest {
         void 예약_메시지에_포맷된_예약_시각이_들어간다() {
             givenCooldown(true);
             givenBandSummary();
-            givenAudience(List.of(201L), List.of(201L), List.of());
+            givenAudience(List.of(201L), List.of());
 
             callCreateStream(SCHEDULED_AT);
             TxSyncSupport.triggerAfterCommit();
@@ -590,7 +581,7 @@ class StreamServiceImplNotificationTest {
         void referenceId와_팬_밴드_deepLink를_구분한다() {
             givenCooldown(true);
             givenBandSummary();
-            givenAudience(List.of(201L), List.of(201L), List.of(301L));
+            givenAudience(List.of(201L), List.of(301L));
 
             callCreateStream(SCHEDULED_AT);
             TxSyncSupport.triggerAfterCommit();
@@ -619,7 +610,7 @@ class StreamServiceImplNotificationTest {
 
             verify(bandMemberPort, never()).getBandSummaryByBandId(any());
             verify(redisTemplate, never()).opsForValue();
-            verifyNoInteractions(followPort, userTermsPort, notifyPort);
+            verifyNoInteractions(followPort, notifyPort);
             assertThat(TxSyncSupport.registeredCount()).isZero();
         }
 
@@ -639,7 +630,7 @@ class StreamServiceImplNotificationTest {
                     .isEqualTo(StreamErrorCode.AUDIO_STREAM_NOT_SCHEDULED);
 
             verify(bandMemberPort, never()).getBandSummaryByBandId(any());
-            verifyNoInteractions(followPort, userTermsPort, notifyPort);
+            verifyNoInteractions(followPort, notifyPort);
             assertThat(TxSyncSupport.registeredCount()).isZero();
         }
 
@@ -656,7 +647,7 @@ class StreamServiceImplNotificationTest {
             verify(audioStreamRepository, never()).markStartedIfScheduled(any(), any());
             verify(bandMemberPort, never()).getBandSummaryByBandId(any());
             verify(redisTemplate, never()).opsForValue();
-            verifyNoInteractions(followPort, userTermsPort, notifyPort);
+            verifyNoInteractions(followPort, notifyPort);
             assertThat(TxSyncSupport.registeredCount()).isZero();
         }
     }
@@ -675,6 +666,17 @@ class StreamServiceImplNotificationTest {
                     BAND_ID,
                     SCHEDULED_AT
             );
+        }
+
+        private AudioStream stream(StreamStatus status) {
+            return status == StreamStatus.SCHEDULED
+                    ? scheduledStream()
+                    : StreamFixtures.stream(
+                            LIVE_ID,
+                            BROADCASTER_ID,
+                            BAND_ID,
+                            status
+                    );
         }
 
         private StreamMember invitation(
@@ -792,22 +794,19 @@ class StreamServiceImplNotificationTest {
                     .transitionStatus(any(), any(), any());
         }
 
-        @Test
-        @DisplayName("예약 라이브가 아니면 초대에 응답할 수 없다")
-        void 예약상태가_아니면_실패한다() {
-            AudioStream openStream = StreamFixtures.stream(
-                    LIVE_ID,
-                    BROADCASTER_ID,
-                    BAND_ID,
-                    StreamStatus.OPEN
-            );
+        @ParameterizedTest(name = "{0} 상태에서는 초대에 응답할 수 없다")
+        @EnumSource(
+                value = StreamStatus.class,
+                names = {"CLOSED", "CANCELED"}
+        )
+        void 종료나_취소_상태에서는_실패한다(StreamStatus status) {
             given(streamMemberRepository
                     .findWithStreamByLiveIdAndUserId(
                             LIVE_ID,
                             CO_HOST_ID
                     ))
                     .willReturn(Optional.of(invitation(
-                            openStream,
+                            stream(status),
                             StreamMemberStatus.INVITED
                     )));
 
@@ -867,10 +866,13 @@ class StreamServiceImplNotificationTest {
             verifyNoInteractions(notifyPort);
         }
 
-        @Test
-        @DisplayName("수락하면 ACCEPTED로 전이하고 커밋 후 송출자에게 밴드 활동명으로 알린다")
-        void 수락하면_송출자에게_결과알림을_보낸다() {
-            AudioStream stream = scheduledStream();
+        @ParameterizedTest(name = "{0} 상태에서 수락하면 ACCEPTED로 전이한다")
+        @EnumSource(
+                value = StreamStatus.class,
+                names = {"SCHEDULED", "OPEN"}
+        )
+        void 수락하면_송출자에게_결과알림을_보낸다(StreamStatus status) {
+            AudioStream stream = stream(status);
             given(streamMemberRepository
                     .findWithStreamByLiveIdAndUserId(
                             LIVE_ID,
@@ -920,10 +922,13 @@ class StreamServiceImplNotificationTest {
             assertThat(message.referenceId()).isEqualTo(LIVE_ID);
         }
 
-        @Test
-        @DisplayName("거절하면 REJECTED로 전이하고 활동명이 없을 때 유저 이름으로 알린다")
-        void 거절하면_송출자에게_결과알림을_보낸다() {
-            AudioStream stream = scheduledStream();
+        @ParameterizedTest(name = "{0} 상태에서 거절하면 REJECTED로 전이한다")
+        @EnumSource(
+                value = StreamStatus.class,
+                names = {"SCHEDULED", "OPEN"}
+        )
+        void 거절하면_송출자에게_결과알림을_보낸다(StreamStatus status) {
+            AudioStream stream = stream(status);
             StreamMember invitation = invitation(
                     stream,
                     StreamMemberStatus.INVITED

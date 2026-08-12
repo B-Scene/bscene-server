@@ -2,8 +2,10 @@ package com.umc.bscene.domain.oauth.service;
 
 import com.umc.bscene.domain.auth.dto.auth.request.TermAgreementRequest;
 import com.umc.bscene.domain.auth.dto.auth.response.TokenResponse;
+import com.umc.bscene.domain.auth.entity.term.Terms;
 import com.umc.bscene.domain.auth.entity.term.UserTerms;
 import com.umc.bscene.domain.auth.enums.verification.PhoneVerificationPurpose;
+import com.umc.bscene.domain.auth.repository.term.TermsRepository;
 import com.umc.bscene.domain.auth.repository.term.UserTermsRepository;
 import com.umc.bscene.domain.auth.service.verification.PhoneVerificationService;
 import com.umc.bscene.domain.oauth.dto.request.OauthSignupRequest;
@@ -40,10 +42,12 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.startsWith;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -57,6 +61,8 @@ class OauthServiceTest {
     private OauthAccountRepository oauthAccountRepository;
     @Mock
     private UserTermsRepository userTermsRepository;
+    @Mock
+    private TermsRepository termsRepository;
     @Mock
     private PhoneVerificationService phoneVerificationService;
     @Mock
@@ -76,9 +82,13 @@ class OauthServiceTest {
     @BeforeEach
     void setUp() {
         service = new OauthService(
-                userRepository, oauthAccountRepository, userTermsRepository,
+                userRepository, oauthAccountRepository, userTermsRepository, termsRepository,
                 phoneVerificationService, stringRedisTemplate, jwtUtil
         );
+        lenient().when(termsRepository.getReferenceById(anyLong()))
+                .thenAnswer(invocation -> Terms.builder()
+                        .termId(invocation.getArgument(0))
+                        .build());
     }
 
     private void mockTokenIssue() {

@@ -28,13 +28,9 @@ public class UserTerms extends BaseEntity {
     @JoinColumn(name = "userId", nullable = false)
     private User user;
 
-    /* 추후 Terms 엔티티 생성시 변경
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "termId", nullable = false)
     private Terms terms;
-     */
-    @Column(name = "termId", nullable = false)
-    private Long termId;
 
     @Column(name = "isAgreed", nullable = false)
     private Boolean isAgreed;
