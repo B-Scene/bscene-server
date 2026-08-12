@@ -12,6 +12,7 @@ import com.umc.bscene.domain.user.dto.response.MyBandProfile;
 import com.umc.bscene.domain.user.dto.response.MyInfoResponse;
 import com.umc.bscene.domain.user.dto.response.MyProfileResponse;
 import com.umc.bscene.domain.user.dto.response.ParticipationHistoryResponse;
+import com.umc.bscene.domain.user.dto.response.SessionApplyConfirmResponse;
 import com.umc.bscene.domain.user.dto.response.mypage.BandMyPageResponse;
 import com.umc.bscene.domain.user.dto.response.mypage.FanMyPageResponse;
 import com.umc.bscene.domain.user.dto.response.session.SessionApplicationStatusResult;
@@ -381,7 +382,7 @@ public class UserService {
     // 수락 시 이 시점에 입력받은 활동명·파트를 확정값으로 멤버 프로필을 생성하고 세션 멤버로 등록한다
     // 모든 단계가 한 트랜잭션 - 하나라도 실패하면 상태 전이 포함 전체 롤백
     @Transactional
-    public void confirmSessionApply(Long userId, Long applySubmissionId, SessionApplyConfirmRequest request) {
+    public SessionApplyConfirmResponse confirmSessionApply(Long userId, Long applySubmissionId, SessionApplyConfirmRequest request) {
 
         boolean isAccepted = request.isAccepted();
 
@@ -396,12 +397,15 @@ public class UserService {
 
         Long bandId = result.bandId();
 
+        // 확정으로 생성된 멤버 프로필 PK - 최종 거절이면 생성되는 프로필이 없어 null
+        Long bandMemberProfileId = null;
+
         if (isAccepted) {
             User applicant = userRepository.findById(userId)
                     .orElseThrow(() -> new UserException(UserErrorCode.USER_NOT_FOUND));
 
             // BandMember(ACCEPTED, SESSION) + 비활성(active=false) 멤버 프로필 생성
-            bandPort.registerSessionMember(bandId, applicant, request.nickname(), request.part());
+            bandMemberProfileId = bandPort.registerSessionMember(bandId, applicant, request.nickname(), request.part());
         }
 
         String notificationNickname = isAccepted
@@ -413,6 +417,9 @@ public class UserService {
                 notificationNickname,
                 isAccepted
         );
+
+        // 생성된 프로필은 비활성이라, FE가 이 PK로 모드 전환을 이어가야 활성 프로필이 된다
+        return new SessionApplyConfirmResponse(bandMemberProfileId);
     }
 
     private void notifyApplicationDecisionAfterCommit(

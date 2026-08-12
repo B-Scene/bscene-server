@@ -9,6 +9,7 @@ import com.umc.bscene.domain.user.dto.response.InterestedPerformanceResponse;
 import com.umc.bscene.domain.user.dto.response.MyInfoResponse;
 import com.umc.bscene.domain.user.dto.response.MyProfileResponse;
 import com.umc.bscene.domain.user.dto.response.ParticipationHistoryResponse;
+import com.umc.bscene.domain.user.dto.response.SessionApplyConfirmResponse;
 import com.umc.bscene.domain.user.dto.response.mypage.BandMyPageResponse;
 import com.umc.bscene.domain.user.dto.response.mypage.FanMyPageResponse;
 import com.umc.bscene.domain.user.dto.response.mypage.MyPageResponse;
@@ -227,10 +228,12 @@ public class UserController {
             @Valid @RequestBody SessionApplyConfirmRequest request
     ) {
 
-        userService.confirmSessionApply(member.getUser().getId(), applySubmissionId, request);
+        SessionApplyConfirmResponse response =
+                userService.confirmSessionApply(member.getUser().getId(), applySubmissionId, request);
 
+        // 멤버 프로필이라는 리소스를 생성하고 그 PK를 본문으로 돌려주므로 201 Created
         return ResponseEntity
-                .status(HttpStatus.OK)
-                .body(SuccessResponse.empty(null));
+                .status(HttpStatus.CREATED)
+                .body(SuccessResponse.created(response));
     }
 }
