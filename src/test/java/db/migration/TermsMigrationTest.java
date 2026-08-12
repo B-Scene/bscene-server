@@ -34,6 +34,9 @@ class TermsMigrationTest {
             assertThat(tableNames(connection))
                     .contains("terms")
                     .doesNotContain("Terms");
+            assertThat(termsColumns(connection))
+                    .contains("term_id", "created_at", "updated_at")
+                    .doesNotContain("termId", "createdAt", "updatedAt");
             assertThat(terms(connection)).containsExactly(
                     "1:만 14세 이상 확인:MANDATORY",
                     "2:서비스 이용약관:MANDATORY",
@@ -81,14 +84,25 @@ class TermsMigrationTest {
         List<String> terms = new ArrayList<>();
         try (Statement statement = connection.createStatement();
              ResultSet resultSet = statement.executeQuery(
-                     "SELECT \"termId\", \"name\", \"type\" FROM \"terms\" "
-                             + "ORDER BY \"termId\"")) {
+                     "SELECT \"term_id\", \"name\", \"type\" FROM \"terms\" "
+                             + "ORDER BY \"term_id\"")) {
             while (resultSet.next()) {
                 terms.add(resultSet.getLong(1) + ":" + resultSet.getString(2)
                         + ":" + resultSet.getString(3));
             }
         }
         return terms;
+    }
+
+    private List<String> termsColumns(Connection connection) throws Exception {
+        List<String> columns = new ArrayList<>();
+        try (ResultSet resultSet = connection.getMetaData().getColumns(
+                connection.getCatalog(), connection.getSchema(), "terms", "%")) {
+            while (resultSet.next()) {
+                columns.add(resultSet.getString("COLUMN_NAME"));
+            }
+        }
+        return columns;
     }
 
     private List<String> tableNames(Connection connection) throws Exception {
@@ -119,7 +133,7 @@ class TermsMigrationTest {
     private String firstTermsContent(Connection connection) throws Exception {
         try (Statement statement = connection.createStatement();
              ResultSet resultSet = statement.executeQuery(
-                    "SELECT \"content\" FROM \"terms\" WHERE \"termId\" = 2")) {
+                    "SELECT \"content\" FROM \"terms\" WHERE \"term_id\" = 2")) {
             assertThat(resultSet.next()).isTrue();
             return resultSet.getString(1);
         }
