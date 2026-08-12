@@ -59,6 +59,7 @@ import java.time.Instant;
 import java.time.LocalDateTime;
 import java.util.Collection;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
@@ -1258,7 +1259,8 @@ class StreamServiceImplRoomTest {
                     .thenReturn(Optional.of(StreamFixtures.member(
                             902L, StreamFixtures.bandUser(21L), stream, StreamMemberStatus.ACCEPTED)));
 
-            // 송출자(path 발급됨) + 본인(제외 대상) + 아직 입장 안 한 멤버(path 없음, 제외 대상)
+            // 송출자(path 발급 + 입장 중) + 본인(제외 대상) + 아직 입장 안 한 멤버(path 없음)
+            // + 퇴장한 멤버(path는 남아 있지만 프레젠스에 없음)
             StreamMember owner = StreamFixtures.member(
                     901L, StreamFixtures.bandUser(10L), stream, StreamMemberStatus.ACCEPTED);
             owner.assignPath("path-1-m901");
@@ -1267,19 +1269,27 @@ class StreamServiceImplRoomTest {
             self.assignPath("path-1-m902");
             StreamMember notEntered = StreamFixtures.member(
                     903L, StreamFixtures.bandUser(22L), stream, StreamMemberStatus.ACCEPTED);
+            StreamMember left = StreamFixtures.member(
+                    904L, StreamFixtures.bandUser(23L), stream, StreamMemberStatus.ACCEPTED);
+            left.assignPath("path-1-m904");
             when(streamMemberRepository.findAllByAudioStream_IdAndStatus(1L, StreamMemberStatus.ACCEPTED))
-                    .thenReturn(List.of(owner, self, notEntered));
+                    .thenReturn(List.of(owner, self, notEntered, left));
+
+            // 현재 입장 중인 진행자는 송출자(10)와 본인(21)뿐 — 퇴장한 23L은 프레젠스에 없다
+            when(zSetOperations.range("live-member:1", 0, -1)).thenReturn(Set.of("10", "21"));
 
             StreamRoomResponse response = service.enterRoom(21L, 1L);
 
+            // 퇴장자(23L)는 path가 남아 있어도 목록에서 빠져야 한다.
+            // 안 빠지면 FE가 죽은 path로 WHEP을 계속 재시도한다
             assertThat(response.coPublishers()).containsExactly(
                     new StreamRoomResponse.CoPublisher(10L, WEBRTC_URL + "/path-1-m901/whep")
             );
         }
 
         @Test
-        @DisplayName("최초 입장으로 path가 새로 발급되면 커밋 후에만 다른 진행자 전원에게 합류 이벤트를 보낸다")
-        void firstJoinNotifiesPeersAfterCommit() {
+        @DisplayName("진행자 입장 시 커밋 후에만, 수신자마다 본인이 빠진 전체 스냅샷을 보낸다")
+        void joinSendsPerRecipientSnapshotAfterCommit() {
             StreamMember coHost = StreamFixtures.member(
                     902L, StreamFixtures.bandUser(21L), null, StreamMemberStatus.ACCEPTED);
             AudioStream stream = openStreamWithCoHost(coHost);
@@ -1290,40 +1300,46 @@ class StreamServiceImplRoomTest {
             when(redisTemplate.opsForZSet()).thenReturn(zSetOperations);
             when(zSetOperations.zCard("viewer:1")).thenReturn(2L);
             when(bandMemberPort.getBandNameWithBandProfileByBroadcasterId(Set.of(10L))).thenReturn(List.of());
-            // path 미발급 상태로 조회 → 최초 입장
-            when(streamMemberRepository.findWithStreamByLiveIdAndUserId(1L, 21L))
-                    .thenReturn(Optional.of(StreamFixtures.member(
-                            902L, StreamFixtures.bandUser(21L), stream, StreamMemberStatus.ACCEPTED)));
 
             StreamMember owner = StreamFixtures.member(
                     901L, StreamFixtures.bandUser(10L), stream, StreamMemberStatus.ACCEPTED);
             owner.assignPath("path-1-m901");
+            // 입장자 본인: 영속성 컨텍스트에서는 같은 인스턴스이므로, enterRoom의 assignPath가
+            // 이 객체에 반영되어 스냅샷에도 새 path가 담겨야 한다 (path 미발급 = 최초 입장)
             StreamMember self = StreamFixtures.member(
                     902L, StreamFixtures.bandUser(21L), stream, StreamMemberStatus.ACCEPTED);
             StreamMember notEntered = StreamFixtures.member(
                     903L, StreamFixtures.bandUser(22L), stream, StreamMemberStatus.ACCEPTED);
+            when(streamMemberRepository.findWithStreamByLiveIdAndUserId(1L, 21L))
+                    .thenReturn(Optional.of(self));
             when(streamMemberRepository.findAllByAudioStream_IdAndStatus(1L, StreamMemberStatus.ACCEPTED))
                     .thenReturn(List.of(owner, self, notEntered));
+            when(zSetOperations.range("live-member:1", 0, -1)).thenReturn(Set.of("10", "21"));
 
             service.enterRoom(21L, 1L);
 
             // 커밋 전에는 절대 전송하지 않는다 (path 저장 전에 FE가 WHEP을 시도하면 인가에 실패한다)
-            verify(viewerSsePresence, never())
-                    .notifyCoPublisherJoined(anyLong(), any(), any(StreamRoomResponse.CoPublisher.class));
+            verify(viewerSsePresence, never()).notifyCoPublishersChanged(anyLong(), any());
 
             TxSyncSupport.triggerAfterCommit();
 
-            // 대상: 본인(21L)을 제외한 ACCEPTED 멤버 전원 (path 미발급이어도 SSE만 연결해 둔 진행자가 받을 수 있어야 함)
-            verify(viewerSsePresence).notifyCoPublisherJoined(
-                    1L,
-                    List.of(10L, 22L),
-                    new StreamRoomResponse.CoPublisher(21L, WEBRTC_URL + "/path-1-m902/whep")
-            );
+            StreamRoomResponse.CoPublisher ownerPeer =
+                    new StreamRoomResponse.CoPublisher(10L, WEBRTC_URL + "/path-1-m901/whep");
+            StreamRoomResponse.CoPublisher joinerPeer =
+                    new StreamRoomResponse.CoPublisher(21L, WEBRTC_URL + "/path-1-m902/whep");
+
+            // 수신 대상은 ACCEPTED 전원 (아직 입장 전이라도 SSE만 연결해 둔 진행자가 받을 수 있어야 함).
+            // 각 payload에서 본인은 빠지고, 입장 중이 아닌 22L은 어느 목록에도 들어가지 않는다
+            verify(viewerSsePresence).notifyCoPublishersChanged(1L, Map.of(
+                    10L, List.of(joinerPeer),
+                    21L, List.of(ownerPeer),
+                    22L, List.of(ownerPeer, joinerPeer)
+            ));
         }
 
         @Test
-        @DisplayName("재입장(path 기존 보유)에는 합류 이벤트를 보내지 않는다")
-        void reentryDoesNotNotifyPeers() {
+        @DisplayName("재입장(path 기존 보유)에도 스냅샷을 보낸다 — 안 보내면 남은 진행자가 재입장자를 구독하지 못한다")
+        void reentryAlsoSendsSnapshot() {
             StreamMember coHost = StreamFixtures.member(
                     902L, StreamFixtures.bandUser(21L), null, StreamMemberStatus.ACCEPTED);
             AudioStream stream = openStreamWithCoHost(coHost);
@@ -1334,18 +1350,27 @@ class StreamServiceImplRoomTest {
             when(redisTemplate.opsForZSet()).thenReturn(zSetOperations);
             when(zSetOperations.zCard("viewer:1")).thenReturn(2L);
             when(bandMemberPort.getBandNameWithBandProfileByBroadcasterId(Set.of(10L))).thenReturn(List.of());
+
+            StreamMember owner = StreamFixtures.member(
+                    901L, StreamFixtures.bandUser(10L), stream, StreamMemberStatus.ACCEPTED);
+            owner.assignPath("path-1-m901");
             // 이미 path를 보유한 상태로 재입장
             StreamMember reentering = StreamFixtures.member(
                     902L, StreamFixtures.bandUser(21L), stream, StreamMemberStatus.ACCEPTED);
             reentering.assignPath("path-1-m902");
             when(streamMemberRepository.findWithStreamByLiveIdAndUserId(1L, 21L))
                     .thenReturn(Optional.of(reentering));
+            when(streamMemberRepository.findAllByAudioStream_IdAndStatus(1L, StreamMemberStatus.ACCEPTED))
+                    .thenReturn(List.of(owner, reentering));
+            when(zSetOperations.range("live-member:1", 0, -1)).thenReturn(Set.of("10", "21"));
 
             service.enterRoom(21L, 1L);
             TxSyncSupport.triggerAfterCommit();
 
-            verify(viewerSsePresence, never())
-                    .notifyCoPublisherJoined(anyLong(), any(), any(StreamRoomResponse.CoPublisher.class));
+            verify(viewerSsePresence).notifyCoPublishersChanged(1L, Map.of(
+                    10L, List.of(new StreamRoomResponse.CoPublisher(21L, WEBRTC_URL + "/path-1-m902/whep")),
+                    21L, List.of(new StreamRoomResponse.CoPublisher(10L, WEBRTC_URL + "/path-1-m901/whep"))
+            ));
         }
 
         @Test
@@ -1414,10 +1439,9 @@ class StreamServiceImplRoomTest {
             assertThat(response.coPublishers()).isNull();
             verify(streamMemberRepository, never())
                     .findAllByAudioStream_IdAndStatus(anyLong(), any(StreamMemberStatus.class));
-            // 청취자 입장은 진행자 합류 이벤트도 발생시키지 않는다
+            // 청취자 입장은 진행자 구성 스냅샷도 발생시키지 않는다
             TxSyncSupport.triggerAfterCommit();
-            verify(viewerSsePresence, never())
-                    .notifyCoPublisherJoined(anyLong(), any(), any(StreamRoomResponse.CoPublisher.class));
+            verify(viewerSsePresence, never()).notifyCoPublishersChanged(anyLong(), any());
         }
 
         @Test
@@ -1462,13 +1486,14 @@ class StreamServiceImplRoomTest {
     }
 
     @Nested
-    @DisplayName("leaveRoom - 청취자 퇴장")
+    @DisplayName("leaveRoom - 방 퇴장")
     class LeaveRoomTest {
 
         @Test
-        @DisplayName("시청자·진행자 프레젠스 ZSet에서 제거한 뒤에 시청자 수를 브로드캐스트한다")
+        @DisplayName("청취자 퇴장: 시청자·진행자 프레젠스 ZSet에서 제거한 뒤에 시청자 수를 브로드캐스트한다")
         void removesThenBroadcastsInOrder() {
             when(redisTemplate.opsForZSet()).thenReturn(zSetOperations);
+            when(streamMemberRepository.findWithStreamByLiveIdAndUserId(1L, 20L)).thenReturn(Optional.empty());
 
             service.leaveRoom(20L, 1L);
 
@@ -1478,6 +1503,104 @@ class StreamServiceImplRoomTest {
             inOrder.verify(zSetOperations).remove("live-member:1", "20");
             inOrder.verify(viewerSsePresence).broadcastCount(1L);
             inOrder.verifyNoMoreInteractions();
+            // 청취자는 kick 대상 아님
+            verifyNoInteractions(mtxRestClient);
+        }
+
+        @Test
+        @DisplayName("공동 진행자 퇴장: 커밋 후 WHIP 세션을 kick하고 프레젠스를 재제거한다 (폴링이 되살리는 것 방지)")
+        void coHostLeaveKicksWhipAfterCommit() {
+            AudioStream stream = StreamFixtures.stream(1L, 10L, 100L, StreamStatus.OPEN);
+            StreamMember coHost = StreamFixtures.member(
+                    902L, StreamFixtures.bandUser(20L), stream, StreamMemberStatus.ACCEPTED);
+            coHost.assignPath("path-1-m902");
+
+            when(redisTemplate.opsForZSet()).thenReturn(zSetOperations);
+            when(streamMemberRepository.findWithStreamByLiveIdAndUserId(1L, 20L)).thenReturn(Optional.of(coHost));
+            stubMtxPathLookup("path-1-m902",
+                    new MtxPathResponse(new MtxPathResponse.Source("webRTCSession", "sess-1")));
+            stubMtxKick("sess-1");
+
+            service.leaveRoom(20L, 1L);
+
+            // path 커밋 전에 kick이 나가면 안 된다 (kick은 afterCommit 전용)
+            verifyNoInteractions(mtxRestClient);
+            verify(zSetOperations, times(1)).remove("live-member:1", "20");
+
+            TxSyncSupport.triggerAfterCommit();
+
+            verify(mtxKickUriSpec).uri("v3/webrtcsessions/kick/{id}", "sess-1");
+            // kick 직후 재제거로 폴링 새치기 창을 좁힌다
+            verify(zSetOperations, times(2)).remove("live-member:1", "20");
+        }
+
+        @Test
+        @DisplayName("진행자 퇴장 시 남은 진행자들에게 퇴장자가 빠진 스냅샷을 커밋 후 보낸다")
+        void coHostLeaveSendsSnapshotWithoutLeaver() {
+            AudioStream stream = StreamFixtures.stream(1L, 10L, 100L, StreamStatus.OPEN);
+            StreamMember owner = StreamFixtures.member(
+                    901L, StreamFixtures.bandUser(10L), stream, StreamMemberStatus.ACCEPTED);
+            owner.assignPath("path-1-m901");
+            StreamMember leaving = StreamFixtures.member(
+                    902L, StreamFixtures.bandUser(20L), stream, StreamMemberStatus.ACCEPTED);
+            leaving.assignPath("path-1-m902");
+
+            when(redisTemplate.opsForZSet()).thenReturn(zSetOperations);
+            when(streamMemberRepository.findWithStreamByLiveIdAndUserId(1L, 20L)).thenReturn(Optional.of(leaving));
+            when(streamMemberRepository.findAllByAudioStream_IdAndStatus(1L, StreamMemberStatus.ACCEPTED))
+                    .thenReturn(List.of(owner, leaving));
+            // 퇴장자(20L)는 이미 프레젠스에서 제거된 뒤라 목록에 없다
+            when(zSetOperations.range("live-member:1", 0, -1)).thenReturn(Set.of("10"));
+            stubMtxPathLookup("path-1-m902",
+                    new MtxPathResponse(new MtxPathResponse.Source("webRTCSession", "sess-1")));
+            stubMtxKick("sess-1");
+
+            service.leaveRoom(20L, 1L);
+
+            verify(viewerSsePresence, never()).notifyCoPublishersChanged(anyLong(), any());
+
+            TxSyncSupport.triggerAfterCommit();
+
+            // 남은 송출자(10L)는 빈 목록을 받아 퇴장자의 WHEP 연결을 끊는다.
+            // 퇴장자(20L)에게도 보내지만 SSE가 이미 닫혔으면 registry가 조용히 건너뛴다
+            verify(viewerSsePresence).notifyCoPublishersChanged(1L, Map.of(
+                    10L, List.of(),
+                    20L, List.of(new StreamRoomResponse.CoPublisher(10L, WEBRTC_URL + "/path-1-m901/whep"))
+            ));
+        }
+
+        @Test
+        @DisplayName("송출자 퇴장은 WHIP을 kick하지 않는다 (개인 path가 끊기면 라이브 전체가 비정상 종료 처리되므로)")
+        void broadcasterLeaveDoesNotKick() {
+            AudioStream stream = StreamFixtures.stream(1L, 10L, 100L, StreamStatus.OPEN);
+            StreamMember owner = StreamFixtures.member(
+                    901L, StreamFixtures.bandUser(10L), stream, StreamMemberStatus.ACCEPTED);
+            owner.assignPath("path-1-m901");
+
+            when(redisTemplate.opsForZSet()).thenReturn(zSetOperations);
+            when(streamMemberRepository.findWithStreamByLiveIdAndUserId(1L, 10L)).thenReturn(Optional.of(owner));
+
+            service.leaveRoom(10L, 1L);
+            TxSyncSupport.triggerAfterCommit();
+
+            verifyNoInteractions(mtxRestClient);
+        }
+
+        @Test
+        @DisplayName("path 미발급(한 번도 입장하지 않은) 진행자 퇴장은 kick하지 않는다")
+        void coHostWithoutPathDoesNotKick() {
+            AudioStream stream = StreamFixtures.stream(1L, 10L, 100L, StreamStatus.OPEN);
+            StreamMember neverJoined = StreamFixtures.member(
+                    902L, StreamFixtures.bandUser(20L), stream, StreamMemberStatus.ACCEPTED);
+
+            when(redisTemplate.opsForZSet()).thenReturn(zSetOperations);
+            when(streamMemberRepository.findWithStreamByLiveIdAndUserId(1L, 20L))
+                    .thenReturn(Optional.of(neverJoined));
+
+            service.leaveRoom(20L, 1L);
+            TxSyncSupport.triggerAfterCommit();
+
+            verifyNoInteractions(mtxRestClient);
         }
     }
 
@@ -1681,9 +1804,10 @@ class StreamServiceImplRoomTest {
 
             service.syncLiveState(Set.of());
 
-            verify(redisTemplate).scan(any(ScanOptions.class));
+            // live:* 라이브 판정용 + live-member:* 프레젠스 스윕용
+            verify(redisTemplate, times(2)).scan(any(ScanOptions.class));
             verifyNoMoreInteractions(redisTemplate);
-            verifyNoInteractions(audioStreamRepository, viewerSsePresence, notifyPort);
+            verifyNoInteractions(audioStreamRepository, streamMemberRepository, viewerSsePresence, notifyPort);
         }
 
         @Test
@@ -1702,6 +1826,163 @@ class StreamServiceImplRoomTest {
             verify(redisTemplate).delete("live:path-2");
             assertThat(stale.getStatus()).isEqualTo(StreamStatus.CLOSED);
             assertThat(stale.getClosedViewerCount()).isZero();
+        }
+
+        @Test
+        @DisplayName("송출 중(ready)인 멤버 path는 진행자 프레젠스 score를 현재 시각으로 갱신한다")
+        void readyMemberPathRefreshesPresence() {
+            AudioStream stream = StreamFixtures.stream(1L, 10L, 100L, StreamStatus.OPEN);
+            StreamMember coHost = StreamFixtures.member(
+                    902L, StreamFixtures.bandUser(21L), stream, StreamMemberStatus.ACCEPTED);
+            coHost.assignPath("path-1-m902");
+
+            stubEmptyScan();
+            when(redisTemplate.opsForValue()).thenReturn(valueOperations);
+            when(redisTemplate.opsForZSet()).thenReturn(zSetOperations);
+            when(streamMemberRepository.findAllWithUserAndStreamByPathIn(Set.of("path-1-m902")))
+                    .thenReturn(List.of(coHost));
+
+            long before = Instant.now().getEpochSecond();
+            service.syncLiveState(Set.of("path-1", "path-1-m902"));
+            long after = Instant.now().getEpochSecond();
+
+            ArgumentCaptor<Double> score = ArgumentCaptor.forClass(Double.class);
+            verify(zSetOperations).add(eq("live-member:1"), eq("21"), score.capture());
+            assertThat(score.getValue()).isBetween((double) before, (double) after);
+            // 멤버 path는 라이브 판정 대상이 아니다 (live: 키를 만들지 않는다)
+            verify(valueOperations, never()).set(eq("live:path-1-m902"), anyString(), any(Duration.class));
+        }
+
+        @Test
+        @DisplayName("메인 path가 죽은 라이브의 멤버 path는 프레젠스를 갱신하지 않는다 (좀비 WHIP이 종료된 라이브를 되살리는 것 방지)")
+        void memberPathOfDeadMainIsIgnored() {
+            stubEmptyScan();
+
+            service.syncLiveState(Set.of("path-1-m902"));
+
+            verify(streamMemberRepository, never()).findAllWithUserAndStreamByPathIn(any());
+            verify(redisTemplate, never()).opsForZSet();
+        }
+
+        @Test
+        @DisplayName("송출이 확인되지 않은 지 45초가 지난 진행자를 프레젠스에서 스윕한다")
+        void staleMembersAreSweptWithCutoff() {
+            // 첫 SCAN(live:*)은 빈 결과, 두 번째 SCAN(live-member:*)은 프레젠스 키 반환
+            when(redisTemplate.scan(any(ScanOptions.class)))
+                    .thenReturn(StreamFixtures.redisCursor())
+                    .thenReturn(StreamFixtures.redisCursor("live-member:1"));
+            when(redisTemplate.opsForZSet()).thenReturn(zSetOperations);
+
+            long before = Instant.now().getEpochSecond();
+            service.syncLiveState(Set.of());
+            long after = Instant.now().getEpochSecond();
+
+            ArgumentCaptor<Double> cutoff = ArgumentCaptor.forClass(Double.class);
+            verify(zSetOperations).removeRangeByScore(eq("live-member:1"), eq(0d), cutoff.capture());
+            assertThat(cutoff.getValue()).isBetween((double) (before - 45), (double) (after - 45));
+        }
+
+        @Test
+        @DisplayName("스윕으로 진행자가 실제 제거되면 남은 진행자들에게 스냅샷을 다시 보낸다 (비정상 종료 경로)")
+        void sweepNotifiesRemainingPublishers() {
+            AudioStream stream = StreamFixtures.stream(1L, 10L, 100L, StreamStatus.OPEN);
+            StreamMember owner = StreamFixtures.member(
+                    901L, StreamFixtures.bandUser(10L), stream, StreamMemberStatus.ACCEPTED);
+            owner.assignPath("path-1-m901");
+            StreamMember crashed = StreamFixtures.member(
+                    902L, StreamFixtures.bandUser(21L), stream, StreamMemberStatus.ACCEPTED);
+            crashed.assignPath("path-1-m902");
+
+            when(redisTemplate.scan(any(ScanOptions.class)))
+                    .thenReturn(StreamFixtures.redisCursor())
+                    .thenReturn(StreamFixtures.redisCursor("live-member:1"));
+            when(redisTemplate.opsForZSet()).thenReturn(zSetOperations);
+            // 1명이 실제로 스윕됨
+            when(zSetOperations.removeRangeByScore(eq("live-member:1"), eq(0d), org.mockito.ArgumentMatchers.anyDouble())).thenReturn(1L);
+            when(streamMemberRepository.findAllByAudioStream_IdAndStatus(1L, StreamMemberStatus.ACCEPTED))
+                    .thenReturn(List.of(owner, crashed));
+            // 스윕 후 남은 진행자는 송출자(10L)뿐
+            when(zSetOperations.range("live-member:1", 0, -1)).thenReturn(Set.of("10"));
+
+            service.syncLiveState(Set.of());
+            TxSyncSupport.triggerAfterCommit();
+
+            verify(viewerSsePresence).notifyCoPublishersChanged(1L, Map.of(
+                    10L, List.of(),
+                    21L, List.of(new StreamRoomResponse.CoPublisher(10L, WEBRTC_URL + "/path-1-m901/whep"))
+            ));
+        }
+
+        @Test
+        @DisplayName("스윕된 뒤 송출이 복구되면(프레젠스 신규 추가) 스냅샷을 보낸다 — enterRoom 재호출 없이도 다시 들리게")
+        void recoveredPublisherIsAnnounced() {
+            AudioStream stream = StreamFixtures.stream(1L, 10L, 100L, StreamStatus.OPEN);
+            StreamMember owner = StreamFixtures.member(
+                    901L, StreamFixtures.bandUser(10L), stream, StreamMemberStatus.ACCEPTED);
+            owner.assignPath("path-1-m901");
+            StreamMember recovered = StreamFixtures.member(
+                    902L, StreamFixtures.bandUser(21L), stream, StreamMemberStatus.ACCEPTED);
+            recovered.assignPath("path-1-m902");
+
+            stubEmptyScan();
+            when(redisTemplate.opsForValue()).thenReturn(valueOperations);
+            when(redisTemplate.opsForZSet()).thenReturn(zSetOperations);
+            when(streamMemberRepository.findAllWithUserAndStreamByPathIn(Set.of("path-1-m902")))
+                    .thenReturn(List.of(recovered));
+            // ZADD가 true = 프레젠스에 없던 진행자가 다시 송출을 시작했다는 뜻
+            when(zSetOperations.add(eq("live-member:1"), eq("21"), org.mockito.ArgumentMatchers.anyDouble()))
+                    .thenReturn(true);
+            when(streamMemberRepository.findAllByAudioStream_IdAndStatus(1L, StreamMemberStatus.ACCEPTED))
+                    .thenReturn(List.of(owner, recovered));
+            when(zSetOperations.range("live-member:1", 0, -1)).thenReturn(Set.of("10", "21"));
+
+            service.syncLiveState(Set.of("path-1", "path-1-m902"));
+            TxSyncSupport.triggerAfterCommit();
+
+            verify(viewerSsePresence).notifyCoPublishersChanged(1L, Map.of(
+                    10L, List.of(new StreamRoomResponse.CoPublisher(21L, WEBRTC_URL + "/path-1-m902/whep")),
+                    21L, List.of(new StreamRoomResponse.CoPublisher(10L, WEBRTC_URL + "/path-1-m901/whep"))
+            ));
+        }
+
+        @Test
+        @DisplayName("이미 송출 중인 진행자의 score 갱신만으로는 스냅샷을 보내지 않는다 (5초마다 SSE 도배 방지)")
+        void scoreRefreshAloneSendsNothing() {
+            AudioStream stream = StreamFixtures.stream(1L, 10L, 100L, StreamStatus.OPEN);
+            StreamMember coHost = StreamFixtures.member(
+                    902L, StreamFixtures.bandUser(21L), stream, StreamMemberStatus.ACCEPTED);
+            coHost.assignPath("path-1-m902");
+
+            stubEmptyScan();
+            when(redisTemplate.opsForValue()).thenReturn(valueOperations);
+            when(redisTemplate.opsForZSet()).thenReturn(zSetOperations);
+            when(streamMemberRepository.findAllWithUserAndStreamByPathIn(Set.of("path-1-m902")))
+                    .thenReturn(List.of(coHost));
+            // ZADD가 false = 이미 프레젠스에 있어 score만 갱신됨
+            when(zSetOperations.add(eq("live-member:1"), eq("21"), org.mockito.ArgumentMatchers.anyDouble()))
+                    .thenReturn(false);
+
+            service.syncLiveState(Set.of("path-1", "path-1-m902"));
+            TxSyncSupport.triggerAfterCommit();
+
+            verify(viewerSsePresence, never()).notifyCoPublishersChanged(anyLong(), any());
+        }
+
+        @Test
+        @DisplayName("스윕에서 제거된 진행자가 없으면 스냅샷을 보내지 않는다 (폴 주기마다 SSE가 도배되지 않도록)")
+        void sweepWithoutRemovalSendsNothing() {
+            when(redisTemplate.scan(any(ScanOptions.class)))
+                    .thenReturn(StreamFixtures.redisCursor())
+                    .thenReturn(StreamFixtures.redisCursor("live-member:1"));
+            when(redisTemplate.opsForZSet()).thenReturn(zSetOperations);
+            when(zSetOperations.removeRangeByScore(eq("live-member:1"), eq(0d), org.mockito.ArgumentMatchers.anyDouble())).thenReturn(0L);
+
+            service.syncLiveState(Set.of());
+            TxSyncSupport.triggerAfterCommit();
+
+            verify(viewerSsePresence, never()).notifyCoPublishersChanged(anyLong(), any());
+            verify(streamMemberRepository, never())
+                    .findAllByAudioStream_IdAndStatus(anyLong(), any(StreamMemberStatus.class));
         }
     }
 }
