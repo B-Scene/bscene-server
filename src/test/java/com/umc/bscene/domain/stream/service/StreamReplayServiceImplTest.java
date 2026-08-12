@@ -37,6 +37,7 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -270,8 +271,8 @@ class StreamReplayServiceImplTest {
                     StreamFixtures.replay(12L, audioStream, "recordings/path-1/b.mp4", 20, 7L),
                     StreamFixtures.replay(13L, audioStream, "recordings/path-1/c.mp4", 30, 3L)
             ));
-            when(bandMemberPort.getBandNameWithBandProfileByBroadcasterId(anySet()))
-                    .thenReturn(List.of(StreamFixtures.bandInfo(10L, "밴드", "https://cdn.test/band.png")));
+            when(bandMemberPort.getBandInfoByBandIds(anySet()))
+                    .thenReturn(Map.of(100L, StreamFixtures.bandInfoOf("밴드", "https://cdn.test/band.png")));
 
             StreamReplayResponse response = service.watchReplay(1L);
 
@@ -290,8 +291,8 @@ class StreamReplayServiceImplTest {
                     StreamFixtures.replay(12L, audioStream, "recordings/path-7/b.mp4", 22, 0L),
                     StreamFixtures.replay(13L, audioStream, "recordings/path-7/c.mp4", 33, 0L)
             ));
-            when(bandMemberPort.getBandNameWithBandProfileByBroadcasterId(anySet()))
-                    .thenReturn(List.of(StreamFixtures.bandInfo(10L, "밴드", "https://cdn.test/band.png")));
+            when(bandMemberPort.getBandInfoByBandIds(anySet()))
+                    .thenReturn(Map.of(100L, StreamFixtures.bandInfoOf("밴드", "https://cdn.test/band.png")));
 
             StreamReplayResponse response = service.watchReplay(7L);
 
@@ -301,14 +302,14 @@ class StreamReplayServiceImplTest {
         }
 
         @Test
-        @DisplayName("밴드 정보가 있으면 이름/이미지를 매핑하고, 송출자 ID는 단일 원소 Set으로 한 번만 조회한다")
+        @DisplayName("밴드 정보가 있으면 이름/이미지를 매핑하고, 라이브가 확정한 밴드 ID는 단일 원소 Set으로 한 번만 조회한다")
         void mapsBandInfoWithSingleLookup() {
             AudioStream audioStream = closed(1L, 10L, 100L);
             when(streamReplayRepository.findAllByAudioStream_IdOrderByS3KeyAsc(1L)).thenReturn(List.of(
                     StreamFixtures.replay(11L, audioStream, "recordings/path-1/a.mp4", 10, 5L)
             ));
-            when(bandMemberPort.getBandNameWithBandProfileByBroadcasterId(anySet()))
-                    .thenReturn(List.of(StreamFixtures.bandInfo(10L, "비신", "https://cdn.test/bscene.png")));
+            when(bandMemberPort.getBandInfoByBandIds(anySet()))
+                    .thenReturn(Map.of(100L, StreamFixtures.bandInfoOf("비신", "https://cdn.test/bscene.png")));
 
             StreamReplayResponse response = service.watchReplay(1L);
 
@@ -317,8 +318,8 @@ class StreamReplayServiceImplTest {
 
             @SuppressWarnings("unchecked")
             ArgumentCaptor<Set<Long>> captor = ArgumentCaptor.forClass(Set.class);
-            verify(bandMemberPort, times(1)).getBandNameWithBandProfileByBroadcasterId(captor.capture());
-            assertThat(captor.getValue()).containsExactly(10L);
+            verify(bandMemberPort, times(1)).getBandInfoByBandIds(captor.capture());
+            assertThat(captor.getValue()).containsExactly(100L);
         }
 
         @Test
@@ -328,7 +329,7 @@ class StreamReplayServiceImplTest {
             when(streamReplayRepository.findAllByAudioStream_IdOrderByS3KeyAsc(1L)).thenReturn(List.of(
                     StreamFixtures.replay(11L, audioStream, "recordings/path-1/a.mp4", 10, 5L)
             ));
-            when(bandMemberPort.getBandNameWithBandProfileByBroadcasterId(anySet())).thenReturn(List.of());
+            when(bandMemberPort.getBandInfoByBandIds(anySet())).thenReturn(Map.of());
 
             StreamReplayResponse response = service.watchReplay(1L);
 
@@ -576,16 +577,15 @@ class StreamReplayServiceImplTest {
                     StreamFixtures.replay(33L, closed(3L, 13L, 300L), "recordings/path-3/a.mp4", 3, 0L)
             );
             when(streamReplayRepository.findReplayPageLatest(null, PageRequest.ofSize(11))).thenReturn(rows);
-            when(bandMemberPort.getBandNameWithBandProfileByBroadcasterId(anySet())).thenReturn(List.of());
+            when(bandMemberPort.getBandInfoByBandIds(anySet())).thenReturn(Map.of());
             when(streamReplayRepository.sumDurationSecByAudioStreamIds(anySet())).thenReturn(List.of());
 
             service.getAllReplays(null, 10, ReplaySort.LATEST);
 
             @SuppressWarnings("unchecked")
-            ArgumentCaptor<Set<Long>> broadcasterIds = ArgumentCaptor.forClass(Set.class);
-            verify(bandMemberPort, times(1))
-                    .getBandNameWithBandProfileByBroadcasterId(broadcasterIds.capture());
-            assertThat(broadcasterIds.getValue()).containsExactlyInAnyOrder(11L, 12L, 13L);
+            ArgumentCaptor<Set<Long>> bandIds = ArgumentCaptor.forClass(Set.class);
+            verify(bandMemberPort, times(1)).getBandInfoByBandIds(bandIds.capture());
+            assertThat(bandIds.getValue()).containsExactlyInAnyOrder(100L, 200L, 300L);
 
             @SuppressWarnings("unchecked")
             ArgumentCaptor<Collection<Long>> audioStreamIds = ArgumentCaptor.forClass(Collection.class);
@@ -595,24 +595,23 @@ class StreamReplayServiceImplTest {
         }
 
         @Test
-        @DisplayName("송출자가 중복된 행들은 Set으로 합쳐져 한 번만 조회된다")
-        void duplicateBroadcasterIdsCollapseIntoOneSetEntry() {
+        @DisplayName("밴드가 중복된 행들은 Set으로 합쳐져 한 번만 조회된다")
+        void duplicateBandIdsCollapseIntoOneSetEntry() {
             AudioStream first = closed(1L, 11L, 100L);
             AudioStream second = closed(2L, 11L, 100L);
             when(streamReplayRepository.findReplayPageLatest(null, PageRequest.ofSize(11))).thenReturn(List.of(
                     StreamFixtures.replay(31L, first, "recordings/path-1/a.mp4", 1, 0L),
                     StreamFixtures.replay(32L, second, "recordings/path-2/a.mp4", 2, 0L)
             ));
-            when(bandMemberPort.getBandNameWithBandProfileByBroadcasterId(anySet())).thenReturn(List.of());
+            when(bandMemberPort.getBandInfoByBandIds(anySet())).thenReturn(Map.of());
             when(streamReplayRepository.sumDurationSecByAudioStreamIds(anySet())).thenReturn(List.of());
 
             service.getAllReplays(null, 10, ReplaySort.LATEST);
 
             @SuppressWarnings("unchecked")
-            ArgumentCaptor<Set<Long>> broadcasterIds = ArgumentCaptor.forClass(Set.class);
-            verify(bandMemberPort, times(1))
-                    .getBandNameWithBandProfileByBroadcasterId(broadcasterIds.capture());
-            assertThat(broadcasterIds.getValue()).containsExactly(11L);
+            ArgumentCaptor<Set<Long>> bandIds = ArgumentCaptor.forClass(Set.class);
+            verify(bandMemberPort, times(1)).getBandInfoByBandIds(bandIds.capture());
+            assertThat(bandIds.getValue()).containsExactly(100L);
         }
 
         @Test
@@ -622,7 +621,7 @@ class StreamReplayServiceImplTest {
                     StreamFixtures.replay(31L, closed(1L, 11L, 100L), "recordings/path-1/a.mp4", 1, 0L),
                     StreamFixtures.replay(32L, closed(2L, 12L, 200L), "recordings/path-2/a.mp4", 2, 0L)
             ));
-            when(bandMemberPort.getBandNameWithBandProfileByBroadcasterId(anySet())).thenReturn(List.of());
+            when(bandMemberPort.getBandInfoByBandIds(anySet())).thenReturn(Map.of());
             when(streamReplayRepository.sumDurationSecByAudioStreamIds(anySet())).thenReturn(List.of());
 
             CursorPage<ReplayResponse> page = service.getAllReplays(null, 3, ReplaySort.LATEST);
@@ -640,7 +639,7 @@ class StreamReplayServiceImplTest {
                     StreamFixtures.replay(32L, closed(2L, 12L, 200L), "recordings/path-2/a.mp4", 2, 0L),
                     StreamFixtures.replay(33L, closed(3L, 13L, 300L), "recordings/path-3/a.mp4", 3, 0L)
             ));
-            when(bandMemberPort.getBandNameWithBandProfileByBroadcasterId(anySet())).thenReturn(List.of());
+            when(bandMemberPort.getBandInfoByBandIds(anySet())).thenReturn(Map.of());
             when(streamReplayRepository.sumDurationSecByAudioStreamIds(anySet())).thenReturn(List.of());
 
             CursorPage<ReplayResponse> page = service.getAllReplays(null, 3, ReplaySort.LATEST);
@@ -659,7 +658,7 @@ class StreamReplayServiceImplTest {
                     StreamFixtures.replay(33L, closed(3L, 13L, 300L), "recordings/path-3/a.mp4", 3, 0L),
                     StreamFixtures.replay(34L, closed(4L, 14L, 400L), "recordings/path-4/a.mp4", 4, 0L)
             ));
-            when(bandMemberPort.getBandNameWithBandProfileByBroadcasterId(anySet())).thenReturn(List.of());
+            when(bandMemberPort.getBandInfoByBandIds(anySet())).thenReturn(Map.of());
             when(streamReplayRepository.sumDurationSecByAudioStreamIds(anySet())).thenReturn(List.of());
 
             CursorPage<ReplayResponse> page = service.getAllReplays(null, 3, ReplaySort.LATEST);
@@ -683,7 +682,7 @@ class StreamReplayServiceImplTest {
                     StreamFixtures.replay(31L, closed(1L, 11L, 100L), "recordings/path-1/a.mp4", 30, 0L),
                     StreamFixtures.replay(32L, closed(2L, 12L, 200L), "recordings/path-2/a.mp4", 40, 0L)
             ));
-            when(bandMemberPort.getBandNameWithBandProfileByBroadcasterId(anySet())).thenReturn(List.of());
+            when(bandMemberPort.getBandInfoByBandIds(anySet())).thenReturn(Map.of());
             // 라이브 1만 합산 결과가 있고, 라이브 2는 누락
             when(streamReplayRepository.sumDurationSecByAudioStreamIds(anySet()))
                     .thenReturn(List.of(StreamFixtures.durationSum(1L, 123L)));
@@ -701,8 +700,8 @@ class StreamReplayServiceImplTest {
                     StreamFixtures.replay(31L, closed(1L, 11L, 100L), "recordings/path-1/a.mp4", 30, 5L),
                     StreamFixtures.replay(32L, closed(2L, 12L, 200L), "recordings/path-2/a.mp4", 40, 6L)
             ));
-            when(bandMemberPort.getBandNameWithBandProfileByBroadcasterId(anySet()))
-                    .thenReturn(List.of(StreamFixtures.bandInfo(11L, "비신", "https://cdn.test/b.png")));
+            when(bandMemberPort.getBandInfoByBandIds(anySet()))
+                    .thenReturn(Map.of(100L, StreamFixtures.bandInfoOf("비신", "https://cdn.test/b.png")));
             when(streamReplayRepository.sumDurationSecByAudioStreamIds(anySet())).thenReturn(List.of());
 
             CursorPage<ReplayResponse> page = service.getAllReplays(null, 10, ReplaySort.LATEST);
@@ -819,16 +818,15 @@ class StreamReplayServiceImplTest {
                     StreamFixtures.replay(32L, closed(2L, 12L, 200L), "recordings/path-2/a.mp4", 2, 0L),
                     StreamFixtures.replay(33L, closed(3L, 13L, 300L), "recordings/path-3/a.mp4", 3, 0L)
             ));
-            when(bandMemberPort.getBandNameWithBandProfileByBroadcasterId(anySet())).thenReturn(List.of());
+            when(bandMemberPort.getBandInfoByBandIds(anySet())).thenReturn(Map.of());
             when(streamReplayRepository.sumDurationSecByAudioStreamIds(anySet())).thenReturn(List.of());
 
             service.getFollowingReplays(10L, null, 10, ReplaySort.LATEST);
 
             @SuppressWarnings("unchecked")
-            ArgumentCaptor<Set<Long>> broadcasterIds = ArgumentCaptor.forClass(Set.class);
-            verify(bandMemberPort, times(1))
-                    .getBandNameWithBandProfileByBroadcasterId(broadcasterIds.capture());
-            assertThat(broadcasterIds.getValue()).containsExactlyInAnyOrder(11L, 12L, 13L);
+            ArgumentCaptor<Set<Long>> bandIds = ArgumentCaptor.forClass(Set.class);
+            verify(bandMemberPort, times(1)).getBandInfoByBandIds(bandIds.capture());
+            assertThat(bandIds.getValue()).containsExactlyInAnyOrder(100L, 200L, 300L);
 
             @SuppressWarnings("unchecked")
             ArgumentCaptor<Collection<Long>> audioStreamIds = ArgumentCaptor.forClass(Collection.class);
@@ -847,7 +845,7 @@ class StreamReplayServiceImplTest {
                     StreamFixtures.replay(32L, closed(2L, 12L, 100L), "recordings/path-2/a.mp4", 2, 0L),
                     StreamFixtures.replay(33L, closed(3L, 13L, 100L), "recordings/path-3/a.mp4", 3, 0L)
             ));
-            when(bandMemberPort.getBandNameWithBandProfileByBroadcasterId(anySet())).thenReturn(List.of());
+            when(bandMemberPort.getBandInfoByBandIds(anySet())).thenReturn(Map.of());
             when(streamReplayRepository.sumDurationSecByAudioStreamIds(anySet()))
                     .thenReturn(List.of(StreamFixtures.durationSum(1L, 11L), StreamFixtures.durationSum(2L, 22L)));
 
@@ -868,7 +866,7 @@ class StreamReplayServiceImplTest {
                     List.of(100L), null, PageRequest.ofSize(11))).thenReturn(List.of(
                     StreamFixtures.replay(31L, audioStream, "recordings/path-1/a.mp4", 9, 3L)
             ));
-            when(bandMemberPort.getBandNameWithBandProfileByBroadcasterId(anySet())).thenReturn(List.of());
+            when(bandMemberPort.getBandInfoByBandIds(anySet())).thenReturn(Map.of());
             when(streamReplayRepository.sumDurationSecByAudioStreamIds(anySet())).thenReturn(List.of());
 
             CursorPage<ReplayResponse> page = service.getFollowingReplays(10L, null, 10, ReplaySort.LATEST);

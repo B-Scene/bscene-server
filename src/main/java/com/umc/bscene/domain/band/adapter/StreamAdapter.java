@@ -56,6 +56,19 @@ public class StreamAdapter implements BandMemberPort {
     }
 
     @Override
+    public Map<Long, BandInfoForGetLiveResponse.BandInfo> getBandInfoByBandIds(Set<Long> bandIds) {
+        if (bandIds.isEmpty()) {
+            return Map.of();
+        }
+
+        return bandRepository.findAllById(bandIds).stream()
+                .collect(Collectors.toMap(
+                        Band::getId,
+                        band -> new BandInfoForGetLiveResponse.BandInfo(band.getName(), band.getProfileImageUrl())
+                ));
+    }
+
+    @Override
     public Optional<BandSummaryResponse> getBandSummaryByBroadcasterId(Long broadcasterId) {
         return findActiveBandMembership(broadcasterId)
                 .filter(BandMember::isMember)

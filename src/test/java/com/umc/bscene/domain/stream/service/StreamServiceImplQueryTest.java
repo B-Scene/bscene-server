@@ -50,6 +50,7 @@ import org.springframework.web.client.RestClient;
 import java.time.LocalDateTime;
 import java.util.Collection;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 
@@ -99,6 +100,7 @@ class StreamServiceImplQueryTest {
     @Mock private ZSetOperations<String, String> zSetOperations;
 
     @Captor private ArgumentCaptor<Set<Long>> broadcasterIdsCaptor;
+    @Captor private ArgumentCaptor<Set<Long>> bandIdsCaptor;
     @Captor private ArgumentCaptor<Collection<Long>> liveIdsCaptor;
     @Captor private ArgumentCaptor<List<String>> pathsCaptor;
     @Captor private ArgumentCaptor<Pageable> pageableCaptor;
@@ -558,8 +560,8 @@ class StreamServiceImplQueryTest {
                             StreamFixtures.replay(101L, replaySource31, "s3/31-0.mp4", 60, 7L),
                             StreamFixtures.replay(102L, replaySource32, "s3/32-0.mp4", 90, 0L)
                     ));
-            when(bandMemberPort.getBandNameWithBandProfileByBroadcasterId(Set.of(41L, 42L)))
-                    .thenReturn(List.of(StreamFixtures.bandInfo(41L, "밴드41", "https://cdn.test/b41.jpg")));
+            when(bandMemberPort.getBandInfoByBandIds(Set.of(71L, 72L)))
+                    .thenReturn(Map.of(71L, StreamFixtures.bandInfoOf("밴드41", "https://cdn.test/b41.jpg")));
 
             when(audioStreamRepository.findByStatusAndScheduledAtAfterOrderByScheduledAtAscIdAsc(
                     eq(StreamStatus.SCHEDULED), any(LocalDateTime.class), any(Pageable.class)))
@@ -567,8 +569,8 @@ class StreamServiceImplQueryTest {
                             StreamFixtures.scheduledStream(51L, 61L, 81L, scheduledAt51),
                             StreamFixtures.scheduledStream(52L, 62L, 82L, scheduledAt52)
                     ));
-            when(bandMemberPort.getBandNameWithBandProfileByBroadcasterId(Set.of(61L, 62L)))
-                    .thenReturn(List.of(StreamFixtures.bandInfo(61L, "밴드61", "https://cdn.test/b61.jpg")));
+            when(bandMemberPort.getBandInfoByBandIds(Set.of(81L, 82L)))
+                    .thenReturn(Map.of(81L, StreamFixtures.bandInfoOf("밴드61", "https://cdn.test/b61.jpg")));
             when(liveAlarmRepository.findAlarmedLiveIds(1L, List.of(51L, 52L))).thenReturn(List.of(52L));
 
             givenZSetOps();
@@ -584,11 +586,14 @@ class StreamServiceImplQueryTest {
             verify(audioStreamRepository).findByStatusAndScheduledAtAfterOrderByScheduledAtAscIdAsc(
                     eq(StreamStatus.SCHEDULED), any(LocalDateTime.class), eq(PageRequest.ofSize(3)));
 
-            // N+1 방지: 섹션마다 정확히 한 번, 각 호출은 해당 섹션의 broadcasterId 전체를 담은 Set
-            verify(bandMemberPort, times(3))
+            // N+1 방지: 섹션마다 정확히 한 번, 각 호출은 해당 섹션의 ID 전체를 담은 Set
+            // liveNow는 송출자 활성 프로필 기준, 다시보기/예정은 라이브가 확정한 bandId 기준
+            verify(bandMemberPort, times(1))
                     .getBandNameWithBandProfileByBroadcasterId(broadcasterIdsCaptor.capture());
-            assertThat(broadcasterIdsCaptor.getAllValues()).containsExactly(
-                    Set.of(21L, 22L, 23L), Set.of(41L, 42L), Set.of(61L, 62L)
+            assertThat(broadcasterIdsCaptor.getValue()).containsExactlyInAnyOrder(21L, 22L, 23L);
+            verify(bandMemberPort, times(2)).getBandInfoByBandIds(bandIdsCaptor.capture());
+            assertThat(bandIdsCaptor.getAllValues()).containsExactly(
+                    Set.of(71L, 72L), Set.of(81L, 82L)
             );
 
             // N+1 방지: 알림 설정 여부도 예정 라이브 ID 전체를 담은 한 번의 배치 조회
@@ -657,7 +662,7 @@ class StreamServiceImplQueryTest {
             when(audioStreamRepository.findByStatusAndScheduledAtAfterOrderByScheduledAtAscIdAsc(
                     eq(StreamStatus.SCHEDULED), any(LocalDateTime.class), any(Pageable.class)))
                     .thenReturn(List.of(StreamFixtures.scheduledStream(51L, 61L, 81L, null)));
-            when(bandMemberPort.getBandNameWithBandProfileByBroadcasterId(Set.of(61L))).thenReturn(List.of());
+            when(bandMemberPort.getBandInfoByBandIds(Set.of(81L))).thenReturn(Map.of());
             when(liveAlarmRepository.findAlarmedLiveIds(1L, List.of(51L))).thenReturn(List.of());
 
             FanLiveHomeResponse fanHome = (FanLiveHomeResponse) service.getLiveHome(fanUser);
@@ -935,17 +940,16 @@ class StreamServiceImplQueryTest {
                             StreamFixtures.scheduledStream(52L, 62L, 82L, scheduledAt52),
                             StreamFixtures.scheduledStream(53L, 63L, 83L, scheduledAt52)
                     ));
-            when(bandMemberPort.getBandNameWithBandProfileByBroadcasterId(Set.of(61L, 62L)))
-                    .thenReturn(List.of(StreamFixtures.bandInfo(61L, "밴드61", "https://cdn.test/b61.jpg")));
+            when(bandMemberPort.getBandInfoByBandIds(Set.of(81L, 82L)))
+                    .thenReturn(Map.of(81L, StreamFixtures.bandInfoOf("밴드61", "https://cdn.test/b61.jpg")));
             when(liveAlarmRepository.findAlarmedLiveIds(1L, List.of(51L, 52L))).thenReturn(List.of(51L));
 
             CursorPage<UpcomingLiveResponse> page = service.getUpcomingLives(fanUser, false, null, 2);
 
             verify(audioStreamRepository).findUpcomingPage(
                     any(LocalDateTime.class), isNull(), isNull(), eq(PageRequest.ofSize(3)));
-            verify(bandMemberPort, times(1))
-                    .getBandNameWithBandProfileByBroadcasterId(broadcasterIdsCaptor.capture());
-            assertThat(broadcasterIdsCaptor.getValue()).containsExactlyInAnyOrder(61L, 62L);
+            verify(bandMemberPort, times(1)).getBandInfoByBandIds(bandIdsCaptor.capture());
+            assertThat(bandIdsCaptor.getValue()).containsExactlyInAnyOrder(81L, 82L);
             verify(liveAlarmRepository, times(1)).findAlarmedLiveIds(eq(1L), liveIdsCaptor.capture());
             assertThat(liveIdsCaptor.getValue()).containsExactly(51L, 52L);
 
@@ -966,7 +970,7 @@ class StreamServiceImplQueryTest {
                             StreamFixtures.scheduledStream(51L, 61L, 81L, scheduledAt51),
                             StreamFixtures.scheduledStream(52L, 61L, 81L, scheduledAt52)
                     ));
-            when(bandMemberPort.getBandNameWithBandProfileByBroadcasterId(Set.of(61L))).thenReturn(List.of());
+            when(bandMemberPort.getBandInfoByBandIds(Set.of(81L))).thenReturn(Map.of());
             when(liveAlarmRepository.findAlarmedLiveIds(1L, List.of(51L, 52L))).thenReturn(List.of());
 
             CursorPage<UpcomingLiveResponse> page = service.getUpcomingLives(fanUser, false, null, 2);
@@ -977,46 +981,44 @@ class StreamServiceImplQueryTest {
         }
 
         @Test
-        @DisplayName("size=1이면 중복 송출자는 Set 한 항목으로 합쳐지고 1개만 내려간다")
-        void collapsesDuplicateBroadcasterIdsWithSizeOne() {
+        @DisplayName("size=1이면 중복 밴드는 Set 한 항목으로 합쳐지고 1개만 내려간다")
+        void collapsesDuplicateBandIdsWithSizeOne() {
             User fanUser = StreamFixtures.fanUser(1L);
             when(audioStreamRepository.findUpcomingPage(any(LocalDateTime.class), isNull(), isNull(), any(Pageable.class)))
                     .thenReturn(List.of(
                             StreamFixtures.scheduledStream(51L, 61L, 81L, scheduledAt51),
                             StreamFixtures.scheduledStream(52L, 61L, 81L, scheduledAt52)
                     ));
-            when(bandMemberPort.getBandNameWithBandProfileByBroadcasterId(Set.of(61L))).thenReturn(List.of());
+            when(bandMemberPort.getBandInfoByBandIds(Set.of(81L))).thenReturn(Map.of());
             when(liveAlarmRepository.findAlarmedLiveIds(1L, List.of(51L))).thenReturn(List.of());
 
             CursorPage<UpcomingLiveResponse> page = service.getUpcomingLives(fanUser, false, null, 1);
 
-            verify(bandMemberPort, times(1))
-                    .getBandNameWithBandProfileByBroadcasterId(broadcasterIdsCaptor.capture());
-            assertThat(broadcasterIdsCaptor.getValue()).containsExactly(61L);
+            verify(bandMemberPort, times(1)).getBandInfoByBandIds(bandIdsCaptor.capture());
+            assertThat(bandIdsCaptor.getValue()).containsExactly(81L);
             assertThat(page.getItems()).extracting(UpcomingLiveResponse::liveId).containsExactly(51L);
             assertThat(page.getPageInfo().nextCursor()).isEqualTo(51L);
             assertThat(page.getPageInfo().hasNext()).isTrue();
         }
 
         @Test
-        @DisplayName("같은 broadcasterId의 밴드 정보가 중복으로 오면 첫 번째 항목이 채택된다")
-        void keepsFirstEntryOnBandInfoKeyCollision() {
+        @DisplayName("밴드 정보는 송출자 활성 프로필이 아니라 라이브가 확정한 bandId로 매핑된다")
+        void mapsBandInfoByBandIdNotBroadcasterProfile() {
             User fanUser = StreamFixtures.fanUser(1L);
             when(audioStreamRepository.findUpcomingPage(any(LocalDateTime.class), isNull(), isNull(), any(Pageable.class)))
                     .thenReturn(List.of(StreamFixtures.scheduledStream(51L, 61L, 81L, scheduledAt51)));
-            when(bandMemberPort.getBandNameWithBandProfileByBroadcasterId(Set.of(61L)))
-                    .thenReturn(List.of(
-                            StreamFixtures.bandInfo(61L, "첫번째밴드", "https://cdn.test/first.jpg"),
-                            StreamFixtures.bandInfo(61L, "두번째밴드", "https://cdn.test/second.jpg")
-                    ));
+            when(bandMemberPort.getBandInfoByBandIds(Set.of(81L)))
+                    .thenReturn(Map.of(81L, StreamFixtures.bandInfoOf("밴드81", "https://cdn.test/b81.jpg")));
             when(liveAlarmRepository.findAlarmedLiveIds(1L, List.of(51L))).thenReturn(List.of());
 
             CursorPage<UpcomingLiveResponse> page = service.getUpcomingLives(fanUser, false, null, 10);
 
+            // 송출자가 팬 모드/타 밴드 프로필로 전환해도 영향받지 않도록 활성 프로필 기준 조회를 쓰지 않는다
+            verify(bandMemberPort, never()).getBandNameWithBandProfileByBroadcasterId(any());
             assertThat(page.getItems()).singleElement()
                     .satisfies(item -> {
-                        assertThat(item.bandName()).isEqualTo("첫번째밴드");
-                        assertThat(item.bandProfileImageUrl()).isEqualTo("https://cdn.test/first.jpg");
+                        assertThat(item.bandName()).isEqualTo("밴드81");
+                        assertThat(item.bandProfileImageUrl()).isEqualTo("https://cdn.test/b81.jpg");
                     });
         }
 
@@ -1026,7 +1028,7 @@ class StreamServiceImplQueryTest {
             User fanUser = StreamFixtures.fanUser(1L);
             when(audioStreamRepository.findUpcomingPage(any(LocalDateTime.class), isNull(), isNull(), any(Pageable.class)))
                     .thenReturn(List.of(StreamFixtures.scheduledStream(51L, 61L, 81L, null)));
-            when(bandMemberPort.getBandNameWithBandProfileByBroadcasterId(Set.of(61L))).thenReturn(List.of());
+            when(bandMemberPort.getBandInfoByBandIds(Set.of(81L))).thenReturn(Map.of());
             when(liveAlarmRepository.findAlarmedLiveIds(1L, List.of(51L))).thenReturn(List.of());
 
             CursorPage<UpcomingLiveResponse> page = service.getUpcomingLives(fanUser, false, null, 10);

@@ -400,13 +400,13 @@ public class StreamServiceImpl implements StreamService {
         List<StreamReplay> replays = streamReplayRepository.findLatestReplays(
                 PageRequest.ofSize(FAN_HOME_REPLAY_LIMIT)
         );
-        Map<Long, BandInfoForGetLiveResponse.BandInfo> replayBandMap = bandInfoMapOf(
+        Map<Long, BandInfoForGetLiveResponse.BandInfo> replayBandMap = bandInfoMapByBandIdOf(
                 replays.stream().map(StreamReplay::getAudioStream).toList()
         );
 
         List<FanLiveHomeResponse.ReplayItem> replayItems = replays.stream()
                 .map(r -> {
-                    BandInfoForGetLiveResponse.BandInfo band = replayBandMap.get(r.getAudioStream().getBroadcasterId());
+                    BandInfoForGetLiveResponse.BandInfo band = replayBandMap.get(r.getAudioStream().getBandId());
 
                     return new FanLiveHomeResponse.ReplayItem(
                             r.getAudioStream().getId(),
@@ -422,12 +422,12 @@ public class StreamServiceImpl implements StreamService {
         List<AudioStream> scheduled = audioStreamRepository.findByStatusAndScheduledAtAfterOrderByScheduledAtAscIdAsc(
                 StreamStatus.SCHEDULED, now, PageRequest.ofSize(FAN_HOME_SCHEDULED_LIMIT)
         );
-        Map<Long, BandInfoForGetLiveResponse.BandInfo> scheduledBandMap = bandInfoMapOf(scheduled);
+        Map<Long, BandInfoForGetLiveResponse.BandInfo> scheduledBandMap = bandInfoMapByBandIdOf(scheduled);
         Set<Long> alarmedLiveIds = alarmedLiveIdsOf(user, scheduled);
 
         List<FanLiveHomeResponse.ScheduledItem> scheduledItems = scheduled.stream()
                 .map(s -> {
-                    BandInfoForGetLiveResponse.BandInfo band = scheduledBandMap.get(s.getBroadcasterId());
+                    BandInfoForGetLiveResponse.BandInfo band = scheduledBandMap.get(s.getBandId());
 
                     return new FanLiveHomeResponse.ScheduledItem(
                             s.getId(),
@@ -571,7 +571,7 @@ public class StreamServiceImpl implements StreamService {
         List<AudioStream> page = hasNext ? upcoming.subList(0, size) : upcoming;
         Long nextCursor = hasNext ? page.getLast().getId() : null;
 
-        Map<Long, BandInfoForGetLiveResponse.BandInfo> bandInfoMap = bandInfoMapOf(page);
+        Map<Long, BandInfoForGetLiveResponse.BandInfo> bandInfoMap = bandInfoMapByBandIdOf(page);
 
         // 나의 알림 설정 여부 매핑
         Set<Long> alarmedLiveIds = new HashSet<>(liveAlarmRepository.findAlarmedLiveIds(
@@ -582,7 +582,7 @@ public class StreamServiceImpl implements StreamService {
         return CursorPage.of(
                 page.stream()
                         .map(s -> {
-                            BandInfoForGetLiveResponse.BandInfo band = bandInfoMap.get(s.getBroadcasterId());
+                            BandInfoForGetLiveResponse.BandInfo band = bandInfoMap.get(s.getBandId());
 
                             return new UpcomingLiveResponse(
                                     s.getId(),
@@ -696,6 +696,21 @@ public class StreamServiceImpl implements StreamService {
                         BandInfoForGetLiveResponse::bandInfo,
                         (a, b) -> a
                 ));
+    }
+
+    // 예정 라이브/다시보기 화면용 밴드 정보 매핑 (key: bandId)
+    // 송출자의 현재 활성 프로필이 아니라 라이브가 생성 시점에 확정한 밴드 기준이라,
+    // 송출자가 팬 모드/타 밴드 프로필로 전환해도 밴드 이름·이미지가 유지된다
+    private Map<Long, BandInfoForGetLiveResponse.BandInfo> bandInfoMapByBandIdOf(Collection<AudioStream> streams) {
+
+        Set<Long> bandIds = streams.stream()
+                .map(AudioStream::getBandId)
+                .collect(Collectors.toSet());
+
+        if(bandIds.isEmpty())
+            return Map.of();
+
+        return bandMemberPort.getBandInfoByBandIds(bandIds);
     }
 
     private LiveStreamResponse toLiveStreamResponse(AudioStream s, Map<Long, BandInfoForGetLiveResponse.BandInfo> bandInfoMap) {

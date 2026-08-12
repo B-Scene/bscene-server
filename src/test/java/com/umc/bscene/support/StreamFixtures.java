@@ -124,6 +124,11 @@ public final class StreamFixtures {
         return new BandInfoForGetLiveResponse(broadcasterId, bandName, profileImageUrl);
     }
 
+    /** bandId 기준 밴드 정보 조회(getBandInfoByBandIds) 스텁용 */
+    public static BandInfoForGetLiveResponse.BandInfo bandInfoOf(String bandName, String profileImageUrl) {
+        return new BandInfoForGetLiveResponse.BandInfo(bandName, profileImageUrl);
+    }
+
     public static CoHostCandidateInfo candidate(Long userId, Long bandMemberId) {
         return new CoHostCandidateInfo(
                 userId, bandMemberId, bandMemberId, "https://cdn.test/p" + userId + ".jpg", "nick" + userId, "기타"
