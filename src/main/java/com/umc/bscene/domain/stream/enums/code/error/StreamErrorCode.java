@@ -30,6 +30,7 @@ public enum StreamErrorCode implements BaseResponseCode {
     CO_HOST_INVITATION_ALREADY_PROCESSED("LIVE409_7", 409, "이미 처리된 공동 진행자 초대입니다."),
     CO_HOST_ALREADY_ACCEPTED("LIVE409_8", 409, "이미 공동 진행자로 확정된 멤버입니다."),
     CO_HOST_UPGRADE_ALREADY_REQUESTED("LIVE409_9", 409, "이미 처리 대기 중인 공동 송출자 업그레이드 요청이 있습니다."),
+    ALREADY_REPORTED("LIVE409_10", 409, "이 라이브에서 이미 신고한 유저입니다."),
     ;
 
     private final String code;

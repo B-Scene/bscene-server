@@ -1550,6 +1550,10 @@ public class StreamServiceImpl implements StreamService {
 
         AudioStream stream = getStream(liveId);
 
+        // 신고는 라이브 채팅에 대한 것이므로 진행 중(OPEN)인 라이브에서만 가능 (종료/취소/예약 상태 방어)
+        if (stream.getStatus() != StreamStatus.OPEN)
+            throw new StreamException(StreamErrorCode.AUDIO_STREAM_NOT_LIVE);
+
         if (reporter.getId().equals(request.targetUserId()))
             throw new StreamException(StreamErrorCode.SELF_REPORT_NOT_ALLOWED);
 
@@ -1557,6 +1561,11 @@ public class StreamServiceImpl implements StreamService {
         User targetUser = userPort.findAllByIds(Set.of(request.targetUserId())).stream()
                 .findFirst()
                 .orElseThrow(() -> new StreamException(StreamErrorCode.REPORT_TARGET_NOT_FOUND));
+
+        // 동일 라이브 내 동일 대상 중복 신고 방어 (이력 중복 적재 및 디스코드 알림 스팸 방지)
+        if (reportHistoryRepository.existsByAudioStream_IdAndTargetUser_IdAndReporterId(
+                stream.getId(), targetUser.getId(), reporter.getId()))
+            throw new StreamException(StreamErrorCode.ALREADY_REPORTED);
 
         ReportHistory savedReport = reportHistoryRepository.save(
                 ReportHistory.builder()

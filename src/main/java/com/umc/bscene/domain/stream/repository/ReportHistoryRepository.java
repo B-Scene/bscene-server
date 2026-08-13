@@ -22,6 +22,13 @@ public interface ReportHistoryRepository extends JpaRepository<ReportHistory, Lo
             @Param("targetUserId") Long targetUserId
     );
 
+    // 동일 라이브에서 동일 신고자가 동일 대상을 이미 신고했는지 (중복 신고 방어)
+    boolean existsByAudioStream_IdAndTargetUser_IdAndReporterId(
+            Long liveId,
+            Long targetUserId,
+            Long reporterId
+    );
+
     // 디스코드 알림 미발송 건 스캔
     List<ReportHistory> findTop20ByDiscordNotifiedAtIsNullAndCreatedAtBetweenOrderByCreatedAtAsc(
             LocalDateTime start,
