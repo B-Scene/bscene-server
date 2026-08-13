@@ -87,6 +87,16 @@ import java.util.stream.Stream;
 public class StreamServiceImpl implements StreamService {
 
     private static final String LIVE_KEY_PREFIX = "live:";
+    private static final Duration LIVE_KEY_TTL = Duration.ofSeconds(15);
+
+    // 메인 path 미검출 연속 횟수 카운터 (믹서 재시작 공백 유예용).
+    // 공동 진행자 입퇴장 시 믹서가 파이프라인을 재시작하며 메인 path가 수 초간 끊기는데,
+    // 첫 미검출에서 바로 닫으면 믹서의 재송출 인가(canPublish의 OPEN 검사)가 403이 되어
+    // 라이브가 복구 불가능하게 죽는다. 폴링(5초) 기준 3회 연속 미검출(~15초)일 때만 비정상 종료로 확정한다
+    private static final String LIVE_MISS_KEY_PREFIX = "live-miss:";
+    private static final int LIVE_MISS_CLOSE_THRESHOLD = 3;
+    private static final Duration LIVE_MISS_KEY_TTL = Duration.ofSeconds(60);
+
     private static final String MTX_SOURCE_WEBRTC = "webRTCSession";
     private static final String VIEWER_KEY_PREFIX = "viewer:";
 
@@ -302,6 +312,7 @@ public class StreamServiceImpl implements StreamService {
         String path = audioStream.getPath();
         audioStream.close(viewerCountOf(audioStream.getId()));  // 종료 + 시청자 수 스냅샷
         redisTemplate.delete(LIVE_KEY_PREFIX + path);           // Redis도 정리
+        redisTemplate.delete(LIVE_MISS_KEY_PREFIX + path);      // 미검출 카운트도 정리
         redisTemplate.delete(MEMBER_PRESENCE_KEY_PREFIX + streamId);   // 진행자 프레젠스 정리 (종료 후 /members는 빈 목록)
 
         // 진행자 개인 WHIP 세션들 정리 대상. 메인 path는 믹서(RTSP) 소스라 webrtc kick의 대상이 아니며,
@@ -941,19 +952,33 @@ public class StreamServiceImpl implements StreamService {
         for(String path : mainReadyPaths) {
             // 새로 켜진 방송
             if (!current.contains(path)) {
-                redisTemplate.opsForValue().set(LIVE_KEY_PREFIX + path, "1", Duration.ofSeconds(15));
+                redisTemplate.opsForValue().set(LIVE_KEY_PREFIX + path, "1", LIVE_KEY_TTL);
             }
             // Redis에 등록된 방송 TTL 연장
             else {
-                redisTemplate.expire(LIVE_KEY_PREFIX + path, Duration.ofSeconds(15));
+                redisTemplate.expire(LIVE_KEY_PREFIX + path, LIVE_KEY_TTL);
             }
+            // 송출이 확인됐으므로 미검출 카운트 리셋 (믹서 재시작 유예 초기화)
+            redisTemplate.delete(LIVE_MISS_KEY_PREFIX + path);
         }
 
-        // Redis에 라이브 중으로 등록되어 있지만, 현재 MediaMTX가 관리하는 방송 리스트엔 없는 경우
-        // => 비정상 종료인 경우
+        // Redis에 라이브 중으로 등록되어 있지만, 현재 MediaMTX가 관리하는 방송 리스트엔 없는 경우.
+        // 믹서가 입력 구성 변경으로 파이프라인을 재시작하는 동안에도 메인 path가 수 초간 끊기므로,
+        // 연속 LIVE_MISS_CLOSE_THRESHOLD회 미검출일 때만 비정상 종료로 확정한다
         for(String path : current) {
             if(!mainReadyPaths.contains(path)) {
+                Long misses = redisTemplate.opsForValue().increment(LIVE_MISS_KEY_PREFIX + path);
+                if (misses != null && misses == 1L)
+                    redisTemplate.expire(LIVE_MISS_KEY_PREFIX + path, LIVE_MISS_KEY_TTL);
+
+                if (misses != null && misses < LIVE_MISS_CLOSE_THRESHOLD) {
+                    // 유예 중 live: 키가 만료돼 closeAbandonedOpen 스케줄러가 먼저 닫지 않도록 TTL 유지
+                    redisTemplate.expire(LIVE_KEY_PREFIX + path, LIVE_KEY_TTL);
+                    continue;
+                }
+
                 redisTemplate.delete(LIVE_KEY_PREFIX + path);
+                redisTemplate.delete(LIVE_MISS_KEY_PREFIX + path);
 
                 // FE에서 마이크 온오프는 따로. 오프 시 무음 송출
                 audioStreamRepository.findByPath(path).ifPresent(s -> s.close(viewerCountOf(s.getId())));
