@@ -72,6 +72,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.startsWith;
 import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
@@ -1738,6 +1739,7 @@ class StreamServiceImplRoomTest {
     class SyncLiveStateTest {
 
         private static final Duration LIVE_TTL = Duration.ofSeconds(15);
+        private static final Duration MISS_TTL = Duration.ofSeconds(60);
 
         @Test
         @DisplayName("새로 켜진 방송은 15초 TTL로 키를 새로 쓴다 (TTL 연장 아님)")
@@ -1748,29 +1750,64 @@ class StreamServiceImplRoomTest {
             service.syncLiveState(Set.of("path-1"));
 
             verify(valueOperations).set("live:path-1", "1", LIVE_TTL);
+            // 송출 확인 시 미검출 카운트는 리셋된다
+            verify(redisTemplate).delete("live-miss:path-1");
             verify(redisTemplate, never()).expire(anyString(), any(Duration.class));
-            verify(redisTemplate, never()).delete(anyString());
+            verify(redisTemplate, never()).delete(startsWith("live:"));
             verifyNoInteractions(audioStreamRepository);
         }
 
         @Test
-        @DisplayName("이미 등록된 방송은 TTL만 연장하고 키를 다시 쓰지 않는다")
+        @DisplayName("이미 등록된 방송은 TTL만 연장하고 키를 다시 쓰지 않으며, 미검출 카운트를 리셋한다")
         void knownPathOnlyExtendsTtl() {
             stubScan("live:path-1");
 
             service.syncLiveState(Set.of("path-1"));
 
             verify(redisTemplate).expire("live:path-1", LIVE_TTL);
+            verify(redisTemplate).delete("live-miss:path-1");
             verify(redisTemplate, never()).opsForValue();
+            verify(redisTemplate, never()).delete(startsWith("live:"));
+            verifyNoInteractions(audioStreamRepository);
+        }
+
+        @Test
+        @DisplayName("메인 path 미검출 1회차는 믹서 재시작 유예로 보고 종료하지 않는다 (카운트 증가 + live 키 TTL 유지)")
+        void firstMissIsGraced() {
+            stubScan("live:path-1");
+            when(redisTemplate.opsForValue()).thenReturn(valueOperations);
+            when(valueOperations.increment("live-miss:path-1")).thenReturn(1L);
+
+            service.syncLiveState(Set.of());
+
+            verify(redisTemplate).expire("live-miss:path-1", MISS_TTL);
+            verify(redisTemplate).expire("live:path-1", LIVE_TTL);
             verify(redisTemplate, never()).delete(anyString());
             verifyNoInteractions(audioStreamRepository);
         }
 
         @Test
-        @DisplayName("Redis에만 남은 경로는 키를 삭제하고 시청자 수 스냅샷과 함께 라이브를 종료한다")
+        @DisplayName("미검출 2회차까지는 여전히 유예한다")
+        void secondMissStillGraced() {
+            stubScan("live:path-1");
+            when(redisTemplate.opsForValue()).thenReturn(valueOperations);
+            when(valueOperations.increment("live-miss:path-1")).thenReturn(2L);
+
+            service.syncLiveState(Set.of());
+
+            verify(redisTemplate).expire("live:path-1", LIVE_TTL);
+            verify(redisTemplate, never()).expire(eq("live-miss:path-1"), any(Duration.class));
+            verify(redisTemplate, never()).delete(anyString());
+            verifyNoInteractions(audioStreamRepository);
+        }
+
+        @Test
+        @DisplayName("연속 3회 미검출이면 키를 삭제하고 시청자 수 스냅샷과 함께 라이브를 종료한다")
         void orphanPathIsClosed() {
             AudioStream stream = StreamFixtures.stream(1L, 10L, 100L, StreamStatus.OPEN);
             stubScan("live:path-1");
+            when(redisTemplate.opsForValue()).thenReturn(valueOperations);
+            when(valueOperations.increment("live-miss:path-1")).thenReturn(3L);
             when(audioStreamRepository.findByPath("path-1")).thenReturn(Optional.of(stream));
             when(redisTemplate.opsForZSet()).thenReturn(zSetOperations);
             when(zSetOperations.zCard("viewer:1")).thenReturn(9L);
@@ -1778,17 +1815,20 @@ class StreamServiceImplRoomTest {
             service.syncLiveState(Set.of());
 
             verify(redisTemplate).delete("live:path-1");
+            verify(redisTemplate).delete("live-miss:path-1");
             assertThat(stream.getStatus()).isEqualTo(StreamStatus.CLOSED);
             assertThat(stream.getClosedAt()).isNotNull();
             assertThat(stream.getClosedViewerCount()).isEqualTo(9);
             verify(redisTemplate, never()).expire(anyString(), any(Duration.class));
-            verify(redisTemplate, never()).opsForValue();
+            verify(valueOperations, never()).set(anyString(), anyString(), any(Duration.class));
         }
 
         @Test
-        @DisplayName("Redis에만 남은 경로에 해당하는 라이브 레코드가 없어도 키 삭제만 하고 예외 없이 끝낸다")
+        @DisplayName("연속 3회 미검출 경로에 해당하는 라이브 레코드가 없어도 키 삭제만 하고 예외 없이 끝낸다")
         void orphanPathWithoutRowJustDeletes() {
             stubScan("live:path-1");
+            when(redisTemplate.opsForValue()).thenReturn(valueOperations);
+            when(valueOperations.increment("live-miss:path-1")).thenReturn(3L);
             when(audioStreamRepository.findByPath("path-1")).thenReturn(Optional.empty());
 
             assertThatCode(() -> service.syncLiveState(Set.of())).doesNotThrowAnyException();
@@ -1816,6 +1856,7 @@ class StreamServiceImplRoomTest {
             AudioStream stale = StreamFixtures.stream(2L, 10L, 100L, StreamStatus.OPEN);
             stubScan("live:path-2");
             when(redisTemplate.opsForValue()).thenReturn(valueOperations);
+            when(valueOperations.increment("live-miss:path-2")).thenReturn(3L);
             when(audioStreamRepository.findByPath("path-2")).thenReturn(Optional.of(stale));
             when(redisTemplate.opsForZSet()).thenReturn(zSetOperations);
             when(zSetOperations.zCard("viewer:2")).thenReturn(null);
@@ -1824,6 +1865,7 @@ class StreamServiceImplRoomTest {
 
             verify(valueOperations).set("live:path-1", "1", LIVE_TTL);
             verify(redisTemplate).delete("live:path-2");
+            verify(redisTemplate).delete("live-miss:path-2");
             assertThat(stale.getStatus()).isEqualTo(StreamStatus.CLOSED);
             assertThat(stale.getClosedViewerCount()).isZero();
         }

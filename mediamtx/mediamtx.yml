@@ -42,6 +42,11 @@ authHTTPExclude:
 # 원래 코드
 # - action: read
 
+# 믹서의 make-before-break 재시작(mixer.py)이 새 publish로 기존 세션을 대체하는 데 필요.
+# MediaMTX 기본값도 yes지만, 믹서 동작이 이 값에 의존하므로 명시해 둔다
+pathDefaults:
+  overridePublisher: yes
+
 paths:
   # 진행자 개인 송출 path({mainPath}-m{streamMemberId})는 믹싱 전 원본이므로 녹화 제외
   # (녹화·HLS 청취 대상은 믹서가 되돌려 넣는 메인 path뿐)
