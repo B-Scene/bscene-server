@@ -36,6 +36,8 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
 import org.mockito.ArgumentCaptor;
 import org.mockito.InOrder;
 import org.mockito.Mock;
@@ -1041,6 +1043,22 @@ class StreamServiceImplReservationTest {
             );
         }
 
+        @ParameterizedTest(name = "{0} 상태면 AUDIO_STREAM_NOT_LIVE")
+        @EnumSource(value = StreamStatus.class, names = {"SCHEDULED", "CLOSED", "CANCELED"})
+        @DisplayName("진행 중(OPEN)이 아닌 라이브를 신고하면 AUDIO_STREAM_NOT_LIVE")
+        void throwsWhenStreamNotLive(StreamStatus status) {
+            AudioStream stream = StreamFixtures.stream(LIVE_ID, BROADCASTER_ID, BAND_ID, status);
+            when(audioStreamRepository.findById(LIVE_ID)).thenReturn(Optional.of(stream));
+
+            assertStreamError(
+                    () -> streamService.reportUser(broadcaster, LIVE_ID, request(TARGET_ID)),
+                    StreamErrorCode.AUDIO_STREAM_NOT_LIVE
+            );
+
+            verify(userPort, never()).findAllByIds(anyCollection());
+            verify(reportHistoryRepository, never()).save(any(ReportHistory.class));
+        }
+
         @Test
         @DisplayName("자기 자신을 신고하면 SELF_REPORT_NOT_ALLOWED")
         void throwsWhenSelfReport() {
@@ -1069,6 +1087,24 @@ class StreamServiceImplReservationTest {
             );
 
             verify(userPort).findAllByIds(Set.of(TARGET_ID));
+            verify(reportHistoryRepository, never()).save(any(ReportHistory.class));
+        }
+
+        @Test
+        @DisplayName("동일 라이브에서 동일 대상을 이미 신고했으면 ALREADY_REPORTED")
+        void throwsWhenAlreadyReported() {
+            AudioStream stream = StreamFixtures.stream(LIVE_ID, BROADCASTER_ID, BAND_ID, StreamStatus.OPEN);
+            User target = StreamFixtures.fanUser(TARGET_ID);
+            when(audioStreamRepository.findById(LIVE_ID)).thenReturn(Optional.of(stream));
+            when(userPort.findAllByIds(Set.of(TARGET_ID))).thenReturn(List.of(target));
+            when(reportHistoryRepository.existsByAudioStream_IdAndTargetUser_IdAndReporterId(
+                    LIVE_ID, TARGET_ID, BROADCASTER_ID)).thenReturn(true);
+
+            assertStreamError(
+                    () -> streamService.reportUser(broadcaster, LIVE_ID, request(TARGET_ID)),
+                    StreamErrorCode.ALREADY_REPORTED
+            );
+
             verify(reportHistoryRepository, never()).save(any(ReportHistory.class));
         }
 
