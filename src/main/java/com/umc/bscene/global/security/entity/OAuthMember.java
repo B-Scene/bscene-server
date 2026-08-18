@@ -16,7 +16,7 @@ public class OAuthMember implements OAuth2User {
     private final boolean newUser;
     private final Map<String, Object> attributes;
 
-    private OAuthMember(User user, OAuthResponse oauthInfo, boolean newUser, Map<String, Object> attributes) {
+    protected OAuthMember(User user, OAuthResponse oauthInfo, boolean newUser, Map<String, Object> attributes) {
         this.user = user;
         this.oauthInfo = oauthInfo;
         this.newUser = newUser;

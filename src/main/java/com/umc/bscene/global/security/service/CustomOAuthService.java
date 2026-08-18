@@ -43,6 +43,7 @@ public class CustomOAuthService extends DefaultOAuth2UserService {
         OAuthResponse dto = switch (provider) {
             case KAKAO -> parseKakao(oAuthMember);
             case GOOGLE -> parseGoogle(oAuthMember);
+            case APPLE -> throw oauthAuthException(OauthErrorCode.NOT_SUPPORT_PROVIDER);
         };
 
         // OauthAccount 조회: 있으면 기존 유저, 없으면 신규 유저(온보딩 필요)

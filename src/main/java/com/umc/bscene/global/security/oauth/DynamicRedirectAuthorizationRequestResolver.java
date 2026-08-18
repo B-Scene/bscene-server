@@ -6,6 +6,7 @@ import org.springframework.security.oauth2.client.web.DefaultOAuth2Authorization
 import org.springframework.security.oauth2.client.web.OAuth2AuthorizationRequestRedirectFilter;
 import org.springframework.security.oauth2.client.web.OAuth2AuthorizationRequestResolver;
 import org.springframework.security.oauth2.core.endpoint.OAuth2AuthorizationRequest;
+import org.springframework.security.oauth2.core.endpoint.OAuth2ParameterNames;
 import org.springframework.stereotype.Component;
 
 /**
@@ -35,7 +36,7 @@ public class DynamicRedirectAuthorizationRequestResolver implements OAuth2Author
         if (authorizationRequest != null) {
             redirectOriginSupport.remember(request);
         }
-        return authorizationRequest;
+        return customize(authorizationRequest);
     }
 
     @Override
@@ -44,6 +45,23 @@ public class DynamicRedirectAuthorizationRequestResolver implements OAuth2Author
         if (authorizationRequest != null) {
             redirectOriginSupport.remember(request);
         }
-        return authorizationRequest;
+        return customize(authorizationRequest);
+    }
+
+    private OAuth2AuthorizationRequest customize(OAuth2AuthorizationRequest authorizationRequest) {
+        if (authorizationRequest == null) {
+            return null;
+        }
+
+        String registrationId = (String) authorizationRequest.getAttribute(OAuth2ParameterNames.REGISTRATION_ID);
+
+        if (!"apple".equals(registrationId)) {
+            return authorizationRequest;
+        }
+
+        // Apple은 name/email 요청 시, response_mode=form_post로 요청해야 함
+        return OAuth2AuthorizationRequest.from(authorizationRequest)
+                .additionalParameters(params -> params.put("response_mode", "form_post"))
+                .build();
     }
 }

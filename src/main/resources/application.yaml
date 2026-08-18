@@ -1,6 +1,10 @@
 server:
   servlet:
     context-path: /api
+    session:
+      cookie:
+        same-site: none
+        secure: true
 
 spring:
   profiles:
@@ -62,12 +66,24 @@ spring:
             scope:
               - email
               - profile
+          apple:
+            client-id: ${APPLE_CLIENT_ID}
+            client-secret: ${APPLE_CLIENT_SECRET}
+            client-authentication-method: client_secret_post
+            authorization-grant-type: authorization_code
+            redirect-uri: ${APPLE_REDIRECT_URI}
+            scope:
+              - openid
+              - email
+              - name
         provider:
           kakao:
             authorization-uri: "https://kauth.kakao.com/oauth/authorize"
             token-uri: "https://kauth.kakao.com/oauth/token"
             user-info-uri: "https://kapi.kakao.com/v2/user/me"
             userNameAttribute: id
+          apple:
+            issuer-uri: "https://appleid.apple.com"
 
   # IO Burst, 스레드풀 고갈 대비 virtual thread 활성화
   threads:

@@ -7,6 +7,7 @@ import com.umc.bscene.global.security.handler.OAuthFailureHandler;
 import com.umc.bscene.global.security.handler.OAuthSuccessHandler;
 import com.umc.bscene.global.security.oauth.DynamicRedirectAuthorizationRequestResolver;
 import com.umc.bscene.global.security.service.CustomOAuthService;
+import com.umc.bscene.global.security.service.CustomOidcUserService;
 import com.umc.bscene.global.security.service.CustomUserDetailsService;
 import com.umc.bscene.global.security.util.JwtUtil;
 import jakarta.servlet.DispatcherType;
@@ -43,7 +44,7 @@ public class SecurityConfig {
             .toArray(String[]::new);
 
     @Bean
-    public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+    public SecurityFilterChain securityFilterChain(HttpSecurity http, CustomOidcUserService customOidcUserService) throws Exception {
         http
                 // CORS 활성화
                 .cors(Customizer.withDefaults())
@@ -73,7 +74,10 @@ public class SecurityConfig {
                         // 커스텀 콜백 경로 (application.yaml의 redirect-uri와 일치)
                         .redirectionEndpoint(redirect -> redirect.baseUri("/oauth/callback/*"))
                         // 소셜 유저 정보 로드
-                        .userInfoEndpoint(userInfo -> userInfo.userService(customOAuthService))
+                        .userInfoEndpoint(userInfo -> userInfo
+                                .userService(customOAuthService)
+                                .oidcUserService(customOidcUserService)
+                        )
                         // 로그인 성공 시: 일회성 코드 발급 후 프론트로 리다이렉트
                         .successHandler(oAuthSuccessHandler)
                         // 로그인 실패 시: 프론트로 error 실어 리다이렉트
