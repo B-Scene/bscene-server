@@ -37,8 +37,9 @@ public interface SessionRecruitmentRepository extends JpaRepository<SessionRecru
     @Query("""
         SELECT sr
         FROM SessionRecruitment sr
-        JOIN FETCH sr.band
+        JOIN FETCH sr.band b
         WHERE sr.deletedAt IS NULL
+          AND b.status = com.umc.bscene.domain.band.enums.BandStatus.ACCEPTED
           AND sr.deadlineAt > :now
           AND (:part IS NULL OR sr.part = :part)
           AND (:skillLevel IS NULL OR sr.skillLevel = :skillLevel)
@@ -63,8 +64,9 @@ public interface SessionRecruitmentRepository extends JpaRepository<SessionRecru
     @Query("""
         SELECT sr
         FROM SessionRecruitment sr
-        JOIN FETCH sr.band
+        JOIN FETCH sr.band b
         WHERE sr.deletedAt IS NULL
+          AND b.status = com.umc.bscene.domain.band.enums.BandStatus.ACCEPTED
           AND sr.deadlineAt > :now
           AND (:part IS NULL OR sr.part = :part)
           AND (:skillLevel IS NULL OR sr.skillLevel = :skillLevel)

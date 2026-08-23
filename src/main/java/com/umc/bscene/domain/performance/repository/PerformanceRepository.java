@@ -46,10 +46,11 @@ public interface PerformanceRepository extends JpaRepository<Performance, Long> 
             Pageable pageable
     );
 
-    // FanHomeAdapter에서 사용 : 아직 시작하지 않은 ACTIVE 공연을 관심 등록 수가 많은 순으로 조회 (추천 공연)
+    // FanHomeAdapter에서 사용 : 아직 시작하지 않은 ACTIVE 공연을 관심 등록 수가 많은 순으로 조회 (추천 공연, 검수 통과 밴드만)
     @Query("SELECT p FROM Performance p " +
             "LEFT JOIN PerformanceInterest pi ON pi.performance = p " +
             "WHERE p.status = :status " +
+            "AND p.band.status = com.umc.bscene.domain.band.enums.BandStatus.ACCEPTED " +
             "AND (p.performanceDate > :today " +
             "     OR (p.performanceDate = :today AND (p.startTime IS NULL OR p.startTime >= :now))) " +
             "GROUP BY p " +
@@ -105,10 +106,11 @@ public interface PerformanceRepository extends JpaRepository<Performance, Long> 
             Pageable pageable
     );
 
-    // 추천 공연 목록(인기순) : 팔로우 무관 전체 공연 대상, 아직 시작 안 한 ACTIVE 공연을 관심 등록 수 많은 순으로
+    // 추천 공연 목록(인기순) : 팔로우 무관 전체 공연 대상, 아직 시작 안 한 ACTIVE 공연을 관심 등록 수 많은 순으로 (검수 통과 밴드만)
     @Query("SELECT p FROM Performance p " +
             "LEFT JOIN PerformanceInterest pi ON pi.performance = p " +
             "WHERE p.status = :status " +
+            "AND p.band.status = com.umc.bscene.domain.band.enums.BandStatus.ACCEPTED " +
             "AND (p.performanceDate > :today " +
             "     OR (p.performanceDate = :today AND (p.startTime IS NULL OR p.startTime >= :now))) " +
             "GROUP BY p " +
@@ -120,9 +122,10 @@ public interface PerformanceRepository extends JpaRepository<Performance, Long> 
             Pageable pageable
     );
 
-    // 추천 공연 목록(임박순) : 팔로우 무관 전체 공연 대상, 아직 시작 안 한 ACTIVE 공연을 날짜·시각 가까운 순으로
+    // 추천 공연 목록(임박순) : 팔로우 무관 전체 공연 대상, 아직 시작 안 한 ACTIVE 공연을 날짜·시각 가까운 순으로 (검수 통과 밴드만)
     @Query("SELECT p FROM Performance p " +
             "WHERE p.status = :status " +
+            "AND p.band.status = com.umc.bscene.domain.band.enums.BandStatus.ACCEPTED " +
             "AND (p.performanceDate > :today " +
             "     OR (p.performanceDate = :today AND (p.startTime IS NULL OR p.startTime >= :now))) " +
             "ORDER BY p.performanceDate ASC, p.startTime ASC, p.id ASC")
@@ -156,15 +159,18 @@ public interface PerformanceRepository extends JpaRepository<Performance, Long> 
             Pageable pageable
     );
 
-    // SearchAdapter에서 사용 : 검색 전체 색인용 ACTIVE 공연 (band fetch join → 밴드명 비정규화)
-    @Query("SELECT p FROM Performance p JOIN FETCH p.band WHERE p.status = :status")
+    // SearchAdapter에서 사용 : 검색 전체 색인용 ACTIVE 공연 (band fetch join → 밴드명 비정규화, 검수 통과 밴드만)
+    @Query("SELECT p FROM Performance p JOIN FETCH p.band b WHERE p.status = :status " +
+            "AND b.status = com.umc.bscene.domain.band.enums.BandStatus.ACCEPTED")
     List<Performance> findAllByStatusWithBand(@Param("status") PerformanceStatus status);
 
-    // SearchAdapter에서 사용 : 검색 단건 색인용 (band fetch join)
-    @Query("SELECT p FROM Performance p JOIN FETCH p.band WHERE p.id = :id AND p.status = :status")
+    // SearchAdapter에서 사용 : 검색 단건 색인용 (band fetch join, 검수 통과 밴드만)
+    @Query("SELECT p FROM Performance p JOIN FETCH p.band b WHERE p.id = :id AND p.status = :status " +
+            "AND b.status = com.umc.bscene.domain.band.enums.BandStatus.ACCEPTED")
     Optional<Performance> findByIdAndStatusWithBand(@Param("id") Long id, @Param("status") PerformanceStatus status);
 
-    // SearchAdapter에서 사용 : 밴드 정보 변경 시 연쇄 재색인용 (band fetch join)
-    @Query("SELECT p FROM Performance p JOIN FETCH p.band b WHERE b.id = :bandId AND p.status = :status")
+    // SearchAdapter에서 사용 : 밴드 정보 변경 시 연쇄 재색인용 (band fetch join, 검수 통과 밴드만)
+    @Query("SELECT p FROM Performance p JOIN FETCH p.band b WHERE b.id = :bandId AND p.status = :status " +
+            "AND b.status = com.umc.bscene.domain.band.enums.BandStatus.ACCEPTED")
     List<Performance> findAllByBandIdAndStatusWithBand(@Param("bandId") Long bandId, @Param("status") PerformanceStatus status);
 }

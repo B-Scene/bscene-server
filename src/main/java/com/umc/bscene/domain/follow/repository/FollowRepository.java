@@ -20,6 +20,9 @@ public interface FollowRepository extends JpaRepository<Follow, Long> {
     // 사용자와 밴드 사이의 팔로우 관계를 삭제
     void deleteByBand_IdAndUser_Id(Long bandId, Long userId);
 
+    // 밴드 삭제(검수 거절/더미 교체) 시 해당 밴드의 팔로우 전체 삭제
+    void deleteByBand_Id(Long bandId);
+
     // 특정 밴드를 팔로우하는 사용자 수를 반환
     long countByBand_Id(Long bandId);
 
@@ -30,8 +33,10 @@ public interface FollowRepository extends JpaRepository<Follow, Long> {
     @Query("SELECT f.band.id FROM Follow f WHERE f.user.id = :userId")
     List<Long> findBandIdsByUserId(@Param("userId") Long userId);
 
-    // 밴드 추천 콜드스타트 폴백 : 콜드스타트에게 보여줄 팔로워 수 상위 밴드 id
-    @Query("SELECT f.band.id FROM Follow f GROUP BY f.band.id ORDER BY COUNT(f) DESC")
+    // 밴드 추천 콜드스타트 폴백 : 콜드스타트에게 보여줄 팔로워 수 상위 밴드 id (검수 통과 밴드만)
+    @Query("SELECT f.band.id FROM Follow f " +
+            "WHERE f.band.status = com.umc.bscene.domain.band.enums.BandStatus.ACCEPTED " +
+            "GROUP BY f.band.id ORDER BY COUNT(f) DESC")
     List<Long> findTopFollowedBandIds(Pageable pageable);
 
     // 특정 밴드를 팔로우하는 사용자 ID 목록을 반환 (라이브 푸시 알림 발송 대상 조회용, 활성 사용자만)
@@ -50,8 +55,10 @@ public interface FollowRepository extends JpaRepository<Follow, Long> {
             @Param("bandIds") List<Long> bandIds
     );
 
-    // SearchAdapter에서 사용 : 밴드별 팔로워 수 일괄 집계 (검색 인기순 popularity 색인용, [bandId, count] 행)
-    @Query("SELECT f.band.id, COUNT(f) FROM Follow f GROUP BY f.band.id")
+    // SearchAdapter에서 사용 : 밴드별 팔로워 수 일괄 집계 (검색 인기순 popularity 색인용, [bandId, count] 행, 검수 통과 밴드만)
+    @Query("SELECT f.band.id, COUNT(f) FROM Follow f " +
+            "WHERE f.band.status = com.umc.bscene.domain.band.enums.BandStatus.ACCEPTED " +
+            "GROUP BY f.band.id")
     List<Object[]> countGroupedByBand();
 
     // UserAdapter에서 사용 : 사용자가 팔로우한 밴드들의 장르별 밴드 수 집계 (마이페이지 대표 장르용, [genre, count] 행)
@@ -60,7 +67,10 @@ public interface FollowRepository extends JpaRepository<Follow, Long> {
 
     // UserAdapter에서 사용 : 사용자가 팔로우한 밴드 목록 (마이페이지, 밴드명 가나다순, f.id로 정렬 결정성 보장)
     // 밴드 정보를 함께 쓰므로 JOIN FETCH로 N+1 방지 (band는 ManyToOne이라 페이징과 함께 안전)
-    @Query("SELECT f FROM Follow f JOIN FETCH f.band b WHERE f.user.id = :userId ORDER BY b.name ASC, f.id ASC")
+    @Query("SELECT f FROM Follow f JOIN FETCH f.band b " +
+            "WHERE f.user.id = :userId " +
+            "AND b.status = com.umc.bscene.domain.band.enums.BandStatus.ACCEPTED " +
+            "ORDER BY b.name ASC, f.id ASC")
     Slice<Follow> findFollowedBands(@Param("userId") Long userId, Pageable pageable);
 
     // UserAdapter / 밴드 추천(인기도 항목)에서 사용 : 조회된 밴드들의 전체 팔로워 수 일괄 집계 ([bandId, count] 행)

@@ -217,4 +217,7 @@ where bm.user.id = :userId
             @Param("userId") Long userId,
             @Param("status") BandMemberStatus status
     );
+
+    // 검수 거절/더미 교체로 밴드를 삭제할 때 소속 멤버 정리
+    void deleteByBand_Id(Long bandId);
 }

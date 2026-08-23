@@ -46,8 +46,10 @@ def get_connection() -> Connection:
 
 def fetch_bands(conn: Connection) -> list[dict]:
     with conn.cursor() as cursor:
+        # 검수 통과(ACCEPTED) 밴드만 유사도 계산 대상 — PENDING은 추천에 노출되면 안 됨
         cursor.execute(
-            f"SELECT id AS band_id, name, description FROM {config.BAND_TABLE}"
+            f"SELECT id AS band_id, name, description FROM {config.BAND_TABLE} "
+            "WHERE status = 'ACCEPTED'"
         )
         return cursor.fetchall()
 

@@ -31,6 +31,7 @@ public interface PostRepository extends JpaRepository<Post, Long> {
     // 첫 페이지는 cursor에 Long.MAX_VALUE를 넘겨 상위부터 조회 (id < :cursor 를 깨끗한 인덱스 range seek로 유지)
     @Query("SELECT p FROM Post p JOIN FETCH p.band b " +
             "WHERE b.id IN :bandIds " +
+            "AND b.status = com.umc.bscene.domain.band.enums.BandStatus.ACCEPTED " +
             "AND p.id < :cursor " +
             "ORDER BY p.id DESC")
     List<Post> findNewsByBandIds(
@@ -47,15 +48,20 @@ public interface PostRepository extends JpaRepository<Post, Long> {
     @Query("SELECT t FROM PostTag t WHERE t.post.id IN :postIds")
     List<PostTag> findTagsByPostIds(@Param("postIds") List<Long> postIds);
 
-    // SearchAdapter에서 사용 : 검색 전체 색인용 게시물 (band·tags fetch join → 밴드명·태그 비정규화)
-    @Query("SELECT DISTINCT p FROM Post p JOIN FETCH p.band LEFT JOIN FETCH p.tagList")
+    // SearchAdapter에서 사용 : 검색 전체 색인용 게시물 (band·tags fetch join → 밴드명·태그 비정규화, 검수 통과 밴드만)
+    @Query("SELECT DISTINCT p FROM Post p JOIN FETCH p.band b LEFT JOIN FETCH p.tagList " +
+            "WHERE b.status = com.umc.bscene.domain.band.enums.BandStatus.ACCEPTED")
     List<Post> findAllWithBandAndTags();
 
-    // SearchAdapter에서 사용 : 검색 단건 색인용 (band·tags fetch join)
-    @Query("SELECT p FROM Post p JOIN FETCH p.band LEFT JOIN FETCH p.tagList WHERE p.id = :id")
+    // SearchAdapter에서 사용 : 검색 단건 색인용 (band·tags fetch join, 검수 통과 밴드만)
+    @Query("SELECT p FROM Post p JOIN FETCH p.band b LEFT JOIN FETCH p.tagList " +
+            "WHERE p.id = :id " +
+            "AND b.status = com.umc.bscene.domain.band.enums.BandStatus.ACCEPTED")
     Optional<Post> findByIdWithBandAndTags(@Param("id") Long id);
 
-    // SearchAdapter에서 사용 : 밴드 정보 변경 시 연쇄 재색인용 (band·tags fetch join)
-    @Query("SELECT DISTINCT p FROM Post p JOIN FETCH p.band b LEFT JOIN FETCH p.tagList WHERE b.id = :bandId")
+    // SearchAdapter에서 사용 : 밴드 정보 변경 시 연쇄 재색인용 (band·tags fetch join, 검수 통과 밴드만)
+    @Query("SELECT DISTINCT p FROM Post p JOIN FETCH p.band b LEFT JOIN FETCH p.tagList " +
+            "WHERE b.id = :bandId " +
+            "AND b.status = com.umc.bscene.domain.band.enums.BandStatus.ACCEPTED")
     List<Post> findAllByBandIdWithBandAndTags(@Param("bandId") Long bandId);
 }

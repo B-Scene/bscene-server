@@ -1,6 +1,7 @@
 package com.umc.bscene.domain.band.adapter;
 
 import com.umc.bscene.domain.band.enums.BandMemberStatus;
+import com.umc.bscene.domain.band.enums.BandStatus;
 import com.umc.bscene.domain.band.repository.BandMemberRepository;
 import com.umc.bscene.domain.band.repository.BandRepository;
 import com.umc.bscene.domain.follow.port.BandPort;
@@ -18,7 +19,8 @@ public class FollowAdapter implements BandPort {
 
     @Override
     public boolean existsBand(Long bandId) {
-        return bandRepository.existsById(bandId);
+        // 검수 통과 밴드만 팔로우 가능 — PENDING 밴드는 id를 알아도 팔로우 불가
+        return bandRepository.existsByIdAndStatus(bandId, BandStatus.ACCEPTED);
     }
 
     @Override
