@@ -23,12 +23,14 @@ import com.umc.bscene.domain.band.entity.BandMemberProfile;
 import com.umc.bscene.domain.band.entity.MusicLink;
 import com.umc.bscene.domain.band.enums.BandMemberStatus;
 import com.umc.bscene.domain.band.enums.BandMemberType;
+import com.umc.bscene.domain.band.enums.BandStatus;
 import com.umc.bscene.domain.band.exception.BandException;
 import com.umc.bscene.domain.band.port.FollowPort;
 import com.umc.bscene.domain.band.port.NotifyPort;
 import com.umc.bscene.domain.band.port.PostCommentPort;
 import com.umc.bscene.domain.band.port.PerformancePort;
 import com.umc.bscene.domain.band.port.StreamPort;
+import com.umc.bscene.domain.band.repository.BandCreationRequestRepository;
 import com.umc.bscene.domain.band.repository.BandMemberProfileRepository;
 import com.umc.bscene.domain.band.repository.BandMemberRepository;
 import com.umc.bscene.domain.band.repository.BandRepository;
@@ -68,6 +70,8 @@ class BandServiceTest {
     @Mock
     private BandRepository bandRepository;
     @Mock
+    private BandCreationRequestRepository bandCreationRequestRepository;
+    @Mock
     private BandMemberRepository bandMemberRepository;
     @Mock
     private BandMemberProfileRepository bandMemberProfileRepository;
@@ -89,6 +93,8 @@ class BandServiceTest {
     private ApplicationEventPublisher eventPublisher;
     @Mock
     private BandMemberProfileService bandMemberProfileService;
+    @Mock
+    private BandVerifyMessenger bandVerifyMessenger;
 
     private BandService service;
 
@@ -98,9 +104,9 @@ class BandServiceTest {
     @BeforeEach
     void setUp() {
         service = new BandService(
-                bandRepository, bandMemberRepository, bandMemberProfileRepository, musicLinkRepository,
-                userRepository, followPort, performancePort, streamPort, notifyPort, postCommentPort,
-                eventPublisher, bandMemberProfileService
+                bandRepository, bandCreationRequestRepository, bandMemberRepository, bandMemberProfileRepository,
+                musicLinkRepository, userRepository, followPort, performancePort, streamPort, notifyPort,
+                postCommentPort, eventPublisher, bandMemberProfileService, bandVerifyMessenger
         );
         // 알림 발송이 TransactionSynchronizationManager.registerSynchronization 을 거치므로,
         // 트랜잭션 밖에서 호출되는 단위테스트에서도 예외 없이 등록만 되도록 동기화를 열어둔다.
@@ -116,6 +122,7 @@ class BandServiceTest {
         return User.builder().id(id).build();
     }
 
+    // 검수를 통과해 정상 노출 중인 밴드 (Band.builder 기본값은 PENDING)
     private Band band(Long id, Long ownerId) {
         return Band.builder()
                 .id(id)
@@ -123,6 +130,7 @@ class BandServiceTest {
                 .name("밴드" + id)
                 .genre(Genre.HARD_ROCK)
                 .region(Region.SEOUL)
+                .status(BandStatus.ACCEPTED)
                 .build();
     }
 
@@ -179,7 +187,14 @@ class BandServiceTest {
         verify(bandMemberRepository).save(argThat(member ->
                 member.getStatus() == BandMemberStatus.ACCEPTED && member.getUser().getId().equals(OWNER_ID)
         ));
-        verify(eventPublisher).publishEvent(any(Object.class));
+        // 검수 도입: 밴드는 PENDING으로 생성되고, 검수 요청이 함께 저장되며,
+        // 검색 색인 이벤트는 수락 시점까지 발행되지 않는다
+        verify(bandRepository).save(argThat(band -> band.getStatus() == BandStatus.PENDING));
+        verify(bandCreationRequestRepository).save(argThat(creationRequest ->
+                creationRequest.getRequesterId().equals(OWNER_ID)
+                        && creationRequest.getBandName().equals("밴드명")
+        ));
+        verify(eventPublisher, never()).publishEvent(any(Object.class));
     }
 
     // ---------- checkBandName ----------
@@ -199,7 +214,7 @@ class BandServiceTest {
     void getBandProfile_존재하지_않으면_예외() {
         when(bandRepository.findById(BAND_ID)).thenReturn(Optional.empty());
 
-        BandException exception = assertThrows(BandException.class, () -> service.getBandProfile(BAND_ID));
+        BandException exception = assertThrows(BandException.class, () -> service.getBandProfile(OWNER_ID, BAND_ID));
 
         assertEquals(BandErrorCode.BAND_NOT_FOUND, exception.getBaseResponseCode());
     }
@@ -211,7 +226,7 @@ class BandServiceTest {
         when(bandMemberRepository.countByBand_IdAndStatus(BAND_ID, BandMemberStatus.ACCEPTED)).thenReturn(3L);
         when(performancePort.countPerformancesByBandId(BAND_ID)).thenReturn(2L);
 
-        BandProfileResponse response = service.getBandProfile(BAND_ID);
+        BandProfileResponse response = service.getBandProfile(OWNER_ID, BAND_ID);
 
         assertEquals(5L, response.followerCount());
         assertEquals(3L, response.memberCount());
