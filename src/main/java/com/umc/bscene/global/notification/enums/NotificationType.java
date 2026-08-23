@@ -6,5 +6,6 @@ public enum NotificationType {
     MESSAGE,
     SESSION,
     POST,
-    BAND_INVITE
+    BAND_INVITE,
+    BAND_VERIFY
 }

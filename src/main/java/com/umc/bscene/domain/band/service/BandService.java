@@ -19,17 +19,20 @@ import com.umc.bscene.domain.band.dto.response.BandPublicMemberProfileResponse;
 import com.umc.bscene.domain.band.dto.response.BandResponse;
 import com.umc.bscene.domain.band.dto.response.MusicLinkResponse;
 import com.umc.bscene.domain.band.entity.Band;
+import com.umc.bscene.domain.band.entity.BandCreationRequest;
 import com.umc.bscene.domain.band.entity.BandMember;
 import com.umc.bscene.domain.band.entity.BandMemberProfile;
 import com.umc.bscene.domain.band.entity.MusicLink;
 import com.umc.bscene.domain.band.enums.BandMemberStatus;
 import com.umc.bscene.domain.band.enums.BandMemberType;
+import com.umc.bscene.domain.band.enums.BandStatus;
 import com.umc.bscene.domain.band.exception.BandException;
 import com.umc.bscene.domain.band.port.FollowPort;
 import com.umc.bscene.domain.band.port.NotifyPort;
 import com.umc.bscene.domain.band.port.PerformancePort;
 import com.umc.bscene.domain.band.port.PostCommentPort;
 import com.umc.bscene.domain.band.port.StreamPort;
+import com.umc.bscene.domain.band.repository.BandCreationRequestRepository;
 import com.umc.bscene.domain.band.repository.BandMemberProfileRepository;
 import com.umc.bscene.domain.band.repository.BandMemberRepository;
 import com.umc.bscene.domain.band.repository.BandRepository;
@@ -57,6 +60,7 @@ import java.util.stream.Collectors;
 public class BandService {
 
     private final BandRepository bandRepository;
+    private final BandCreationRequestRepository bandCreationRequestRepository;
     private final BandMemberRepository bandMemberRepository;
     private final BandMemberProfileRepository bandMemberProfileRepository;
     private final MusicLinkRepository musicLinkRepository;
@@ -68,6 +72,7 @@ public class BandService {
     private final PostCommentPort postCommentPort;
     private final ApplicationEventPublisher eventPublisher;
     private final BandMemberProfileService bandMemberProfileService;
+    private final BandVerifyMessenger bandVerifyMessenger;
 
     // 밴드 개설 (요청자가 오너가 됨, 이 밴드에서 사용할 멤버 프로필 선택)
     @Transactional
@@ -85,6 +90,7 @@ public class BandService {
                 .region(request.region())
                 .profileImageUrl(request.profileImageUrl())
                 .description(request.description())
+                .status(BandStatus.PENDING)
                 .build();
         Band savedBand = bandRepository.save(band);
 
@@ -96,8 +102,16 @@ public class BandService {
                 .build();
         bandMemberRepository.save(ownerMembership);
 
-        // 검색 색인 동기화 (커밋 후 search 도메인 리스너가 비동기 처리)
-        eventPublisher.publishEvent(new BandChangedEvent(savedBand.getId()));
+        BandCreationRequest creationRequest = BandCreationRequest.builder()
+                .band(savedBand)
+                .requesterId(ownerId)
+                .bandName(savedBand.getName())
+                .build();
+        bandCreationRequestRepository.save(creationRequest);
+
+        // 검색 색인(BandChangedEvent)은 검수 수락 시점에 발행 — PENDING 밴드는 색인하지 않는다
+        notifyCreateRequestedAfterCommit(ownerId, savedBand.getName(), savedBand.getId());
+        sendVerifyMessageAfterCommit(creationRequest.getId());
 
         return BandResponse.from(savedBand);
     }
@@ -108,9 +122,10 @@ public class BandService {
         return new BandNameCheckResponse(available);
     }
 
-    // 밴드 프로필 조회
-    public BandProfileResponse getBandProfile(Long bandId) {
+    // 밴드 프로필 조회 (userId: 조회자 — PENDING 밴드는 소속 멤버에게만 보이므로 필요)
+    public BandProfileResponse getBandProfile(Long userId, Long bandId) {
         Band band = getBand(bandId);
+        validateVisible(band, userId);
 
         Long followerCount = followPort.countFollowersByBandId(bandId);
         Long memberCount = bandMemberRepository.countByBand_IdAndStatus(bandId, BandMemberStatus.ACCEPTED);
@@ -122,6 +137,7 @@ public class BandService {
     // 팬모드 밴드 상세 조회 : 밴드 기본 정보 + 팔로우 여부 + 라이브 진행 여부/입장용 라이브 ID
     public BandDetailResponse getBandDetail(Long userId, Long bandId) {
         Band band = getBand(bandId);
+        validateVisible(band, userId);
 
         Long followerCount = followPort.countFollowersByBandId(bandId);
         Long liveId;
@@ -398,9 +414,46 @@ public class BandService {
                 .orElseThrow(() -> new BandException(BandErrorCode.BAND_NOT_FOUND));
     }
 
+    // 검수 중(PENDING) 밴드는 소속 멤버에게만 보인다 — 외부에는 존재하지 않는 밴드로 취급
+    private void validateVisible(Band band, Long userId) {
+        if (band.isPending()
+                && !bandMemberRepository.existsByBand_IdAndUser_IdAndStatus(
+                        band.getId(), userId, BandMemberStatus.ACCEPTED)) {
+            throw new BandException(BandErrorCode.BAND_NOT_FOUND);
+        }
+    }
+
     private BandMember getBandMember(Long bandId, Long userId, BandErrorCode notFoundCode) {
         return bandMemberRepository.findByBand_IdAndUser_Id(bandId, userId)
                 .orElseThrow(() -> new BandException(notFoundCode));
+    }
+
+    private void sendVerifyMessageAfterCommit(Long creationRequestId) {
+        TransactionSynchronizationManager.registerSynchronization(
+                new TransactionSynchronization() {
+                    @Override
+                    public void afterCommit() {
+                        bandVerifyMessenger.sendVerifyMessage(creationRequestId);
+                    }
+                }
+        );
+    }
+
+    private void notifyCreateRequestedAfterCommit(
+            Long requesterId,
+            String bandName,
+            Long bandId
+    ) {
+        BandPushMessage message = BandPushMessage.createRequested(bandName, bandId);
+
+        TransactionSynchronizationManager.registerSynchronization(
+                new TransactionSynchronization() {
+                    @Override
+                    public void afterCommit() {
+                        notifyPort.notify(requesterId, message);
+                    }
+                }
+        );
     }
 
     private void notifyMemberAfterCommit(
