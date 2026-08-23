@@ -69,6 +69,11 @@ dependencies {
 
 	// Elasticsearch
 	implementation 'org.springframework.boot:spring-boot-starter-data-elasticsearch'
+
+	// Discord (밴드 생성 검수 봇)
+	implementation('net.dv8tion:JDA:5.6.1') {
+		exclude module: 'opus-java' // 음성 기능 미사용 — 오디오 네이티브 라이브러리 제외
+	}
 }
 
 tasks.named('test') {

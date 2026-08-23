@@ -3,6 +3,7 @@ package com.umc.bscene.domain.band.entity;
 import com.fasterxml.jackson.annotation.JsonBackReference;
 import com.umc.bscene.domain.auth.enums.onboarding.Genre;
 import com.umc.bscene.domain.auth.enums.onboarding.Region;
+import com.umc.bscene.domain.band.enums.BandStatus;
 import com.umc.bscene.domain.user.entity.User;
 import com.umc.bscene.global.entity.BaseEntity;
 import jakarta.persistence.*;
@@ -15,7 +16,13 @@ import java.util.List;
 @Builder
 @AllArgsConstructor(access = AccessLevel.PRIVATE)
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-@Table(name = "Band")
+@Table(
+        name = "Band",
+        uniqueConstraints = @UniqueConstraint(
+                name = "uk_band_name_status",
+                columnNames = {"name", "status"}
+        )
+)
 public class Band extends BaseEntity {
 
     @Id
@@ -27,8 +34,14 @@ public class Band extends BaseEntity {
     @JoinColumn(name = "ownerId", nullable = false)
     private User owner;
 
-    @Column(nullable = false, unique = true, length = 100)
+    @Column(nullable = false, length = 100)
     private String name;
+
+    // 기본 PENDING(fail-closed): 상태 지정을 잊어도 미검수 밴드가 노출되지 않는 방향으로 실패
+    @Builder.Default
+    @Column(nullable = false, length = 20)
+    @Enumerated(EnumType.STRING)
+    private BandStatus status = BandStatus.PENDING;
 
     @Column(nullable = false)
     @Enumerated(EnumType.STRING)
@@ -68,5 +81,13 @@ public class Band extends BaseEntity {
 
     public void deleteProfileImage() {
         this.profileImageUrl = null;
+    }
+
+    public void accept() {
+        this.status = BandStatus.ACCEPTED;
+    }
+
+    public boolean isPending() {
+        return this.status == BandStatus.PENDING;
     }
 }
