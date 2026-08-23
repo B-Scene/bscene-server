@@ -1,7 +1,8 @@
 <img width="4000" height="2250" alt="12341234-1(드래그함)" src="https://github.com/user-attachments/assets/01ceed9e-20c3-4605-8f14-fc0fc5ee642e" />
 
 # 🎸 B:SCENE Back-End
-Be the Scene! 당신이 무대가 되는 순간
+> Be the Scene! 당신이 무대가 되는 순간
+
 신생/인디 밴드를 위한 플랫폼 서비스 B:SCENE의 백엔드 저장소입니다.<br>
 [B:SCENE BE 기술 문서 바로가기](https://bscene-be.notion.site/B-SCENE-Back-End-3bb419aa1e678038ace9fa5aba952ed5)
 ## 🛠️ 기술 스택
