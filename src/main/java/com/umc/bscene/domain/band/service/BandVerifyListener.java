@@ -34,6 +34,9 @@ public class BandVerifyListener extends ListenerAdapter {
 
     private static final String APPROVE_PREFIX = "band_approve:";
     private static final String REJECT_PREFIX = "band_reject:";
+    // 동명 ACCEPTED 밴드가 있을 때 교체 여부를 재확인하는 버튼
+    private static final String REPLACE_YES_PREFIX = "band_replace_yes:";
+    private static final String REPLACE_NO_PREFIX = "band_replace_no:";
     private static final String REJECT_REASON_PREFIX = "band_reject_reason:";
     private static final String REJECT_MODAL_PREFIX = "band_reject_modal:";
     private static final String CUSTOM_REASON = "custom";
@@ -52,6 +55,24 @@ public class BandVerifyListener extends ListenerAdapter {
         if (componentId.startsWith(APPROVE_PREFIX)) {
             long requestId = Long.parseLong(componentId.substring(APPROVE_PREFIX.length()));
             handleApprove(event, requestId);
+            return;
+        }
+
+        if (componentId.startsWith(REPLACE_YES_PREFIX)) {
+            long requestId = Long.parseLong(componentId.substring(REPLACE_YES_PREFIX.length()));
+            doAccept(event, requestId);
+            return;
+        }
+
+        if (componentId.startsWith(REPLACE_NO_PREFIX)) {
+            String requestId = componentId.substring(REPLACE_NO_PREFIX.length());
+            // 교체 확인을 취소하고 원래의 수락/거절 버튼으로 복원
+            event.editMessage("")
+                    .setComponents(ActionRow.of(
+                            Button.success(APPROVE_PREFIX + requestId, "수락하기"),
+                            Button.danger(REJECT_PREFIX + requestId, "거절하기")
+                    ))
+                    .queue();
             return;
         }
 
@@ -115,6 +136,30 @@ public class BandVerifyListener extends ListenerAdapter {
     }
 
     private void handleApprove(ButtonInteractionEvent event, long requestId) {
+        boolean replacesExistingBand;
+        try {
+            replacesExistingBand = bandVerifyService.hasAcceptedSameName(requestId);
+        } catch (Exception e) {
+            log.error("밴드 검수 수락 처리 실패. requestId = {}", requestId, e);
+            event.reply("처리 중 오류가 발생했습니다. 로그를 확인해주세요.").setEphemeral(true).queue();
+            return;
+        }
+
+        if (replacesExistingBand) {
+            // 수락 시 동명의 기존 ACCEPTED 밴드가 삭제·교체되므로 바로 처리하지 않고 한 번 더 확인한다
+            event.editMessage("이 밴드는 이미 등록된 밴드입니다. 정말 교체하시겠습니까?")
+                    .setComponents(ActionRow.of(
+                            Button.danger(REPLACE_YES_PREFIX + requestId, "예"),
+                            Button.secondary(REPLACE_NO_PREFIX + requestId, "아니오")
+                    ))
+                    .queue();
+            return;
+        }
+
+        doAccept(event, requestId);
+    }
+
+    private void doAccept(ButtonInteractionEvent event, long requestId) {
         Optional<Long> acceptedBandId;
         try {
             acceptedBandId = bandVerifyService.accept(requestId, event.getUser().getName());
@@ -130,7 +175,9 @@ public class BandVerifyListener extends ListenerAdapter {
         }
 
         log.info("수락되어 밴드 생성됨. bandId = {}", acceptedBandId.get());
-        var edit = event.editComponents(ActionRow.of(acceptedButton()));
+        // 교체 확인 단계에서 넘어온 경우 확인 문구가 남아 있으므로 content를 비운다
+        var edit = event.editMessage("")
+                .setComponents(ActionRow.of(acceptedButton()));
         recolorEmbed(event.getMessage(), ACCEPTED_COLOR)
                 .ifPresent(edit::setEmbeds);
         edit.queue();

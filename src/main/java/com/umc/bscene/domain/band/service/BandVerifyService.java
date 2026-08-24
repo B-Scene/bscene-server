@@ -54,11 +54,14 @@ public class BandVerifyService {
         Band band = creationRequest.getBand();
 
         bandRepository.findByNameAndStatus(band.getName(), BandStatus.ACCEPTED)
-                .ifPresent(dummyBand -> {
-                    Long dummyBandId = dummyBand.getId();
-                    deleteBand(dummyBand);
-                    // 삭제된 더미의 검색 문서 정리 (색인 대상이 없으면 문서 삭제됨)
-                    eventPublisher.publishEvent(new BandChangedEvent(dummyBandId));
+                .ifPresent(existingBand -> {
+                    Long existingBandId = existingBand.getId();
+                    deleteBand(existingBand);
+                    // Hibernate는 UPDATE를 DELETE보다 먼저 내보내므로, 삭제를 먼저 flush하지 않으면
+                    // 아래 band.accept()의 상태 변경이 (name, ACCEPTED) 복합 유니크를 위반한다
+                    bandRepository.flush();
+                    // 삭제된 기존 밴드의 검색 문서 정리 (색인 대상이 없으면 문서 삭제됨)
+                    eventPublisher.publishEvent(new BandChangedEvent(existingBandId));
                 });
 
         band.accept();
@@ -68,6 +71,24 @@ public class BandVerifyService {
         notifyAfterCommit(creationRequest.getRequesterId(), BandPushMessage.verifyAccepted(band.getId()));
 
         return Optional.of(band.getId());
+    }
+
+    /**
+     * 수락 확인 단계용: 이 요청을 수락하면 교체(삭제)될 동명 ACCEPTED 밴드가 있는지 확인.
+     * 요청이 없거나 이미 처리된 경우 false — 실제 처리 가능 여부는 accept()가 다시 판단한다.
+     */
+    @Transactional(readOnly = true)
+    public boolean hasAcceptedSameName(Long creationRequestId) {
+        BandCreationRequest creationRequest = bandCreationRequestRepository
+                .findById(creationRequestId)
+                .orElse(null);
+        if (creationRequest == null || creationRequest.getBand() == null) {
+            return false;
+        }
+        return bandRepository.existsByNameAndStatus(
+                creationRequest.getBand().getName(),
+                BandStatus.ACCEPTED
+        );
     }
 
     /**
