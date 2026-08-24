@@ -108,9 +108,10 @@ public class BandMemberController {
     // 밴드 멤버 목록 조회 API
     @GetMapping
     public ResponseEntity<SuccessResponse<List<BandMemberResponse>>> getMembers(
+            @AuthenticationPrincipal AuthMember authMember,
             @PathVariable Long bandId
     ) {
-        List<BandMemberResponse> response = bandService.getMembers(bandId);
+        List<BandMemberResponse> response = bandService.getMembers(authMember.getUser().getId(), bandId);
         SuccessResponse<List<BandMemberResponse>> successResponse = SuccessResponse.of(
                 response,
                 BandSuccessCode.BAND_MEMBER_LIST_GET_SUCCESS
@@ -137,10 +138,11 @@ public class BandMemberController {
     // 팬용 밴드 구성원 프로필 목록 조회 API
     @GetMapping("/profiles")
     public ResponseEntity<SuccessResponse<List<BandPublicMemberProfileResponse>>> getPublicMemberProfiles(
+            @AuthenticationPrincipal AuthMember authMember,
             @PathVariable Long bandId
     ) {
         List<BandPublicMemberProfileResponse> response =
-                bandService.getPublicMemberProfiles(bandId);
+                bandService.getPublicMemberProfiles(authMember.getUser().getId(), bandId);
 
         SuccessResponse<List<BandPublicMemberProfileResponse>> successResponse =
                 SuccessResponse.of(

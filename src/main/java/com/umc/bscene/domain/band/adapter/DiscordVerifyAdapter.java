@@ -11,6 +11,7 @@ import lombok.extern.slf4j.Slf4j;
 import net.dv8tion.jda.api.EmbedBuilder;
 import net.dv8tion.jda.api.JDA;
 import net.dv8tion.jda.api.entities.Message;
+import net.dv8tion.jda.api.entities.MessageEmbed;
 import net.dv8tion.jda.api.entities.channel.concrete.TextChannel;
 import net.dv8tion.jda.api.interactions.components.buttons.Button;
 
@@ -42,20 +43,7 @@ public class DiscordVerifyAdapter implements DiscordVerifyPort {
                 return null;
             }
 
-            EmbedBuilder embed = new EmbedBuilder()
-                    .setAuthor("밴드 생성 요청")
-                    .setDescription("**" + message.bandName() + "**이(가) 밴드 생성을 요청했습니다.")
-                    .setColor(EMBED_COLOR)
-                    .addField("장르", message.genre(), true)
-                    .addField("지역", message.region(), true)
-                    .addField("소개", blankFallback(message.description()), false)
-                    .setFooter("요청 ID: " + message.requestId());
-
-            if (message.profileImageUrl() != null && !message.profileImageUrl().isBlank()) {
-                embed.setThumbnail(message.profileImageUrl());
-            }
-
-            Message sent = channel.sendMessageEmbeds(embed.build())
+            Message sent = channel.sendMessageEmbeds(buildEmbed(message))
                     .setActionRow(
                             Button.success("band_approve:" + message.requestId(), "수락하기"),
                             Button.danger("band_reject:" + message.requestId(), "거절하기")
@@ -67,6 +55,49 @@ public class DiscordVerifyAdapter implements DiscordVerifyPort {
             log.error("밴드 검수 Discord 메시지 전송 실패. requestId = {}", message.requestId(), e);
             return null;
         }
+    }
+
+    @Override
+    public void updateVerifyMessage(String discordMessageId, BandVerifyMessage message) {
+        JDA jda = jdaProvider.getIfAvailable();
+        if (jda == null || verifyChannelId.isBlank()) {
+            log.warn("Discord 봇 미설정 — 밴드 검수 메시지 갱신 생략. requestId = {}", message.requestId());
+            return;
+        }
+
+        try {
+            TextChannel channel = jda.getTextChannelById(verifyChannelId);
+            if (channel == null) {
+                log.error("Discord 검수 채널을 찾을 수 없음. channelId = {}", verifyChannelId);
+                return;
+            }
+
+            // 임베드만 새 내용으로 교체 - 버튼(수락/거절)은 그대로 유지된다
+            channel.editMessageEmbedsById(discordMessageId, buildEmbed(message)).queue(
+                    null,
+                    failure -> log.error(
+                            "밴드 검수 Discord 메시지 갱신 실패. requestId = {}", message.requestId(), failure)
+            );
+        } catch (Exception e) {
+            log.error("밴드 검수 Discord 메시지 갱신 중 오류. requestId = {}", message.requestId(), e);
+        }
+    }
+
+    private MessageEmbed buildEmbed(BandVerifyMessage message) {
+        EmbedBuilder embed = new EmbedBuilder()
+                .setAuthor("밴드 생성 요청")
+                .setDescription("**" + message.bandName() + "**이(가) 밴드 생성을 요청했습니다.")
+                .setColor(EMBED_COLOR)
+                .addField("장르", message.genre(), true)
+                .addField("지역", message.region(), true)
+                .addField("소개", blankFallback(message.description()), false)
+                .setFooter("요청 ID: " + message.requestId());
+
+        if (message.profileImageUrl() != null && !message.profileImageUrl().isBlank()) {
+            embed.setThumbnail(message.profileImageUrl());
+        }
+
+        return embed.build();
     }
 
     private String blankFallback(String value) {

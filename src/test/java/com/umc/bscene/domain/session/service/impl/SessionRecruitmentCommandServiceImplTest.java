@@ -3,6 +3,7 @@ package com.umc.bscene.domain.session.service.impl;
 import com.umc.bscene.domain.auth.enums.onboarding.Genre;
 import com.umc.bscene.domain.auth.enums.onboarding.Region;
 import com.umc.bscene.domain.band.entity.Band;
+import com.umc.bscene.domain.band.enums.BandStatus;
 import com.umc.bscene.domain.band.entity.BandMember;
 import com.umc.bscene.domain.band.exception.BandException;
 import com.umc.bscene.domain.band.repository.BandMemberRepository;
@@ -252,6 +253,7 @@ class SessionRecruitmentCommandServiceImplTest {
         when(updateRequest.getQualification()).thenReturn("수정 자격");
     }
 
+    // 검수를 통과해 활동 가능한 밴드 (Band.builder 기본값은 PENDING - 활동 생성이 차단됨)
     private Band band(Long ownerId) {
         return Band.builder()
                 .id(20L)
@@ -259,6 +261,7 @@ class SessionRecruitmentCommandServiceImplTest {
                 .name("테스트 밴드")
                 .genre(Genre.HARD_ROCK)
                 .region(Region.SEOUL)
+                .status(BandStatus.ACCEPTED)
                 .build();
     }
 }

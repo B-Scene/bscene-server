@@ -28,6 +28,8 @@ public enum BandErrorCode implements BaseResponseCode {
     // 멤버는 맞지만 해당 밴드 프로필로 전환되지 않은 상태 - FE가 모드 전환 후 재시도할 수 있는 복구 가능 403
     BAND_MODE_REQUIRED(FORBIDDEN, "BAND403_4", "해당 밴드 모드로 전환 후 이용할 수 있는 기능입니다."),
     BAND_OWNER_CANNOT_LEAVE(FORBIDDEN, "BAND403_5", "밴드 오너는 밴드를 탈퇴할 수 없습니다."),
+    // 검수(PENDING) 중에는 게시물·공연·세션모집 등 활동 생성 불가 - 활동 FK가 생기면 검수 거절(밴드 삭제)이 불가능해짐
+    BAND_NOT_VERIFIED(FORBIDDEN, "BAND403_6", "검수 중인 밴드는 아직 활동할 수 없어요."),
 
 
     BAND_NOT_FOUND(NOT_FOUND, "BAND404_1", "존재하지 않는 밴드입니다."),

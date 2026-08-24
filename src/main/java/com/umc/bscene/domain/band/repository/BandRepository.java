@@ -19,6 +19,9 @@ public interface BandRepository extends JpaRepository<Band, Long> {
 
     boolean existsByName(String name);
 
+    // 밴드명 중복 검사 (상태별) - 생성/개명 규칙은 (name, status) 복합 유니크와 동일 기준을 쓴다
+    boolean existsByNameAndStatus(String name, BandStatus status);
+
     // 검수 수락 시 동명의 기존 ACCEPTED 밴드(더미) 교체 대상 조회
     Optional<Band> findByNameAndStatus(String name, BandStatus status);
 

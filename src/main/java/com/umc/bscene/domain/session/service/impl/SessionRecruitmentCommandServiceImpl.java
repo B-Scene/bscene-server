@@ -37,6 +37,10 @@ public class SessionRecruitmentCommandServiceImpl implements SessionRecruitmentC
 
         Band band = bandMember.getBand();
         validateBandOwner(band, userId);
+        // 검수 중(PENDING)엔 활동 생성 불가 - 모집 FK가 생기면 검수 거절(밴드 삭제)이 불가능해짐
+        if (band.isPending()) {
+            throw new BandException(BandErrorCode.BAND_NOT_VERIFIED);
+        }
         validateDeadlineAt(request.getDeadlineAt());
 
         SessionRecruitment recruitment = SessionRecruitment.builder()

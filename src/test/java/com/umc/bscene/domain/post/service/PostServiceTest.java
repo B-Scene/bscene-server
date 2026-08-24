@@ -3,6 +3,7 @@ package com.umc.bscene.domain.post.service;
 import com.umc.bscene.domain.auth.enums.onboarding.Genre;
 import com.umc.bscene.domain.auth.enums.onboarding.Region;
 import com.umc.bscene.domain.band.entity.Band;
+import com.umc.bscene.domain.band.enums.BandStatus;
 import com.umc.bscene.domain.band.exception.BandException;
 import com.umc.bscene.domain.band.repository.BandMemberRepository;
 import com.umc.bscene.domain.band.repository.BandRepository;
@@ -77,7 +78,9 @@ class PostServiceTest {
     }
 
     private Band band() {
-        return Band.builder().id(BAND_ID).name("밴드").genre(Genre.HARD_ROCK).region(Region.SEOUL).build();
+        // 검수를 통과해 활동 가능한 밴드 (Band.builder 기본값은 PENDING - 활동 생성이 차단됨)
+        return Band.builder().id(BAND_ID).name("밴드").genre(Genre.HARD_ROCK).region(Region.SEOUL)
+                .status(BandStatus.ACCEPTED).build();
     }
 
     private Post post(PostType type) {

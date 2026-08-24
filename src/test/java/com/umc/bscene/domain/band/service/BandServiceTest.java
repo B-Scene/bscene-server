@@ -143,7 +143,7 @@ class BandServiceTest {
     @Test
     void createBand_밴드명이_중복이면_예외() {
         BandCreateRequest request = new BandCreateRequest("밴드명", Genre.HARD_ROCK, Region.SEOUL, 100L, null, null);
-        when(bandRepository.existsByName("밴드명")).thenReturn(true);
+        when(bandRepository.existsByNameAndStatus("밴드명", BandStatus.PENDING)).thenReturn(true);
 
         BandException exception = assertThrows(BandException.class, () -> service.createBand(OWNER_ID, request));
 
@@ -154,7 +154,7 @@ class BandServiceTest {
     @Test
     void createBand_본인_소유가_아닌_프로필이면_예외() {
         BandCreateRequest request = new BandCreateRequest("밴드명", Genre.HARD_ROCK, Region.SEOUL, 100L, null, null);
-        when(bandRepository.existsByName("밴드명")).thenReturn(false);
+        when(bandRepository.existsByNameAndStatus("밴드명", BandStatus.PENDING)).thenReturn(false);
         when(bandMemberProfileRepository.findById(100L)).thenReturn(Optional.of(profile(100L, 999L)));
 
         BandException exception = assertThrows(BandException.class, () -> service.createBand(OWNER_ID, request));
@@ -165,7 +165,7 @@ class BandServiceTest {
     @Test
     void createBand_프로필_자체가_존재하지_않으면_예외() {
         BandCreateRequest request = new BandCreateRequest("밴드명", Genre.HARD_ROCK, Region.SEOUL, 100L, null, null);
-        when(bandRepository.existsByName("밴드명")).thenReturn(false);
+        when(bandRepository.existsByNameAndStatus("밴드명", BandStatus.PENDING)).thenReturn(false);
         when(bandMemberProfileRepository.findById(100L)).thenReturn(Optional.empty());
 
         BandException exception = assertThrows(BandException.class, () -> service.createBand(OWNER_ID, request));
@@ -176,7 +176,7 @@ class BandServiceTest {
     @Test
     void createBand_성공시_오너로_밴드멤버가_ACCEPTED_상태로_생성된다() {
         BandCreateRequest request = new BandCreateRequest("밴드명", Genre.HARD_ROCK, Region.SEOUL, 100L, null, null);
-        when(bandRepository.existsByName("밴드명")).thenReturn(false);
+        when(bandRepository.existsByNameAndStatus("밴드명", BandStatus.PENDING)).thenReturn(false);
         when(bandMemberProfileRepository.findById(100L)).thenReturn(Optional.of(profile(100L, OWNER_ID)));
         when(userRepository.getReferenceById(OWNER_ID)).thenReturn(user(OWNER_ID));
         when(bandRepository.save(any(Band.class))).thenAnswer(invocation -> invocation.getArgument(0));
@@ -201,7 +201,7 @@ class BandServiceTest {
 
     @Test
     void checkBandName_존재하지_않으면_사용가능() {
-        when(bandRepository.existsByName("새이름")).thenReturn(false);
+        when(bandRepository.existsByNameAndStatus("새이름", BandStatus.PENDING)).thenReturn(false);
 
         BandNameCheckResponse response = service.checkBandName("새이름");
 
@@ -263,7 +263,8 @@ class BandServiceTest {
     @Test
     void updateBandProfile_변경할_이름이_이미_존재하면_예외() {
         when(bandRepository.findById(BAND_ID)).thenReturn(Optional.of(band(BAND_ID, OWNER_ID)));
-        when(bandRepository.existsByName("중복이름")).thenReturn(true);
+        // 개명 중복 검사는 자기 상태(테스트 밴드는 ACCEPTED) 기준으로 동작한다
+        when(bandRepository.existsByNameAndStatus("중복이름", BandStatus.ACCEPTED)).thenReturn(true);
         BandUpdateRequest request = new BandUpdateRequest("중복이름", null, null, null, false, null);
 
         BandException exception = assertThrows(BandException.class,
@@ -283,7 +284,7 @@ class BandServiceTest {
 
         service.updateBandProfile(OWNER_ID, BAND_ID, request);
 
-        verify(bandRepository, never()).existsByName(any());
+        verify(bandRepository, never()).existsByNameAndStatus(any(), any());
     }
 
     // ---------- inviteMember ----------
@@ -469,7 +470,7 @@ class BandServiceTest {
         when(bandRepository.findById(BAND_ID)).thenReturn(Optional.of(band(BAND_ID, OWNER_ID)));
         when(musicLinkRepository.findByBand_Id(BAND_ID)).thenReturn(Optional.empty());
 
-        MusicLinkResponse response = service.getMusicLink(BAND_ID);
+        MusicLinkResponse response = service.getMusicLink(OWNER_ID, BAND_ID);
 
         assertEquals(MusicLinkResponse.from(null), response);
     }
@@ -685,7 +686,7 @@ class BandServiceTest {
 
     @Test
     void checkBandName_이미_존재하면_사용불가능() {
-        when(bandRepository.existsByName("중복이름"))
+        when(bandRepository.existsByNameAndStatus("중복이름", BandStatus.PENDING))
                 .thenReturn(true);
 
         BandNameCheckResponse response =
@@ -925,7 +926,7 @@ class BandServiceTest {
                 .thenReturn(List.of(acceptedMember, invitedSession));
 
         List<BandMemberResponse> response =
-                service.getMembers(BAND_ID);
+                service.getMembers(OWNER_ID, BAND_ID);
 
         assertEquals(2, response.size());
         assertEquals(BandMemberStatus.ACCEPTED,
@@ -1002,7 +1003,7 @@ class BandServiceTest {
         when(musicLinkRepository.findByBand_Id(BAND_ID))
                 .thenReturn(Optional.of(musicLink));
 
-        MusicLinkResponse response = service.getMusicLink(BAND_ID);
+        MusicLinkResponse response = service.getMusicLink(OWNER_ID, BAND_ID);
 
         assertEquals("spotify-url", response.spotifyUrl());
         assertEquals("youtube-url", response.youtubeUrl());
@@ -1100,7 +1101,7 @@ class BandServiceTest {
         )).thenReturn(List.of(ownerMember, normalMember));
 
         List<BandPublicMemberProfileResponse> response =
-                service.getPublicMemberProfiles(BAND_ID);
+                service.getPublicMemberProfiles(OWNER_ID, BAND_ID);
 
         assertEquals(2, response.size());
         assertTrue(response.get(0).owner());

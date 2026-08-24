@@ -54,6 +54,10 @@ public class PostService {
     public PostCreateResponse createPost(Long userId, Long bandId, PostCreateRequest request) {
         Band band = getBand(bandId);
         validateBandMember(band, userId);
+        // 검수 중(PENDING)엔 활동 생성 불가 - 게시물 FK가 생기면 검수 거절(밴드 삭제)이 불가능해짐
+        if (band.isPending()) {
+            throw new BandException(BandErrorCode.BAND_NOT_VERIFIED);
+        }
         validateTagCount(request.tags());
         validateMediaUrls(request.type(), request.mediaUrls());
 
