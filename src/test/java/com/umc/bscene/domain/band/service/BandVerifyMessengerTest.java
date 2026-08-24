@@ -89,6 +89,17 @@ class BandVerifyMessengerTest {
     }
 
     @Test
+    void 이미_전송된_요청은_재전송하지_않는다() {
+        BandCreationRequest creationRequest = request();
+        creationRequest.attachDiscordMessage("9999");
+        when(bandCreationRequestRepository.findById(REQUEST_ID)).thenReturn(Optional.of(creationRequest));
+
+        messenger.sendVerifyMessage(REQUEST_ID);
+
+        verify(discordVerifyPort, never()).sendVerifyMessage(any());
+    }
+
+    @Test
     void 요청이_없으면_전송하지_않는다() {
         when(bandCreationRequestRepository.findById(REQUEST_ID)).thenReturn(Optional.empty());
 
