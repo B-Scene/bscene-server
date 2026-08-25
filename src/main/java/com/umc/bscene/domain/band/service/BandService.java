@@ -45,6 +45,7 @@ import com.umc.bscene.domain.user.repository.UserRepository;
 import com.umc.bscene.global.response.CursorPage;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionSynchronization;
@@ -94,7 +95,14 @@ public class BandService {
                 .description(request.description())
                 .status(BandStatus.PENDING)
                 .build();
-        Band savedBand = bandRepository.save(band);
+
+        Band savedBand;
+        try {
+            savedBand = bandRepository.save(band);
+        } catch (DataIntegrityViolationException e) {
+            // 위 exists 체크와 INSERT 사이에 동명 PENDING 요청이 먼저 들어온 경우 (name, status) 유니크가 잡아준다
+            throw new BandException(BandErrorCode.DUPLICATE_BAND_NAME);
+        }
 
         BandMember ownerMembership = BandMember.builder()
                 .band(savedBand)
