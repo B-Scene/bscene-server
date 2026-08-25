@@ -1,5 +1,6 @@
 package com.umc.bscene.domain.band.repository;
 
+import com.umc.bscene.domain.band.annotation.IncludesPendingBands;
 import com.umc.bscene.domain.band.entity.BandMember;
 import com.umc.bscene.domain.band.enums.BandMemberStatus;
 import com.umc.bscene.domain.band.enums.BandMemberType;
@@ -12,6 +13,7 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
+@IncludesPendingBands(reason = "멤버십 저장소 - 소속 멤버는 검수 중(PENDING)인 자기 밴드도 봐야 하며, 공개 노출 여부는 서비스 계층(validateVisible)과 어댑터가 담당한다")
 public interface BandMemberRepository extends JpaRepository<BandMember, Long> {
 
     // userId를 기반으로 BandMember를 조회, 관련 있는 Band를 dto projection

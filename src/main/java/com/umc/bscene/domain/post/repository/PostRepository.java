@@ -1,5 +1,6 @@
 package com.umc.bscene.domain.post.repository;
 
+import com.umc.bscene.domain.band.annotation.IncludesPendingBands;
 import com.umc.bscene.domain.post.entity.Post;
 import com.umc.bscene.domain.post.entity.PostMedia;
 import com.umc.bscene.domain.post.entity.PostTag;
@@ -21,10 +22,12 @@ public interface PostRepository extends JpaRepository<Post, Long> {
 
     // 후보 밴드 중 최근 활동(포스트 작성) 이력이 있는 밴드 id만 추려서 N+1 조회를 피함
     @Query("SELECT DISTINCT p.band.id FROM Post p WHERE p.band.id IN :bandIds AND p.createdAt >= :since")
+    @IncludesPendingBands(reason = "게시물은 활동 생성 게이트(BAND_NOT_VERIFIED)로 ACCEPTED 밴드에서만 생성된다")
     List<Long> findBandIdsWithRecentPost(@Param("bandIds") List<Long> bandIds, @Param("since") LocalDateTime since);
 
     // 후보 밴드별 가장 최근 포스트 작성일시 (추천 동점자 정렬용 tie-breaker)
     @Query("SELECT p.band.id, MAX(p.createdAt) FROM Post p WHERE p.band.id IN :bandIds GROUP BY p.band.id")
+    @IncludesPendingBands(reason = "게시물은 활동 생성 게이트(BAND_NOT_VERIFIED)로 ACCEPTED 밴드에서만 생성된다")
     List<Object[]> findLatestActivityAtByBandIds(@Param("bandIds") List<Long> bandIds);
 
     // FanHomeAdapter에서 사용 : 팔로우한 밴드 소식을 id 커서 기반 최신순으로 조회 (홈 미리보기 + 전체조회 공용, 밴드 정보 fetch join)

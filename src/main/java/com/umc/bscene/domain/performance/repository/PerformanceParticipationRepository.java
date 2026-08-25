@@ -1,5 +1,6 @@
 package com.umc.bscene.domain.performance.repository;
 
+import com.umc.bscene.domain.band.annotation.IncludesPendingBands;
 import com.umc.bscene.domain.performance.entity.PerformanceParticipation;
 import com.umc.bscene.domain.performance.enums.ParticipationStatus;
 import com.umc.bscene.domain.performance.enums.PerformanceStatus;
@@ -92,6 +93,7 @@ public interface PerformanceParticipationRepository extends JpaRepository<Perfor
           )
         ORDER BY p.performanceDate ASC, p.startTime ASC, p.id ASC, pp.id ASC
         """)
+    @IncludesPendingBands(reason = "공연은 활동 생성 게이트(BAND_NOT_VERIFIED)로 ACCEPTED 밴드에서만 생성된다")
     List<PerformanceParticipation> findReminderTargets(
             @Param("participationStatus") ParticipationStatus participationStatus,
             @Param("performanceStatus") PerformanceStatus performanceStatus,

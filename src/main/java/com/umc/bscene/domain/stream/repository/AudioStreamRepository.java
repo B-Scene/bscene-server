@@ -30,6 +30,9 @@ public interface AudioStreamRepository extends JpaRepository<AudioStream, Long> 
 
     boolean existsByIdAndStatus(Long id, StreamStatus status);
 
+    // 밴드의 라이브 이력 존재 여부 (검수 플로우 밴드 삭제 안전장치용)
+    boolean existsByBandId(Long bandId);
+
     long countByBroadcasterIdAndStatus(Long broadcasterId, StreamStatus status);
 
     List<AudioStream> findAllByPathIn(List<String> paths);

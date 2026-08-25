@@ -1,5 +1,6 @@
 package com.umc.bscene.domain.performance.repository;
 
+import com.umc.bscene.domain.band.annotation.IncludesPendingBands;
 import com.umc.bscene.domain.performance.entity.Performance;
 import com.umc.bscene.domain.performance.enums.PerformanceStatus;
 import org.springframework.data.domain.Pageable;
@@ -21,6 +22,7 @@ public interface PerformanceRepository extends JpaRepository<Performance, Long> 
     // 후보 밴드 중 최근 30일 내 공연 이력이 있는 밴드 id만 추려서 N+1 조회를 피함
     @Query("SELECT DISTINCT p.band.id FROM Performance p " +
             "WHERE p.band.id IN :bandIds AND p.status = :status AND p.performanceDate >= :since")
+    @IncludesPendingBands(reason = "공연은 활동 생성 게이트(BAND_NOT_VERIFIED)로 ACCEPTED 밴드에서만 생성된다")
     List<Long> findBandIdsWithRecentPerformance(
             @Param("bandIds") List<Long> bandIds,
             @Param("status") PerformanceStatus status,
@@ -38,6 +40,7 @@ public interface PerformanceRepository extends JpaRepository<Performance, Long> 
             "AND (p.performanceDate > :today " +
             "     OR (p.performanceDate = :today AND (p.startTime IS NULL OR p.startTime >= :now))) " +
             "ORDER BY p.performanceDate ASC, p.startTime ASC")
+    @IncludesPendingBands(reason = "공연은 활동 생성 게이트(BAND_NOT_VERIFIED)로 ACCEPTED 밴드에서만 생성된다")
     List<Performance> findUpcomingByBandIds(
             @Param("bandIds") List<Long> bandIds,
             @Param("status") PerformanceStatus status,
@@ -68,6 +71,7 @@ public interface PerformanceRepository extends JpaRepository<Performance, Long> 
             "AND (p.performanceDate > :today " +
             "     OR (p.performanceDate = :today AND (p.startTime IS NULL OR p.startTime >= :now))) " +
             "ORDER BY p.performanceDate ASC, p.startTime ASC, p.id ASC")
+    @IncludesPendingBands(reason = "공연은 활동 생성 게이트(BAND_NOT_VERIFIED)로 ACCEPTED 밴드에서만 생성된다")
     Slice<Performance> findUpcomingImminent(
             @Param("bandIds") List<Long> bandIds,
             @Param("status") PerformanceStatus status,
@@ -82,6 +86,7 @@ public interface PerformanceRepository extends JpaRepository<Performance, Long> 
             "AND (p.performanceDate > :today " +
             "     OR (p.performanceDate = :today AND (p.startTime IS NULL OR p.startTime >= :now))) " +
             "ORDER BY p.createdAt DESC, p.id DESC")
+    @IncludesPendingBands(reason = "공연은 활동 생성 게이트(BAND_NOT_VERIFIED)로 ACCEPTED 밴드에서만 생성된다")
     Slice<Performance> findUpcomingLatest(
             @Param("bandIds") List<Long> bandIds,
             @Param("status") PerformanceStatus status,
@@ -98,6 +103,7 @@ public interface PerformanceRepository extends JpaRepository<Performance, Long> 
             "     OR (p.performanceDate = :today AND (p.startTime IS NULL OR p.startTime >= :now))) " +
             "GROUP BY p " +
             "ORDER BY COUNT(pi) DESC, p.id DESC")
+    @IncludesPendingBands(reason = "공연은 활동 생성 게이트(BAND_NOT_VERIFIED)로 ACCEPTED 밴드에서만 생성된다")
     Slice<Performance> findUpcomingPopular(
             @Param("bandIds") List<Long> bandIds,
             @Param("status") PerformanceStatus status,
@@ -141,6 +147,7 @@ public interface PerformanceRepository extends JpaRepository<Performance, Long> 
             "WHERE p.band.id IN :bandIds AND p.status = :status " +
             "AND p.performanceDate BETWEEN :startDate AND :endDate " +
             "ORDER BY p.performanceDate ASC")
+    @IncludesPendingBands(reason = "공연은 활동 생성 게이트(BAND_NOT_VERIFIED)로 ACCEPTED 밴드에서만 생성된다")
     List<LocalDate> findPerformanceDatesByBandIds(
             @Param("bandIds") List<Long> bandIds,
             @Param("status") PerformanceStatus status,
@@ -152,6 +159,7 @@ public interface PerformanceRepository extends JpaRepository<Performance, Long> 
     @Query("SELECT p FROM Performance p " +
             "WHERE p.band.id IN :bandIds AND p.status = :status AND p.performanceDate = :date " +
             "ORDER BY p.startTime ASC, p.title ASC, p.id ASC")
+    @IncludesPendingBands(reason = "공연은 활동 생성 게이트(BAND_NOT_VERIFIED)로 ACCEPTED 밴드에서만 생성된다")
     Slice<Performance> findPerformancesByDate(
             @Param("bandIds") List<Long> bandIds,
             @Param("status") PerformanceStatus status,

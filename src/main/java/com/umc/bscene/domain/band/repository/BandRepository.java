@@ -1,5 +1,6 @@
 package com.umc.bscene.domain.band.repository;
 
+import com.umc.bscene.domain.band.annotation.IncludesPendingBands;
 import com.umc.bscene.domain.auth.enums.onboarding.Genre;
 import com.umc.bscene.domain.auth.enums.onboarding.Region;
 import com.umc.bscene.domain.band.entity.Band;
@@ -16,8 +17,6 @@ import java.util.List;
 import java.util.Optional;
 
 public interface BandRepository extends JpaRepository<Band, Long> {
-
-    boolean existsByName(String name);
 
     // 밴드명 중복 검사 (상태별) - 생성/개명 규칙은 (name, status) 복합 유니크와 동일 기준을 쓴다
     boolean existsByNameAndStatus(String name, BandStatus status);
@@ -75,6 +74,7 @@ where bm.user.id = :userId
     and bm.status = :status
 order by bm.id asc
 """)
+    @IncludesPendingBands(reason = "소속 멤버 관점 조회(내 밴드 목록) - PENDING 밴드도 포함해야 한다")
     List<Long> findBandIdsByActiveProfile(
             @Param("userId") Long userId,
             @Param("memberType") BandMemberType memberType,
