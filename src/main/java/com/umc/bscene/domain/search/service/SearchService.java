@@ -46,6 +46,9 @@ public class SearchService {
     private static final int SECTION_SIZE = 3;      // 통합 모드 섹션별 표시 개수
     private static final int MAX_PAGE_SIZE = 30;    // 단일 모드 페이지 크기 상한
 
+    // 더미 밴드 경계 : 운영 DB 시드 기준으로 이 값 이하 band id는 전부 더미 밴드 (isDummy=false 필터의 기준)
+    private static final long DUMMY_BAND_MAX_ID = 474;
+
     // 타입별 검색 대상 필드와 가중치 (제목·이름 > 밴드명·태그 > 장소·설명)
     // 오타 허용(fuzziness)은 제목·밴드명·장소에만 적용 —
     // 태그(의도적 키워드라 정확성이 생명)·설명(어휘가 많아 오매칭 증가)은 정확 매칭만
@@ -67,7 +70,7 @@ public class SearchService {
 
     public ExploreSearchResponse search(
             Long userId, String keyword, SearchType type, SearchSortType sort,
-            Genre genre, Region region, String cursor, int size
+            Genre genre, Region region, boolean isDummy, String cursor, int size
     ) {
         if (keyword == null || keyword.isBlank()) {
             throw new SearchException(SearchErrorCode.KEYWORD_REQUIRED);
@@ -76,10 +79,10 @@ public class SearchService {
 
         try {
             ExploreSearchResponse response = switch (type) {
-                case ALL -> searchAll(userId, trimmed, sort, genre, region);
-                case BAND -> searchBandsOnly(userId, trimmed, sort, genre, region, cursor, size);
-                case PERFORMANCE -> searchPerformancesOnly(trimmed, sort, genre, region, cursor, size);
-                case POST -> searchPostsOnly(trimmed, sort, genre, region, cursor, size);
+                case ALL -> searchAll(userId, trimmed, sort, genre, region, isDummy);
+                case BAND -> searchBandsOnly(userId, trimmed, sort, genre, region, isDummy, cursor, size);
+                case PERFORMANCE -> searchPerformancesOnly(trimmed, sort, genre, region, isDummy, cursor, size);
+                case POST -> searchPostsOnly(trimmed, sort, genre, region, isDummy, cursor, size);
             };
             // 커서 없는 첫 페이지만 "새로운 검색" — 무한스크롤 다음 페이지 요청은 기록하지 않는다
             if (cursor == null || cursor.isBlank()) {
@@ -105,13 +108,13 @@ public class SearchService {
     }
 
     // 통합 모드 : 쿼리 3개를 multiSearch(_msearch) 한 번으로 실행, 섹션별 상위 SECTION_SIZE개 + 전체 건수 합산
-    private ExploreSearchResponse searchAll(Long userId, String keyword, SearchSortType sort, Genre genre, Region region) {
+    private ExploreSearchResponse searchAll(Long userId, String keyword, SearchSortType sort, Genre genre, Region region, boolean isDummy) {
         NativeQuery bandQuery = buildQuery(keyword, BAND_FUZZY_FIELDS, BAND_EXACT_FIELDS, BAND_PREFIX_FIELDS,
-                "name", genre, region, "createdAt", sort, SECTION_SIZE, null);
+                "name", genre, region, isDummy, "createdAt", sort, SECTION_SIZE, null);
         NativeQuery performanceQuery = buildQuery(keyword, PERFORMANCE_FUZZY_FIELDS, PERFORMANCE_EXACT_FIELDS, PERFORMANCE_PREFIX_FIELDS,
-                "title", genre, region, "performanceDate", sort, SECTION_SIZE, null);
+                "title", genre, region, isDummy, "performanceDate", sort, SECTION_SIZE, null);
         NativeQuery postQuery = buildQuery(keyword, POST_FUZZY_FIELDS, POST_EXACT_FIELDS, POST_PREFIX_FIELDS,
-                "title", genre, region, "uploadedAt", sort, SECTION_SIZE, null);
+                "title", genre, region, isDummy, "uploadedAt", sort, SECTION_SIZE, null);
 
         List<SearchHits<?>> results = elasticsearchOperations.multiSearch(
                 List.of(bandQuery, performanceQuery, postQuery),
@@ -139,10 +142,10 @@ public class SearchService {
     }
 
     // 단일 모드 : 밴드만 커서 기반 무한스크롤
-    private ExploreSearchResponse searchBandsOnly(Long userId, String keyword, SearchSortType sort, Genre genre, Region region, String cursor, int size) {
+    private ExploreSearchResponse searchBandsOnly(Long userId, String keyword, SearchSortType sort, Genre genre, Region region, boolean isDummy, String cursor, int size) {
         int pageSize = clampSize(size);
         NativeQuery query = buildQuery(keyword, BAND_FUZZY_FIELDS, BAND_EXACT_FIELDS, BAND_PREFIX_FIELDS,
-                "name", genre, region, "createdAt", sort, pageSize + 1, SearchCursor.decode(cursor, sort));
+                "name", genre, region, isDummy, "createdAt", sort, pageSize + 1, SearchCursor.decode(cursor, sort));
         CursorSlice<BandDocument> slice = searchSlice(query, BandDocument.class, pageSize, sort);
 
         return new ExploreSearchResponse(
@@ -153,10 +156,10 @@ public class SearchService {
     }
 
     // 단일 모드 : 공연만 커서 기반 무한스크롤
-    private ExploreSearchResponse searchPerformancesOnly(String keyword, SearchSortType sort, Genre genre, Region region, String cursor, int size) {
+    private ExploreSearchResponse searchPerformancesOnly(String keyword, SearchSortType sort, Genre genre, Region region, boolean isDummy, String cursor, int size) {
         int pageSize = clampSize(size);
         NativeQuery query = buildQuery(keyword, PERFORMANCE_FUZZY_FIELDS, PERFORMANCE_EXACT_FIELDS, PERFORMANCE_PREFIX_FIELDS,
-                "title", genre, region, "performanceDate", sort, pageSize + 1, SearchCursor.decode(cursor, sort));
+                "title", genre, region, isDummy, "performanceDate", sort, pageSize + 1, SearchCursor.decode(cursor, sort));
         CursorSlice<PerformanceDocument> slice = searchSlice(query, PerformanceDocument.class, pageSize, sort);
 
         return new ExploreSearchResponse(
@@ -167,10 +170,10 @@ public class SearchService {
     }
 
     // 단일 모드 : 게시물(영상/사진/글)만 커서 기반 무한스크롤
-    private ExploreSearchResponse searchPostsOnly(String keyword, SearchSortType sort, Genre genre, Region region, String cursor, int size) {
+    private ExploreSearchResponse searchPostsOnly(String keyword, SearchSortType sort, Genre genre, Region region, boolean isDummy, String cursor, int size) {
         int pageSize = clampSize(size);
         NativeQuery query = buildQuery(keyword, POST_FUZZY_FIELDS, POST_EXACT_FIELDS, POST_PREFIX_FIELDS,
-                "title", genre, region, "uploadedAt", sort, pageSize + 1, SearchCursor.decode(cursor, sort));
+                "title", genre, region, isDummy, "uploadedAt", sort, pageSize + 1, SearchCursor.decode(cursor, sort));
         CursorSlice<PostDocument> slice = searchSlice(query, PostDocument.class, pageSize, sort);
 
         return new ExploreSearchResponse(
@@ -184,12 +187,12 @@ public class SearchService {
      * 타입 공통 쿼리 조립 (Kibana 실습에서 검증한 최종 쿼리의 자바 번역).
      * must   : multi_match — 검색어를 타입별 필드·가중치로 매칭 (점수 계산)
      * should : match_phrase(구문 일치) + term(raw 완전 일치) 가점 → 더 비슷한 제목이 위로
-     * filter : 장르·지역 선택 시에만 추가 (점수 무관, 캐싱)
+     * filter : 장르·지역 선택 시 + isDummy=false 시 더미 밴드 경계 초과 id만 (점수 무관, 캐싱)
      * sort   : 정확도 = _score → 날짜 → docId / 인기 = popularity → _score → docId — search_after가 요구하는 결정적 정렬
      */
     private NativeQuery buildQuery(
             String keyword, List<String> fuzzyFields, List<String> exactFields, List<String> prefixFields,
-            String titleField, Genre genre, Region region, String dateSortField, SearchSortType sort,
+            String titleField, Genre genre, Region region, boolean isDummy, String dateSortField, SearchSortType sort,
             int size, List<Object> searchAfter
     ) {
         var builder = NativeQuery.builder()
@@ -212,6 +215,11 @@ public class SearchService {
                     }
                     if (region != null) {
                         b.filter(f -> f.term(t -> t.field("region").value(region.name())));
+                    }
+                    // isDummy=false : 더미 밴드 제외 (경계 초과 id만) — 세 인덱스 모두 bandId 필드를 가져
+                    // 밴드 섹션뿐 아니라 더미 밴드의 공연·게시물도 함께 걸러진다
+                    if (!isDummy) {
+                        b.filter(f -> f.range(r -> r.number(n -> n.field("bandId").gt((double) DUMMY_BAND_MAX_ID))));
                     }
                     return b;
                 }));

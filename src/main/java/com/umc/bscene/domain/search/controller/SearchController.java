@@ -28,6 +28,7 @@ public class SearchController {
     private final RecentSearchService recentSearchService;
 
     // 탐색 통합검색 API (검색어 필수, 콘텐츠/정렬/장르/지역 필터 선택, 단일 타입은 커서 기반 무한스크롤)
+    // isDummy=false면 더미 밴드(와 그 공연·게시물)를 결과에서 제외, 생략·true면 전체 (기존 호환)
     @GetMapping("/explore/search")
     public ResponseEntity<SuccessResponse<ExploreSearchResponse>> search(
             @AuthenticationPrincipal AuthMember authMember,
@@ -36,11 +37,12 @@ public class SearchController {
             @RequestParam(defaultValue = "ACCURACY") SearchSortType sort,
             @RequestParam(required = false) Genre genre,
             @RequestParam(required = false) Region region,
+            @RequestParam(defaultValue = "true") boolean isDummy,
             @RequestParam(required = false) String cursor,
             @RequestParam(defaultValue = "10") int size
     ) {
         ExploreSearchResponse response = searchService.search(
-                authMember.getUser().getId(), keyword, type, sort, genre, region, cursor, size);
+                authMember.getUser().getId(), keyword, type, sort, genre, region, isDummy, cursor, size);
         SuccessResponse<ExploreSearchResponse> successResponse = SuccessResponse.of(
                 response,
                 SearchSuccessCode.SEARCH_SUCCESS
