@@ -42,7 +42,9 @@ public enum BandErrorCode implements BaseResponseCode {
     DUPLICATE_BAND_NAME(CONFLICT, "BAND409_2", "이미 사용 중인 밴드명이에요."),
     ALREADY_ACCEPTED_MEMBER(CONFLICT, "BAND409_3", "이미 수락된 멤버는 거절할 수 없습니다."),
     INVITE_ALREADY_PROCESSED(CONFLICT, "MEMBER409_2", "이미 처리된 초대예요."),
-    BAND_MEMBER_PROFILE_IN_USE(CONFLICT, "PROFILE409_1", "밴드에서 사용 중인 멤버 프로필은 삭제할 수 없어요.");
+    BAND_MEMBER_PROFILE_IN_USE(CONFLICT, "PROFILE409_1", "밴드에서 사용 중인 멤버 프로필은 삭제할 수 없어요."),
+    // audio_stream.band_id는 FK가 아니라 검수 삭제 안전장치(FK 제약 롤백)에 걸리지 않으므로 애플리케이션 단에서 차단
+    BAND_HAS_LIVE_HISTORY(CONFLICT, "BAND409_4", "라이브 이력이 있는 밴드는 삭제할 수 없습니다.");
 
     private final int status;
     private final String code;
