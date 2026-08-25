@@ -72,6 +72,9 @@ public class StreamAdapter implements BandMemberPort {
     public Optional<BandSummaryResponse> getBandSummaryByBroadcasterId(Long broadcasterId) {
         return findActiveBandMembership(broadcasterId)
                 .filter(BandMember::isMember)
+                // 검수 중(PENDING) 밴드는 라이브를 만들 수 없다 - 라이브 이력(audio_stream)이 생기면
+                // BAND_HAS_LIVE_HISTORY 안전장치에 걸려 검수 거절(밴드 삭제)이 영구히 불가능해진다
+                .filter(member -> !member.getBand().isPending())
                 .map(member -> {
                     Band band = member.getBand();
                     return new BandSummaryResponse(band.getId(), band.getName());
