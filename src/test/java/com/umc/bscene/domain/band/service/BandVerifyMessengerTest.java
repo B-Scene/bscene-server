@@ -17,9 +17,9 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.util.Optional;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -61,14 +61,16 @@ class BandVerifyMessengerTest {
     }
 
     @Test
-    void 전송_성공시_discordMessageId가_저장된다() {
+    void 전송_성공시_discordMessageId가_조건부로_저장된다() {
         BandCreationRequest creationRequest = request();
-        when(bandCreationRequestRepository.findById(REQUEST_ID)).thenReturn(Optional.of(creationRequest));
+        when(bandCreationRequestRepository.findWithBandById(REQUEST_ID)).thenReturn(Optional.of(creationRequest));
         when(discordVerifyPort.sendVerifyMessage(any(BandVerifyMessage.class))).thenReturn("1234567890");
+        when(bandCreationRequestRepository.attachDiscordMessageIfUnsent(REQUEST_ID, "1234567890")).thenReturn(1);
 
         messenger.sendVerifyMessage(REQUEST_ID);
 
-        assertEquals("1234567890", creationRequest.getDiscordMessageId());
+        // 미전송·미처리인 경우에만 기록되는 조건부 UPDATE로 저장 (동시 전송 감지)
+        verify(bandCreationRequestRepository).attachDiscordMessageIfUnsent(REQUEST_ID, "1234567890");
         verify(discordVerifyPort).sendVerifyMessage(argThat(message ->
                 message.requestId().equals(REQUEST_ID)
                         && message.bandName().equals("대일밴드")
@@ -80,19 +82,19 @@ class BandVerifyMessengerTest {
     @Test
     void 전송_실패시_discordMessageId는_저장되지_않는다() {
         BandCreationRequest creationRequest = request();
-        when(bandCreationRequestRepository.findById(REQUEST_ID)).thenReturn(Optional.of(creationRequest));
+        when(bandCreationRequestRepository.findWithBandById(REQUEST_ID)).thenReturn(Optional.of(creationRequest));
         when(discordVerifyPort.sendVerifyMessage(any(BandVerifyMessage.class))).thenReturn(null);
 
         messenger.sendVerifyMessage(REQUEST_ID);
 
-        assertNull(creationRequest.getDiscordMessageId());
+        verify(bandCreationRequestRepository, never()).attachDiscordMessageIfUnsent(anyLong(), anyString());
     }
 
     @Test
     void 이미_전송된_요청은_재전송하지_않는다() {
         BandCreationRequest creationRequest = request();
         creationRequest.attachDiscordMessage("9999");
-        when(bandCreationRequestRepository.findById(REQUEST_ID)).thenReturn(Optional.of(creationRequest));
+        when(bandCreationRequestRepository.findWithBandById(REQUEST_ID)).thenReturn(Optional.of(creationRequest));
 
         messenger.sendVerifyMessage(REQUEST_ID);
 
@@ -101,7 +103,7 @@ class BandVerifyMessengerTest {
 
     @Test
     void 요청이_없으면_전송하지_않는다() {
-        when(bandCreationRequestRepository.findById(REQUEST_ID)).thenReturn(Optional.empty());
+        when(bandCreationRequestRepository.findWithBandById(REQUEST_ID)).thenReturn(Optional.empty());
 
         messenger.sendVerifyMessage(REQUEST_ID);
 

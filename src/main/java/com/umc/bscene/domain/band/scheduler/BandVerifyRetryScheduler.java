@@ -48,7 +48,7 @@ public class BandVerifyRetryScheduler {
                 expiredCount++;
                 continue;
             }
-            // sendVerifyMessage는 건별 새 트랜잭션 + 예외 내부 처리라 한 건의 실패가 다음 건을 막지 않는다
+            // sendVerifyMessage는 건별 비동기(@Async) + 예외 내부 처리 + 조건부 저장이라 한 건의 실패가 다음 건을 막지 않는다
             bandVerifyMessenger.sendVerifyMessage(request.getId());
         }
 
