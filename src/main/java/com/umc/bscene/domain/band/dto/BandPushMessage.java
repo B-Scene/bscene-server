@@ -51,6 +51,17 @@ public record BandPushMessage(
         );
     }
 
+    // 동명 검수 수락으로 기존 밴드가 삭제·교체됐을 때 그 밴드의 오너에게 발송
+    public static BandPushMessage bandReplaced(String bandName, Long newBandId) {
+        return new BandPushMessage(
+                NotificationType.BAND_VERIFY,
+                "밴드 등록 정보 안내",
+                bandName + " 밴드가 실제 밴드 확인 절차에 따라 새로 등록된 밴드로 교체되었어요.",
+                "/band/notifications",
+                newBandId
+        );
+    }
+
     public static BandPushMessage verifyRejected(Long creationRequestId) {
         return new BandPushMessage(
                 NotificationType.BAND_VERIFY,
