@@ -44,6 +44,9 @@ public class BandRecommendationServiceV1Impl implements BandRecommendationServic
     private static final int RECENT_POST_SCORE = 2;
     private static final int RECENT_PERFORMANCE_SCORE = 1;
 
+    // 더미 밴드 경계 : 운영 DB 시드 기준으로 이 값 이하 band id는 전부 더미 밴드 (withDummy=false 필터의 기준)
+    private static final long DUMMY_BAND_MAX_ID = 474;
+
     private final BandRepository bandRepository;
     private final UserRepository userRepository;
     private final UserGenresRepository userGenresRepository;
@@ -53,7 +56,7 @@ public class BandRecommendationServiceV1Impl implements BandRecommendationServic
 
     // 밴드 추천 목록 조회 (장르/지역/활동 내역 기반 스코어링)
     @Override
-    public BandRecommendResponse getRecommendedBands(Long userId, Long cursor, Integer size) {
+    public BandRecommendResponse getRecommendedBands(Long userId, Long cursor, Integer size, boolean withDummy) {
         int pageSize = (size != null) ? size : DEFAULT_RECOMMEND_PAGE_SIZE;
         long offset = (cursor != null) ? cursor : 0;
 
@@ -67,7 +70,9 @@ public class BandRecommendationServiceV1Impl implements BandRecommendationServic
                 .map(UserRegions::getRegion)
                 .collect(Collectors.toSet());
 
-        List<Band> candidates = bandRepository.findAllByStatus(BandStatus.ACCEPTED);
+        List<Band> candidates = bandRepository.findAllByStatus(BandStatus.ACCEPTED).stream()
+                .filter(band -> withDummy || band.getId() > DUMMY_BAND_MAX_ID)
+                .toList();
         List<Long> candidateIds = candidates.stream().map(Band::getId).toList();
 
         LocalDateTime postSince = LocalDateTime.now().minusDays(RECENT_ACTIVITY_DAYS);

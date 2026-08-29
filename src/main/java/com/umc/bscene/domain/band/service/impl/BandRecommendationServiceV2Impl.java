@@ -57,6 +57,9 @@ public class BandRecommendationServiceV2Impl implements BandRecommendationServic
     private static final int RECENT_ACTIVITY_DAYS = 30;
     private static final int TOP_CLICKED_BANDS_LIMIT = 10;
 
+    // 더미 밴드 경계 : 운영 DB 시드 기준으로 이 값 이하 band id는 전부 더미 밴드 (withDummy=false 필터의 기준)
+    private static final long DUMMY_BAND_MAX_ID = 474;
+
     // explicit(장르/지역/활동) 내부 가중치. 셋 다 만족 시 explicit 원점수는 GENRE+REGION+ACTIVITY(=6)로 정규화된다.
     private static final double GENRE_MATCH_SCORE = 3;
     private static final double REGION_MATCH_SCORE = 2;
@@ -129,7 +132,7 @@ public class BandRecommendationServiceV2Impl implements BandRecommendationServic
     private final BandRecommendationLogRepository bandRecommendationLogRepository;
 
     @Override
-    public BandRecommendResponse getRecommendedBands(Long userId, Long cursor, Integer size) {
+    public BandRecommendResponse getRecommendedBands(Long userId, Long cursor, Integer size, boolean withDummy) {
         int limit = (size != null) ? Math.min(size, RECOMMEND_LIMIT) : RECOMMEND_LIMIT;
 
         User user = userRepository.getReferenceById(userId);
@@ -183,6 +186,11 @@ public class BandRecommendationServiceV2Impl implements BandRecommendationServic
                 ? collectColdStartFallback(followedBandIdSet)
                 : ColdStartFallback.EMPTY;
         coldStartFallback.bands().forEach(band -> candidateBands.put(band.getId(), band));
+
+        // withDummy=false : 더미 밴드(경계 이하 id) 제외
+        if (!withDummy) {
+            candidateBands.keySet().removeIf(id -> id <= DUMMY_BAND_MAX_ID);
+        }
 
         List<Long> candidateIds = new ArrayList<>(candidateBands.keySet());
 

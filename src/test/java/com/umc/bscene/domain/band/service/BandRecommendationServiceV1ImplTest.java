@@ -174,4 +174,29 @@ class BandRecommendationServiceV1ImplTest {
 
         assertTrue(response.bands().isEmpty());
     }
+
+    @Test
+    void withDummy가_false면_더미_밴드_id는_후보에서_제외된다() {
+        preferredGenreAndRegion(Genre.HARD_ROCK, Region.SEOUL);
+        Band dummyBand = band(474L, Genre.HARD_ROCK, Region.SEOUL); // 더미 경계(<=474)
+        Band realBand = band(475L, Genre.HARD_ROCK, Region.SEOUL);
+        when(bandRepository.findAllByStatus(BandStatus.ACCEPTED)).thenReturn(List.of(dummyBand, realBand));
+
+        BandRecommendResponse response = service.getRecommendedBands(USER_ID, null, null, false);
+
+        assertEquals(1, response.bands().size());
+        assertEquals(475L, response.bands().get(0).bandId());
+    }
+
+    @Test
+    void withDummy_생략시_기본값true로_더미_밴드도_포함된다() {
+        preferredGenreAndRegion(Genre.HARD_ROCK, Region.SEOUL);
+        Band dummyBand = band(474L, Genre.HARD_ROCK, Region.SEOUL);
+        Band realBand = band(475L, Genre.HARD_ROCK, Region.SEOUL);
+        when(bandRepository.findAllByStatus(BandStatus.ACCEPTED)).thenReturn(List.of(dummyBand, realBand));
+
+        BandRecommendResponse response = service.getRecommendedBands(USER_ID, null, null);
+
+        assertEquals(2, response.bands().size());
+    }
 }
