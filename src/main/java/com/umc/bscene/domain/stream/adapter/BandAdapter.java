@@ -26,4 +26,9 @@ public class BandAdapter implements StreamPort {
         }
         return audioStream.getId().describeConstable();
     }
+
+    @Override
+    public boolean hasLiveHistory(Long bandId) {
+        return audioStreamRepository.existsByBandId(bandId);
+    }
 }

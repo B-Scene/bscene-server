@@ -31,4 +31,11 @@ public interface FollowPort {
      * @return 팔로우 중이면 true
      */
     boolean isFollowing(Long userId, Long bandId);
+
+    /**
+     * 밴드의 팔로우 관계를 전부 삭제합니다. (검수 거절/더미 교체로 밴드를 삭제할 때 정리용)
+     *
+     * @param bandId 팔로우를 정리할 밴드 ID
+     */
+    void deleteAllByBandId(Long bandId);
 }

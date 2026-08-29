@@ -1,5 +1,6 @@
 package com.umc.bscene.domain.session.repository;
 
+import com.umc.bscene.domain.band.annotation.IncludesPendingBands;
 import com.umc.bscene.domain.session.entity.SessionRecruitment;
 import com.umc.bscene.domain.session.enums.Part;
 import com.umc.bscene.domain.auth.enums.onboarding.Genre;
@@ -28,6 +29,7 @@ public interface SessionRecruitmentRepository extends JpaRepository<SessionRecru
           AND (:cursorId IS NULL OR sr.sessionRecruitmentId < :cursorId)
         ORDER BY sr.sessionRecruitmentId DESC
     """)
+    @IncludesPendingBands(reason = "세션 모집은 활동 생성 게이트(BAND_NOT_VERIFIED)로 ACCEPTED 밴드에서만 생성된다")
     List<SessionRecruitment> findManagedRecruitments(
             @Param("bandId") Long bandId,
             @Param("cursorId") Long cursorId,
@@ -37,8 +39,9 @@ public interface SessionRecruitmentRepository extends JpaRepository<SessionRecru
     @Query("""
         SELECT sr
         FROM SessionRecruitment sr
-        JOIN FETCH sr.band
+        JOIN FETCH sr.band b
         WHERE sr.deletedAt IS NULL
+          AND b.status = com.umc.bscene.domain.band.enums.BandStatus.ACCEPTED
           AND sr.deadlineAt > :now
           AND (:part IS NULL OR sr.part = :part)
           AND (:skillLevel IS NULL OR sr.skillLevel = :skillLevel)
@@ -63,8 +66,9 @@ public interface SessionRecruitmentRepository extends JpaRepository<SessionRecru
     @Query("""
         SELECT sr
         FROM SessionRecruitment sr
-        JOIN FETCH sr.band
+        JOIN FETCH sr.band b
         WHERE sr.deletedAt IS NULL
+          AND b.status = com.umc.bscene.domain.band.enums.BandStatus.ACCEPTED
           AND sr.deadlineAt > :now
           AND (:part IS NULL OR sr.part = :part)
           AND (:skillLevel IS NULL OR sr.skillLevel = :skillLevel)
@@ -123,6 +127,7 @@ public interface SessionRecruitmentRepository extends JpaRepository<SessionRecru
               ) AND sr.sessionRecruitmentId < :cursorId))
         ORDER BY sr.deadlineAt ASC, sr.sessionRecruitmentId DESC
     """)
+    @IncludesPendingBands(reason = "세션 모집은 활동 생성 게이트(BAND_NOT_VERIFIED)로 ACCEPTED 밴드에서만 생성된다")
     List<Long> findOpenRecruitmentIdsByBandId(
             @Param("bandId") Long bandId,
             @Param("now") LocalDateTime now,
@@ -156,6 +161,7 @@ public interface SessionRecruitmentRepository extends JpaRepository<SessionRecru
               ) AND sr.sessionRecruitmentId < :cursorId))
         ORDER BY sr.deadlineAt DESC, sr.sessionRecruitmentId DESC
     """)
+    @IncludesPendingBands(reason = "세션 모집은 활동 생성 게이트(BAND_NOT_VERIFIED)로 ACCEPTED 밴드에서만 생성된다")
     List<Long> findClosedRecruitmentIdsByBandId(
             @Param("bandId") Long bandId,
             @Param("now") LocalDateTime now,
@@ -174,6 +180,7 @@ public interface SessionRecruitmentRepository extends JpaRepository<SessionRecru
           AND sr.deadlineAt <= :reminderLimit
         ORDER BY sr.deadlineAt ASC, sr.sessionRecruitmentId ASC
     """)
+    @IncludesPendingBands(reason = "세션 모집은 활동 생성 게이트(BAND_NOT_VERIFIED)로 ACCEPTED 밴드에서만 생성된다")
     List<SessionRecruitment> findDeadlineReminderTargets(
             @Param("now") LocalDateTime now,
             @Param("reminderLimit") LocalDateTime reminderLimit

@@ -5,6 +5,7 @@ import com.umc.bscene.domain.auth.enums.onboarding.Region;
 import com.umc.bscene.domain.band.dto.response.BandRecommendItem;
 import com.umc.bscene.domain.band.dto.response.BandRecommendResponse;
 import com.umc.bscene.domain.band.entity.Band;
+import com.umc.bscene.domain.band.enums.BandStatus;
 import com.umc.bscene.domain.band.repository.BandRepository;
 import com.umc.bscene.domain.band.service.impl.BandRecommendationServiceV1Impl;
 import com.umc.bscene.domain.performance.enums.PerformanceStatus;
@@ -88,7 +89,7 @@ class BandRecommendationServiceV1ImplTest {
         preferredGenreAndRegion(Genre.HARD_ROCK, Region.SEOUL);
         Band matched = band(1L, Genre.HARD_ROCK, Region.BUSAN); // genre만 일치 : 3점
         Band unmatched = band(2L, Genre.INDIE, Region.SEOUL); // region만 일치 : 2점 (기준 미달)
-        when(bandRepository.findAll()).thenReturn(List.of(matched, unmatched));
+        when(bandRepository.findAllByStatus(BandStatus.ACCEPTED)).thenReturn(List.of(matched, unmatched));
 
         BandRecommendResponse response = service.getRecommendedBands(USER_ID, null, null);
 
@@ -101,7 +102,7 @@ class BandRecommendationServiceV1ImplTest {
         preferredGenreAndRegion(Genre.HARD_ROCK, Region.SEOUL);
         Band genreOnly = band(1L, Genre.HARD_ROCK, Region.BUSAN); // 3점
         Band genreAndRegion = band(2L, Genre.HARD_ROCK, Region.SEOUL); // 5점
-        when(bandRepository.findAll()).thenReturn(List.of(genreOnly, genreAndRegion));
+        when(bandRepository.findAllByStatus(BandStatus.ACCEPTED)).thenReturn(List.of(genreOnly, genreAndRegion));
 
         BandRecommendResponse response = service.getRecommendedBands(USER_ID, null, null);
 
@@ -115,7 +116,7 @@ class BandRecommendationServiceV1ImplTest {
     void 최근_포스트와_공연_활동_점수가_합산되어_기준을_넘으면_추천된다() {
         preferredGenre(Genre.HARD_ROCK); // HARD_ROCK 선호, region 없음
         Band activeBand = band(1L, Genre.INDIE, Region.BUSAN); // 장르/지역 불일치, 활동만으로 3점
-        when(bandRepository.findAll()).thenReturn(List.of(activeBand));
+        when(bandRepository.findAllByStatus(BandStatus.ACCEPTED)).thenReturn(List.of(activeBand));
         when(postRepository.findBandIdsWithRecentPost(anyList(), any())).thenReturn(List.of(1L));
         when(performanceRepository.findBandIdsWithRecentPerformance(anyList(), any(PerformanceStatus.class), any()))
                 .thenReturn(List.of(1L));
@@ -130,7 +131,7 @@ class BandRecommendationServiceV1ImplTest {
     void 최근_포스트_활동만으로는_기준점수에_미달해_제외된다() {
         preferredGenre(Genre.HARD_ROCK);
         Band postOnlyBand = band(1L, Genre.INDIE, Region.BUSAN); // 장르/지역 불일치, 포스트만 2점
-        when(bandRepository.findAll()).thenReturn(List.of(postOnlyBand));
+        when(bandRepository.findAllByStatus(BandStatus.ACCEPTED)).thenReturn(List.of(postOnlyBand));
         when(postRepository.findBandIdsWithRecentPost(anyList(), any())).thenReturn(List.of(1L));
 
         BandRecommendResponse response = service.getRecommendedBands(USER_ID, null, null);
@@ -145,7 +146,7 @@ class BandRecommendationServiceV1ImplTest {
         Band b1 = band(1L, Genre.HARD_ROCK, Region.BUSAN);
         Band b2 = band(2L, Genre.HARD_ROCK, Region.BUSAN);
         Band b3 = band(3L, Genre.HARD_ROCK, Region.BUSAN);
-        when(bandRepository.findAll()).thenReturn(List.of(b1, b2, b3));
+        when(bandRepository.findAllByStatus(BandStatus.ACCEPTED)).thenReturn(List.of(b1, b2, b3));
 
         BandRecommendResponse firstPage = service.getRecommendedBands(USER_ID, null, 2);
 
@@ -167,7 +168,7 @@ class BandRecommendationServiceV1ImplTest {
         when(userGenresRepository.findAllByUser(user)).thenReturn(List.of());
         when(userRegionsRepository.findAllByUser(user)).thenReturn(List.of());
         Band band = band(1L, Genre.HARD_ROCK, Region.SEOUL);
-        when(bandRepository.findAll()).thenReturn(List.of(band));
+        when(bandRepository.findAllByStatus(BandStatus.ACCEPTED)).thenReturn(List.of(band));
 
         BandRecommendResponse response = service.getRecommendedBands(USER_ID, null, null);
 

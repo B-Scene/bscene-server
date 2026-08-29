@@ -1,5 +1,6 @@
 package com.umc.bscene.domain.post.repository;
 
+import com.umc.bscene.domain.band.annotation.IncludesPendingBands;
 import com.umc.bscene.domain.post.entity.Post;
 import com.umc.bscene.domain.post.entity.PostMedia;
 import com.umc.bscene.domain.post.entity.PostTag;
@@ -21,16 +22,19 @@ public interface PostRepository extends JpaRepository<Post, Long> {
 
     // 후보 밴드 중 최근 활동(포스트 작성) 이력이 있는 밴드 id만 추려서 N+1 조회를 피함
     @Query("SELECT DISTINCT p.band.id FROM Post p WHERE p.band.id IN :bandIds AND p.createdAt >= :since")
+    @IncludesPendingBands(reason = "게시물은 활동 생성 게이트(BAND_NOT_VERIFIED)로 ACCEPTED 밴드에서만 생성된다")
     List<Long> findBandIdsWithRecentPost(@Param("bandIds") List<Long> bandIds, @Param("since") LocalDateTime since);
 
     // 후보 밴드별 가장 최근 포스트 작성일시 (추천 동점자 정렬용 tie-breaker)
     @Query("SELECT p.band.id, MAX(p.createdAt) FROM Post p WHERE p.band.id IN :bandIds GROUP BY p.band.id")
+    @IncludesPendingBands(reason = "게시물은 활동 생성 게이트(BAND_NOT_VERIFIED)로 ACCEPTED 밴드에서만 생성된다")
     List<Object[]> findLatestActivityAtByBandIds(@Param("bandIds") List<Long> bandIds);
 
     // FanHomeAdapter에서 사용 : 팔로우한 밴드 소식을 id 커서 기반 최신순으로 조회 (홈 미리보기 + 전체조회 공용, 밴드 정보 fetch join)
     // 첫 페이지는 cursor에 Long.MAX_VALUE를 넘겨 상위부터 조회 (id < :cursor 를 깨끗한 인덱스 range seek로 유지)
     @Query("SELECT p FROM Post p JOIN FETCH p.band b " +
             "WHERE b.id IN :bandIds " +
+            "AND b.status = com.umc.bscene.domain.band.enums.BandStatus.ACCEPTED " +
             "AND p.id < :cursor " +
             "ORDER BY p.id DESC")
     List<Post> findNewsByBandIds(
@@ -47,15 +51,20 @@ public interface PostRepository extends JpaRepository<Post, Long> {
     @Query("SELECT t FROM PostTag t WHERE t.post.id IN :postIds")
     List<PostTag> findTagsByPostIds(@Param("postIds") List<Long> postIds);
 
-    // SearchAdapter에서 사용 : 검색 전체 색인용 게시물 (band·tags fetch join → 밴드명·태그 비정규화)
-    @Query("SELECT DISTINCT p FROM Post p JOIN FETCH p.band LEFT JOIN FETCH p.tagList")
+    // SearchAdapter에서 사용 : 검색 전체 색인용 게시물 (band·tags fetch join → 밴드명·태그 비정규화, 검수 통과 밴드만)
+    @Query("SELECT DISTINCT p FROM Post p JOIN FETCH p.band b LEFT JOIN FETCH p.tagList " +
+            "WHERE b.status = com.umc.bscene.domain.band.enums.BandStatus.ACCEPTED")
     List<Post> findAllWithBandAndTags();
 
-    // SearchAdapter에서 사용 : 검색 단건 색인용 (band·tags fetch join)
-    @Query("SELECT p FROM Post p JOIN FETCH p.band LEFT JOIN FETCH p.tagList WHERE p.id = :id")
+    // SearchAdapter에서 사용 : 검색 단건 색인용 (band·tags fetch join, 검수 통과 밴드만)
+    @Query("SELECT p FROM Post p JOIN FETCH p.band b LEFT JOIN FETCH p.tagList " +
+            "WHERE p.id = :id " +
+            "AND b.status = com.umc.bscene.domain.band.enums.BandStatus.ACCEPTED")
     Optional<Post> findByIdWithBandAndTags(@Param("id") Long id);
 
-    // SearchAdapter에서 사용 : 밴드 정보 변경 시 연쇄 재색인용 (band·tags fetch join)
-    @Query("SELECT DISTINCT p FROM Post p JOIN FETCH p.band b LEFT JOIN FETCH p.tagList WHERE b.id = :bandId")
+    // SearchAdapter에서 사용 : 밴드 정보 변경 시 연쇄 재색인용 (band·tags fetch join, 검수 통과 밴드만)
+    @Query("SELECT DISTINCT p FROM Post p JOIN FETCH p.band b LEFT JOIN FETCH p.tagList " +
+            "WHERE b.id = :bandId " +
+            "AND b.status = com.umc.bscene.domain.band.enums.BandStatus.ACCEPTED")
     List<Post> findAllByBandIdWithBandAndTags(@Param("bandId") Long bandId);
 }

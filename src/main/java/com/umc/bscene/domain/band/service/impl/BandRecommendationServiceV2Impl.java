@@ -5,6 +5,7 @@ import com.umc.bscene.domain.auth.enums.onboarding.Region;
 import com.umc.bscene.domain.band.dto.response.BandRecommendItem;
 import com.umc.bscene.domain.band.dto.response.BandRecommendResponse;
 import com.umc.bscene.domain.band.entity.Band;
+import com.umc.bscene.domain.band.enums.BandStatus;
 import com.umc.bscene.domain.band.repository.BandRepository;
 import com.umc.bscene.domain.band.service.BandRecommendationService;
 import com.umc.bscene.domain.follow.repository.FollowRepository;
@@ -263,7 +264,7 @@ public class BandRecommendationServiceV2Impl implements BandRecommendationServic
                     .forEach(band -> candidateBands.put(band.getId(), band));
         }
         if (!similarityScoreByBandId.isEmpty()) {
-            bandRepository.findAllById(similarityScoreByBandId.keySet())
+            bandRepository.findAllByIdInAndStatus(similarityScoreByBandId.keySet(), BandStatus.ACCEPTED)
                     .forEach(band -> candidateBands.put(band.getId(), band));
         }
 
@@ -388,7 +389,7 @@ public class BandRecommendationServiceV2Impl implements BandRecommendationServic
         Set<Long> popularBandIds = new HashSet<>();
         List<Long> topFollowedBandIds = followRepository.findTopFollowedBandIds(pageable);
         if (!topFollowedBandIds.isEmpty()) {
-            bandRepository.findAllById(topFollowedBandIds).forEach(band -> {
+            bandRepository.findAllByIdInAndStatus(topFollowedBandIds, BandStatus.ACCEPTED).forEach(band -> {
                 fallbackBands.put(band.getId(), band);
                 popularBandIds.add(band.getId());
             });

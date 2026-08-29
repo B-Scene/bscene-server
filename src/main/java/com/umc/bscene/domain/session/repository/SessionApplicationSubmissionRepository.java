@@ -1,5 +1,6 @@
 package com.umc.bscene.domain.session.repository;
 
+import com.umc.bscene.domain.band.annotation.IncludesPendingBands;
 import com.umc.bscene.domain.session.dto.application.response.BandsRecruitmentsSummaryResponse;
 import com.umc.bscene.domain.session.entity.SessionApplicationSubmission;
 import com.umc.bscene.domain.session.enums.ApplicationStatus;
@@ -27,6 +28,7 @@ where recruitment.band.id = :bandId
     and recruitment.deadlineAt > :now
     and submission.status <> com.umc.bscene.domain.session.enums.ApplicationStatus.CANCELED
 """)
+    @IncludesPendingBands(reason = "지원서·채팅은 ACCEPTED 밴드의 모집에서만 파생된다")
     long countActiveApplicantsByBandId(
             @Param("bandId") Long bandId,
             @Param("now") LocalDateTime now
@@ -75,6 +77,7 @@ from SessionApplicationSubmission sas
 where sas.applicationSubmissionId = :sasId
     and sas.sessionRecruitment.deletedAt is null
 """)
+    @IncludesPendingBands(reason = "지원서·채팅은 ACCEPTED 밴드의 모집에서만 파생된다")
     Long findBandIdBySessionApplicationSubmissionId(
             @Param("sasId") Long sasId);
 
@@ -118,6 +121,7 @@ where sas.applicationSubmissionId = :sasId
           AND (:cursorId IS NULL OR submission.applicationSubmissionId < :cursorId)
         ORDER BY submission.applicationSubmissionId DESC
     """)
+    @IncludesPendingBands(reason = "지원서·채팅은 ACCEPTED 밴드의 모집에서만 파생된다")
     List<SessionApplicationSubmission> findMySubmissions(
             @Param("userId") Long userId,
             @Param("cursorId") Long cursorId,
@@ -138,6 +142,7 @@ where sas.applicationSubmissionId = :sasId
         JOIN FETCH recruitment.band
         WHERE submission.applicationSubmissionId = :submissionId
     """)
+    @IncludesPendingBands(reason = "지원서·채팅은 ACCEPTED 밴드의 모집에서만 파생된다")
     Optional<SessionApplicationSubmission> findWithApplicationById(
             @Param("submissionId") Long submissionId
     );
@@ -161,6 +166,7 @@ where sas.applicationSubmissionId = :sasId
               )
           )
     """)
+    @IncludesPendingBands(reason = "지원서·채팅은 ACCEPTED 밴드의 모집에서만 파생된다")
     Optional<SessionApplicationSubmission> findForRecruitmentMember(
             @Param("submissionId") Long submissionId,
             @Param("viewerId") Long viewerId

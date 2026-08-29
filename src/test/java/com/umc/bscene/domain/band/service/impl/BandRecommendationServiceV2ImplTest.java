@@ -5,6 +5,7 @@ import com.umc.bscene.domain.auth.enums.onboarding.Region;
 import com.umc.bscene.domain.band.dto.response.BandRecommendItem;
 import com.umc.bscene.domain.band.dto.response.BandRecommendResponse;
 import com.umc.bscene.domain.band.entity.Band;
+import com.umc.bscene.domain.band.enums.BandStatus;
 import com.umc.bscene.domain.band.repository.BandRepository;
 import com.umc.bscene.domain.follow.repository.FollowRepository;
 import com.umc.bscene.domain.performance.enums.PerformanceStatus;
@@ -137,7 +138,7 @@ class BandRecommendationServiceV2ImplTest {
                 BandSimilarity.builder().band(band(300L, Genre.HARD_ROCK, Region.SEOUL)).similarBand(similarBand).score(0.9).build()
         );
         when(bandSimilarityRepository.findByBandIdIn(followedBandIds)).thenReturn(similarities);
-        when(bandRepository.findAllById(any())).thenReturn(List.of(similarBand));
+        when(bandRepository.findAllByIdInAndStatus(any(), eq(BandStatus.ACCEPTED))).thenReturn(List.of(similarBand));
         when(postRepository.findBandIdsWithRecentPost(anyList(), any())).thenReturn(List.of());
         when(postRepository.findLatestActivityAtByBandIds(anyList())).thenReturn(List.of());
 
@@ -160,7 +161,7 @@ class BandRecommendationServiceV2ImplTest {
         when(bandSimilarityRepository.findByBandIdIn(List.of(100L))).thenReturn(List.of(
                 BandSimilarity.builder().band(band(100L, Genre.HARD_ROCK, Region.SEOUL)).similarBand(similarBand).score(0.4).build()
         ));
-        when(bandRepository.findAllById(any())).thenReturn(List.of(similarBand));
+        when(bandRepository.findAllByIdInAndStatus(any(), eq(BandStatus.ACCEPTED))).thenReturn(List.of(similarBand));
         when(postRepository.findBandIdsWithRecentPost(anyList(), any())).thenReturn(List.of());
         when(postRepository.findLatestActivityAtByBandIds(anyList())).thenReturn(List.of());
 
@@ -189,7 +190,7 @@ class BandRecommendationServiceV2ImplTest {
         when(bandSimilarityRepository.findByBandIdIn(List.of(100L))).thenReturn(List.of(
                 BandSimilarity.builder().band(clickedBand).similarBand(similarBand).score(0.8).build()
         ));
-        when(bandRepository.findAllById(any())).thenReturn(List.of(similarBand));
+        when(bandRepository.findAllByIdInAndStatus(any(), eq(BandStatus.ACCEPTED))).thenReturn(List.of(similarBand));
         when(postRepository.findBandIdsWithRecentPost(anyList(), any())).thenReturn(List.of());
         when(postRepository.findLatestActivityAtByBandIds(anyList())).thenReturn(List.of());
 
@@ -226,7 +227,7 @@ class BandRecommendationServiceV2ImplTest {
         when(bandSimilarityRepository.findByBandIdIn(anyList())).thenReturn(List.of(
                 BandSimilarity.builder().band(band(100L, Genre.HARD_ROCK, Region.SEOUL)).similarBand(similarBand).score(0.6).build()
         ));
-        when(bandRepository.findAllById(any())).thenReturn(List.of(similarBand));
+        when(bandRepository.findAllByIdInAndStatus(any(), eq(BandStatus.ACCEPTED))).thenReturn(List.of(similarBand));
         when(postRepository.findBandIdsWithRecentPost(anyList(), any())).thenReturn(List.of());
         when(postRepository.findLatestActivityAtByBandIds(anyList())).thenReturn(List.of());
 
@@ -387,7 +388,7 @@ class BandRecommendationServiceV2ImplTest {
 
         Band popularBand = band(100L, Genre.HARD_ROCK, Region.SEOUL);
         when(followRepository.findTopFollowedBandIds(any(Pageable.class))).thenReturn(List.of(100L));
-        when(bandRepository.findAllById(anyList())).thenReturn(List.of(popularBand));
+        when(bandRepository.findAllByIdInAndStatus(anyList(), eq(BandStatus.ACCEPTED))).thenReturn(List.of(popularBand));
         when(bandRepository.findAllByOrderByCreatedAtDesc(any(Pageable.class))).thenReturn(List.of());
         when(postRepository.findBandIdsWithRecentPost(anyList(), any())).thenReturn(List.of());
         when(postRepository.findLatestActivityAtByBandIds(anyList())).thenReturn(List.of());
@@ -465,7 +466,7 @@ class BandRecommendationServiceV2ImplTest {
         Band followedBand = band(100L, Genre.HARD_ROCK, Region.SEOUL);
         Band otherPopularBand = band(300L, Genre.JAZZ, Region.BUSAN);
         when(followRepository.findTopFollowedBandIds(any(Pageable.class))).thenReturn(List.of(100L, 300L));
-        when(bandRepository.findAllById(anyList())).thenReturn(List.of(followedBand, otherPopularBand));
+        when(bandRepository.findAllByIdInAndStatus(anyList(), eq(BandStatus.ACCEPTED))).thenReturn(List.of(followedBand, otherPopularBand));
         when(bandRepository.findAllByOrderByCreatedAtDesc(any(Pageable.class))).thenReturn(List.of());
         when(postRepository.findBandIdsWithRecentPost(anyList(), any())).thenReturn(List.of());
         when(postRepository.findLatestActivityAtByBandIds(anyList())).thenReturn(List.of());

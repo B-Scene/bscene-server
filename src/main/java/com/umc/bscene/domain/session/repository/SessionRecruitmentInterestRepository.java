@@ -1,5 +1,6 @@
 package com.umc.bscene.domain.session.repository;
 
+import com.umc.bscene.domain.band.annotation.IncludesPendingBands;
 import com.umc.bscene.domain.session.entity.SessionRecruitmentInterest;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
@@ -44,6 +45,7 @@ public interface SessionRecruitmentInterestRepository
           AND (:cursorId IS NULL OR interest.sessionRecruitmentInterestId < :cursorId)
         ORDER BY interest.sessionRecruitmentInterestId DESC
     """)
+    @IncludesPendingBands(reason = "세션 모집은 활동 생성 게이트(BAND_NOT_VERIFIED)로 ACCEPTED 밴드에서만 생성된다")
     List<SessionRecruitmentInterest> findMyInterests(
             @Param("userId") Long userId,
             @Param("cursorId") Long cursorId,

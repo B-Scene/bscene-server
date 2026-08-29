@@ -55,6 +55,10 @@ public class PerformanceService {
     public PerformanceResponse createPerformance(Long userId, Long bandId, PerformanceCreateRequest request) {
         Band band = getBand(bandId);
         validateBandMember(band, userId);
+        // 검수 중(PENDING)엔 활동 생성 불가 - 공연 FK가 생기면 검수 거절(밴드 삭제)이 불가능해짐
+        if (band.isPending()) {
+            throw new BandException(BandErrorCode.BAND_NOT_VERIFIED);
+        }
         validateNotPastDate(request.performanceDate());
         validateTagCount(request.tags());
 

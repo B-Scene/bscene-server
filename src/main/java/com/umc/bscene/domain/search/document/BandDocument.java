@@ -37,6 +37,10 @@ public class BandDocument {
     @Field(type = FieldType.Long, index = false)
     private Long docId;
 
+    // 더미 밴드 필터용 id 사본 (_id는 range 필터 불가, docId는 정렬 전용(index=false)이라 색인되는 필드를 별도로 둔다)
+    @Field(type = FieldType.Long)
+    private Long bandId;
+
     // 검색 대상 (name^3) + 완전 일치 가점용 raw + 접두어(부분 입력) 검색용 prefix
     // prefix는 색인만 잘게 썰고(korean_prefix) 검색어는 썰지 않는다(searchAnalyzer=korean) — 비대칭 필수
     @MultiField(
@@ -76,6 +80,7 @@ public class BandDocument {
         return BandDocument.builder()
                 .id(band.getId())
                 .docId(band.getId())
+                .bandId(band.getId())
                 .popularity(followerCount)
                 .name(band.getName())
                 .description(band.getDescription())

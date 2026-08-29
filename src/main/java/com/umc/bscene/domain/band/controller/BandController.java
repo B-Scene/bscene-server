@@ -97,7 +97,7 @@ public class BandController {
             @AuthenticationPrincipal AuthMember authMember,
             @PathVariable Long bandId
     ) {
-        BandProfileResponse response = bandService.getBandProfile(bandId);
+        BandProfileResponse response = bandService.getBandProfile(authMember.getUser().getId(), bandId);
         interactionService.recordClick(authMember.getUser().getId(), bandId);
         SuccessResponse<BandProfileResponse> successResponse = SuccessResponse.of(
                 response,
