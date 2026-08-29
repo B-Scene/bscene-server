@@ -5,6 +5,7 @@ import com.umc.bscene.domain.auth.enums.onboarding.Region;
 import com.umc.bscene.domain.band.dto.response.BandRecommendItem;
 import com.umc.bscene.domain.band.dto.response.BandRecommendResponse;
 import com.umc.bscene.domain.band.entity.Band;
+import com.umc.bscene.domain.band.enums.BandStatus;
 import com.umc.bscene.domain.band.repository.BandRepository;
 import com.umc.bscene.domain.band.service.BandRecommendationService;
 import com.umc.bscene.domain.performance.enums.PerformanceStatus;
@@ -66,7 +67,7 @@ public class BandRecommendationServiceV1Impl implements BandRecommendationServic
                 .map(UserRegions::getRegion)
                 .collect(Collectors.toSet());
 
-        List<Band> candidates = bandRepository.findAll();
+        List<Band> candidates = bandRepository.findAllByStatus(BandStatus.ACCEPTED);
         List<Long> candidateIds = candidates.stream().map(Band::getId).toList();
 
         LocalDateTime postSince = LocalDateTime.now().minusDays(RECENT_ACTIVITY_DAYS);

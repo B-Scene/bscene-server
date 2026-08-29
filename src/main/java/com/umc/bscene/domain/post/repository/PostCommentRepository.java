@@ -1,5 +1,6 @@
 package com.umc.bscene.domain.post.repository;
 
+import com.umc.bscene.domain.band.annotation.IncludesPendingBands;
 import com.umc.bscene.domain.post.entity.PostComment;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Slice;
@@ -59,6 +60,7 @@ public interface PostCommentRepository extends JpaRepository<PostComment, Long> 
               AND c.bandMemberProfile IS NOT NULL
               AND c.post.id IN (SELECT p.id FROM Post p WHERE p.band.id = :bandId)
             """)
+    @IncludesPendingBands(reason = "정리용 삭제(멤버 탈퇴·검수 밴드 삭제) - 밴드 상태와 무관하게 남은 행을 지워야 한다")
     void deleteBandComments(@Param("bandId") Long bandId, @Param("userId") Long userId);
 
     // 멤버 프로필 삭제 시 : 그 프로필 명의로 쓴 댓글 일괄 삭제 (FK 제약 선해소)

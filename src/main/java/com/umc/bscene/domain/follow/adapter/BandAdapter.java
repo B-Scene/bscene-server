@@ -46,6 +46,11 @@ public class BandAdapter implements FollowPort {
     }
 
     @Override
+    public void deleteAllByBandId(Long bandId) {
+        followRepository.deleteByBand_Id(bandId);
+    }
+
+    @Override
     public boolean isFollowing(Long userId, Long bandId) {
         return followRepository.existsByBand_IdAndUser_Id(bandId, userId);
     }

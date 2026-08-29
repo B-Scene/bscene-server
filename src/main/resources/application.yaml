@@ -119,6 +119,12 @@ notification:
     enabled: ${FCM_ENABLED:false}
     credentials-base64: ${FCM_CREDENTIALS_BASE64:}
 
+# discord 밴드 생성 검수 봇 (토큰 미설정 시 봇 비활성화)
+discord:
+  bot:
+    token: ${DISCORD_BOT_TOKEN:}
+    verify-channel-id: ${DISCORD_VERIFY_CHANNEL_ID:}
+
 # spring actuator
 management:
   server:

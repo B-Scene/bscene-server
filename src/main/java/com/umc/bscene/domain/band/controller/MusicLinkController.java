@@ -27,9 +27,10 @@ public class MusicLinkController {
     // 음원 링크 조회 API
     @GetMapping
     public ResponseEntity<SuccessResponse<MusicLinkResponse>> getMusicLink(
+            @AuthenticationPrincipal AuthMember authMember,
             @PathVariable Long bandId
     ) {
-        MusicLinkResponse response = bandService.getMusicLink(bandId);
+        MusicLinkResponse response = bandService.getMusicLink(authMember.getUser().getId(), bandId);
         SuccessResponse<MusicLinkResponse> successResponse = SuccessResponse.of(
                 response,
                 BandSuccessCode.MUSIC_LINK_GET_SUCCESS

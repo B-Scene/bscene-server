@@ -7,6 +7,7 @@ import com.umc.bscene.domain.band.entity.BandMember;
 import com.umc.bscene.domain.band.entity.BandMemberProfile;
 import com.umc.bscene.domain.band.enums.BandMemberStatus;
 import com.umc.bscene.domain.band.enums.BandMemberType;
+import com.umc.bscene.domain.band.enums.BandStatus;
 import com.umc.bscene.domain.band.repository.BandMemberRepository;
 import com.umc.bscene.domain.band.repository.BandRepository;
 import com.umc.bscene.domain.session.enums.Part;
@@ -62,6 +63,7 @@ class StreamAdapterTest {
         return band(id, name, profileImageUrl, DEFAULT_OWNER_ID);
     }
 
+    // 검수 통과 밴드 (Band.builder 기본값은 PENDING - 라이브 활동이 차단됨)
     private static Band band(Long id, String name, String profileImageUrl, Long ownerId) {
         return Band.builder()
                 .id(id)
@@ -71,6 +73,18 @@ class StreamAdapterTest {
                 .region(Region.SEOUL)
                 .profileImageUrl(profileImageUrl)
                 .description("description-" + id)
+                .status(BandStatus.ACCEPTED)
+                .build();
+    }
+
+    private static Band pendingBand(Long id, String name) {
+        return Band.builder()
+                .id(id)
+                .owner(StreamFixtures.bandUser(DEFAULT_OWNER_ID))
+                .name(name)
+                .genre(Genre.INDIE)
+                .region(Region.SEOUL)
+                .status(BandStatus.PENDING)
                 .build();
     }
 
@@ -199,6 +213,17 @@ class StreamAdapterTest {
         void returnsEmptyWhenNoActiveMembership() {
             when(bandMemberRepository.findWithBandByUser_IdInAndStatus(Set.of(100L), BandMemberStatus.ACCEPTED))
                     .thenReturn(List.of());
+
+            assertThat(adapter.getBandSummaryByBroadcasterId(100L)).isEmpty();
+        }
+
+        @Test
+        @DisplayName("검수 중(PENDING) 밴드는 라이브 이력이 생기면 검수 거절이 불가능해지므로 빈 Optional을 반환한다")
+        void returnsEmptyWhenBandIsPending() {
+            BandMember bandMember = member(1L, pendingBand(BAND_ID, "검수중밴드"),
+                    profile(11L, "닉A", Part.GUITAR), StreamFixtures.bandUser(100L), BandMemberStatus.ACCEPTED);
+            when(bandMemberRepository.findWithBandByUser_IdInAndStatus(Set.of(100L), BandMemberStatus.ACCEPTED))
+                    .thenReturn(List.of(bandMember));
 
             assertThat(adapter.getBandSummaryByBroadcasterId(100L)).isEmpty();
         }

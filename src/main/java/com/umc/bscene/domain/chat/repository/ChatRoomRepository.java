@@ -1,5 +1,6 @@
 package com.umc.bscene.domain.chat.repository;
 
+import com.umc.bscene.domain.band.annotation.IncludesPendingBands;
 import com.umc.bscene.domain.chat.entity.ChatRoom;
 import org.springframework.data.jpa.repository.JpaRepository;
 import java.util.Optional;
@@ -54,6 +55,7 @@ public interface ChatRoomRepository extends JpaRepository<ChatRoom, Long> {
           WHERE latestMessage.chatRoom.chatRoomId = room.chatRoomId
         ), 0) DESC, room.chatRoomId DESC
     """)
+    @IncludesPendingBands(reason = "지원서·채팅은 ACCEPTED 밴드의 모집에서만 파생된다")
     List<ChatRoom> findMyRooms(@Param("userId") Long userId,
                                @Param("cursorId") Long cursorId,
                                @Param("unreadOnly") boolean unreadOnly,
@@ -68,5 +70,6 @@ public interface ChatRoomRepository extends JpaRepository<ChatRoom, Long> {
         LEFT JOIN FETCH room.sessionApplication
         WHERE room.chatRoomId = :roomId
     """)
+    @IncludesPendingBands(reason = "지원서·채팅은 ACCEPTED 밴드의 모집에서만 파생된다")
     Optional<ChatRoom> findDetail(@Param("roomId") Long roomId);
 }

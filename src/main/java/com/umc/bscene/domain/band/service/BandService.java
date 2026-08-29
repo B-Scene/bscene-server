@@ -19,17 +19,20 @@ import com.umc.bscene.domain.band.dto.response.BandPublicMemberProfileResponse;
 import com.umc.bscene.domain.band.dto.response.BandResponse;
 import com.umc.bscene.domain.band.dto.response.MusicLinkResponse;
 import com.umc.bscene.domain.band.entity.Band;
+import com.umc.bscene.domain.band.entity.BandCreationRequest;
 import com.umc.bscene.domain.band.entity.BandMember;
 import com.umc.bscene.domain.band.entity.BandMemberProfile;
 import com.umc.bscene.domain.band.entity.MusicLink;
 import com.umc.bscene.domain.band.enums.BandMemberStatus;
 import com.umc.bscene.domain.band.enums.BandMemberType;
+import com.umc.bscene.domain.band.enums.BandStatus;
 import com.umc.bscene.domain.band.exception.BandException;
 import com.umc.bscene.domain.band.port.FollowPort;
 import com.umc.bscene.domain.band.port.NotifyPort;
 import com.umc.bscene.domain.band.port.PerformancePort;
 import com.umc.bscene.domain.band.port.PostCommentPort;
 import com.umc.bscene.domain.band.port.StreamPort;
+import com.umc.bscene.domain.band.repository.BandCreationRequestRepository;
 import com.umc.bscene.domain.band.repository.BandMemberProfileRepository;
 import com.umc.bscene.domain.band.repository.BandMemberRepository;
 import com.umc.bscene.domain.band.repository.BandRepository;
@@ -42,6 +45,7 @@ import com.umc.bscene.domain.user.repository.UserRepository;
 import com.umc.bscene.global.response.CursorPage;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionSynchronization;
@@ -57,6 +61,7 @@ import java.util.stream.Collectors;
 public class BandService {
 
     private final BandRepository bandRepository;
+    private final BandCreationRequestRepository bandCreationRequestRepository;
     private final BandMemberRepository bandMemberRepository;
     private final BandMemberProfileRepository bandMemberProfileRepository;
     private final MusicLinkRepository musicLinkRepository;
@@ -68,11 +73,14 @@ public class BandService {
     private final PostCommentPort postCommentPort;
     private final ApplicationEventPublisher eventPublisher;
     private final BandMemberProfileService bandMemberProfileService;
+    private final BandVerifyMessenger bandVerifyMessenger;
 
     // 밴드 개설 (요청자가 오너가 됨, 이 밴드에서 사용할 멤버 프로필 선택)
     @Transactional
     public BandResponse createBand(Long ownerId, BandCreateRequest request) {
-        if (bandRepository.existsByName(request.name())) {
+        // 동명의 검수 중(PENDING) 요청만 중복으로 막는다.
+        // ACCEPTED 동명 밴드(더미)는 허용 - 검수 수락 시 기존 밴드를 삭제하고 교체하는 플로우로 이어진다.
+        if (bandRepository.existsByNameAndStatus(request.name(), BandStatus.PENDING)) {
             throw new BandException(BandErrorCode.DUPLICATE_BAND_NAME);
         }
 
@@ -85,8 +93,16 @@ public class BandService {
                 .region(request.region())
                 .profileImageUrl(request.profileImageUrl())
                 .description(request.description())
+                .status(BandStatus.PENDING)
                 .build();
-        Band savedBand = bandRepository.save(band);
+
+        Band savedBand;
+        try {
+            savedBand = bandRepository.save(band);
+        } catch (DataIntegrityViolationException e) {
+            // 위 exists 체크와 INSERT 사이에 동명 PENDING 요청이 먼저 들어온 경우 (name, status) 유니크가 잡아준다
+            throw new BandException(BandErrorCode.DUPLICATE_BAND_NAME);
+        }
 
         BandMember ownerMembership = BandMember.builder()
                 .band(savedBand)
@@ -96,21 +112,30 @@ public class BandService {
                 .build();
         bandMemberRepository.save(ownerMembership);
 
-        // 검색 색인 동기화 (커밋 후 search 도메인 리스너가 비동기 처리)
-        eventPublisher.publishEvent(new BandChangedEvent(savedBand.getId()));
+        BandCreationRequest creationRequest = BandCreationRequest.builder()
+                .band(savedBand)
+                .requesterId(ownerId)
+                .bandName(savedBand.getName())
+                .build();
+        bandCreationRequestRepository.save(creationRequest);
+
+        // 검색 색인(BandChangedEvent)은 검수 수락 시점에 발행 — PENDING 밴드는 색인하지 않는다
+        notifyCreateRequestedAfterCommit(ownerId, savedBand.getName(), savedBand.getId());
+        sendVerifyMessageAfterCommit(creationRequest.getId());
 
         return BandResponse.from(savedBand);
     }
 
-    // 밴드명 중복 체크
+    // 밴드명 중복 체크 - createBand와 동일 기준(PENDING 중복만 사용 불가)이어야 결과가 어긋나지 않는다
     public BandNameCheckResponse checkBandName(String bandName) {
-        boolean available = !bandRepository.existsByName(bandName);
+        boolean available = !bandRepository.existsByNameAndStatus(bandName, BandStatus.PENDING);
         return new BandNameCheckResponse(available);
     }
 
-    // 밴드 프로필 조회
-    public BandProfileResponse getBandProfile(Long bandId) {
+    // 밴드 프로필 조회 (userId: 조회자 — PENDING 밴드는 소속 멤버에게만 보이므로 필요)
+    public BandProfileResponse getBandProfile(Long userId, Long bandId) {
         Band band = getBand(bandId);
+        validateVisible(band, userId);
 
         Long followerCount = followPort.countFollowersByBandId(bandId);
         Long memberCount = bandMemberRepository.countByBand_IdAndStatus(bandId, BandMemberStatus.ACCEPTED);
@@ -122,6 +147,7 @@ public class BandService {
     // 팬모드 밴드 상세 조회 : 밴드 기본 정보 + 팔로우 여부 + 라이브 진행 여부/입장용 라이브 ID
     public BandDetailResponse getBandDetail(Long userId, Long bandId) {
         Band band = getBand(bandId);
+        validateVisible(band, userId);
 
         Long followerCount = followPort.countFollowersByBandId(bandId);
         Long liveId;
@@ -147,7 +173,8 @@ public class BandService {
 
         if (request.name() != null
                 && !request.name().equals(band.getName())
-                && bandRepository.existsByName(request.name())) {
+                // (name, status) 복합 유니크와 같은 기준: 같은 상태의 동명 밴드가 있을 때만 개명 불가
+                && bandRepository.existsByNameAndStatus(request.name(), band.getStatus())) {
             throw new BandException(BandErrorCode.DUPLICATE_BAND_NAME);
         }
 
@@ -168,6 +195,11 @@ public class BandService {
 
         if (Boolean.TRUE.equals(request.deleteProfileImage())) {
             band.deleteProfileImage();
+        }
+
+        // 검수 중 정보가 바뀌면 Discord 검수 카드도 새 내용으로 갱신 - 운영진이 옛 카드를 보고 승인하는 것 방지
+        if (band.isPending()) {
+            updateVerifyCardAfterCommit(band.getId());
         }
 
         // 검색 색인 동기화 (밴드명·장르·지역 변경 시 소속 공연·영상 문서까지 연쇄 재색인됨)
@@ -258,9 +290,10 @@ public class BandService {
         deleteBandMemberAndOrphanProfile(bandMember);
     }
 
-    // 밴드 멤버 목록 조회 (수락한 멤버 + 초대 대기 중인 멤버)
-    public List<BandMemberResponse> getMembers(Long bandId) {
-        getBand(bandId);
+    // 밴드 멤버 목록 조회 (수락한 멤버 + 초대 대기 중인 멤버, PENDING 밴드는 소속 멤버만 조회 가능)
+    public List<BandMemberResponse> getMembers(Long userId, Long bandId) {
+        Band band = getBand(bandId);
+        validateVisible(band, userId);
 
         return bandMemberRepository.findWithProfileByBand_IdOrderByIdAsc(bandId).stream()
                 .map(BandMemberResponse::from)
@@ -306,9 +339,10 @@ public class BandService {
                 .toList();
     }
 
-    // 음원 링크 조회 (없으면 빈 값 반환)
-    public MusicLinkResponse getMusicLink(Long bandId) {
-        getBand(bandId);
+    // 음원 링크 조회 (없으면 빈 값 반환, PENDING 밴드는 소속 멤버만 조회 가능)
+    public MusicLinkResponse getMusicLink(Long userId, Long bandId) {
+        Band band = getBand(bandId);
+        validateVisible(band, userId);
 
         MusicLink musicLink = musicLinkRepository.findByBand_Id(bandId).orElse(null);
         return MusicLinkResponse.from(musicLink);
@@ -398,9 +432,57 @@ public class BandService {
                 .orElseThrow(() -> new BandException(BandErrorCode.BAND_NOT_FOUND));
     }
 
+    // 검수 중(PENDING) 밴드는 소속 멤버에게만 보인다 — 외부에는 존재하지 않는 밴드로 취급
+    private void validateVisible(Band band, Long userId) {
+        if (band.isPending()
+                && !bandMemberRepository.existsByBand_IdAndUser_IdAndStatus(
+                        band.getId(), userId, BandMemberStatus.ACCEPTED)) {
+            throw new BandException(BandErrorCode.BAND_NOT_FOUND);
+        }
+    }
+
     private BandMember getBandMember(Long bandId, Long userId, BandErrorCode notFoundCode) {
         return bandMemberRepository.findByBand_IdAndUser_Id(bandId, userId)
                 .orElseThrow(() -> new BandException(notFoundCode));
+    }
+
+    private void updateVerifyCardAfterCommit(Long bandId) {
+        TransactionSynchronizationManager.registerSynchronization(
+                new TransactionSynchronization() {
+                    @Override
+                    public void afterCommit() {
+                        bandVerifyMessenger.updateVerifyMessage(bandId);
+                    }
+                }
+        );
+    }
+
+    private void sendVerifyMessageAfterCommit(Long creationRequestId) {
+        TransactionSynchronizationManager.registerSynchronization(
+                new TransactionSynchronization() {
+                    @Override
+                    public void afterCommit() {
+                        bandVerifyMessenger.sendVerifyMessage(creationRequestId);
+                    }
+                }
+        );
+    }
+
+    private void notifyCreateRequestedAfterCommit(
+            Long requesterId,
+            String bandName,
+            Long bandId
+    ) {
+        BandPushMessage message = BandPushMessage.createRequested(bandName, bandId);
+
+        TransactionSynchronizationManager.registerSynchronization(
+                new TransactionSynchronization() {
+                    @Override
+                    public void afterCommit() {
+                        notifyPort.notify(requesterId, message);
+                    }
+                }
+        );
     }
 
     private void notifyMemberAfterCommit(
@@ -458,9 +540,10 @@ public class BandService {
         }
     }
 
-    // 팬에게 공개할 정식 밴드 구성원 프로필 조회
-    public List<BandPublicMemberProfileResponse> getPublicMemberProfiles(Long bandId) {
+    // 팬에게 공개할 정식 밴드 구성원 프로필 조회 (PENDING 밴드는 소속 멤버만 조회 가능)
+    public List<BandPublicMemberProfileResponse> getPublicMemberProfiles(Long userId, Long bandId) {
         Band band = getBand(bandId);
+        validateVisible(band, userId);
 
         return bandMemberRepository.findPublicBandMembers(
                         bandId,

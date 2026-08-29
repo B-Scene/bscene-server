@@ -5,6 +5,7 @@ import com.umc.bscene.domain.auth.enums.onboarding.Region;
 import com.umc.bscene.domain.band.dto.response.BandRecommendItem;
 import com.umc.bscene.domain.band.dto.response.BandRecommendResponse;
 import com.umc.bscene.domain.band.entity.Band;
+import com.umc.bscene.domain.band.enums.BandStatus;
 import com.umc.bscene.domain.band.repository.BandRepository;
 import com.umc.bscene.domain.band.service.impl.BandRecommendationServiceV2Impl;
 import com.umc.bscene.domain.follow.repository.FollowRepository;
@@ -36,6 +37,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.anyCollection;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.Mockito.verify;
@@ -153,7 +155,7 @@ class BandRecommendationServiceV2ImplTest {
         when(followRepository.findBandIdsByUserId(USER_ID)).thenReturn(List.of(10L));
         when(bandSimilarityRepository.findByBandIdIn(anyList()))
                 .thenReturn(List.of(similarity(followedBand, similarBand, 0.9)));
-        when(bandRepository.findAllById(anyCollection())).thenReturn(List.of(similarBand));
+        when(bandRepository.findAllByIdInAndStatus(anyCollection(), eq(BandStatus.ACCEPTED))).thenReturn(List.of(similarBand));
         stubEmptyActivityAndPopularity(List.of(99L));
 
         BandRecommendResponse response = service.getRecommendedBands(USER_ID, null, null);
@@ -222,7 +224,7 @@ class BandRecommendationServiceV2ImplTest {
         // 빈 결과 대신 인기 밴드 폴백이 채워져야 한다 (콜드스타트 대응).
         Band popularBand = band(100L, Genre.HARD_ROCK, Region.SEOUL);
         when(followRepository.findTopFollowedBandIds(any(Pageable.class))).thenReturn(List.of(100L));
-        when(bandRepository.findAllById(anyCollection())).thenReturn(List.of(popularBand));
+        when(bandRepository.findAllByIdInAndStatus(anyCollection(), eq(BandStatus.ACCEPTED))).thenReturn(List.of(popularBand));
         when(bandRepository.findAllByOrderByCreatedAtDesc(any(Pageable.class))).thenReturn(List.of());
         stubEmptyActivityAndPopularity(List.of(100L));
 

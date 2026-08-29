@@ -30,6 +30,9 @@ public interface AudioStreamRepository extends JpaRepository<AudioStream, Long> 
 
     boolean existsByIdAndStatus(Long id, StreamStatus status);
 
+    // 밴드의 라이브 이력 존재 여부 (검수 플로우 밴드 삭제 안전장치용)
+    boolean existsByBandId(Long bandId);
+
     long countByBroadcasterIdAndStatus(Long broadcasterId, StreamStatus status);
 
     List<AudioStream> findAllByPathIn(List<String> paths);
@@ -40,6 +43,7 @@ select a from AudioStream as a
 where a.path in :paths
     and (:cursor is null or a.id < :cursor)
     and a.status = 'OPEN'
+    and a.bandId in (select b.id from Band b where b.status = com.umc.bscene.domain.band.enums.BandStatus.ACCEPTED)
 order by a.id desc
 """)
     List<AudioStream> findLivePage(
@@ -69,6 +73,7 @@ order by a.id desc
 select a from AudioStream as a
 where a.status = 'SCHEDULED'
     and a.scheduledAt > :now
+    and a.bandId in (select b.id from Band b where b.status = com.umc.bscene.domain.band.enums.BandStatus.ACCEPTED)
     and (:cursorScheduledAt is null
         or a.scheduledAt > :cursorScheduledAt
         or (a.scheduledAt = :cursorScheduledAt and a.id > :cursorId))
@@ -100,10 +105,17 @@ order by a.scheduledAt asc, a.id asc
             Pageable pageable
     );
 
-    // 홈 예정 라이브 섹션용 상위 N개 (팬 모드: 전체)
+    // 홈 예정 라이브 섹션용 상위 N개 (팬 모드: 전체, 검수 통과 밴드만)
+    @Query("""
+select a from AudioStream as a
+where a.status = :status
+    and a.scheduledAt > :now
+    and a.bandId in (select b.id from Band b where b.status = com.umc.bscene.domain.band.enums.BandStatus.ACCEPTED)
+order by a.scheduledAt asc, a.id asc
+""")
     List<AudioStream> findByStatusAndScheduledAtAfterOrderByScheduledAtAscIdAsc(
-            StreamStatus status,
-            LocalDateTime now,
+            @Param("status") StreamStatus status,
+            @Param("now") LocalDateTime now,
             Pageable pageable
     );
 

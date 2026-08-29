@@ -43,6 +43,7 @@ group by r.audioStream.id
 select r from StreamReplay r
 join fetch r.audioStream
 where r.s3Key = (select min(r2.s3Key) from StreamReplay r2 where r2.audioStream.id = r.audioStream.id)
+    and r.audioStream.bandId in (select b.id from Band b where b.status = com.umc.bscene.domain.band.enums.BandStatus.ACCEPTED)
 order by r.id desc
 """)
     List<StreamReplay> findLatestReplays(Pageable pageable);
@@ -52,6 +53,7 @@ order by r.id desc
 select r from StreamReplay r
 join fetch r.audioStream
 where r.s3Key = (select min(r2.s3Key) from StreamReplay r2 where r2.audioStream.id = r.audioStream.id)
+    and r.audioStream.bandId in (select b.id from Band b where b.status = com.umc.bscene.domain.band.enums.BandStatus.ACCEPTED)
     and (:cursor is null or r.id < :cursor)
 order by r.id desc
 """)
@@ -75,6 +77,7 @@ order by r.id desc
 select r from StreamReplay r
 join fetch r.audioStream
 where r.s3Key = (select min(r2.s3Key) from StreamReplay r2 where r2.audioStream.id = r.audioStream.id)
+    and r.audioStream.bandId in (select b.id from Band b where b.status = com.umc.bscene.domain.band.enums.BandStatus.ACCEPTED)
     and (:cursor is null
         or r.viewCount < :cursorViewCount
         or (r.viewCount = :cursorViewCount and r.id < :cursor))
