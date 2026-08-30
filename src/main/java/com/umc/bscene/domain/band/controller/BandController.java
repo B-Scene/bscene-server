@@ -59,13 +59,15 @@ public class BandController {
     }
 
     // 밴드 추천 목록 조회 API
+    // withDummy=false면 더미 밴드(운영 DB 시드 id 1~474)를 추천 후보에서 제외, 생략·true면 전체 (기존 호환)
     @GetMapping("/recommendations")
     public ResponseEntity<SuccessResponse<BandRecommendResponse>> getRecommendedBands(
             @AuthenticationPrincipal AuthMember authMember,
             @RequestParam(required = false) Long cursor,
-            @RequestParam(required = false) Integer size
+            @RequestParam(required = false) Integer size,
+            @RequestParam(defaultValue = "true") boolean withDummy
     ) {
-        BandRecommendResponse response = bandRecommendationService.getRecommendedBands(authMember.getUser().getId(), cursor, size);
+        BandRecommendResponse response = bandRecommendationService.getRecommendedBands(authMember.getUser().getId(), cursor, size, withDummy);
         SuccessResponse<BandRecommendResponse> successResponse = SuccessResponse.of(
                 response,
                 BandSuccessCode.BAND_RECOMMEND_LIST_GET_SUCCESS

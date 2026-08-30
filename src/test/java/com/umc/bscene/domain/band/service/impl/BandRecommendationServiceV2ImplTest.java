@@ -124,6 +124,44 @@ class BandRecommendationServiceV2ImplTest {
     }
 
     @Test
+    void withDummyDefaultsToTrueAndIncludesDummyBands() {
+        when(followRepository.findBandIdsByUserId(USER_ID)).thenReturn(List.of());
+        when(userGenresRepository.findAllByUser(any(User.class)))
+                .thenReturn(List.of(UserGenres.builder().genre(Genre.HARD_ROCK).build()));
+        when(userRegionsRepository.findAllByUser(any(User.class))).thenReturn(List.of());
+
+        Band dummyBand = band(474L, Genre.HARD_ROCK, Region.SEOUL);
+        Band realBand = band(475L, Genre.HARD_ROCK, Region.SEOUL);
+        when(bandRepository.findByGenreIn(any())).thenReturn(List.of(dummyBand, realBand));
+        when(postRepository.findBandIdsWithRecentPost(anyList(), any())).thenReturn(List.of());
+        when(postRepository.findLatestActivityAtByBandIds(anyList())).thenReturn(List.of());
+
+        // withDummy 생략 -> 기본값 true, 더미 밴드도 그대로 포함
+        BandRecommendResponse response = service.getRecommendedBands(USER_ID, null, null);
+
+        assertEquals(2, response.bands().size());
+    }
+
+    @Test
+    void withDummyFalseExcludesDummyBands() {
+        when(followRepository.findBandIdsByUserId(USER_ID)).thenReturn(List.of());
+        when(userGenresRepository.findAllByUser(any(User.class)))
+                .thenReturn(List.of(UserGenres.builder().genre(Genre.HARD_ROCK).build()));
+        when(userRegionsRepository.findAllByUser(any(User.class))).thenReturn(List.of());
+
+        Band dummyBand = band(474L, Genre.HARD_ROCK, Region.SEOUL);
+        Band realBand = band(475L, Genre.HARD_ROCK, Region.SEOUL);
+        when(bandRepository.findByGenreIn(any())).thenReturn(List.of(dummyBand, realBand));
+        when(postRepository.findBandIdsWithRecentPost(anyList(), any())).thenReturn(List.of());
+        when(postRepository.findLatestActivityAtByBandIds(anyList())).thenReturn(List.of());
+
+        BandRecommendResponse response = service.getRecommendedBands(USER_ID, null, null, false);
+
+        assertEquals(1, response.bands().size());
+        assertEquals(475L, response.bands().get(0).bandId());
+    }
+
+    @Test
     void similarityAverageIsCappedBeforeNormalizing() {
         List<Long> followedBandIds = List.of(100L, 200L, 300L);
         when(followRepository.findBandIdsByUserId(USER_ID)).thenReturn(followedBandIds);
