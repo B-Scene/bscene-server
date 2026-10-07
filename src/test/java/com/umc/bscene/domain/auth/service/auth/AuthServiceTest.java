@@ -52,6 +52,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.startsWith;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.verify;
@@ -863,6 +864,42 @@ class AuthServiceTest {
                 .startsWith("refreshToken:")
                 .doesNotContain("new-refresh-token")
                 .isNotEqualTo(deletedKeyCaptor.getValue());
+    }
+
+    @ParameterizedTest
+    @CsvSource({
+            "SUSPENDED, SUSPENDED_ACCOUNT",
+            "INACTIVE, INACTIVE_ACCOUNT",
+            "DELETED, DELETED_ACCOUNT"
+    })
+    void reissue_이용_불가_상태의_계정이면_예외를_던지고_리프레시_토큰을_폐기한다(
+            UserStatus status,
+            AuthErrorCode expectedCode
+    ) {
+        ReissueRequest request = new ReissueRequest("old-refresh-token");
+        User user = user(100L, status);
+
+        when(jwtUtil.isValid(request.refreshToken()))
+                .thenReturn(true);
+        when(jwtUtil.getType(request.refreshToken()))
+                .thenReturn("refresh");
+        when(stringRedisTemplate.opsForValue())
+                .thenReturn(valueOperations);
+        when(valueOperations.get(anyString()))
+                .thenReturn(String.valueOf(user.getId()));
+        when(userRepository.findById(user.getId()))
+                .thenReturn(Optional.of(user));
+
+        AuthException exception = assertThrows(
+                AuthException.class,
+                () -> service.reissue(request)
+        );
+
+        assertThat(exception.getBaseResponseCode()).isEqualTo(expectedCode);
+        verify(stringRedisTemplate).delete(startsWith("refreshToken:"));
+        verify(jwtUtil, never()).createAccessToken(any());
+        verify(jwtUtil, never()).createRefreshToken(any());
+        verify(valueOperations, never()).set(anyString(), anyString(), any(Duration.class));
     }
 
     // ---------- logout ----------
