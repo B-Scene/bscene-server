@@ -301,6 +301,12 @@ public class AuthService {
         User user = userRepository.findById(Long.parseLong(userId))
                 .orElseThrow(() -> new AuthException(AuthErrorCode.INVALID_REFRESH_TOKEN));
 
+        // 정지/휴면/탈퇴 계정은 로그인과 동일하게 재발급도 차단하고, 보유한 리프레시 토큰은 폐기한다
+        if (user.getStatus() != UserStatus.ACTIVE) {
+            stringRedisTemplate.delete("refreshToken:" + refreshTokenHash);
+            validateUserStatus(user);
+        }
+
         AuthMember authMember = new AuthMember(user);
         String newAccessToken = jwtUtil.createAccessToken(authMember);
         String newRefreshToken = jwtUtil.createRefreshToken(authMember);
