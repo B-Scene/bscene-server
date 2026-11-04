@@ -6,7 +6,9 @@ import com.umc.bscene.domain.auth.dto.auth.request.TermAgreementRequest;
 import com.umc.bscene.domain.auth.dto.auth.response.LoginUserResponse;
 import com.umc.bscene.domain.auth.dto.auth.response.TokenResponse;
 import com.umc.bscene.domain.auth.entity.term.UserTerms;
+import com.umc.bscene.domain.auth.enums.code.AuthErrorCode;
 import com.umc.bscene.domain.auth.enums.verification.PhoneVerificationPurpose;
+import com.umc.bscene.domain.auth.exception.auth.AuthException;
 import com.umc.bscene.domain.auth.repository.term.TermsRepository;
 import com.umc.bscene.domain.auth.repository.term.UserTermsRepository;
 import com.umc.bscene.domain.auth.service.verification.PhoneVerificationService;
@@ -17,8 +19,10 @@ import com.umc.bscene.domain.oauth.enums.SocialProvider;
 import com.umc.bscene.domain.oauth.exception.OauthException;
 import com.umc.bscene.domain.oauth.repository.OauthAccountRepository;
 import com.umc.bscene.domain.oauth.response.code.OauthErrorCode;
+import com.umc.bscene.domain.oauth.verifier.VerifiedSocialIdentity;
 import com.umc.bscene.domain.user.entity.User;
 import com.umc.bscene.domain.user.enums.Gender;
+import com.umc.bscene.domain.user.enums.UserStatus;
 import com.umc.bscene.domain.user.repository.UserRepository;
 import com.umc.bscene.global.security.dto.response.OAuthResponse;
 import com.umc.bscene.global.security.entity.AuthMember;
@@ -58,22 +62,69 @@ public class OauthService {
     private final JwtUtil jwtUtil;
     private final ObjectMapper objectMapper = new ObjectMapper();
 
-    // 소셜 로그인 성공 처리: 기존 유저는 토큰 발급, 신규 유저는 임시 signup 토큰 발급
+    // 웹 소셜 로그인 성공 처리 (Spring Security 리다이렉트 경로).
+    // 기존/신규 판별은 CustomOAuthService 가 이미 했으므로 DB 를 다시 조회하지 않고 공통 처리만 태운다
     @Transactional
     public OauthLoginResponse handleLoginSuccess(OAuthMember member) {
         if (member.isNewUser()) {
+            // 신원 객체는 signup 토큰 발급에만 쓰이므로 신규 분기에서만 만든다
             OAuthResponse info = member.getOauthInfo();
-            String signupToken = jwtUtil.createSignupToken(
-                    info.getProvider().name(),
+            return issueSignupResult(new VerifiedSocialIdentity(
+                    info.getProvider(),
                     info.getProviderUid(),
-                    info.getName(),
-                    info.getEmail()
-            );
-            // email은 프론트가 온보딩 화면 아이디 칸을 채우는 용도로 함께 반환
-            return OauthLoginResponse.ofNew(signupToken, info.getEmail());
+                    info.getEmail(),
+                    info.getName()
+            ));
+        }
+        return loginExistingUser(member.getUser());
+    }
+
+    // 모바일 SDK 로그인 공통 입구.
+    // 검증기(카카오/구글/Apple)가 제공자 토큰을 서버에서 검증해 만든 신원만 받는다. FE 입력으로 만든 값은 절대 넘기지 않는다
+    @Transactional
+    public OauthLoginResponse loginWithVerifiedIdentity(VerifiedSocialIdentity identity) {
+        return oauthAccountRepository
+                .findByProviderAndProviderUid(identity.provider(), identity.providerUid())
+                .map(account -> loginExistingUser(account.getUser()))
+                .orElseGet(() -> issueSignupResult(identity));
+    }
+
+    // 기존 회원: 계정 상태 확인 후 access/refresh 토큰 발급 (웹·모바일 공통)
+    private OauthLoginResponse loginExistingUser(User user) {
+        validateUserStatus(user);
+        return OauthLoginResponse.ofExisting(login(user));
+    }
+
+    // 신규 회원: 임시 signup 토큰 발급 (웹·모바일 공통).
+    // 명세 v0.3: 신규 가입은 제공자 이메일이 필수. 기존 회원은 providerUid 로 식별하므로 이 검사를 여기서만 한다
+    private OauthLoginResponse issueSignupResult(VerifiedSocialIdentity identity) {
+        if (identity.email() == null || identity.email().isBlank()) {
+            throw new OauthException(OauthErrorCode.EMAIL_NOT_PROVIDED);
         }
 
-        return OauthLoginResponse.ofExisting(login(member.getUser()));
+        String signupToken = jwtUtil.createSignupToken(
+                identity.provider().name(),
+                identity.providerUid(),
+                identity.name(),
+                identity.email()
+        );
+        // email 은 프론트가 온보딩 화면 아이디 칸을 채우는 용도로 함께 반환
+        return OauthLoginResponse.ofNew(signupToken, identity.email());
+    }
+
+    // 정지·휴면·탈퇴 계정은 소셜 로그인 토큰을 발급하지 않는다 (AuthService.reissue 와 같은 기준).
+    // 발급 후에는 JwtAuthFilter 의 매 요청 상태 검사가 막아주지만, 로그인 단계에서 바로 거절해야 FE 가 안내할 수 있다
+    private void validateUserStatus(User user) {
+        UserStatus status = user.getStatus();
+        if (status == UserStatus.SUSPENDED) {
+            throw new AuthException(AuthErrorCode.SUSPENDED_ACCOUNT);
+        }
+        if (status == UserStatus.INACTIVE) {
+            throw new AuthException(AuthErrorCode.INACTIVE_ACCOUNT);
+        }
+        if (status == UserStatus.DELETED) {
+            throw new AuthException(AuthErrorCode.DELETED_ACCOUNT);
+        }
     }
 
     // 로그인 결과를 일회성 코드에 담아 Redis에 저장(짧은 TTL). 성공 핸들러가 프론트로 code만 리다이렉트

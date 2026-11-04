@@ -4,7 +4,9 @@ import com.umc.bscene.domain.auth.dto.auth.request.TermAgreementRequest;
 import com.umc.bscene.domain.auth.dto.auth.response.TokenResponse;
 import com.umc.bscene.domain.auth.entity.term.Terms;
 import com.umc.bscene.domain.auth.entity.term.UserTerms;
+import com.umc.bscene.domain.auth.enums.code.AuthErrorCode;
 import com.umc.bscene.domain.auth.enums.verification.PhoneVerificationPurpose;
+import com.umc.bscene.domain.auth.exception.auth.AuthException;
 import com.umc.bscene.domain.auth.repository.term.TermsRepository;
 import com.umc.bscene.domain.auth.repository.term.UserTermsRepository;
 import com.umc.bscene.domain.auth.service.verification.PhoneVerificationService;
@@ -15,8 +17,10 @@ import com.umc.bscene.domain.oauth.enums.SocialProvider;
 import com.umc.bscene.domain.oauth.exception.OauthException;
 import com.umc.bscene.domain.oauth.repository.OauthAccountRepository;
 import com.umc.bscene.domain.oauth.response.code.OauthErrorCode;
+import com.umc.bscene.domain.oauth.verifier.VerifiedSocialIdentity;
 import com.umc.bscene.domain.user.entity.User;
 import com.umc.bscene.domain.user.enums.Gender;
+import com.umc.bscene.domain.user.enums.UserStatus;
 import com.umc.bscene.domain.user.repository.UserRepository;
 import com.umc.bscene.global.security.dto.response.OAuthResponse;
 import com.umc.bscene.global.security.entity.AuthMember;
@@ -131,6 +135,87 @@ class OauthServiceTest {
         assertEquals(USER_ID, response.token().user().userId());
         // 리프레시 토큰은 해시 키로 Redis에 저장 (원문 저장 금지)
         verify(valueOperations).set(startsWith("refreshToken:"), eq(String.valueOf(USER_ID)), any(Duration.class));
+    }
+
+    @Test
+    void handleLoginSuccess_기존_유저가_탈퇴_상태면_토큰을_발급하지_않는다() {
+        // 웹 경로에도 계정 상태 검사가 적용되는지 확인
+        User deleted = User.builder().id(USER_ID).name("세진").status(UserStatus.DELETED).build();
+
+        AuthException e = assertThrows(AuthException.class,
+                () -> service.handleLoginSuccess(OAuthMember.ofExisting(deleted, oauthInfo, Map.of())));
+
+        assertEquals(AuthErrorCode.DELETED_ACCOUNT, e.getBaseResponseCode());
+        verify(jwtUtil, never()).createAccessToken(any());
+    }
+
+    // ---------- loginWithVerifiedIdentity (모바일 SDK 공통 입구) ----------
+
+    private static final VerifiedSocialIdentity KAKAO_IDENTITY =
+            new VerifiedSocialIdentity(SocialProvider.KAKAO, "uid-1", "sejin@kakao.com", "세진");
+
+    private OauthAccount kakaoAccountOf(User user) {
+        return OauthAccount.builder()
+                .user(user)
+                .provider(SocialProvider.KAKAO)
+                .providerUid("uid-1")
+                .email("sejin@kakao.com")
+                .build();
+    }
+
+    @Test
+    void loginWithVerifiedIdentity_기존_회원이면_토큰을_발급한다() {
+        User user = StreamFixtures.fanUser(USER_ID);
+        when(oauthAccountRepository.findByProviderAndProviderUid(SocialProvider.KAKAO, "uid-1"))
+                .thenReturn(Optional.of(kakaoAccountOf(user)));
+        mockTokenIssue();
+
+        OauthLoginResponse response = service.loginWithVerifiedIdentity(KAKAO_IDENTITY);
+
+        assertEquals(false, response.isNewUser());
+        assertEquals("access-token", response.token().accessToken());
+        assertEquals(USER_ID, response.token().user().userId());
+        verify(jwtUtil, never()).createSignupToken(anyString(), anyString(), any(), any());
+    }
+
+    @Test
+    void loginWithVerifiedIdentity_미가입이면_signup_토큰을_발급한다() {
+        when(oauthAccountRepository.findByProviderAndProviderUid(SocialProvider.KAKAO, "uid-1"))
+                .thenReturn(Optional.empty());
+        when(jwtUtil.createSignupToken("KAKAO", "uid-1", "세진", "sejin@kakao.com"))
+                .thenReturn("signup-token");
+
+        OauthLoginResponse response = service.loginWithVerifiedIdentity(KAKAO_IDENTITY);
+
+        assertTrue(response.isNewUser());
+        assertEquals("signup-token", response.signupToken());
+        assertEquals("sejin@kakao.com", response.email());
+        assertEquals(null, response.token());
+    }
+
+    @Test
+    void loginWithVerifiedIdentity_미가입인데_이메일이_없으면_예외() {
+        // 명세 v0.3: 신규 가입은 이메일 필수(OAUTH400_4), signupToken 미발급
+        when(oauthAccountRepository.findByProviderAndProviderUid(SocialProvider.KAKAO, "uid-1"))
+                .thenReturn(Optional.empty());
+        VerifiedSocialIdentity noEmail = new VerifiedSocialIdentity(SocialProvider.KAKAO, "uid-1", " ", "세진");
+
+        OauthException e = assertThrows(OauthException.class, () -> service.loginWithVerifiedIdentity(noEmail));
+
+        assertEquals(OauthErrorCode.EMAIL_NOT_PROVIDED, e.getBaseResponseCode());
+        verify(jwtUtil, never()).createSignupToken(anyString(), anyString(), any(), any());
+    }
+
+    @Test
+    void loginWithVerifiedIdentity_정지_계정이면_토큰을_발급하지_않는다() {
+        User suspended = User.builder().id(USER_ID).name("세진").status(UserStatus.SUSPENDED).build();
+        when(oauthAccountRepository.findByProviderAndProviderUid(SocialProvider.KAKAO, "uid-1"))
+                .thenReturn(Optional.of(kakaoAccountOf(suspended)));
+
+        AuthException e = assertThrows(AuthException.class, () -> service.loginWithVerifiedIdentity(KAKAO_IDENTITY));
+
+        assertEquals(AuthErrorCode.SUSPENDED_ACCOUNT, e.getBaseResponseCode());
+        verify(jwtUtil, never()).createAccessToken(any());
     }
 
     // ---------- issueExchangeCode / exchangeCode ----------
