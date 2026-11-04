@@ -66,16 +66,15 @@ public class OauthService {
     // 기존/신규 판별은 CustomOAuthService 가 이미 했으므로 DB 를 다시 조회하지 않고 공통 처리만 태운다
     @Transactional
     public OauthLoginResponse handleLoginSuccess(OAuthMember member) {
-        OAuthResponse info = member.getOauthInfo();
-        VerifiedSocialIdentity identity = new VerifiedSocialIdentity(
-                info.getProvider(),
-                info.getProviderUid(),
-                info.getEmail(),
-                info.getName()
-        );
-
         if (member.isNewUser()) {
-            return issueSignupResult(identity);
+            // 신원 객체는 signup 토큰 발급에만 쓰이므로 신규 분기에서만 만든다
+            OAuthResponse info = member.getOauthInfo();
+            return issueSignupResult(new VerifiedSocialIdentity(
+                    info.getProvider(),
+                    info.getProviderUid(),
+                    info.getEmail(),
+                    info.getName()
+            ));
         }
         return loginExistingUser(member.getUser());
     }
