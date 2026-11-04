@@ -12,6 +12,7 @@ import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.Date;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 @Component
@@ -49,6 +50,8 @@ public class JwtUtil {
         Instant now = Instant.now();
 
         return Jwts.builder()
+                // jti: 가입 시도 식별자. 문자 인증을 이 시도에 결합하는 작업(명세 v0.3)에서 사용. 지금은 발급만 한다
+                .id(UUID.randomUUID().toString())
                 .subject(providerUid)
                 .claim("type", "signup")
                 .claim("provider", provider)

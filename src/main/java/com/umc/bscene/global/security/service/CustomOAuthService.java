@@ -43,6 +43,8 @@ public class CustomOAuthService extends DefaultOAuth2UserService {
         OAuthResponse dto = switch (provider) {
             case KAKAO -> parseKakao(oAuthMember);
             case GOOGLE -> parseGoogle(oAuthMember);
+            // Apple 은 모바일 SDK 경로(/auth/oauth/mobile/apple)만 지원. 웹 OAuth2 클라이언트 등록이 없어 실제로는 도달하지 않는다
+            case APPLE -> throw oauthAuthException(OauthErrorCode.NOT_SUPPORT_PROVIDER);
         };
 
         // OauthAccount 조회: 있으면 기존 유저, 없으면 신규 유저(온보딩 필요)

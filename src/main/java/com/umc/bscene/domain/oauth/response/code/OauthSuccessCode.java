@@ -12,6 +12,8 @@ import static com.umc.bscene.global.constant.StaticValue.OK;
 public enum OauthSuccessCode implements BaseResponseCode {
 
     OAUTH_LOGIN_SUCCESS(OK, "OAUTH200_1", "소셜 로그인에 성공했습니다."),
+    // 모바일 Apple 로그인 전 challenge(nonce) 발급 (명세 SDK v0.3)
+    APPLE_CHALLENGE_ISSUED(OK, "OAUTH200_2", "Apple 로그인 요청이 준비되었습니다."),
     OAUTH_SIGNUP_SUCCESS(CREATED, "OAUTH201_1", "소셜 회원가입에 성공했습니다.");
 
     private final int status;
