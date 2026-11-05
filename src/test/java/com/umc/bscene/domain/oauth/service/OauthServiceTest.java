@@ -33,6 +33,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.data.redis.core.ValueOperations;
 
@@ -307,7 +308,7 @@ class OauthServiceTest {
                 assertThrows(OauthException.class, () -> service.signup(signupRequest("3", "000101")));
 
         assertEquals(OauthErrorCode.ALREADY_REGISTERED, exception.getBaseResponseCode());
-        verify(userRepository, never()).save(any());
+        verify(userRepository, never()).saveAndFlush(any());
     }
 
     @Test
@@ -321,7 +322,7 @@ class OauthServiceTest {
                 assertThrows(OauthException.class, () -> service.signup(signupRequest("3", "000101")));
 
         assertEquals(OauthErrorCode.DUPLICATE_PHONE, exception.getBaseResponseCode());
-        verify(userRepository, never()).save(any());
+        verify(userRepository, never()).saveAndFlush(any());
     }
 
     @Test
@@ -345,7 +346,7 @@ class OauthServiceTest {
                 .thenReturn(Optional.empty());
         when(userRepository.existsByPhone("01012345678")).thenReturn(false);
         User savedUser = StreamFixtures.user(USER_ID, null);
-        when(userRepository.save(any(User.class))).thenReturn(savedUser);
+        when(userRepository.saveAndFlush(any(User.class))).thenReturn(savedUser);
         mockTokenIssue();
 
         // genderCode 3 = 2000년대생 남성, 000101 → 2000-01-01
@@ -354,12 +355,12 @@ class OauthServiceTest {
         assertEquals("access-token", response.accessToken());
 
         ArgumentCaptor<User> userCaptor = ArgumentCaptor.captor();
-        verify(userRepository).save(userCaptor.capture());
+        verify(userRepository).saveAndFlush(userCaptor.capture());
         assertEquals(Gender.MALE, userCaptor.getValue().getGender());
         assertEquals(LocalDate.of(2000, 1, 1), userCaptor.getValue().getBirthDate());
 
         ArgumentCaptor<OauthAccount> accountCaptor = ArgumentCaptor.captor();
-        verify(oauthAccountRepository).save(accountCaptor.capture());
+        verify(oauthAccountRepository).saveAndFlush(accountCaptor.capture());
         assertEquals(SocialProvider.KAKAO, accountCaptor.getValue().getProvider());
         assertEquals("uid-1", accountCaptor.getValue().getProviderUid());
 
@@ -371,5 +372,47 @@ class OauthServiceTest {
         // 인증 완료 상태 재사용 방지까지 수행
         verify(phoneVerificationService).validateVerified(PhoneVerificationPurpose.SIGNUP, "01012345678");
         verify(phoneVerificationService).removeVerified(PhoneVerificationPurpose.SIGNUP, "01012345678");
+    }
+
+    // ---------- signup 동시 요청 (명세 v0.3: 사전 검사는 통과했지만 insert 에서 unique 위반) ----------
+
+    @Test
+    void signup_사전검사_통과_후_같은_번호_가입이_먼저_끝나면_OAUTH409_2() {
+        mockValidSignupToken();
+        when(oauthAccountRepository.findByProviderAndProviderUid(SocialProvider.KAKAO, "uid-1"))
+                .thenReturn(Optional.empty());
+        when(userRepository.existsByPhone("01012345678")).thenReturn(false);
+        // existsByPhone 과 insert 사이에 다른 요청이 같은 번호로 가입 완료 → user.phone unique 위반
+        when(userRepository.saveAndFlush(any(User.class)))
+                .thenThrow(new DataIntegrityViolationException("Duplicate entry '01012345678' for key 'user.phone'"));
+
+        OauthException exception =
+                assertThrows(OauthException.class, () -> service.signup(signupRequest("3", "000101")));
+
+        assertEquals(OauthErrorCode.DUPLICATE_PHONE, exception.getBaseResponseCode());
+        // User 가 안 만들어졌으니 소셜 계정·약관 저장과 인증 상태 정리는 일어나지 않는다
+        verify(oauthAccountRepository, never()).saveAndFlush(any());
+        verify(userTermsRepository, never()).saveAll(any());
+        verify(phoneVerificationService, never()).removeVerified(any(), anyString());
+    }
+
+    @Test
+    void signup_사전검사_통과_후_같은_소셜_계정_가입이_먼저_끝나면_OAUTH409_1() {
+        mockValidSignupToken();
+        when(oauthAccountRepository.findByProviderAndProviderUid(SocialProvider.KAKAO, "uid-1"))
+                .thenReturn(Optional.empty());
+        when(userRepository.existsByPhone("01012345678")).thenReturn(false);
+        when(userRepository.saveAndFlush(any(User.class))).thenReturn(StreamFixtures.user(USER_ID, null));
+        // findByProviderAndProviderUid 와 insert 사이에 같은 소셜 계정으로 가입 완료 → (provider, provider_uid) unique 위반 (V56)
+        when(oauthAccountRepository.saveAndFlush(any(OauthAccount.class)))
+                .thenThrow(new DataIntegrityViolationException("Duplicate entry 'KAKAO-uid-1' for key 'uk_oauth_accounts_provider_uid'"));
+
+        OauthException exception =
+                assertThrows(OauthException.class, () -> service.signup(signupRequest("3", "000101")));
+
+        assertEquals(OauthErrorCode.ALREADY_REGISTERED, exception.getBaseResponseCode());
+        // 트랜잭션 롤백으로 User 도 남지 않는다. 여기서는 이후 단계가 진행되지 않았음만 확인
+        verify(userTermsRepository, never()).saveAll(any());
+        verify(phoneVerificationService, never()).removeVerified(any(), anyString());
     }
 }
