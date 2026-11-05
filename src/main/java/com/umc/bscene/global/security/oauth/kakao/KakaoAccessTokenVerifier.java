@@ -29,11 +29,23 @@ public final class KakaoAccessTokenVerifier {
     private static final int TOO_MANY_REQUESTS = 429;
 
     private final RestClient restClient;
-    private final String appId;
+    // 설정값은 생성 시 한 번만 파싱한다. 비었거나 숫자가 아니면 null 로 두고 호출 시점에 실패시킨다
+    private final Long appId;
 
     public KakaoAccessTokenVerifier(RestClient restClient, String appId) {
         this.restClient = restClient;
-        this.appId = appId;
+        this.appId = parseAppId(appId);
+    }
+
+    private static Long parseAppId(String appId) {
+        if (appId == null || appId.isBlank()) {
+            return null;
+        }
+        try {
+            return Long.parseLong(appId.trim());
+        } catch (NumberFormatException exception) {
+            return null;
+        }
     }
 
     public VerifiedSocialIdentity verify(String accessToken) {
@@ -55,10 +67,13 @@ public final class KakaoAccessTokenVerifier {
 
     private void validateRequest(String accessToken) {
         // 설정 누락은 구글·Apple 검증기와 같이 호출 시점에 실패시킨다 (env 없는 로컬 기동은 막지 않음)
-        if (appId == null || !appId.matches("\\d+")) {
+        if (appId == null) {
             throw new IllegalStateException("카카오 모바일 OAuth 앱 ID(KAKAO_APP_ID) 설정이 필요합니다. 카카오 콘솔의 숫자 앱 ID 여야 합니다.");
         }
-        if (accessToken == null || accessToken.isBlank()) {
+        // 출력 가능한 ASCII 만 허용. 줄바꿈 등이 섞이면 HttpURLConnection 이 헤더 값을 거부하며
+        // 토큰이 담긴 IllegalArgumentException 을 던져 500 과 함께 토큰이 로그에 남으므로 여기서 먼저 막는다
+        if (accessToken == null || accessToken.isBlank()
+                || !accessToken.chars().allMatch(character -> character >= 0x21 && character <= 0x7e)) {
             throw createInvalidTokenException();
         }
     }
@@ -96,7 +111,7 @@ public final class KakaoAccessTokenVerifier {
             throw createInvalidTokenException();
         }
         // 다른 카카오 앱(다른 서비스)에서 발급한 토큰도 /v1/user/access_token_info 는 200 을 주므로 app_id 로 걸러야 한다
-        if (!appId.equals(String.valueOf(tokenInfo.appId()))) {
+        if (!appId.equals(tokenInfo.appId())) {
             throw new OauthException(OauthErrorCode.PROVIDER_TOKEN_APP_MISMATCH);
         }
     }
