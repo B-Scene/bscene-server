@@ -46,7 +46,17 @@ public class SecurityConfig {
             .toArray(String[]::new);
 
     @Bean
-    public SecurityFilterChain securityFilterChain(HttpSecurity http, RateLimitFilter rateLimitFilter) throws Exception {
+    public SecurityFilterChain securityFilterChain(
+            HttpSecurity http,
+            StringRedisTemplate stringRedisTemplate,
+            @Value("${oauth.mobile.rate-limit.login-per-minute}") int loginLimitPerMinute,
+            @Value("${oauth.mobile.rate-limit.challenge-per-minute}") int challengeLimitPerMinute
+    ) throws Exception {
+        // @Bean 으로 노출하면 Spring Boot 가 서블릿 컨테이너에도 자동 등록해 시큐리티 체인 밖(HttpFirewall·CORS 앞)에서
+        // 먼저 돌아버린다. 체인 안에서만 동작하도록 빈으로 만들지 않고 여기서 직접 생성한다.
+        RateLimitFilter rateLimitFilter =
+                new RateLimitFilter(stringRedisTemplate, loginLimitPerMinute, challengeLimitPerMinute);
+
         http
                 // CORS 활성화
                 .cors(Customizer.withDefaults())
@@ -109,14 +119,5 @@ public class SecurityConfig {
     @Bean
     public JwtAuthFilter jwtAuthFilter() {
         return new JwtAuthFilter(jwtUtil, customUserDetailsService);
-    }
-
-    @Bean
-    public RateLimitFilter rateLimitFilter(
-            StringRedisTemplate stringRedisTemplate,
-            @Value("${oauth.mobile.rate-limit.login-per-minute}") int loginLimitPerMinute,
-            @Value("${oauth.mobile.rate-limit.challenge-per-minute}") int challengeLimitPerMinute
-    ) {
-        return new RateLimitFilter(stringRedisTemplate, loginLimitPerMinute, challengeLimitPerMinute);
     }
 }

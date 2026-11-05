@@ -16,12 +16,13 @@ import org.springframework.dao.DataAccessException;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.data.redis.core.script.DefaultRedisScript;
 import org.springframework.http.HttpMethod;
+import org.springframework.security.web.servlet.util.matcher.PathPatternRequestMatcher;
+import org.springframework.security.web.util.matcher.RequestMatcher;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
 import java.time.Duration;
 import java.util.List;
-import java.util.Map;
 
 // 모바일 SDK 소셜 로그인 4개 경로의 IP당 분당 호출 제한 (명세 SDK v0.2, 출시 필수).
 // 로그인 전 호출이라 JwtAuthFilter 앞에서 동작하고, ControllerAdvice 밖이므로 응답 JSON을 직접 쓴다.
@@ -48,19 +49,25 @@ public class RateLimitFilter extends OncePerRequestFilter {
             """, List.class);
 
     private final StringRedisTemplate redis;
-    private final Map<String, Bucket> bucketsByPath;
+    private final List<Rule> rules;
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     public RateLimitFilter(StringRedisTemplate redis, int loginLimitPerMinute, int challengeLimitPerMinute) {
         this.redis = redis;
         Bucket login = new Bucket("login", loginLimitPerMinute);
         Bucket challenge = new Bucket("challenge", challengeLimitPerMinute);
-        this.bucketsByPath = Map.of(
-                PermitAllUri.OAUTH_MOBILE_KAKAO.getUri(), login,
-                PermitAllUri.OAUTH_MOBILE_GOOGLE.getUri(), login,
-                PermitAllUri.OAUTH_MOBILE_APPLE.getUri(), login,
-                PermitAllUri.OAUTH_MOBILE_APPLE_CHALLENGE.getUri(), challenge
+        // SecurityConfig 의 permitAll 과 같은 PathPatternRequestMatcher 를 쓴다.
+        // 디코딩된 경로로 비교하므로 /mobile/%6Bakao 같은 인코딩 우회가 통하지 않고, context-path(/api)도 알아서 뗀다.
+        this.rules = List.of(
+                new Rule(postMatcher(PermitAllUri.OAUTH_MOBILE_KAKAO), login),
+                new Rule(postMatcher(PermitAllUri.OAUTH_MOBILE_GOOGLE), login),
+                new Rule(postMatcher(PermitAllUri.OAUTH_MOBILE_APPLE), login),
+                new Rule(postMatcher(PermitAllUri.OAUTH_MOBILE_APPLE_CHALLENGE), challenge)
         );
+    }
+
+    private static RequestMatcher postMatcher(PermitAllUri uri) {
+        return PathPatternRequestMatcher.pathPattern(HttpMethod.POST, uri.getUri());
     }
 
     @Override
@@ -74,12 +81,8 @@ public class RateLimitFilter extends OncePerRequestFilter {
             @NonNull HttpServletResponse response,
             @NonNull FilterChain filterChain
     ) throws ServletException, IOException {
+        // shouldNotFilter 가 대상 외 요청을 걸렀으므로 여기서는 항상 버킷이 있다
         Bucket bucket = resolveBucket(request);
-        if (bucket == null) {
-            filterChain.doFilter(request, response);
-            return;
-        }
-
         String key = KEY_PREFIX + bucket.name() + ":" + resolveClientIp(request);
         List<?> result;
         try {
@@ -110,12 +113,12 @@ public class RateLimitFilter extends OncePerRequestFilter {
     }
 
     private Bucket resolveBucket(HttpServletRequest request) {
-        if (!HttpMethod.POST.matches(request.getMethod())) {
-            return null;
+        for (Rule rule : rules) {
+            if (rule.matcher().matches(request)) {
+                return rule.bucket();
+            }
         }
-        // context-path(/api)를 뗀 경로로 비교한다. PermitAllUri 와 같은 기준
-        String path = request.getRequestURI().substring(request.getContextPath().length());
-        return bucketsByPath.get(path);
+        return null;
     }
 
     // nginx 가 X-Real-IP 를 $remote_addr 로 덮어써서 넘기므로 이 헤더만 신뢰한다.
@@ -136,5 +139,8 @@ public class RateLimitFilter extends OncePerRequestFilter {
     }
 
     private record Bucket(String name, int limit) {
+    }
+
+    private record Rule(RequestMatcher matcher, Bucket bucket) {
     }
 }
