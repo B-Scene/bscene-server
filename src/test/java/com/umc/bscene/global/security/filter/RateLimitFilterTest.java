@@ -142,6 +142,21 @@ class RateLimitFilterTest {
         }
 
         @Test
+        @DisplayName("퍼센트 인코딩된 경로(/mobile/%6Bakao)도 디코딩해서 같은 버킷으로 카운트한다")
+        void matchesPercentEncodedPath() throws Exception {
+            // Spring MVC 는 디코딩해서 /kakao 컨트롤러로 보내므로, 필터가 원문 URI 로 비교하면 한도 없이 통과하는 우회가 된다
+            request = new MockHttpServletRequest("POST", "/auth/oauth/mobile/%6Bakao");
+            request.addHeader(RateLimitFilter.CLIENT_IP_HEADER, CLIENT_IP);
+            givenCounter(LOGIN_LIMIT + 1, 10);
+
+            filter.doFilter(request, response, filterChain);
+
+            assertThat(capturedKey()).isEqualTo(RateLimitFilter.KEY_PREFIX + "login:" + CLIENT_IP);
+            assertThat(response.getStatus()).isEqualTo(429);
+            verify(filterChain, never()).doFilter(any(), any());
+        }
+
+        @Test
         @DisplayName("X-Real-IP 가 없으면 remoteAddr 로 카운트한다")
         void fallsBackToRemoteAddr() throws Exception {
             request = new MockHttpServletRequest("POST", PermitAllUri.OAUTH_MOBILE_APPLE_CHALLENGE.getUri());
@@ -245,6 +260,19 @@ class RateLimitFilterTest {
             filter.doFilter(request, response, filterChain);
 
             assertThat(response.getStatus()).isEqualTo(503);
+            verify(filterChain, never()).doFilter(any(), any());
+        }
+
+        @Test
+        @DisplayName("스크립트 결과가 {count, ttl} 두 개가 아니면 503 으로 막는다")
+        void writesServiceUnavailableOnMalformedResult() throws Exception {
+            // Lua 반환 형태가 바뀌어 count 만 오는 경우. 조용히 통과시키지 않고 막아야 테스트로 잡힌다
+            given(redis.execute(any(RedisScript.class), anyList(), any())).willReturn(List.of(1L));
+
+            filter.doFilter(request, response, filterChain);
+
+            assertThat(response.getStatus()).isEqualTo(503);
+            assertThat(responseBody().get("code").asText()).isEqualTo(GeneralErrorCode.STORE_UNAVAILABLE.getCode());
             verify(filterChain, never()).doFilter(any(), any());
         }
     }
