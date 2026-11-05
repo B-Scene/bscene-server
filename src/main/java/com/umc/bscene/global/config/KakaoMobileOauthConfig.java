@@ -14,7 +14,8 @@ public class KakaoMobileOauthConfig {
 
     @Bean
     public KakaoAccessTokenVerifier kakaoAccessTokenVerifier(@Value("${oauth.mobile.kakao.app-id:}") String appId) {
-        return new KakaoAccessTokenVerifier(createKakaoRestClient(), appId.trim());
+        // 값이 있는데 숫자가 아니면 검증기 생성자가 예외를 던져 기동이 실패한다 (REST API 키를 잘못 넣은 경우 등)
+        return new KakaoAccessTokenVerifier(createKakaoRestClient(), appId);
     }
 
     // 로그인 요청 스레드에서 카카오를 두 번 호출하므로 타임아웃 필수 (StreamConfig.mtxRestClient 와 같은 값).

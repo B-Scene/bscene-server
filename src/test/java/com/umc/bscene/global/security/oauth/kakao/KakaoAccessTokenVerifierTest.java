@@ -277,8 +277,8 @@ class KakaoAccessTokenVerifierTest {
     class Misconfiguration {
 
         @ParameterizedTest
-        @ValueSource(strings = {"", "   ", "not-a-number"})
-        @DisplayName("앱 ID 가 비었거나 숫자가 아니면 카카오를 호출하지 않고 IllegalStateException")
+        @ValueSource(strings = {"", "   "})
+        @DisplayName("앱 ID 가 비어 있으면 기동은 되지만 호출 시 카카오를 부르지 않고 IllegalStateException")
         void failsWhenAppIdMissing(String appId) {
             RestClient.Builder builder = RestClient.builder();
             MockRestServiceServer strictServer = MockRestServiceServer.bindTo(builder).build();
