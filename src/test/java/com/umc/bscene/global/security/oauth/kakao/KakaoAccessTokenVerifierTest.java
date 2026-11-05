@@ -155,6 +155,36 @@ class KakaoAccessTokenVerifierTest {
         }
 
         @Test
+        @DisplayName("400 인데 본문 code 가 장애 코드가 아니면 토큰 문제로 본다")
+        void rejectsBadRequestWithNonTransientCode() {
+            expectTokenInfo(withStatus(HttpStatus.BAD_REQUEST)
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .body("{\"msg\":\"invalid token\",\"code\":-2}"));
+
+            assertOauthError(() -> verifier.verify(TOKEN), OauthErrorCode.INVALID_PROVIDER_TOKEN);
+        }
+
+        @Test
+        @DisplayName("4xx 본문이 JSON 이 아니거나 깨져 있으면 상태 코드만 보고 토큰 문제로 본다")
+        void rejectsClientErrorWithUnparsableBody() {
+            expectTokenInfo(withStatus(HttpStatus.BAD_REQUEST)
+                    .contentType(MediaType.TEXT_HTML)
+                    .body("<html>bad request</html>"));
+
+            assertOauthError(() -> verifier.verify(TOKEN), OauthErrorCode.INVALID_PROVIDER_TOKEN);
+        }
+
+        @Test
+        @DisplayName("4xx 본문이 JSON 이라고 하지만 파싱이 안 되면 상태 코드만 보고 토큰 문제로 본다")
+        void rejectsClientErrorWithMalformedJson() {
+            expectTokenInfo(withStatus(HttpStatus.BAD_REQUEST)
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .body("{\"code\": "));
+
+            assertOauthError(() -> verifier.verify(TOKEN), OauthErrorCode.INVALID_PROVIDER_TOKEN);
+        }
+
+        @Test
         @DisplayName("두 응답의 사용자 id 가 다르면 OAUTH401_1")
         void rejectsUserIdMismatch() {
             expectTokenInfo(withSuccess(TOKEN_INFO_JSON, MediaType.APPLICATION_JSON));
@@ -270,6 +300,29 @@ class KakaoAccessTokenVerifierTest {
 
             assertOauthError(() -> verifier.verify(TOKEN), OauthErrorCode.PROVIDER_UNAVAILABLE);
         }
+
+        @ParameterizedTest
+        @ValueSource(ints = {-1, -10})
+        @DisplayName("HTTP 400 이어도 본문 code 가 -1(내부 오류)·-10(쿼터 초과)이면 토큰 문제가 아니라 OAUTH503_1")
+        void mapsKakaoTransientErrorCodes(int kakaoCode) {
+            expectTokenInfo(withStatus(HttpStatus.BAD_REQUEST)
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .body("{\"msg\":\"kakao error\",\"code\":" + kakaoCode + "}"));
+
+            assertOauthError(() -> verifier.verify(TOKEN), OauthErrorCode.PROVIDER_UNAVAILABLE);
+            server.verify();
+        }
+
+        @Test
+        @DisplayName("사용자 정보 호출에서 쿼터 초과가 나도 OAUTH503_1")
+        void mapsQuotaExceededOnSecondCall() {
+            expectTokenInfo(withSuccess(TOKEN_INFO_JSON, MediaType.APPLICATION_JSON));
+            expectUserMe(withStatus(HttpStatus.BAD_REQUEST)
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .body("{\"msg\":\"API limit has been exceeded\",\"code\":-10}"));
+
+            assertOauthError(() -> verifier.verify(TOKEN), OauthErrorCode.PROVIDER_UNAVAILABLE);
+        }
     }
 
     @Nested
@@ -288,6 +341,18 @@ class KakaoAccessTokenVerifierTest {
                     .isInstanceOf(IllegalStateException.class)
                     .hasMessageContaining("KAKAO_APP_ID");
             strictServer.verify();
+        }
+
+        @ParameterizedTest
+        @ValueSource(strings = {"not-a-number", "abc123def456", "12a"})
+        @DisplayName("앱 ID 가 비어 있지 않은데 숫자가 아니면 생성 시점에 IllegalStateException (기동 실패), 메시지에 값은 남기지 않는다")
+        void failsAtConstructionWhenAppIdNotNumeric(String appId) {
+            RestClient restClient = RestClient.builder().build();
+
+            assertThatThrownBy(() -> new KakaoAccessTokenVerifier(restClient, appId))
+                    .isInstanceOf(IllegalStateException.class)
+                    .hasMessageContaining("KAKAO_APP_ID")
+                    .hasMessageNotContaining(appId);
         }
     }
 }
