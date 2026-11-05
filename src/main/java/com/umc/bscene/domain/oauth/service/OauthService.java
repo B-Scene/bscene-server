@@ -29,6 +29,7 @@ import com.umc.bscene.global.security.entity.AuthMember;
 import com.umc.bscene.global.security.entity.OAuthMember;
 import com.umc.bscene.global.security.util.JwtUtil;
 import lombok.RequiredArgsConstructor;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -195,7 +196,15 @@ public class OauthService {
                 .birthDate(birthDate)
                 .phone(request.phone())
                 .build();
-        User savedUser = userRepository.save(user);
+        // 위 사전 검사와 insert 사이에 같은 번호·같은 소셜 계정으로 가입이 먼저 끝나는 동시 요청은 DB unique 로만 막힌다.
+        // IDENTITY 전략이라 save 시점에 insert 가 나가지만, 명세 v0.3 의 "flush 시점 예외 → 409" 조건을 saveAndFlush 로 명시한다
+        // (AuthService.signup 과 같은 방식). 예외가 나면 트랜잭션은 롤백되고 사용자 데이터는 남지 않는다.
+        User savedUser;
+        try {
+            savedUser = userRepository.saveAndFlush(user);
+        } catch (DataIntegrityViolationException e) {
+            throw new OauthException(OauthErrorCode.DUPLICATE_PHONE);   // user.phone unique
+        }
 
         OauthAccount oauthAccount = OauthAccount.builder()
                 .user(savedUser)
@@ -203,7 +212,11 @@ public class OauthService {
                 .providerUid(providerUid)
                 .email(email)
                 .build();
-        oauthAccountRepository.save(oauthAccount);
+        try {
+            oauthAccountRepository.saveAndFlush(oauthAccount);
+        } catch (DataIntegrityViolationException e) {
+            throw new OauthException(OauthErrorCode.ALREADY_REGISTERED);   // (provider, provider_uid) unique, V56
+        }
 
         saveTerms(savedUser, request.terms());
 

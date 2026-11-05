@@ -307,7 +307,7 @@ class OauthServiceTest {
                 assertThrows(OauthException.class, () -> service.signup(signupRequest("3", "000101")));
 
         assertEquals(OauthErrorCode.ALREADY_REGISTERED, exception.getBaseResponseCode());
-        verify(userRepository, never()).save(any());
+        verify(userRepository, never()).saveAndFlush(any());
     }
 
     @Test
@@ -321,7 +321,7 @@ class OauthServiceTest {
                 assertThrows(OauthException.class, () -> service.signup(signupRequest("3", "000101")));
 
         assertEquals(OauthErrorCode.DUPLICATE_PHONE, exception.getBaseResponseCode());
-        verify(userRepository, never()).save(any());
+        verify(userRepository, never()).saveAndFlush(any());
     }
 
     @Test
@@ -345,7 +345,7 @@ class OauthServiceTest {
                 .thenReturn(Optional.empty());
         when(userRepository.existsByPhone("01012345678")).thenReturn(false);
         User savedUser = StreamFixtures.user(USER_ID, null);
-        when(userRepository.save(any(User.class))).thenReturn(savedUser);
+        when(userRepository.saveAndFlush(any(User.class))).thenReturn(savedUser);
         mockTokenIssue();
 
         // genderCode 3 = 2000년대생 남성, 000101 → 2000-01-01
@@ -354,12 +354,12 @@ class OauthServiceTest {
         assertEquals("access-token", response.accessToken());
 
         ArgumentCaptor<User> userCaptor = ArgumentCaptor.captor();
-        verify(userRepository).save(userCaptor.capture());
+        verify(userRepository).saveAndFlush(userCaptor.capture());
         assertEquals(Gender.MALE, userCaptor.getValue().getGender());
         assertEquals(LocalDate.of(2000, 1, 1), userCaptor.getValue().getBirthDate());
 
         ArgumentCaptor<OauthAccount> accountCaptor = ArgumentCaptor.captor();
-        verify(oauthAccountRepository).save(accountCaptor.capture());
+        verify(oauthAccountRepository).saveAndFlush(accountCaptor.capture());
         assertEquals(SocialProvider.KAKAO, accountCaptor.getValue().getProvider());
         assertEquals("uid-1", accountCaptor.getValue().getProviderUid());
 
