@@ -63,20 +63,40 @@ public final class AppleIdTokenVerifier {
     }
 
     public VerifiedSocialIdentity verify(String identityToken, String expectedNonce, String authorizationCode) {
+        JWTClaimsSet claims = verifyClaims(identityToken, true);
+        validateNonce(claims, expectedNonce);
+        validateAuthorizationCode(claims, authorizationCode);
+        return createIdentity(claims);
+    }
+
+    // 만료 후에도 실패 정리의 소유자만 확인한다. 로그인 인증에는 반드시 nonce·현재 유효기간 검증을 사용한다.
+    public VerifiedSocialIdentity verifyForCleanup(String identityToken) {
+        return createIdentity(verifyClaims(identityToken, false));
+    }
+
+    private JWTClaimsSet verifyClaims(String identityToken, boolean requireCurrentTime) {
         validateRequest(identityToken);
         try {
             JWTClaimsSet claims = processToken(identityToken);
             validateIdentity(claims);
-            validateTime(claims);
+            if (requireCurrentTime) {
+                validateTime(claims);
+            }
             validateAudience(claims);
-            validateNonce(claims, expectedNonce);
-            validateAuthorizationCode(claims, authorizationCode);
-            return new VerifiedSocialIdentity(SocialProvider.APPLE, claims.getSubject(),
-                    claims.getStringClaim("email"), null);
+            return claims;
         } catch (KeySourceException exception) {
             throw new OauthException(OauthErrorCode.PROVIDER_UNAVAILABLE);
         } catch (ParseException | BadJOSEException | JOSEException exception) {
             // 토큰을 포함할 수 있는 제공자 예외 메시지·cause를 응답/로그에 넘기지 않는다.
+            throw createInvalidTokenException();
+        }
+    }
+
+    private VerifiedSocialIdentity createIdentity(JWTClaimsSet claims) {
+        try {
+            return new VerifiedSocialIdentity(SocialProvider.APPLE, claims.getSubject(),
+                    claims.getStringClaim("email"), null);
+        } catch (ParseException exception) {
             throw createInvalidTokenException();
         }
     }

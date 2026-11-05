@@ -45,6 +45,7 @@ class AppleTokenClientTest {
     private final AtomicReference<String> responseBody = new AtomicReference<>(SUCCESS_BODY);
     private final AtomicReference<String> requestBody = new AtomicReference<>();
     private final AtomicReference<String> requestMethod = new AtomicReference<>();
+    private final AtomicReference<String> requestPath = new AtomicReference<>();
     private final AtomicReference<String> contentType = new AtomicReference<>();
     private final AtomicInteger bodyDelayMilliseconds = new AtomicInteger();
     private HttpServer server;
@@ -60,6 +61,7 @@ class AppleTokenClientTest {
         server = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
         server.setExecutor(serverExecutor);
         server.createContext("/auth/token", this::respondToTokenRequest);
+        server.createContext("/auth/revoke", this::respondToTokenRequest);
         server.start();
         tokenClient = createClient(Duration.ofSeconds(3));
     }
@@ -67,6 +69,7 @@ class AppleTokenClientTest {
     private void respondToTokenRequest(HttpExchange exchange) throws IOException {
         requestCount.incrementAndGet();
         requestMethod.set(exchange.getRequestMethod());
+        requestPath.set(exchange.getRequestURI().getPath());
         contentType.set(exchange.getRequestHeaders().getFirst("Content-Type"));
         requestBody.set(new String(exchange.getRequestBody().readAllBytes(), StandardCharsets.UTF_8));
         byte[] response = responseBody.get().getBytes(StandardCharsets.UTF_8);
@@ -225,11 +228,90 @@ class AppleTokenClientTest {
         assertEquals(0, requestCount.get());
     }
 
+    @Test
+    void revokesRefreshTokenWithEncodedFormAndAcceptsEmptySuccess() {
+        responseBody.set("");
+
+        tokenClient.revoke("sensitive+refresh/&= token");
+
+        assertEquals("/auth/revoke", requestPath.get());
+        assertEquals("POST", requestMethod.get());
+        assertEquals("application/x-www-form-urlencoded", contentType.get());
+        assertEquals(Map.of("client_id", CLIENT_ID, "client_secret", CLIENT_SECRET,
+                "token", "sensitive+refresh/&= token", "token_type_hint", "refresh_token"),
+                parseForm(requestBody.get()));
+        assertEquals(1, requestCount.get());
+    }
+
+    @Test
+    void acceptsRepeatedRevocationOnlyWhenAppleReturnsSuccess() {
+        responseBody.set("");
+        tokenClient.revoke("already-revoked-refresh-token");
+        tokenClient.revoke("already-revoked-refresh-token");
+
+        assertEquals(2, requestCount.get());
+    }
+
+    @Test
+    void retainsFailureForUndocumentedInvalidTokenResponses() {
+        responseStatus.set(400);
+        for (String error : new String[]{"invalid_token", "invalid_grant"}) {
+            responseBody.set("{\"error\":\"" + error + "\",\"error_description\":\"sensitive-refresh\"}");
+
+            assertError(OauthErrorCode.PROVIDER_UNAVAILABLE, () -> tokenClient.revoke("sensitive-refresh"));
+        }
+        assertEquals(2, requestCount.get());
+    }
+
+    @Test
+    void rejectsRevocationConfigurationErrorsWithoutExposingCredentials() {
+        responseStatus.set(401);
+        responseBody.set("{\"error\":\"invalid_client\",\"error_description\":\"" + CLIENT_SECRET + "\"}");
+
+        IllegalStateException error = assertThrows(IllegalStateException.class,
+                () -> tokenClient.revoke("sensitive-refresh"));
+
+        assertNull(error.getCause());
+        assertFalse(error.getMessage().contains(CLIENT_SECRET));
+        assertFalse(error.getMessage().contains("sensitive-refresh"));
+    }
+
+    @Test
+    void rejectsUnavailableRevocationWithoutAutomaticRetryOrRedirect() {
+        responseBody.set("{\"error\":\"temporarily_unavailable\"}");
+        for (int status : new int[]{302, 429, 500, 503}) {
+            responseStatus.set(status);
+            assertError(OauthErrorCode.PROVIDER_UNAVAILABLE, () -> tokenClient.revoke("refresh"));
+        }
+        assertEquals(4, requestCount.get());
+    }
+
+    @Test
+    void boundsRevocationResponseTimeAfterHeaders() {
+        tokenClient = createClient(Duration.ofMillis(250));
+        bodyDelayMilliseconds.set(2_000);
+        Instant started = Instant.now();
+
+        assertError(OauthErrorCode.PROVIDER_UNAVAILABLE, () -> tokenClient.revoke("refresh"));
+
+        assertTrue(Duration.between(started, Instant.now()).compareTo(Duration.ofSeconds(2)) < 0);
+        assertEquals(1, requestCount.get());
+    }
+
+    @Test
+    void rejectsMissingOrOversizedRevocationTokensBeforeProviderCall() {
+        for (String token : new String[]{null, " ", "x".repeat(16_385)}) {
+            assertThrows(IllegalStateException.class, () -> tokenClient.revoke(token));
+        }
+        assertEquals(0, requestCount.get());
+    }
+
     private AppleTokenClient createClient(Duration timeout) {
         URI endpoint = URI.create("http://127.0.0.1:" + server.getAddress().getPort() + "/auth/token");
+        URI revokeEndpoint = URI.create("http://127.0.0.1:" + server.getAddress().getPort() + "/auth/revoke");
         HttpClient httpClient = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(1))
                 .followRedirects(HttpClient.Redirect.NEVER).build();
-        return new AppleTokenClient(CLIENT_ID, secretGenerator, httpClient, endpoint, timeout);
+        return new AppleTokenClient(CLIENT_ID, secretGenerator, httpClient, endpoint, revokeEndpoint, timeout);
     }
 
     private Map<String, String> parseForm(String form) {

@@ -110,6 +110,17 @@ class AppleIdTokenVerifierTest {
     }
 
     @Test
+    void identifyExpiredTokenOwnerOnlyForCleanupWithoutAllowingLogin() throws Exception {
+        String expired = createToken(signingKey, createClaims()
+                .issueTime(Date.from(NOW.minusSeconds(600)))
+                .expirationTime(Date.from(NOW.minusSeconds(120))).claim("nonce", null).build());
+
+        assertEquals("apple-subject", verifier.verifyForCleanup(expired).providerUid());
+        assertError(OauthErrorCode.INVALID_PROVIDER_TOKEN, verifier, expired, NONCE);
+        assertThrows(OauthException.class, () -> verifier.verifyForCleanup("unsigned-or-invalid"));
+    }
+
+    @Test
     void rejectsUnsignedMalformedAndBlankTokensWithoutKeyRequests() {
         for (String input : List.of("", " ", "not-a-jwt", "e30.e30.")) {
             assertError(OauthErrorCode.INVALID_PROVIDER_TOKEN, verifier, input, NONCE);
