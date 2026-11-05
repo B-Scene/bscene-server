@@ -38,6 +38,10 @@ spring:
     redis:
       host: ${REDIS_HOST:localhost}
       port: ${REDIS_PORT:6379}
+      # Lettuce 기본 명령 타임아웃은 60초. Redis 가 응답을 안 하면 요청 스레드가 그만큼 묶여 다른 API 까지 멈추므로
+      # 빨리 실패시킨다. 호출 제한 필터 등 fail-closed 경로는 이 값 안에서 503 으로 응답한다
+      timeout: ${REDIS_COMMAND_TIMEOUT:2s}
+      connect-timeout: ${REDIS_CONNECT_TIMEOUT:2s}
 
   elasticsearch:
     uris: ${ES_URIS:http://localhost:9200}
@@ -116,6 +120,13 @@ oauth:
       allowed-audiences: ${GOOGLE_MOBILE_CLIENT_IDS:} # 콤마 구분 client ID 목록. ID Token aud 허용 목록
     apple:
       client-id: ${APPLE_BUNDLE_ID:}                 # iOS 번들 ID. identityToken aud 와 비교
+      team-id: ${APPLE_TEAM_ID:}                     # 인가 코드 교환용 client secret 서명 (Apple Developer Team ID)
+      key-id: ${APPLE_KEY_ID:}                       # Sign in with Apple 키 ID
+      private-key-path: ${APPLE_PRIVATE_KEY_PATH:}   # .p8 비밀키 파일 경로. 배포 시 컨테이너에 파일 마운트 필요
+    # IP당 분당 호출 제한. 초과 시 OAUTH429_1 + Retry-After 헤더 (명세 SDK v0.2)
+    rate-limit:
+      login-per-minute: 30                           # /mobile/kakao, /google, /apple 합산
+      challenge-per-minute: 10                       # /mobile/apple/challenge
 
 aws:
   s3:

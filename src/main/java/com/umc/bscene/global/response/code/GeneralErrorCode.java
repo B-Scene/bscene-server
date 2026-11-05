@@ -57,6 +57,13 @@ public enum GeneralErrorCode implements BaseResponseCode{
             INTERNAL_SERVER_ERROR,
             "COMMON_500_1",
             "서버 내부에서 알 수 없는 에러가 발생했습니다."
+    ),
+    // Redis 등 필수 저장소 장애. 우회 통과시키지 않고 503으로 응답한다 (명세 SDK v0.2).
+    // AppleOauthErrorCode.AUTH_STORE_UNAVAILABLE 와 코드·문구가 같다.
+    STORE_UNAVAILABLE(
+            SERVICE_UNAVAILABLE,
+            "COMMON_503_1",
+            "인증 저장소를 일시적으로 사용할 수 없습니다."
     )
     ;
 
