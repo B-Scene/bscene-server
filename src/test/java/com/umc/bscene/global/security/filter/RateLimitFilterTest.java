@@ -25,6 +25,8 @@ import org.springframework.mock.web.MockHttpServletResponse;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatCode;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.eq;
@@ -84,6 +86,36 @@ class RateLimitFilterTest {
 
     private JsonNode responseBody() throws Exception {
         return new ObjectMapper().readTree(response.getContentAsString());
+    }
+
+    @Nested
+    @DisplayName("한도 설정 검증")
+    class LimitConfiguration {
+
+        @ParameterizedTest
+        @ValueSource(ints = {0, -1})
+        @DisplayName("login 한도가 1 미만이면 생성 시점에 실패한다 (전부 429 가 되는 설정 오류를 기동 시 차단)")
+        void rejectsNonPositiveLoginLimit(int limit) {
+            assertThatThrownBy(() -> new RateLimitFilter(redis, limit, CHALLENGE_LIMIT))
+                    .isInstanceOf(IllegalArgumentException.class)
+                    .hasMessageContaining("login-per-minute")
+                    .hasMessageContaining(String.valueOf(limit));
+        }
+
+        @ParameterizedTest
+        @ValueSource(ints = {0, -5})
+        @DisplayName("challenge 한도가 1 미만이면 생성 시점에 실패한다")
+        void rejectsNonPositiveChallengeLimit(int limit) {
+            assertThatThrownBy(() -> new RateLimitFilter(redis, LOGIN_LIMIT, limit))
+                    .isInstanceOf(IllegalArgumentException.class)
+                    .hasMessageContaining("challenge-per-minute");
+        }
+
+        @Test
+        @DisplayName("한도가 1 이면 정상 생성된다")
+        void acceptsMinimumLimit() {
+            assertThatCode(() -> new RateLimitFilter(redis, 1, 1)).doesNotThrowAnyException();
+        }
     }
 
     @Nested
