@@ -147,44 +147,6 @@ class KakaoAccessTokenVerifierTest {
         }
 
         @Test
-        @DisplayName("401 이 아닌 4xx 도 토큰 문제로 본다")
-        void rejectsOtherClientErrors() {
-            expectTokenInfo(withStatus(HttpStatus.BAD_REQUEST));
-
-            assertOauthError(() -> verifier.verify(TOKEN), OauthErrorCode.INVALID_PROVIDER_TOKEN);
-        }
-
-        @Test
-        @DisplayName("400 인데 본문 code 가 장애 코드가 아니면 토큰 문제로 본다")
-        void rejectsBadRequestWithNonTransientCode() {
-            expectTokenInfo(withStatus(HttpStatus.BAD_REQUEST)
-                    .contentType(MediaType.APPLICATION_JSON)
-                    .body("{\"msg\":\"invalid token\",\"code\":-2}"));
-
-            assertOauthError(() -> verifier.verify(TOKEN), OauthErrorCode.INVALID_PROVIDER_TOKEN);
-        }
-
-        @Test
-        @DisplayName("4xx 본문이 JSON 이 아니거나 깨져 있으면 상태 코드만 보고 토큰 문제로 본다")
-        void rejectsClientErrorWithUnparsableBody() {
-            expectTokenInfo(withStatus(HttpStatus.BAD_REQUEST)
-                    .contentType(MediaType.TEXT_HTML)
-                    .body("<html>bad request</html>"));
-
-            assertOauthError(() -> verifier.verify(TOKEN), OauthErrorCode.INVALID_PROVIDER_TOKEN);
-        }
-
-        @Test
-        @DisplayName("4xx 본문이 JSON 이라고 하지만 파싱이 안 되면 상태 코드만 보고 토큰 문제로 본다")
-        void rejectsClientErrorWithMalformedJson() {
-            expectTokenInfo(withStatus(HttpStatus.BAD_REQUEST)
-                    .contentType(MediaType.APPLICATION_JSON)
-                    .body("{\"code\": "));
-
-            assertOauthError(() -> verifier.verify(TOKEN), OauthErrorCode.INVALID_PROVIDER_TOKEN);
-        }
-
-        @Test
         @DisplayName("두 응답의 사용자 id 가 다르면 OAUTH401_1")
         void rejectsUserIdMismatch() {
             expectTokenInfo(withSuccess(TOKEN_INFO_JSON, MediaType.APPLICATION_JSON));
@@ -301,16 +263,45 @@ class KakaoAccessTokenVerifierTest {
             assertOauthError(() -> verifier.verify(TOKEN), OauthErrorCode.PROVIDER_UNAVAILABLE);
         }
 
+        @Test
+        @DisplayName("401 이 아닌 4xx 는 토큰 문제가 아니라 카카오 쪽 문제로 보고 OAUTH503_1 (본문 없음)")
+        void mapsOtherClientErrors() {
+            expectTokenInfo(withStatus(HttpStatus.BAD_REQUEST));
+
+            assertOauthError(() -> verifier.verify(TOKEN), OauthErrorCode.PROVIDER_UNAVAILABLE);
+            server.verify();
+        }
+
         @ParameterizedTest
         @ValueSource(ints = {-1, -10})
-        @DisplayName("HTTP 400 이어도 본문 code 가 -1(내부 오류)·-10(쿼터 초과)이면 토큰 문제가 아니라 OAUTH503_1")
-        void mapsKakaoTransientErrorCodes(int kakaoCode) {
+        @DisplayName("HTTP 400 + code -1(내부 오류)·-10(쿼터 초과)은 OAUTH503_1, 두 번째 호출 안 함")
+        void mapsKakaoErrorCodes(int kakaoCode) {
             expectTokenInfo(withStatus(HttpStatus.BAD_REQUEST)
                     .contentType(MediaType.APPLICATION_JSON)
                     .body("{\"msg\":\"kakao error\",\"code\":" + kakaoCode + "}"));
 
             assertOauthError(() -> verifier.verify(TOKEN), OauthErrorCode.PROVIDER_UNAVAILABLE);
             server.verify();
+        }
+
+        @Test
+        @DisplayName("4xx 본문이 JSON 이 아니어도(HTML 등) 분류는 상태 코드로 하므로 OAUTH503_1")
+        void mapsClientErrorWithUnparsableBody() {
+            expectTokenInfo(withStatus(HttpStatus.BAD_REQUEST)
+                    .contentType(MediaType.TEXT_HTML)
+                    .body("<html>bad request</html>"));
+
+            assertOauthError(() -> verifier.verify(TOKEN), OauthErrorCode.PROVIDER_UNAVAILABLE);
+        }
+
+        @Test
+        @DisplayName("4xx 본문이 깨진 JSON 이어도 OAUTH503_1")
+        void mapsClientErrorWithMalformedJson() {
+            expectTokenInfo(withStatus(HttpStatus.BAD_REQUEST)
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .body("{\"code\": "));
+
+            assertOauthError(() -> verifier.verify(TOKEN), OauthErrorCode.PROVIDER_UNAVAILABLE);
         }
 
         @Test
