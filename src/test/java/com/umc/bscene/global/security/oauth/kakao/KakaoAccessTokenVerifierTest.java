@@ -147,6 +147,26 @@ class KakaoAccessTokenVerifierTest {
         }
 
         @Test
+        @DisplayName("401 본문이 JSON 이 아니어도(HTML 등) 분류는 상태 코드로 하므로 OAUTH401_1")
+        void rejectsUnauthorizedWithUnparsableBody() {
+            expectTokenInfo(withStatus(HttpStatus.UNAUTHORIZED)
+                    .contentType(MediaType.TEXT_HTML)
+                    .body("<html>unauthorized</html>"));
+
+            assertOauthError(() -> verifier.verify(TOKEN), OauthErrorCode.INVALID_PROVIDER_TOKEN);
+        }
+
+        @Test
+        @DisplayName("401 본문이 깨진 JSON 이어도 OAUTH401_1")
+        void rejectsUnauthorizedWithMalformedJson() {
+            expectTokenInfo(withStatus(HttpStatus.UNAUTHORIZED)
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .body("{\"code\": "));
+
+            assertOauthError(() -> verifier.verify(TOKEN), OauthErrorCode.INVALID_PROVIDER_TOKEN);
+        }
+
+        @Test
         @DisplayName("두 응답의 사용자 id 가 다르면 OAUTH401_1")
         void rejectsUserIdMismatch() {
             expectTokenInfo(withSuccess(TOKEN_INFO_JSON, MediaType.APPLICATION_JSON));
@@ -273,12 +293,24 @@ class KakaoAccessTokenVerifierTest {
         }
 
         @ParameterizedTest
-        @ValueSource(ints = {-1, -10})
-        @DisplayName("HTTP 400 + code -1(내부 오류)·-10(쿼터 초과)은 OAUTH503_1, 두 번째 호출 안 함")
+        @ValueSource(ints = {-1, -2, -7, -10})
+        @DisplayName("HTTP 400 + code -1(내부 오류)·-2(파라미터)·-7(점검)·-10(쿼터 초과)은 OAUTH503_1, 두 번째 호출 안 함")
         void mapsKakaoErrorCodes(int kakaoCode) {
             expectTokenInfo(withStatus(HttpStatus.BAD_REQUEST)
                     .contentType(MediaType.APPLICATION_JSON)
                     .body("{\"msg\":\"kakao error\",\"code\":" + kakaoCode + "}"));
+
+            assertOauthError(() -> verifier.verify(TOKEN), OauthErrorCode.PROVIDER_UNAVAILABLE);
+            server.verify();
+        }
+
+        @ParameterizedTest
+        @ValueSource(ints = {-3, -4, -5})
+        @DisplayName("HTTP 403 + code -3(API 미설정)·-4(계정 제재)·-5(권한 없음)은 토큰 문제가 아니라 OAUTH503_1")
+        void mapsForbiddenAsProviderProblem(int kakaoCode) {
+            expectTokenInfo(withStatus(HttpStatus.FORBIDDEN)
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .body("{\"msg\":\"forbidden\",\"code\":" + kakaoCode + "}"));
 
             assertOauthError(() -> verifier.verify(TOKEN), OauthErrorCode.PROVIDER_UNAVAILABLE);
             server.verify();
@@ -335,9 +367,9 @@ class KakaoAccessTokenVerifierTest {
         }
 
         @ParameterizedTest
-        @ValueSource(strings = {"not-a-number", "abc123def456", "12a"})
-        @DisplayName("앱 ID 가 비어 있지 않은데 숫자가 아니면 생성 시점에 IllegalStateException (기동 실패), 메시지에 값은 남기지 않는다")
-        void failsAtConstructionWhenAppIdNotNumeric(String appId) {
+        @ValueSource(strings = {"not-a-number", "abc123def456", "12a", "-1", "0"})
+        @DisplayName("앱 ID 가 비어 있지 않은데 숫자가 아니거나 0 이하면 생성 시점에 IllegalStateException (기동 실패), 메시지에 값은 남기지 않는다")
+        void failsAtConstructionWhenAppIdInvalid(String appId) {
             RestClient restClient = RestClient.builder().build();
 
             assertThatThrownBy(() -> new KakaoAccessTokenVerifier(restClient, appId))
