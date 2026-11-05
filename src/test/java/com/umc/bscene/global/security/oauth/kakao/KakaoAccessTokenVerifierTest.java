@@ -184,6 +184,14 @@ class KakaoAccessTokenVerifierTest {
         void rejectsNullToken() {
             assertOauthError(() -> verifier.verify(null), OauthErrorCode.INVALID_PROVIDER_TOKEN);
         }
+
+        @ParameterizedTest
+        @ValueSource(strings = {"abc\ndef", "abc\r\ndef", "abc def", "토큰", "abc\u0000def"})
+        @DisplayName("줄바꿈·공백·비ASCII 가 섞인 토큰은 카카오를 호출하지 않고 OAUTH401_1 (헤더 거부로 인한 500·토큰 로그 노출 방지)")
+        void rejectsTokenWithIllegalCharacters(String token) {
+            assertOauthError(() -> verifier.verify(token), OauthErrorCode.INVALID_PROVIDER_TOKEN);
+            server.verify();
+        }
     }
 
     @Nested
@@ -197,6 +205,24 @@ class KakaoAccessTokenVerifierTest {
 
             assertOauthError(() -> verifier.verify(TOKEN), OauthErrorCode.PROVIDER_TOKEN_APP_MISMATCH);
             server.verify();
+        }
+
+        @ParameterizedTest
+        @ValueSource(strings = {"0456789", " 456789 "})
+        @DisplayName("설정값에 앞자리 0 이나 공백이 있어도 숫자로 비교해 같은 앱으로 인식한다")
+        void comparesAppIdNumerically(String configuredAppId) {
+            RestClient.Builder builder = RestClient.builder();
+            MockRestServiceServer lenientServer = MockRestServiceServer.bindTo(builder).build();
+            KakaoAccessTokenVerifier configured = new KakaoAccessTokenVerifier(builder.build(), configuredAppId);
+            lenientServer.expect(requestTo(KakaoAccessTokenVerifier.ACCESS_TOKEN_INFO_URI))
+                    .andRespond(withSuccess(TOKEN_INFO_JSON, MediaType.APPLICATION_JSON));
+            lenientServer.expect(requestTo(KakaoAccessTokenVerifier.USER_ME_URI))
+                    .andRespond(withSuccess(USER_ME_JSON, MediaType.APPLICATION_JSON));
+
+            VerifiedSocialIdentity identity = configured.verify(TOKEN);
+
+            assertThat(identity.providerUid()).isEqualTo("123");
+            lenientServer.verify();
         }
     }
 
