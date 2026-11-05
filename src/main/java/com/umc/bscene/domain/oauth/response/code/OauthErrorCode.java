@@ -26,6 +26,7 @@ public enum OauthErrorCode implements BaseResponseCode {
     APPLE_NONCE_MISMATCH(UNAUTHORIZED, "OAUTH401_3", "Apple 로그인 요청 정보가 일치하지 않습니다."),
     ALREADY_REGISTERED(CONFLICT, "OAUTH409_1", "이미 가입된 소셜 계정입니다."),
     DUPLICATE_PHONE(CONFLICT, "OAUTH409_2", "이미 가입된 휴대폰 번호입니다."),
+    APPLE_REVOCATION_PENDING(CONFLICT, "OAUTH409_3", "이전 Apple 로그인 정보를 정리 중입니다. 완료 후 새 로그인으로 다시 시도해 주세요."),
     TOO_MANY_LOGIN_ATTEMPTS(TOO_MANY_REQUESTS, "OAUTH429_1", "소셜 로그인 요청이 너무 많습니다. 잠시 후 다시 시도해 주세요."),
     PROVIDER_UNAVAILABLE(SERVICE_UNAVAILABLE, "OAUTH503_1", "소셜 인증 서비스에 일시적으로 연결할 수 없습니다.");
 

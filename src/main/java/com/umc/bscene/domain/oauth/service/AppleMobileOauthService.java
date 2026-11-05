@@ -11,6 +11,7 @@ import com.umc.bscene.global.security.oauth.apple.AppleTokenResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.stereotype.Service;
+import java.time.LocalDateTime;
 
 @Service
 @RequiredArgsConstructor
@@ -23,12 +24,13 @@ public class AppleMobileOauthService {
 
     public OauthLoginResponse login(AppleMobileLoginRequest request) {
         AppleLoginCompletion completion = requireCompletion();
+        completion.validateConfiguration();
         String nonce = challenges.getNonce(request.challengeId());
         VerifiedSocialIdentity identity = verifier.verify(request.identityToken(), nonce, request.authorizationCode());
+        LocalDateTime loginDeadline = completion.begin(identity);
         challenges.consume(request.challengeId(), nonce);
         AppleTokenResponse tokens = tokenClient.exchange(request.authorizationCode());
-        validateExchangedIdentity(identity, tokens, nonce, request.authorizationCode());
-        return completion.complete(identity, tokens.refreshToken());
+        return finishExchange(completion, identity, tokens, nonce, request.authorizationCode(), loginDeadline);
     }
 
     private AppleLoginCompletion requireCompletion() {
@@ -39,12 +41,21 @@ public class AppleMobileOauthService {
         return completion;
     }
 
-    private void validateExchangedIdentity(
-            VerifiedSocialIdentity identity, AppleTokenResponse tokens, String nonce, String authorizationCode
+    private OauthLoginResponse finishExchange(
+            AppleLoginCompletion completion, VerifiedSocialIdentity identity, AppleTokenResponse tokens,
+            String nonce, String authorizationCode, LocalDateTime loginDeadline
     ) {
-        VerifiedSocialIdentity exchanged = verifier.verify(tokens.identityToken(), nonce, authorizationCode);
-        if (!identity.providerUid().equals(exchanged.providerUid())) {
-            throw new OauthException(OauthErrorCode.INVALID_PROVIDER_TOKEN);
+        String attemptId = completion.stage(tokens, loginDeadline);
+        try {
+            completion.identify(attemptId, verifier.verifyForCleanup(tokens.identityToken()));
+            VerifiedSocialIdentity exchanged = verifier.verify(tokens.identityToken(), nonce, authorizationCode);
+            if (!identity.providerUid().equals(exchanged.providerUid())) {
+                throw new OauthException(OauthErrorCode.INVALID_PROVIDER_TOKEN);
+            }
+            return completion.complete(attemptId, identity);
+        } catch (RuntimeException exception) {
+            completion.reject(attemptId);
+            throw exception;
         }
     }
 }

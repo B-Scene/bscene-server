@@ -110,6 +110,14 @@ public class JwtUtil {
         return getClaims(token).getPayload().get("email", String.class);
     }
 
+    public String getSignupId(String token) {
+        return getClaims(token).getPayload().getId();
+    }
+
+    public Instant getExpiration(String token) {
+        return getClaims(token).getPayload().getExpiration().toInstant();
+    }
+
     /** 토큰 유효성 확인
      *
      * @param token 유효한지 확인할 토큰

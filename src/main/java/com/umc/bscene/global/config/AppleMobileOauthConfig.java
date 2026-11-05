@@ -1,6 +1,7 @@
 package com.umc.bscene.global.config;
 
 import com.umc.bscene.global.security.oauth.apple.AppleClientSecretGenerator;
+import com.umc.bscene.global.security.oauth.apple.AppleCredentialCipher;
 import com.umc.bscene.global.security.oauth.apple.AppleIdTokenVerifier;
 import com.umc.bscene.global.security.oauth.apple.AppleTokenClient;
 import org.springframework.beans.factory.annotation.Value;
@@ -9,6 +10,13 @@ import org.springframework.context.annotation.Configuration;
 
 @Configuration(proxyBeanMethods = false)
 public class AppleMobileOauthConfig {
+
+    @Bean
+    public AppleCredentialCipher appleCredentialCipher(
+            @Value("${oauth.mobile.apple.credential-encryption-key:${APPLE_CREDENTIAL_ENCRYPTION_KEY:}}") String key
+    ) {
+        return new AppleCredentialCipher(key.trim());
+    }
 
     @Bean
     public AppleIdTokenVerifier appleIdTokenVerifier(@Value("${oauth.mobile.apple.client-id:}") String clientId) {

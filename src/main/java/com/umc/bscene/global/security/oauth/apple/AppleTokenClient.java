@@ -26,6 +26,7 @@ import java.util.concurrent.TimeoutException;
 public final class AppleTokenClient {
 
     private static final URI TOKEN_ENDPOINT = URI.create("https://appleid.apple.com/auth/token");
+    private static final URI REVOKE_ENDPOINT = URI.create("https://appleid.apple.com/auth/revoke");
     private static final int MAX_RESPONSE_BYTES = 65_536;
     private static final Set<String> CONFIGURATION_ERRORS = Set.of(
             "invalid_client", "invalid_request", "unauthorized_client", "unsupported_grant_type", "invalid_scope");
@@ -34,6 +35,7 @@ public final class AppleTokenClient {
     private final AppleClientSecretGenerator secretGenerator;
     private final HttpClient httpClient;
     private final URI tokenEndpoint;
+    private final URI revokeEndpoint;
     private final Duration requestTimeout;
     private final ObjectMapper objectMapper = new ObjectMapper();
 
@@ -45,10 +47,16 @@ public final class AppleTokenClient {
 
     AppleTokenClient(String clientId, AppleClientSecretGenerator secretGenerator,
                      HttpClient httpClient, URI tokenEndpoint, Duration requestTimeout) {
+        this(clientId, secretGenerator, httpClient, tokenEndpoint, REVOKE_ENDPOINT, requestTimeout);
+    }
+
+    AppleTokenClient(String clientId, AppleClientSecretGenerator secretGenerator,
+                     HttpClient httpClient, URI tokenEndpoint, URI revokeEndpoint, Duration requestTimeout) {
         this.clientId = clientId;
         this.secretGenerator = secretGenerator;
         this.httpClient = httpClient;
         this.tokenEndpoint = tokenEndpoint;
+        this.revokeEndpoint = revokeEndpoint;
         this.requestTimeout = requestTimeout;
     }
 
@@ -64,16 +72,40 @@ public final class AppleTokenClient {
         return createTokenResponse(body);
     }
 
+    public void revoke(String refreshToken) {
+        if (refreshToken == null || refreshToken.isBlank() || refreshToken.length() > 16_384) {
+            throw new IllegalStateException("Apple 연결 해제용 자격정보가 올바르지 않습니다.");
+        }
+        String form = "client_id=" + encode(clientId) + "&client_secret=" + encode(secretGenerator.generate())
+                + "&token=" + encode(refreshToken) + "&token_type_hint=refresh_token";
+        HttpResponse<byte[]> response = send(createFormRequest(revokeEndpoint, form));
+        // Apple은 이미 무효화된 토큰도 200과 빈 본문으로 응답한다.
+        if (response.statusCode() != 200) {
+            throwRevokeError(response.statusCode(), readResponse(response.body()));
+        }
+    }
+
     private HttpRequest createRequest(String authorizationCode) {
         String clientSecret = secretGenerator.generate();
         String form = "grant_type=authorization_code&client_id=" + encode(clientId)
                 + "&client_secret=" + encode(clientSecret) + "&code=" + encode(authorizationCode);
-        return HttpRequest.newBuilder(tokenEndpoint)
+        return createFormRequest(tokenEndpoint, form);
+    }
+
+    private HttpRequest createFormRequest(URI endpoint, String form) {
+        return HttpRequest.newBuilder(endpoint)
                 .timeout(requestTimeout)
                 .header("Content-Type", "application/x-www-form-urlencoded")
                 .header("Accept", "application/json")
                 .POST(HttpRequest.BodyPublishers.ofString(form, StandardCharsets.UTF_8))
                 .build();
+    }
+
+    private void throwRevokeError(int status, JsonNode body) {
+        if ((status == 400 || status == 401) && CONFIGURATION_ERRORS.contains(body.path("error").asText(""))) {
+            throw new IllegalStateException("Apple OAuth 연결 해제 설정을 확인해 주세요.");
+        }
+        throw createUnavailableException();
     }
 
     private HttpResponse<byte[]> send(HttpRequest request) {
