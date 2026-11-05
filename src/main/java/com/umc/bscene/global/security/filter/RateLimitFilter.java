@@ -18,6 +18,7 @@ import org.springframework.data.redis.core.script.DefaultRedisScript;
 import org.springframework.http.HttpMethod;
 import org.springframework.security.web.servlet.util.matcher.PathPatternRequestMatcher;
 import org.springframework.security.web.util.matcher.RequestMatcher;
+import org.springframework.util.Assert;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
@@ -71,18 +72,18 @@ public class RateLimitFilter extends OncePerRequestFilter {
     }
 
     @Override
-    protected boolean shouldNotFilter(@NonNull HttpServletRequest request) {
-        return resolveBucket(request) == null;
-    }
-
-    @Override
     protected void doFilterInternal(
             @NonNull HttpServletRequest request,
             @NonNull HttpServletResponse response,
             @NonNull FilterChain filterChain
     ) throws ServletException, IOException {
-        // shouldNotFilter 가 대상 외 요청을 걸렀으므로 여기서는 항상 버킷이 있다
         Bucket bucket = resolveBucket(request);
+        if (bucket == null) {
+            // 모바일 로그인 경로가 아니면 Redis 를 건드리지 않고 그대로 통과
+            filterChain.doFilter(request, response);
+            return;
+        }
+
         String key = KEY_PREFIX + bucket.name() + ":" + resolveClientIp(request);
         List<?> result;
         try {
@@ -139,6 +140,10 @@ public class RateLimitFilter extends OncePerRequestFilter {
     }
 
     private record Bucket(String name, int limit) {
+        private Bucket {
+            // 0 이나 음수면 첫 요청부터 전부 429 가 되므로 설정 오류는 기동 시점에 바로 실패시킨다
+            Assert.isTrue(limit > 0, () -> "oauth.mobile.rate-limit." + name + "-per-minute 는 1 이상이어야 합니다. 현재 값: " + limit);
+        }
     }
 
     private record Rule(RequestMatcher matcher, Bucket bucket) {

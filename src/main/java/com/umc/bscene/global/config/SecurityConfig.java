@@ -52,8 +52,8 @@ public class SecurityConfig {
             @Value("${oauth.mobile.rate-limit.login-per-minute}") int loginLimitPerMinute,
             @Value("${oauth.mobile.rate-limit.challenge-per-minute}") int challengeLimitPerMinute
     ) throws Exception {
-        // @Bean 으로 노출하면 Spring Boot 가 서블릿 컨테이너에도 자동 등록해 시큐리티 체인 밖(HttpFirewall·CORS 앞)에서
-        // 먼저 돌아버린다. 체인 안에서만 동작하도록 빈으로 만들지 않고 여기서 직접 생성한다.
+        // Filter 타입 빈은 Spring Boot 가 서블릿 컨테이너에도 자동 등록한다 (체인 뒤 최하위 순서라 OncePerRequestFilter 가
+        // 걸러 실제로 두 번 돌지는 않지만 등록 자체가 불필요). 시큐리티 체인에만 두려고 빈으로 만들지 않고 여기서 생성한다.
         RateLimitFilter rateLimitFilter =
                 new RateLimitFilter(stringRedisTemplate, loginLimitPerMinute, challengeLimitPerMinute);
 
