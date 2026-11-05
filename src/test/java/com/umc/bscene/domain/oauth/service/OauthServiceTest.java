@@ -34,6 +34,7 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.data.redis.core.ValueOperations;
 
@@ -52,6 +53,7 @@ import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.startsWith;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -88,7 +90,7 @@ class OauthServiceTest {
     void setUp() {
         service = new OauthService(
                 userRepository, oauthAccountRepository, userTermsRepository, termsRepository,
-                phoneVerificationService, stringRedisTemplate, jwtUtil
+                phoneVerificationService, stringRedisTemplate, jwtUtil, mock(ObjectProvider.class)
         );
         lenient().when(termsRepository.getReferenceById(anyLong()))
                 .thenAnswer(invocation -> Terms.builder()

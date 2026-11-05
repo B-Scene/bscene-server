@@ -30,6 +30,7 @@ import com.umc.bscene.global.security.entity.OAuthMember;
 import com.umc.bscene.global.security.util.JwtUtil;
 import lombok.RequiredArgsConstructor;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -61,6 +62,7 @@ public class OauthService {
     private final PhoneVerificationService phoneVerificationService;
     private final StringRedisTemplate stringRedisTemplate;
     private final JwtUtil jwtUtil;
+    private final ObjectProvider<AppleCredentialService> appleCredentials;
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     // 웹 소셜 로그인 성공 처리 (Spring Security 리다이렉트 경로).
@@ -175,6 +177,10 @@ public class OauthService {
         // 이메일(아이디)은 사용자가 수정할 수 없으므로 요청 본문이 아닌 서명된 토큰에서 읽음
         String email = jwtUtil.getEmail(signupToken);
 
+        if (provider == SocialProvider.APPLE) {
+            appleCredentials.getObject().validateSignup(signupToken);
+        }
+
         if (oauthAccountRepository.findByProviderAndProviderUid(provider, providerUid).isPresent()) {
             throw new OauthException(OauthErrorCode.ALREADY_REGISTERED);
         }
@@ -220,6 +226,10 @@ public class OauthService {
         }
 
         saveTerms(savedUser, request.terms());
+
+        if (provider == SocialProvider.APPLE) {
+            appleCredentials.getObject().attachSignup(signupToken, savedUser);
+        }
 
         // 인증 완료 상태 정리 (재사용 방지)
         phoneVerificationService.removeVerified(PhoneVerificationPurpose.SIGNUP, request.phone());

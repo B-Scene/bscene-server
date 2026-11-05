@@ -2,13 +2,23 @@ package com.umc.bscene.domain.oauth.service;
 
 import com.umc.bscene.domain.oauth.dto.response.OauthLoginResponse;
 import com.umc.bscene.domain.oauth.verifier.VerifiedSocialIdentity;
+import com.umc.bscene.global.security.oauth.apple.AppleTokenResponse;
+import java.time.LocalDateTime;
 
 /**
- * B3 구현은 Apple 자격정보를 안전하게 보관한 뒤 공통 로그인을 호출한다.
- * 신규 가입은 signupToken과 보관 자료를 연결하며, 저장·연결 실패 시 성공을 반환하지 않는다.
- * 구현체가 없으면 Apple 로그인은 코드 소비·비씬 토큰 발급 전에 차단된다.
+ * 외부 코드 소비 후 받은 자료를 먼저 보관하고, 검증·가입·실패 정리를 연결한다.
  */
 public interface AppleLoginCompletion {
 
-    OauthLoginResponse complete(VerifiedSocialIdentity identity, String refreshToken);
+    void validateConfiguration();
+
+    LocalDateTime begin(VerifiedSocialIdentity identity);
+
+    String stage(AppleTokenResponse tokens, LocalDateTime loginDeadline);
+
+    void identify(String attemptId, VerifiedSocialIdentity signedIdentity);
+
+    OauthLoginResponse complete(String attemptId, VerifiedSocialIdentity identity);
+
+    void reject(String attemptId);
 }

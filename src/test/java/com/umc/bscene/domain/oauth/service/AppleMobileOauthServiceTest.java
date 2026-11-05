@@ -17,6 +17,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.beans.factory.ObjectProvider;
 
 import java.util.ArrayList;
+import java.time.LocalDateTime;
 import java.util.concurrent.Callable;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -26,6 +27,9 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.inOrder;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
@@ -38,6 +42,7 @@ class AppleMobileOauthServiceTest {
             "sdk-identity-token", "authorization-code", "c".repeat(43)
     );
     private static final String NONCE = "n".repeat(43);
+    private static final LocalDateTime LOGIN_DEADLINE = LocalDateTime.of(2026, 11, 5, 0, 0);
     private static final VerifiedSocialIdentity IDENTITY = new VerifiedSocialIdentity(
             SocialProvider.APPLE, "apple-sub", "user@privaterelay.appleid.com", null
     );
@@ -72,17 +77,21 @@ class AppleMobileOauthServiceTest {
         mockInitialVerification();
         mockExchangeVerification();
         OauthLoginResponse expected = OauthLoginResponse.ofNew("signup-token", IDENTITY.email());
-        when(completion.complete(IDENTITY, TOKENS.refreshToken())).thenReturn(expected);
+        when(completion.complete("attempt", IDENTITY)).thenReturn(expected);
 
         assertThat(service.login(REQUEST)).isSameAs(expected);
 
         var order = inOrder(challenges, verifier, tokenClient, completion);
         order.verify(challenges).getNonce(REQUEST.challengeId());
         order.verify(verifier).verify(REQUEST.identityToken(), NONCE, REQUEST.authorizationCode());
+        order.verify(completion).begin(IDENTITY);
         order.verify(challenges).consume(REQUEST.challengeId(), NONCE);
         order.verify(tokenClient).exchange(REQUEST.authorizationCode());
+        order.verify(completion).stage(TOKENS, LOGIN_DEADLINE);
+        order.verify(verifier).verifyForCleanup(TOKENS.identityToken());
+        order.verify(completion).identify("attempt", IDENTITY);
         order.verify(verifier).verify(TOKENS.identityToken(), NONCE, REQUEST.authorizationCode());
-        order.verify(completion).complete(IDENTITY, TOKENS.refreshToken());
+        order.verify(completion).complete("attempt", IDENTITY);
     }
 
     @Test
@@ -94,7 +103,8 @@ class AppleMobileOauthServiceTest {
 
         assertThrows(OauthException.class, () -> service.login(REQUEST));
         verify(challenges, times(0)).consume(REQUEST.challengeId(), NONCE);
-        verifyNoInteractions(tokenClient, completion);
+        verifyNoInteractions(tokenClient);
+        verify(completion, never()).stage(any(), any());
     }
 
     @Test
@@ -104,7 +114,8 @@ class AppleMobileOauthServiceTest {
                 .when(challenges).consume(REQUEST.challengeId(), NONCE);
 
         assertThrows(OauthException.class, () -> service.login(REQUEST));
-        verifyNoInteractions(tokenClient, completion);
+        verifyNoInteractions(tokenClient);
+        verify(completion, never()).stage(any(), any());
     }
 
     @Test
@@ -115,37 +126,41 @@ class AppleMobileOauthServiceTest {
 
         assertThrows(OauthException.class, () -> service.login(REQUEST));
         verify(tokenClient).exchange(REQUEST.authorizationCode());
-        verifyNoInteractions(completion);
+        verify(completion, never()).complete(any(), any());
     }
 
     @Test
     void rejectExchangedTokenFromAnotherUser() {
         mockInitialVerification();
         when(tokenClient.exchange(REQUEST.authorizationCode())).thenReturn(TOKENS);
+        when(completion.stage(eq(TOKENS), any())).thenReturn("attempt");
+        when(verifier.verifyForCleanup(TOKENS.identityToken())).thenReturn(IDENTITY);
         when(verifier.verify(TOKENS.identityToken(), NONCE, REQUEST.authorizationCode()))
                 .thenReturn(new VerifiedSocialIdentity(SocialProvider.APPLE, "other-user", IDENTITY.email(), null));
 
         OauthException error = assertThrows(OauthException.class, () -> service.login(REQUEST));
         assertThat(error.getBaseResponseCode()).isEqualTo(OauthErrorCode.INVALID_PROVIDER_TOKEN);
-        verifyNoInteractions(completion);
+        verify(completion, never()).complete(any(), any());
     }
 
     @Test
     void rejectExchangedTokenFromAnotherAttempt() {
         mockInitialVerification();
         when(tokenClient.exchange(REQUEST.authorizationCode())).thenReturn(TOKENS);
+        when(completion.stage(eq(TOKENS), any())).thenReturn("attempt");
+        when(verifier.verifyForCleanup(TOKENS.identityToken())).thenReturn(IDENTITY);
         when(verifier.verify(TOKENS.identityToken(), NONCE, REQUEST.authorizationCode()))
                 .thenThrow(new OauthException(OauthErrorCode.APPLE_NONCE_MISMATCH));
 
         assertThrows(OauthException.class, () -> service.login(REQUEST));
-        verifyNoInteractions(completion);
+        verify(completion, never()).complete(any(), any());
     }
 
     @Test
     void propagateCredentialPersistenceFailureWithoutSuccess() {
         mockInitialVerification();
         mockExchangeVerification();
-        when(completion.complete(IDENTITY, TOKENS.refreshToken())).thenThrow(new IllegalStateException("저장 실패"));
+        when(completion.complete("attempt", IDENTITY)).thenThrow(new IllegalStateException("저장 실패"));
 
         assertThrows(IllegalStateException.class, () -> service.login(REQUEST));
     }
@@ -155,12 +170,12 @@ class AppleMobileOauthServiceTest {
         mockInitialVerification();
         mockExchangeVerification();
         mockAtomicConsumption();
-        when(completion.complete(IDENTITY, TOKENS.refreshToken()))
+        when(completion.complete("attempt", IDENTITY))
                 .thenReturn(OauthLoginResponse.ofNew("signup-token", IDENTITY.email()));
 
         assertThat(executeConcurrentLogins()).isEqualTo(1);
         verify(tokenClient).exchange(REQUEST.authorizationCode());
-        verify(completion).complete(IDENTITY, TOKENS.refreshToken());
+        verify(completion).complete("attempt", IDENTITY);
     }
 
     private long executeConcurrentLogins() throws Exception {
@@ -199,12 +214,15 @@ class AppleMobileOauthServiceTest {
 
     private void mockInitialVerification() {
         when(completionProvider.getIfAvailable()).thenReturn(completion);
+        when(completion.begin(IDENTITY)).thenReturn(LOGIN_DEADLINE);
         when(challenges.getNonce(REQUEST.challengeId())).thenReturn(NONCE);
         when(verifier.verify(REQUEST.identityToken(), NONCE, REQUEST.authorizationCode())).thenReturn(IDENTITY);
     }
 
     private void mockExchangeVerification() {
         when(tokenClient.exchange(REQUEST.authorizationCode())).thenReturn(TOKENS);
+        when(completion.stage(eq(TOKENS), any())).thenReturn("attempt");
+        when(verifier.verifyForCleanup(TOKENS.identityToken())).thenReturn(IDENTITY);
         when(verifier.verify(TOKENS.identityToken(), NONCE, REQUEST.authorizationCode())).thenReturn(IDENTITY);
     }
 }

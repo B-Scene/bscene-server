@@ -26,6 +26,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.data.redis.core.ValueOperations;
 import org.springframework.http.MediaType;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.ResultActions;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
@@ -76,7 +77,7 @@ class GoogleMobileOauthFlowTest {
     void setUp() {
         oauthService = new OauthService(
                 userRepository, oauthAccountRepository, mock(UserTermsRepository.class), mock(TermsRepository.class),
-                mock(PhoneVerificationService.class), redis, jwtUtil
+                mock(PhoneVerificationService.class), redis, jwtUtil, mock(ObjectProvider.class)
         );
         mockMvc = MockMvcBuilders.standaloneSetup(new GoogleMobileOauthController(verifier, oauthService))
                 .setControllerAdvice(new GlobalExceptionHandler())

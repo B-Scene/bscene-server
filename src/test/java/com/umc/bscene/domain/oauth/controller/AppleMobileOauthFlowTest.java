@@ -83,17 +83,21 @@ class AppleMobileOauthFlowTest {
     @Mock
     private JwtUtil jwtUtil;
 
+    @Mock
+    private AppleLoginCompletion completion;
+
     private MockMvc mockMvc;
 
     @BeforeEach
     void setUp() {
         var commonLogin = new OauthService(users, accounts, mock(UserTermsRepository.class),
-                mock(TermsRepository.class), mock(PhoneVerificationService.class), redis, jwtUtil);
-        // 테스트에서만 B3 완료 지점을 대신하며, 운영에는 저장을 생략하는 구현을 등록하지 않는다.
-        when(completionProvider.getIfAvailable()).thenReturn((identity, refreshToken) -> {
-            assertThat(refreshToken).isEqualTo(TOKENS.refreshToken());
-            return commonLogin.loginWithVerifiedIdentity(identity);
-        });
+                mock(TermsRepository.class), mock(PhoneVerificationService.class), redis, jwtUtil,
+                mock(ObjectProvider.class));
+        // 공통 회원 처리 계약은 실제 서비스로 확인하고 보관 계층은 전용 통합 테스트에서 검증한다.
+        when(completionProvider.getIfAvailable()).thenReturn(completion);
+        when(completion.stage(eq(TOKENS), any())).thenReturn("attempt");
+        when(completion.complete(eq("attempt"), any(VerifiedSocialIdentity.class)))
+                .thenAnswer(invocation -> commonLogin.loginWithVerifiedIdentity(invocation.getArgument(1)));
         var service = new AppleMobileOauthService(challenges, verifier, tokenClient, completionProvider);
         mockMvc = MockMvcBuilders.standaloneSetup(new AppleMobileOauthController(challenges, service))
                 .setControllerAdvice(new GlobalExceptionHandler()).build();
@@ -166,6 +170,7 @@ class AppleMobileOauthFlowTest {
         when(challenges.getNonce(REQUEST.challengeId())).thenReturn(NONCE);
         when(verifier.verify(REQUEST.identityToken(), NONCE, REQUEST.authorizationCode())).thenReturn(identity);
         when(tokenClient.exchange(REQUEST.authorizationCode())).thenReturn(TOKENS);
+        when(verifier.verifyForCleanup(TOKENS.identityToken())).thenReturn(identity);
         when(verifier.verify(TOKENS.identityToken(), NONCE, REQUEST.authorizationCode())).thenReturn(identity);
     }
 
