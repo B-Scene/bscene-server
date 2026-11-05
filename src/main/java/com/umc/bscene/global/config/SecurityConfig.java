@@ -2,6 +2,7 @@ package com.umc.bscene.global.config;
 
 import com.umc.bscene.global.security.enums.PermitAllUri;
 import com.umc.bscene.global.security.filter.JwtAuthFilter;
+import com.umc.bscene.global.security.filter.RateLimitFilter;
 import com.umc.bscene.global.security.handler.CustomAuthenticationEntryPoint;
 import com.umc.bscene.global.security.handler.OAuthFailureHandler;
 import com.umc.bscene.global.security.handler.OAuthSuccessHandler;
@@ -11,8 +12,10 @@ import com.umc.bscene.global.security.service.CustomUserDetailsService;
 import com.umc.bscene.global.security.util.JwtUtil;
 import jakarta.servlet.DispatcherType;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
@@ -43,7 +46,7 @@ public class SecurityConfig {
             .toArray(String[]::new);
 
     @Bean
-    public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+    public SecurityFilterChain securityFilterChain(HttpSecurity http, RateLimitFilter rateLimitFilter) throws Exception {
         http
                 // CORS 활성화
                 .cors(Customizer.withDefaults())
@@ -90,7 +93,10 @@ public class SecurityConfig {
                         .authenticationEntryPoint(customAuthenticationEntryPoint)
                 )
 
-                .addFilterBefore(jwtAuthFilter(), UsernamePasswordAuthenticationFilter.class);
+                .addFilterBefore(jwtAuthFilter(), UsernamePasswordAuthenticationFilter.class)
+                // 모바일 로그인 호출 제한. 로그인 전 호출이라 토큰 검사(JwtAuthFilter)보다 앞에 둔다.
+                // JwtAuthFilter 기준 순서는 위 줄에서 등록된 뒤에만 쓸 수 있으므로 순서를 바꾸지 말 것
+                .addFilterBefore(rateLimitFilter, JwtAuthFilter.class);
 
         return http.build();
     }
@@ -103,5 +109,14 @@ public class SecurityConfig {
     @Bean
     public JwtAuthFilter jwtAuthFilter() {
         return new JwtAuthFilter(jwtUtil, customUserDetailsService);
+    }
+
+    @Bean
+    public RateLimitFilter rateLimitFilter(
+            StringRedisTemplate stringRedisTemplate,
+            @Value("${oauth.mobile.rate-limit.login-per-minute}") int loginLimitPerMinute,
+            @Value("${oauth.mobile.rate-limit.challenge-per-minute}") int challengeLimitPerMinute
+    ) {
+        return new RateLimitFilter(stringRedisTemplate, loginLimitPerMinute, challengeLimitPerMinute);
     }
 }
