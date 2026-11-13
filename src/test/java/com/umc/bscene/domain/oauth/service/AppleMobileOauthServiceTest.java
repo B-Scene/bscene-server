@@ -84,8 +84,8 @@ class AppleMobileOauthServiceTest {
         var order = inOrder(challenges, verifier, tokenClient, completion);
         order.verify(challenges).getNonce(REQUEST.challengeId());
         order.verify(verifier).verify(REQUEST.identityToken(), NONCE, REQUEST.authorizationCode());
-        order.verify(completion).begin(IDENTITY);
         order.verify(challenges).consume(REQUEST.challengeId(), NONCE);
+        order.verify(completion).begin(IDENTITY);
         order.verify(tokenClient).exchange(REQUEST.authorizationCode());
         order.verify(completion).stage(TOKENS, LOGIN_DEADLINE);
         order.verify(verifier).verifyForCleanup(TOKENS.identityToken());
@@ -109,11 +109,15 @@ class AppleMobileOauthServiceTest {
 
     @Test
     void rejectConsumedChallengeBeforeExternalExchange() {
-        mockInitialVerification();
+        when(completionProvider.getIfAvailable()).thenReturn(completion);
+        when(challenges.getNonce(REQUEST.challengeId())).thenReturn(NONCE);
+        when(verifier.verify(REQUEST.identityToken(), NONCE, REQUEST.authorizationCode())).thenReturn(IDENTITY);
         doThrow(new OauthException(OauthErrorCode.INVALID_APPLE_CHALLENGE))
                 .when(challenges).consume(REQUEST.challengeId(), NONCE);
 
-        assertThrows(OauthException.class, () -> service.login(REQUEST));
+        OauthException error = assertThrows(OauthException.class, () -> service.login(REQUEST));
+        assertThat(error.getBaseResponseCode()).isEqualTo(OauthErrorCode.INVALID_APPLE_CHALLENGE);
+        verify(completion, never()).begin(any());
         verifyNoInteractions(tokenClient);
         verify(completion, never()).stage(any(), any());
     }
@@ -127,6 +131,21 @@ class AppleMobileOauthServiceTest {
         assertThrows(OauthException.class, () -> service.login(REQUEST));
         verify(tokenClient).exchange(REQUEST.authorizationCode());
         verify(completion, never()).complete(any(), any());
+    }
+
+    @Test
+    void rejectUnavailableReservationBeforeCodeExchange() {
+        when(completionProvider.getIfAvailable()).thenReturn(completion);
+        when(challenges.getNonce(REQUEST.challengeId())).thenReturn(NONCE);
+        when(verifier.verify(REQUEST.identityToken(), NONCE, REQUEST.authorizationCode())).thenReturn(IDENTITY);
+        doThrow(new OauthException(OauthErrorCode.APPLE_REVOCATION_PENDING)).when(completion).begin(IDENTITY);
+
+        OauthException error = assertThrows(OauthException.class, () -> service.login(REQUEST));
+
+        assertThat(error.getBaseResponseCode()).isEqualTo(OauthErrorCode.APPLE_REVOCATION_PENDING);
+        verify(challenges).consume(REQUEST.challengeId(), NONCE);
+        verifyNoInteractions(tokenClient);
+        verify(completion, never()).stage(any(), any());
     }
 
     @Test
@@ -174,6 +193,7 @@ class AppleMobileOauthServiceTest {
                 .thenReturn(OauthLoginResponse.ofNew("signup-token", IDENTITY.email()));
 
         assertThat(executeConcurrentLogins()).isEqualTo(1);
+        verify(completion).begin(IDENTITY);
         verify(tokenClient).exchange(REQUEST.authorizationCode());
         verify(completion).complete("attempt", IDENTITY);
     }
