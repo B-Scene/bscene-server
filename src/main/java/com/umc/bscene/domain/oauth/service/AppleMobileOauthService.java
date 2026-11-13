@@ -27,8 +27,9 @@ public class AppleMobileOauthService {
         completion.validateConfiguration();
         String nonce = challenges.getNonce(request.challengeId());
         VerifiedSocialIdentity identity = verifier.verify(request.identityToken(), nonce, request.authorizationCode());
-        LocalDateTime loginDeadline = completion.begin(identity);
+        // 중복 요청이 정상 요청의 로그인 예약을 덮어쓰지 않도록 소비 성공 후 예약한다.
         challenges.consume(request.challengeId(), nonce);
+        LocalDateTime loginDeadline = completion.begin(identity);
         AppleTokenResponse tokens = tokenClient.exchange(request.authorizationCode());
         return finishExchange(completion, identity, tokens, nonce, request.authorizationCode(), loginDeadline);
     }
