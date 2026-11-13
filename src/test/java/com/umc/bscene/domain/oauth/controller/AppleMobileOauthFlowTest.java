@@ -3,7 +3,6 @@ package com.umc.bscene.domain.oauth.controller;
 import com.umc.bscene.domain.auth.enums.code.AuthErrorCode;
 import com.umc.bscene.domain.auth.repository.term.TermsRepository;
 import com.umc.bscene.domain.auth.repository.term.UserTermsRepository;
-import com.umc.bscene.domain.auth.service.verification.PhoneVerificationService;
 import com.umc.bscene.domain.oauth.dto.request.AppleMobileLoginRequest;
 import com.umc.bscene.domain.oauth.entity.OauthAccount;
 import com.umc.bscene.domain.oauth.enums.SocialProvider;
@@ -91,7 +90,7 @@ class AppleMobileOauthFlowTest {
     @BeforeEach
     void setUp() {
         var commonLogin = new OauthService(users, accounts, mock(UserTermsRepository.class),
-                mock(TermsRepository.class), mock(PhoneVerificationService.class), redis, jwtUtil,
+                mock(TermsRepository.class), redis, jwtUtil,
                 mock(ObjectProvider.class));
         // 공통 회원 처리 계약은 실제 서비스로 확인하고 보관 계층은 전용 통합 테스트에서 검증한다.
         when(completionProvider.getIfAvailable()).thenReturn(completion);

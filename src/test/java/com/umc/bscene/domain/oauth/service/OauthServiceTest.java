@@ -5,11 +5,9 @@ import com.umc.bscene.domain.auth.dto.auth.response.TokenResponse;
 import com.umc.bscene.domain.auth.entity.term.Terms;
 import com.umc.bscene.domain.auth.entity.term.UserTerms;
 import com.umc.bscene.domain.auth.enums.code.AuthErrorCode;
-import com.umc.bscene.domain.auth.enums.verification.PhoneVerificationPurpose;
 import com.umc.bscene.domain.auth.exception.auth.AuthException;
 import com.umc.bscene.domain.auth.repository.term.TermsRepository;
 import com.umc.bscene.domain.auth.repository.term.UserTermsRepository;
-import com.umc.bscene.domain.auth.service.verification.PhoneVerificationService;
 import com.umc.bscene.domain.oauth.dto.request.OauthSignupRequest;
 import com.umc.bscene.domain.oauth.dto.response.OauthLoginResponse;
 import com.umc.bscene.domain.oauth.entity.OauthAccount;
@@ -31,6 +29,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
@@ -74,8 +73,6 @@ class OauthServiceTest {
     @Mock
     private TermsRepository termsRepository;
     @Mock
-    private PhoneVerificationService phoneVerificationService;
-    @Mock
     private StringRedisTemplate stringRedisTemplate;
     @Mock
     private ValueOperations<String, String> valueOperations;
@@ -83,6 +80,10 @@ class OauthServiceTest {
     private JwtUtil jwtUtil;
     @Mock
     private OAuthResponse oauthInfo;
+    @Mock
+    private ObjectProvider<AppleCredentialService> appleCredentials;
+    @Mock
+    private AppleCredentialService appleCredentialService;
 
     private OauthService service;
 
@@ -93,7 +94,7 @@ class OauthServiceTest {
     void setUp() {
         service = new OauthService(
                 userRepository, oauthAccountRepository, userTermsRepository, termsRepository,
-                phoneVerificationService, stringRedisTemplate, jwtUtil, mock(ObjectProvider.class)
+                stringRedisTemplate, jwtUtil, appleCredentials
         );
         lenient().when(termsRepository.getReferenceById(anyLong()))
                 .thenAnswer(invocation -> Terms.builder()
@@ -291,9 +292,13 @@ class OauthServiceTest {
     }
 
     private void mockValidSignupToken() {
+        mockValidSignupToken(SocialProvider.KAKAO);
+    }
+
+    private void mockValidSignupToken(SocialProvider provider) {
         when(jwtUtil.isValid("signup-token")).thenReturn(true);
         when(jwtUtil.getType("signup-token")).thenReturn("signup");
-        when(jwtUtil.getProvider("signup-token")).thenReturn("KAKAO");
+        when(jwtUtil.getProvider("signup-token")).thenReturn(provider.name());
         when(jwtUtil.getProviderUid("signup-token")).thenReturn("uid-1");
         when(jwtUtil.getEmail("signup-token")).thenReturn("sejin@kakao.com");
     }
@@ -342,7 +347,7 @@ class OauthServiceTest {
 
         assertEquals(OauthErrorCode.NOT_SUPPORT_PROVIDER, exception.getBaseResponseCode());
         verifyNoInteractions(userRepository, oauthAccountRepository, userTermsRepository, termsRepository,
-                phoneVerificationService, stringRedisTemplate);
+                stringRedisTemplate);
         verify(jwtUtil, never()).createAccessToken(any());
         verify(jwtUtil, never()).createRefreshToken(any());
     }
@@ -388,10 +393,14 @@ class OauthServiceTest {
         assertEquals(OauthErrorCode.INVALID_SIGNUP_INFO, exception.getBaseResponseCode());
     }
 
-    @Test
-    void signup_성공시_User와_OauthAccount를_저장하고_토큰을_발급한다() {
-        mockValidSignupToken();
-        when(oauthAccountRepository.findByProviderAndProviderUid(SocialProvider.KAKAO, "uid-1"))
+    @ParameterizedTest
+    @EnumSource(value = SocialProvider.class, names = {"KAKAO", "APPLE"})
+    void signup_문자인증없이_User와_OauthAccount를_저장하고_토큰을_발급한다(SocialProvider provider) {
+        mockValidSignupToken(provider);
+        if (provider == SocialProvider.APPLE) {
+            when(appleCredentials.getObject()).thenReturn(appleCredentialService);
+        }
+        when(oauthAccountRepository.findByProviderAndProviderUid(provider, "uid-1"))
                 .thenReturn(Optional.empty());
         when(userRepository.existsByPhone("01012345678")).thenReturn(false);
         User savedUser = StreamFixtures.user(USER_ID, null);
@@ -410,7 +419,7 @@ class OauthServiceTest {
 
         ArgumentCaptor<OauthAccount> accountCaptor = ArgumentCaptor.captor();
         verify(oauthAccountRepository).saveAndFlush(accountCaptor.capture());
-        assertEquals(SocialProvider.KAKAO, accountCaptor.getValue().getProvider());
+        assertEquals(provider, accountCaptor.getValue().getProvider());
         assertEquals("uid-1", accountCaptor.getValue().getProviderUid());
 
         @SuppressWarnings("unchecked")
@@ -418,9 +427,10 @@ class OauthServiceTest {
         verify(userTermsRepository).saveAll(termsCaptor.capture());
         assertEquals(1, termsCaptor.getValue().size());
 
-        // 인증 완료 상태 재사용 방지까지 수행
-        verify(phoneVerificationService).validateVerified(PhoneVerificationPurpose.SIGNUP, "01012345678");
-        verify(phoneVerificationService).removeVerified(PhoneVerificationPurpose.SIGNUP, "01012345678");
+        if (provider == SocialProvider.APPLE) {
+            verify(appleCredentialService).validateSignup("signup-token");
+            verify(appleCredentialService).attachSignup("signup-token", savedUser);
+        }
     }
 
     // ---------- signup 동시 요청 (명세 v0.3: 사전 검사는 통과했지만 insert 에서 unique 위반) ----------
@@ -439,10 +449,9 @@ class OauthServiceTest {
                 assertThrows(OauthException.class, () -> service.signup(signupRequest("3", "000101")));
 
         assertEquals(OauthErrorCode.DUPLICATE_PHONE, exception.getBaseResponseCode());
-        // User 가 안 만들어졌으니 소셜 계정·약관 저장과 인증 상태 정리는 일어나지 않는다
+        // User 가 안 만들어졌으니 소셜 계정·약관 저장은 일어나지 않는다
         verify(oauthAccountRepository, never()).saveAndFlush(any());
         verify(userTermsRepository, never()).saveAll(any());
-        verify(phoneVerificationService, never()).removeVerified(any(), anyString());
     }
 
     @Test
@@ -462,6 +471,5 @@ class OauthServiceTest {
         assertEquals(OauthErrorCode.ALREADY_REGISTERED, exception.getBaseResponseCode());
         // 트랜잭션 롤백으로 User 도 남지 않는다. 여기서는 이후 단계가 진행되지 않았음만 확인
         verify(userTermsRepository, never()).saveAll(any());
-        verify(phoneVerificationService, never()).removeVerified(any(), anyString());
     }
 }
