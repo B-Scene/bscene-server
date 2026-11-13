@@ -7,18 +7,12 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public enum PermitAllUri {
 
-    AUTH_SIGNUP("/auth/signup"),
-    AUTH_LOGIN_ID_CHECK("/auth/login-id/check"),
     AUTH_LOGIN("/auth/login"),
-    AUTH_LOGIN_ID_FIND("/auth/login-id/find"),
-    AUTH_PASSWORD_RESET("/auth/password-reset"),
     AUTH_LOGOUT("/auth/logout"),
     AUTH_REISSUE("/auth/reissue"),
 
     // 밴드 초대 링크 조회
     BAND_INVITE_LINK_LOOKUP("/band-invite-links/*"),
-
-    PHONE_VERIFICATIONS("/phone-verifications/**"),
 
     OAUTH2_AUTHORIZATION("/oauth2/**"),
     OAUTH2_CALLBACK("/oauth/callback/**"),

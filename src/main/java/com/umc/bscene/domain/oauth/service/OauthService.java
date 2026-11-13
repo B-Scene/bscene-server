@@ -7,11 +7,9 @@ import com.umc.bscene.domain.auth.dto.auth.response.LoginUserResponse;
 import com.umc.bscene.domain.auth.dto.auth.response.TokenResponse;
 import com.umc.bscene.domain.auth.entity.term.UserTerms;
 import com.umc.bscene.domain.auth.enums.code.AuthErrorCode;
-import com.umc.bscene.domain.auth.enums.verification.PhoneVerificationPurpose;
 import com.umc.bscene.domain.auth.exception.auth.AuthException;
 import com.umc.bscene.domain.auth.repository.term.TermsRepository;
 import com.umc.bscene.domain.auth.repository.term.UserTermsRepository;
-import com.umc.bscene.domain.auth.service.verification.PhoneVerificationService;
 import com.umc.bscene.domain.oauth.dto.request.OauthSignupRequest;
 import com.umc.bscene.domain.oauth.dto.response.OauthLoginResponse;
 import com.umc.bscene.domain.oauth.entity.OauthAccount;
@@ -59,7 +57,6 @@ public class OauthService {
     private final OauthAccountRepository oauthAccountRepository;
     private final UserTermsRepository userTermsRepository;
     private final TermsRepository termsRepository;
-    private final PhoneVerificationService phoneVerificationService;
     private final StringRedisTemplate stringRedisTemplate;
     private final JwtUtil jwtUtil;
     private final ObjectProvider<AppleCredentialService> appleCredentials;
@@ -193,9 +190,6 @@ public class OauthService {
             throw new OauthException(OauthErrorCode.ALREADY_REGISTERED);
         }
 
-        // 휴대폰 인증 완료 여부 검증 (로컬 회원가입과 동일)
-        phoneVerificationService.validateVerified(PhoneVerificationPurpose.SIGNUP, request.phone());
-
         // phone은 dev 병합으로 unique 제약이 걸려 있어, 저장 전에 중복을 걸러 명확한 409 반환
         if (userRepository.existsByPhone(request.phone())) {
             throw new OauthException(OauthErrorCode.DUPLICATE_PHONE);
@@ -238,9 +232,6 @@ public class OauthService {
         if (provider == SocialProvider.APPLE) {
             appleCredentials.getObject().attachSignup(signupToken, savedUser);
         }
-
-        // 인증 완료 상태 정리 (재사용 방지)
-        phoneVerificationService.removeVerified(PhoneVerificationPurpose.SIGNUP, request.phone());
 
         return login(savedUser);
     }
