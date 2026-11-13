@@ -69,9 +69,9 @@ public class OauthService {
     // 기존/신규 판별은 CustomOAuthService 가 이미 했으므로 DB 를 다시 조회하지 않고 공통 처리만 태운다
     @Transactional
     public OauthLoginResponse handleLoginSuccess(OAuthMember member) {
+        OAuthResponse info = member.getOauthInfo();
+        validateSupportedProvider(info.getProvider());
         if (member.isNewUser()) {
-            // 신원 객체는 signup 토큰 발급에만 쓰이므로 신규 분기에서만 만든다
-            OAuthResponse info = member.getOauthInfo();
             return issueSignupResult(new VerifiedSocialIdentity(
                     info.getProvider(),
                     info.getProviderUid(),
@@ -83,13 +83,20 @@ public class OauthService {
     }
 
     // 모바일 SDK 로그인 공통 입구.
-    // 검증기(카카오/구글/Apple)가 제공자 토큰을 서버에서 검증해 만든 신원만 받는다. FE 입력으로 만든 값은 절대 넘기지 않는다
+    // 검증기(카카오/Apple)가 제공자 토큰을 서버에서 검증해 만든 신원만 받는다. FE 입력으로 만든 값은 절대 넘기지 않는다
     @Transactional
     public OauthLoginResponse loginWithVerifiedIdentity(VerifiedSocialIdentity identity) {
+        validateSupportedProvider(identity.provider());
         return oauthAccountRepository
                 .findByProviderAndProviderUid(identity.provider(), identity.providerUid())
                 .map(account -> loginExistingUser(account.getUser()))
                 .orElseGet(() -> issueSignupResult(identity));
+    }
+
+    private void validateSupportedProvider(SocialProvider provider) {
+        if (provider != SocialProvider.KAKAO && provider != SocialProvider.APPLE) {
+            throw new OauthException(OauthErrorCode.NOT_SUPPORT_PROVIDER);
+        }
     }
 
     // 기존 회원: 계정 상태 확인 후 access/refresh 토큰 발급 (웹·모바일 공통)
@@ -173,6 +180,7 @@ public class OauthService {
         } catch (IllegalArgumentException e) {
             throw new OauthException(OauthErrorCode.NOT_SUPPORT_PROVIDER);
         }
+        validateSupportedProvider(provider);
         String providerUid = jwtUtil.getProviderUid(signupToken);
         // 이메일(아이디)은 사용자가 수정할 수 없으므로 요청 본문이 아닌 서명된 토큰에서 읽음
         String email = jwtUtil.getEmail(signupToken);

@@ -30,6 +30,8 @@ import com.umc.bscene.support.StreamFixtures;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -56,6 +58,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 // 소셜 로그인 (성공 처리 / 일회성 교환 코드 / 소셜 회원가입) 단위테스트.
@@ -127,6 +130,7 @@ class OauthServiceTest {
     @Test
     void handleLoginSuccess_기존_유저면_토큰을_발급하고_리프레시_토큰을_저장한다() {
         User user = StreamFixtures.fanUser(USER_ID);
+        when(oauthInfo.getProvider()).thenReturn(SocialProvider.KAKAO);
         mockTokenIssue();
 
         OauthLoginResponse response =
@@ -144,12 +148,27 @@ class OauthServiceTest {
     void handleLoginSuccess_기존_유저가_탈퇴_상태면_토큰을_발급하지_않는다() {
         // 웹 경로에도 계정 상태 검사가 적용되는지 확인
         User deleted = User.builder().id(USER_ID).name("세진").status(UserStatus.DELETED).build();
+        when(oauthInfo.getProvider()).thenReturn(SocialProvider.KAKAO);
 
         AuthException e = assertThrows(AuthException.class,
                 () -> service.handleLoginSuccess(OAuthMember.ofExisting(deleted, oauthInfo, Map.of())));
 
         assertEquals(AuthErrorCode.DELETED_ACCOUNT, e.getBaseResponseCode());
         verify(jwtUtil, never()).createAccessToken(any());
+    }
+
+    @ParameterizedTest
+    @ValueSource(booleans = {false, true})
+    void handleLoginSuccess_Google_웹_신원은_토큰을_발급하지_않는다(boolean existing) {
+        when(oauthInfo.getProvider()).thenReturn(SocialProvider.GOOGLE);
+        OAuthMember member = existing
+                ? OAuthMember.ofExisting(StreamFixtures.fanUser(USER_ID), oauthInfo, Map.of())
+                : OAuthMember.ofNew(oauthInfo, Map.of());
+
+        OauthException exception = assertThrows(OauthException.class, () -> service.handleLoginSuccess(member));
+
+        assertEquals(OauthErrorCode.NOT_SUPPORT_PROVIDER, exception.getBaseResponseCode());
+        verifyNoInteractions(jwtUtil, stringRedisTemplate, oauthAccountRepository, userRepository);
     }
 
     // ---------- loginWithVerifiedIdentity (모바일 SDK 공통 입구) ----------
@@ -219,6 +238,18 @@ class OauthServiceTest {
 
         assertEquals(AuthErrorCode.SUSPENDED_ACCOUNT, e.getBaseResponseCode());
         verify(jwtUtil, never()).createAccessToken(any());
+    }
+
+    @Test
+    void loginWithVerifiedIdentity_Google_신원은_회원_조회_전에_거절한다() {
+        VerifiedSocialIdentity identity =
+                new VerifiedSocialIdentity(SocialProvider.GOOGLE, "google-sub", "member@example.com", null);
+
+        OauthException exception = assertThrows(OauthException.class,
+                () -> service.loginWithVerifiedIdentity(identity));
+
+        assertEquals(OauthErrorCode.NOT_SUPPORT_PROVIDER, exception.getBaseResponseCode());
+        verifyNoInteractions(oauthAccountRepository, userRepository, jwtUtil, stringRedisTemplate);
     }
 
     // ---------- issueExchangeCode / exchangeCode ----------
@@ -298,6 +329,22 @@ class OauthServiceTest {
                 assertThrows(OauthException.class, () -> service.signup(signupRequest("3", "000101")));
 
         assertEquals(OauthErrorCode.NOT_SUPPORT_PROVIDER, exception.getBaseResponseCode());
+    }
+
+    @Test
+    void signup_기발급_Google_토큰은_인증과_회원_저장_전에_거절한다() {
+        when(jwtUtil.isValid("signup-token")).thenReturn(true);
+        when(jwtUtil.getType("signup-token")).thenReturn("signup");
+        when(jwtUtil.getProvider("signup-token")).thenReturn("GOOGLE");
+
+        OauthException exception =
+                assertThrows(OauthException.class, () -> service.signup(signupRequest("3", "000101")));
+
+        assertEquals(OauthErrorCode.NOT_SUPPORT_PROVIDER, exception.getBaseResponseCode());
+        verifyNoInteractions(userRepository, oauthAccountRepository, userTermsRepository, termsRepository,
+                phoneVerificationService, stringRedisTemplate);
+        verify(jwtUtil, never()).createAccessToken(any());
+        verify(jwtUtil, never()).createRefreshToken(any());
     }
 
     @Test

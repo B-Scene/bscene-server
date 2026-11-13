@@ -59,13 +59,6 @@ spring:
             scope:
               - profile_nickname
               - account_email
-          google:
-            client-id: ${GOOGLE_CLIENT_ID}
-            client-secret: ${GOOGLE_CLIENT_SECRET}
-            redirect-uri: ${GOOGLE_REDIRECT_URI}
-            scope:
-              - email
-              - profile
         provider:
           kakao:
             authorization-uri: "https://kauth.kakao.com/oauth/authorize"
@@ -116,8 +109,6 @@ oauth:
   mobile:
     kakao:
       app-id: ${KAKAO_APP_ID:}                       # 카카오 콘솔 앱 ID(숫자). access_token_info.app_id 와 비교
-    google:
-      allowed-audiences: ${GOOGLE_MOBILE_CLIENT_IDS:} # 콤마 구분 client ID 목록. ID Token aud 허용 목록
     apple:
       client-id: ${APPLE_BUNDLE_ID:}                 # iOS 번들 ID. identityToken aud 와 비교
       team-id: ${APPLE_TEAM_ID:}                     # 인가 코드 교환용 client secret 서명 (Apple Developer Team ID)
@@ -125,7 +116,7 @@ oauth:
       private-key-path: ${APPLE_PRIVATE_KEY_PATH:}   # .p8 비밀키 파일 경로. 배포 시 컨테이너에 파일 마운트 필요
     # IP당 분당 호출 제한. 초과 시 OAUTH429_1 + Retry-After 헤더 (명세 SDK v0.2)
     rate-limit:
-      login-per-minute: 30                           # /mobile/kakao, /google, /apple 합산
+      login-per-minute: 30                           # /mobile/kakao, /apple 합산
       challenge-per-minute: 10                       # /mobile/apple/challenge
 
 aws:

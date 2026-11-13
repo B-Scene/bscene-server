@@ -61,7 +61,6 @@ public class RateLimitFilter extends OncePerRequestFilter {
         // 디코딩된 경로로 비교하므로 /mobile/%6Bakao 같은 인코딩 우회가 통하지 않고, context-path(/api)도 알아서 뗀다.
         this.rules = List.of(
                 new Rule(postMatcher(PermitAllUri.OAUTH_MOBILE_KAKAO), login),
-                new Rule(postMatcher(PermitAllUri.OAUTH_MOBILE_GOOGLE), login),
                 new Rule(postMatcher(PermitAllUri.OAUTH_MOBILE_APPLE), login),
                 new Rule(postMatcher(PermitAllUri.OAUTH_MOBILE_APPLE_CHALLENGE), challenge)
         );
