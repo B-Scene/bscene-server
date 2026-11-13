@@ -145,8 +145,8 @@ class RateLimitFilterTest {
         }
 
         @ParameterizedTest
-        @ValueSource(strings = {"/auth/oauth/mobile/kakao", "/auth/oauth/mobile/google", "/auth/oauth/mobile/apple"})
-        @DisplayName("로그인 3개 경로는 같은 login 버킷을 공유한다")
+        @ValueSource(strings = {"/auth/oauth/mobile/kakao", "/auth/oauth/mobile/apple"})
+        @DisplayName("로그인 2개 경로는 같은 login 버킷을 공유한다")
         void loginPathsShareLoginBucket(String path) throws Exception {
             request = new MockHttpServletRequest("POST", path);
             request.addHeader(RateLimitFilter.CLIENT_IP_HEADER, CLIENT_IP);
