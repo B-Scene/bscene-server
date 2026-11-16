@@ -21,15 +21,10 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
-import java.util.regex.Pattern;
 
 @Service
 @RequiredArgsConstructor
 public class OnboardingService {
-
-    // 팬 닉네임 형식: 한글(완성형·자음·모음), 영문, 공백만 허용하고 공백 포함 1~8자.
-    // 앞뒤 공백을 잘라낸 값에 적용한다. 공백만 있는 닉네임은 이 패턴 전에 "닉네임 필수" 검사에서 걸린다.
-    private static final Pattern FAN_NICKNAME_PATTERN = Pattern.compile("^[가-힣ㄱ-ㅎㅏ-ㅣa-zA-Z ]{1,8}$");
 
     private final UserRepository userRepository;
     private final FanProfileRepository fanProfileRepository;
@@ -204,10 +199,11 @@ public class OnboardingService {
             throw new OnboardingException(OnboardingErrorCode.FAN_NICKNAME_REQUIRED);
         }
 
-        // 앞뒤 공백은 잘라내고, 잘라낸 값으로 형식·중복을 검사해 저장한다
+        // 앞뒤 공백은 잘라내고, 잘라낸 값으로 형식·중복을 검사해 저장한다.
+        // 공백만 있는 닉네임은 위 "닉네임 필수" 검사에서 먼저 걸린다.
         String nickname = fanNickname.strip();
 
-        if (!FAN_NICKNAME_PATTERN.matcher(nickname).matches()) {
+        if (!FanProfile.isValidNickname(nickname)) {
             throw new OnboardingException(OnboardingErrorCode.INVALID_FAN_NICKNAME);
         }
 
