@@ -5,6 +5,7 @@ import com.umc.bscene.domain.auth.dto.auth.response.TokenResponse;
 import com.umc.bscene.domain.auth.entity.term.Terms;
 import com.umc.bscene.domain.auth.entity.term.UserTerms;
 import com.umc.bscene.domain.auth.enums.code.AuthErrorCode;
+import com.umc.bscene.domain.auth.enums.term.TermsType;
 import com.umc.bscene.domain.auth.exception.auth.AuthException;
 import com.umc.bscene.domain.auth.repository.term.TermsRepository;
 import com.umc.bscene.domain.auth.repository.term.UserTermsRepository;
@@ -49,7 +50,6 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.startsWith;
@@ -96,10 +96,15 @@ class OauthServiceTest {
                 userRepository, oauthAccountRepository, userTermsRepository, termsRepository,
                 stringRedisTemplate, jwtUtil, appleCredentials
         );
-        lenient().when(termsRepository.getReferenceById(anyLong()))
-                .thenAnswer(invocation -> Terms.builder()
-                        .termId(invocation.getArgument(0))
-                        .build());
+        // 약관 3개: 1·2 필수, 3 선택
+        lenient().when(termsRepository.findAll()).thenReturn(List.of(
+                terms(1L, TermsType.MANDATORY),
+                terms(2L, TermsType.MANDATORY),
+                terms(3L, TermsType.OPTIONAL)));
+    }
+
+    private Terms terms(Long termId, TermsType type) {
+        return Terms.builder().termId(termId).type(type).build();
     }
 
     private void mockTokenIssue() {
@@ -285,10 +290,17 @@ class OauthServiceTest {
 
     // ---------- signup ----------
 
+    // 필수 약관 1·2 동의, 선택 약관 3 미동의
     private OauthSignupRequest signupRequest(String genderCode, String birthDatePrefix) {
-        return new OauthSignupRequest(
-                "signup-token", "세진", birthDatePrefix, genderCode,
-                List.of(new TermAgreementRequest(1L, true)));
+        return signupRequest(genderCode, birthDatePrefix, List.of(
+                new TermAgreementRequest(1L, true),
+                new TermAgreementRequest(2L, true),
+                new TermAgreementRequest(3L, false)));
+    }
+
+    private OauthSignupRequest signupRequest(
+            String genderCode, String birthDatePrefix, List<TermAgreementRequest> terms) {
+        return new OauthSignupRequest("signup-token", "세진", birthDatePrefix, genderCode, terms);
     }
 
     private void mockValidSignupToken() {
@@ -409,12 +421,71 @@ class OauthServiceTest {
         @SuppressWarnings("unchecked")
         ArgumentCaptor<List<UserTerms>> termsCaptor = ArgumentCaptor.captor();
         verify(userTermsRepository).saveAll(termsCaptor.capture());
-        assertEquals(1, termsCaptor.getValue().size());
+        // 선택 약관은 미동의여도 가입되고, 보낸 약관 3개가 동의 여부와 함께 저장된다
+        assertEquals(3, termsCaptor.getValue().size());
+        assertEquals(List.of(true, true, false),
+                termsCaptor.getValue().stream().map(UserTerms::getIsAgreed).toList());
 
         if (provider == SocialProvider.APPLE) {
             verify(appleCredentialService).validateSignup("signup-token");
             verify(appleCredentialService).attachSignup("signup-token", savedUser);
         }
+    }
+
+    // ---------- signup 약관 검증 (회원 저장 전에 거절) ----------
+
+    private OauthErrorCode signupTermsFailure(List<TermAgreementRequest> terms) {
+        mockValidSignupToken();
+        when(oauthAccountRepository.findByProviderAndProviderUid(SocialProvider.KAKAO, "uid-1"))
+                .thenReturn(Optional.empty());
+
+        OauthException exception = assertThrows(OauthException.class,
+                () -> service.signup(signupRequest("3", "000101", terms)));
+
+        // 실패한 가입은 User·소셜 계정·약관 동의를 하나도 저장하지 않는다
+        verify(userRepository, never()).saveAndFlush(any());
+        verify(oauthAccountRepository, never()).saveAndFlush(any());
+        verify(userTermsRepository, never()).saveAll(any());
+        return (OauthErrorCode) exception.getBaseResponseCode();
+    }
+
+    @Test
+    void signup_필수_약관에_동의하지_않으면_OAUTH400_7() {
+        OauthErrorCode code = signupTermsFailure(List.of(
+                new TermAgreementRequest(1L, true),
+                new TermAgreementRequest(2L, false),
+                new TermAgreementRequest(3L, true)));
+
+        assertEquals(OauthErrorCode.REQUIRED_TERMS_NOT_AGREED, code);
+    }
+
+    @Test
+    void signup_필수_약관이_요청에서_빠지면_OAUTH400_7() {
+        OauthErrorCode code = signupTermsFailure(List.of(
+                new TermAgreementRequest(1L, true),
+                new TermAgreementRequest(3L, true)));
+
+        assertEquals(OauthErrorCode.REQUIRED_TERMS_NOT_AGREED, code);
+    }
+
+    @Test
+    void signup_존재하지_않는_약관_ID면_OAUTH400_8() {
+        OauthErrorCode code = signupTermsFailure(List.of(
+                new TermAgreementRequest(1L, true),
+                new TermAgreementRequest(2L, true),
+                new TermAgreementRequest(99L, true)));
+
+        assertEquals(OauthErrorCode.INVALID_TERMS, code);
+    }
+
+    @Test
+    void signup_같은_약관_ID를_두_번_보내면_OAUTH400_8() {
+        OauthErrorCode code = signupTermsFailure(List.of(
+                new TermAgreementRequest(1L, true),
+                new TermAgreementRequest(2L, true),
+                new TermAgreementRequest(2L, true)));
+
+        assertEquals(OauthErrorCode.INVALID_TERMS, code);
     }
 
     // ---------- signup 동시 요청 (명세 v0.3: 사전 검사는 통과했지만 insert 에서 unique 위반) ----------
