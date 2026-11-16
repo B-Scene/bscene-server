@@ -21,6 +21,10 @@ public enum OauthErrorCode implements BaseResponseCode {
     INVALID_EXCHANGE_CODE(BAD_REQUEST, "OAUTH400_5", "유효하지 않거나 만료된 로그인 코드입니다."),
     // 모바일 SDK 로그인 (명세 SDK v0.3)
     INVALID_APPLE_CHALLENGE(BAD_REQUEST, "OAUTH400_6", "유효하지 않거나 만료된 Apple 로그인 요청입니다."),
+    // 소셜 회원가입 약관 검증
+    REQUIRED_TERMS_NOT_AGREED(BAD_REQUEST, "OAUTH400_7", "필수 약관에 모두 동의해야 합니다."),
+    INVALID_TERMS(BAD_REQUEST, "OAUTH400_8", "약관 정보가 올바르지 않습니다."),
+    UNDER_MINIMUM_AGE(BAD_REQUEST, "OAUTH400_9", "만 14세 미만은 가입할 수 없습니다."),
     INVALID_PROVIDER_TOKEN(UNAUTHORIZED, "OAUTH401_1", "유효하지 않거나 만료된 소셜 인증 정보입니다."),
     PROVIDER_TOKEN_APP_MISMATCH(UNAUTHORIZED, "OAUTH401_2", "비씬에서 사용할 수 없는 소셜 인증 정보입니다."),
     APPLE_NONCE_MISMATCH(UNAUTHORIZED, "OAUTH401_3", "Apple 로그인 요청 정보가 일치하지 않습니다."),

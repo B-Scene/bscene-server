@@ -5,8 +5,10 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.umc.bscene.domain.auth.dto.auth.request.TermAgreementRequest;
 import com.umc.bscene.domain.auth.dto.auth.response.LoginUserResponse;
 import com.umc.bscene.domain.auth.dto.auth.response.TokenResponse;
+import com.umc.bscene.domain.auth.entity.term.Terms;
 import com.umc.bscene.domain.auth.entity.term.UserTerms;
 import com.umc.bscene.domain.auth.enums.code.AuthErrorCode;
+import com.umc.bscene.domain.auth.enums.term.TermsType;
 import com.umc.bscene.domain.auth.exception.auth.AuthException;
 import com.umc.bscene.domain.auth.repository.term.TermsRepository;
 import com.umc.bscene.domain.auth.repository.term.UserTermsRepository;
@@ -40,9 +42,16 @@ import java.time.DateTimeException;
 import java.time.Duration;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.Period;
+import java.time.ZoneId;
 import java.util.Base64;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -52,6 +61,10 @@ public class OauthService {
     // 일회성 교환 코드 Redis 키 프리픽스 / TTL (짧게 — 리다이렉트 직후 바로 교환)
     private static final String EXCHANGE_KEY_PREFIX = "oauth:exchange:";
     private static final long EXCHANGE_CODE_TTL_SECONDS = 60L;
+
+    // 가입 가능 최소 나이(만). 나이는 서버 시간대와 무관하게 한국 날짜 기준으로 계산한다
+    private static final int MINIMUM_SIGNUP_AGE = 14;
+    private static final ZoneId SERVICE_ZONE = ZoneId.of("Asia/Seoul");
 
     private final UserRepository userRepository;
     private final OauthAccountRepository oauthAccountRepository;
@@ -193,6 +206,14 @@ public class OauthService {
         Gender gender = convertGender(request.genderCode());
         LocalDate birthDate = convertBirthDate(request.birthDatePrefix(), request.genderCode());
 
+        // 약관의 "만 14세 이상" 체크와 별개로 생년월일로도 확인한다
+        if (isUnderMinimumAge(birthDate, LocalDate.now(SERVICE_ZONE))) {
+            throw new OauthException(OauthErrorCode.UNDER_MINIMUM_AGE);
+        }
+
+        // 약관은 회원을 저장하기 전에 검증한다. 실패하면 User·소셜 계정·약관 동의가 하나도 저장되지 않는다.
+        Map<Long, Terms> termsById = validateTerms(request.terms());
+
         User user = User.builder()
                 .name(request.name())
                 .gender(gender)
@@ -215,7 +236,7 @@ public class OauthService {
             throw new OauthException(OauthErrorCode.ALREADY_REGISTERED);   // (provider, provider_uid) unique, V56
         }
 
-        saveTerms(savedUser, request.terms());
+        saveTerms(savedUser, request.terms(), termsById);
 
         if (provider == SocialProvider.APPLE) {
             appleCredentials.getObject().attachSignup(signupToken, savedUser);
@@ -224,12 +245,41 @@ public class OauthService {
         return login(savedUser);
     }
 
-    // 약관 동의 저장 (로컬 회원가입과 동일하게 termId 기반)
-    private void saveTerms(User user, List<TermAgreementRequest> terms) {
+    // 약관 요청 검증. 통과하면 저장에 다시 쓰도록 termId → Terms 를 돌려준다.
+    // - 같은 약관 ID 를 두 번 보냈거나 존재하지 않는 약관 ID → OAUTH400_8 (클라이언트 요청 오류)
+    // - 필수(MANDATORY) 약관이 빠졌거나 동의하지 않음 → OAUTH400_7
+    private Map<Long, Terms> validateTerms(List<TermAgreementRequest> requestedTerms) {
+        Map<Long, Terms> termsById = termsRepository.findAll().stream()
+                .collect(Collectors.toMap(Terms::getTermId, Function.identity()));
+
+        Set<Long> requestedIds = new HashSet<>();
+        Set<Long> agreedIds = new HashSet<>();
+        for (TermAgreementRequest term : requestedTerms) {
+            boolean duplicated = !requestedIds.add(term.termId());
+            if (duplicated || !termsById.containsKey(term.termId())) {
+                throw new OauthException(OauthErrorCode.INVALID_TERMS);
+            }
+            if (term.agreed()) {
+                agreedIds.add(term.termId());
+            }
+        }
+
+        boolean allMandatoryAgreed = termsById.values().stream()
+                .filter(terms -> terms.getType() == TermsType.MANDATORY)
+                .allMatch(terms -> agreedIds.contains(terms.getTermId()));
+        if (!allMandatoryAgreed) {
+            throw new OauthException(OauthErrorCode.REQUIRED_TERMS_NOT_AGREED);
+        }
+
+        return termsById;
+    }
+
+    // 약관 동의 저장 (termId 기반). 검증을 통과한 약관만 들어온다.
+    private void saveTerms(User user, List<TermAgreementRequest> terms, Map<Long, Terms> termsById) {
         List<UserTerms> entities = terms.stream()
                 .map(term -> UserTerms.builder()
                         .user(user)
-                        .terms(termsRepository.getReferenceById(term.termId()))
+                        .terms(termsById.get(term.termId()))
                         .isAgreed(term.agreed())
                         .agreedAt(LocalDateTime.now())
                         .build())
@@ -295,6 +345,12 @@ public class OauthService {
         } catch (DateTimeException e) {
             throw new OauthException(OauthErrorCode.INVALID_SIGNUP_INFO);
         }
+    }
+
+    // 만 나이가 최소 가입 나이보다 적으면 true. 14번째 생일 당일부터 가입할 수 있다.
+    // 아직 오지 않은 날짜(미래 생년월일)도 만 나이가 음수라 여기서 함께 걸러진다.
+    static boolean isUnderMinimumAge(LocalDate birthDate, LocalDate today) {
+        return Period.between(birthDate, today).getYears() < MINIMUM_SIGNUP_AGE;
     }
 
     private String hashToken(String token) {
