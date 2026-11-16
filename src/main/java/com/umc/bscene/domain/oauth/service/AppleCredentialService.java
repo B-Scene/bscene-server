@@ -25,8 +25,10 @@ import org.springframework.dao.DataAccessException;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.CannotCreateTransactionException;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.TransactionDefinition;
+import org.springframework.transaction.TransactionSystemException;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionTemplate;
 
@@ -410,22 +412,25 @@ public class AppleCredentialService implements AppleLoginCompletion {
     }
 
     private void ensureSubject(String hash) {
-        if (credentials.existsById(hash)) {
-            return;
-        }
-        try {
-            independent.execute(status -> credentials.saveAndFlush(AppleCredential.create(hash)));
-        } catch (DataIntegrityViolationException exception) {
-            if (!credentials.existsById(hash)) {
-                throw new OauthException(GeneralErrorCode.STORE_UNAVAILABLE);
+        safely(() -> {
+            if (credentials.existsById(hash)) {
+                return null;
             }
-        }
+            try {
+                independent.execute(status -> credentials.saveAndFlush(AppleCredential.create(hash)));
+            } catch (DataIntegrityViolationException exception) {
+                if (!credentials.existsById(hash)) {
+                    throw new OauthException(GeneralErrorCode.STORE_UNAVAILABLE);
+                }
+            }
+            return null;
+        });
     }
 
     private <T> T safely(Supplier<T> action) {
         try {
             return action.get();
-        } catch (DataAccessException exception) {
+        } catch (DataAccessException | CannotCreateTransactionException | TransactionSystemException exception) {
             throw new OauthException(GeneralErrorCode.STORE_UNAVAILABLE);
         }
     }
