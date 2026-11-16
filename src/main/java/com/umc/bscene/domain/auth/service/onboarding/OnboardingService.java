@@ -21,10 +21,15 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
+import java.util.regex.Pattern;
 
 @Service
 @RequiredArgsConstructor
 public class OnboardingService {
+
+    // 팬 닉네임 형식: 한글(완성형·자음·모음), 영문, 공백만 허용하고 공백 포함 1~8자.
+    // 앞뒤 공백을 잘라낸 값에 적용한다. 공백만 있는 닉네임은 이 패턴 전에 "닉네임 필수" 검사에서 걸린다.
+    private static final Pattern FAN_NICKNAME_PATTERN = Pattern.compile("^[가-힣ㄱ-ㅎㅏ-ㅣa-zA-Z ]{1,8}$");
 
     private final UserRepository userRepository;
     private final FanProfileRepository fanProfileRepository;
@@ -96,7 +101,8 @@ public class OnboardingService {
 
     // 팬 닉네임 중복 확인
     public FanNicknameCheckResponse checkFanNickname(String nickname) {
-        boolean exists = fanProfileRepository.existsByNickname(nickname);
+        // 저장할 때 앞뒤 공백을 잘라내므로 중복 확인도 같은 값으로 비교한다
+        boolean exists = fanProfileRepository.existsByNickname(nickname.strip());
 
         return new FanNicknameCheckResponse(!exists);
     }
@@ -192,19 +198,26 @@ public class OnboardingService {
         }
     }
 
-    // 팬 프로필(닉네임) 생성. 닉네임 필수 + 중복 검증
+    // 팬 프로필(닉네임) 생성. 닉네임 필수 + 형식 + 중복 검증
     private void applyFanProfile(User user, String fanNickname) {
         if (fanNickname == null || fanNickname.isBlank()) {
             throw new OnboardingException(OnboardingErrorCode.FAN_NICKNAME_REQUIRED);
         }
 
-        if (fanProfileRepository.existsByNickname(fanNickname)) {
+        // 앞뒤 공백은 잘라내고, 잘라낸 값으로 형식·중복을 검사해 저장한다
+        String nickname = fanNickname.strip();
+
+        if (!FAN_NICKNAME_PATTERN.matcher(nickname).matches()) {
+            throw new OnboardingException(OnboardingErrorCode.INVALID_FAN_NICKNAME);
+        }
+
+        if (fanProfileRepository.existsByNickname(nickname)) {
             throw new OnboardingException(OnboardingErrorCode.DUPLICATE_FAN_NICKNAME);
         }
 
         fanProfileRepository.save(FanProfile.builder()
                 .user(user)
-                .nickname(fanNickname)
+                .nickname(nickname)
                 .build());
     }
 
