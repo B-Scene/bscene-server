@@ -33,7 +33,6 @@ public final class StreamFixtures {
                 .name("user" + id)
                 .birthDate(LocalDate.of(2000, 1, 1))
                 .gender(Gender.MALE)
-                .phone("0100000" + String.format("%04d", id % 10000))
                 .currentMode(mode)
                 .build();
     }

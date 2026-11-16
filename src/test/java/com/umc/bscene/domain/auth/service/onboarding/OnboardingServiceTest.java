@@ -646,7 +646,6 @@ class OnboardingServiceTest {
                 .name("테스트유저")
                 .birthDate(LocalDate.of(1999, 1, 1))
                 .gender(Gender.MALE)
-                .phone("01012345678")
                 .onboardingCompleted(false)
                 .build();
     }
@@ -657,7 +656,6 @@ class OnboardingServiceTest {
                 .name("테스트유저")
                 .birthDate(LocalDate.of(1999, 1, 1))
                 .gender(Gender.MALE)
-                .phone("01012345678")
                 .currentMode(UserMode.FAN)
                 .onboardingCompleted(true)
                 .build();
@@ -670,7 +668,6 @@ class OnboardingServiceTest {
                 .name("테스트유저")
                 .birthDate(LocalDate.of(1999, 1, 1))
                 .gender(Gender.MALE)
-                .phone("01012345678")
                 .currentMode(UserMode.BAND)
                 .onboardingCompleted(false)
                 .build();

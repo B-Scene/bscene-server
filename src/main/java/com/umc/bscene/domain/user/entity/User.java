@@ -33,9 +33,6 @@ public class User extends BaseEntity {
     @Enumerated(EnumType.STRING)
     private Gender gender;
 
-    @Column(nullable = false, unique = true, length = 11)
-    private String phone;
-
     @Column(nullable = false)
     @Enumerated(EnumType.STRING)
     @Builder.Default
