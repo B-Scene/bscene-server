@@ -19,6 +19,7 @@ import com.umc.bscene.domain.user.enums.Gender;
 import com.umc.bscene.domain.user.enums.UserMode;
 import com.umc.bscene.domain.user.repository.UserRepository;
 import com.umc.bscene.global.config.JpaAuditingConfig;
+import com.umc.bscene.global.response.code.GeneralErrorCode;
 import com.umc.bscene.global.security.oauth.apple.AppleCredentialCipher;
 import com.umc.bscene.global.security.oauth.apple.AppleIdTokenVerifier;
 import com.umc.bscene.global.security.oauth.apple.AppleTokenClient;
@@ -27,13 +28,20 @@ import com.umc.bscene.global.security.util.JwtUtil;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.data.jpa.test.autoconfigure.DataJpaTest;
 import org.springframework.boot.jdbc.test.autoconfigure.AutoConfigureTestDatabase;
 import org.springframework.context.annotation.Import;
+import org.springframework.dao.DataAccessResourceFailureException;
+import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.transaction.CannotCreateTransactionException;
 import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.TransactionSystemException;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.SimpleTransactionStatus;
 import org.springframework.transaction.support.TransactionTemplate;
 
 import java.time.Instant;
@@ -53,6 +61,7 @@ import java.util.function.Consumer;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.AdditionalAnswers.delegatesTo;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.doReturn;
@@ -208,6 +217,83 @@ class AppleCredentialServiceIntegrationTest {
         assertThat(credential(identity).getState()).isEqualTo(AppleCredentialState.ACTIVE);
         assertThat(credential(identity).getEncryptedRefreshToken()).isEqualTo(storedToken);
         assertThat(credential(identity).getUserId()).isEqualTo(user.getId());
+    }
+
+    @ParameterizedTest
+    @CsvSource({
+            "begin, lookup", "identify, lookup",
+            "begin, insert", "identify, insert",
+            "begin, recheck", "identify, recheck"
+    })
+    void mapInitialCredentialStorageFailures(String entryPoint, String operation) {
+        VerifiedSocialIdentity identity = identity("storage-failure");
+        String hash = AppleCredentialService.subjectHash(identity.providerUid());
+        var failingRepository = mock(AppleCredentialRepository.class, delegatesTo(credentials));
+        var failure = new DataAccessResourceFailureException("저장소 장애");
+
+        switch (operation) {
+            case "lookup" -> doThrow(failure).when(failingRepository).existsById(hash);
+            case "insert" -> {
+                doReturn(false).when(failingRepository).existsById(hash);
+                doThrow(failure).when(failingRepository).saveAndFlush(any(AppleCredential.class));
+            }
+            case "recheck" -> {
+                doReturn(false).doThrow(failure).when(failingRepository).existsById(hash);
+                doThrow(new DataIntegrityViolationException("동시 생성 중복"))
+                        .when(failingRepository).saveAndFlush(any(AppleCredential.class));
+            }
+            default -> throw new IllegalArgumentException(operation);
+        }
+
+        var failingService = new AppleCredentialService(failingRepository, attempts, accounts, cipher,
+                tokenClient, verifier, commonLogin, jwtUtil, transactionManager);
+        OauthException error = assertThrows(OauthException.class, () -> {
+            if ("begin".equals(entryPoint)) {
+                failingService.begin(identity);
+            } else {
+                failingService.identify("unused-attempt", identity);
+            }
+        });
+
+        assertThat(error.getBaseResponseCode()).isEqualTo(GeneralErrorCode.STORE_UNAVAILABLE);
+        assertThat(error.getBaseResponseCode().getStatus()).isEqualTo(503);
+        verify(failingRepository, never()).findByIdForUpdate(hash);
+    }
+
+    @ParameterizedTest
+    @CsvSource({
+            "begin, start", "identify, start",
+            "begin, commit", "identify, commit"
+    })
+    void mapInitialCredentialTransactionFailures(String entryPoint, String phase) {
+        VerifiedSocialIdentity identity = identity("transaction-failure");
+        String hash = AppleCredentialService.subjectHash(identity.providerUid());
+        var repository = mock(AppleCredentialRepository.class);
+        var failingTransactions = mock(PlatformTransactionManager.class);
+        when(repository.existsById(hash)).thenReturn(false);
+
+        if ("start".equals(phase)) {
+            when(failingTransactions.getTransaction(any()))
+                    .thenThrow(new CannotCreateTransactionException("트랜잭션 시작 장애"));
+        } else {
+            when(failingTransactions.getTransaction(any())).thenReturn(new SimpleTransactionStatus());
+            doThrow(new TransactionSystemException("트랜잭션 커밋 장애"))
+                    .when(failingTransactions).commit(any());
+        }
+
+        var failingService = new AppleCredentialService(repository, attempts, accounts, cipher,
+                tokenClient, verifier, commonLogin, jwtUtil, failingTransactions);
+        OauthException error = assertThrows(OauthException.class, () -> {
+            if ("begin".equals(entryPoint)) {
+                failingService.begin(identity);
+            } else {
+                failingService.identify("unused-attempt", identity);
+            }
+        });
+
+        assertThat(error.getBaseResponseCode()).isEqualTo(GeneralErrorCode.STORE_UNAVAILABLE);
+        assertThat(error.getBaseResponseCode().getStatus()).isEqualTo(503);
+        verify(repository, never()).findByIdForUpdate(hash);
     }
 
     @Test
