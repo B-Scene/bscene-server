@@ -76,7 +76,6 @@ class BandAdapterFollowerPagingTest {
                 .name("유저" + sequence)
                 .birthDate(LocalDate.of(2000, 1, 1))
                 .gender(Gender.MALE)
-                .phone(String.format("010%08d", sequence))
                 .build());
     }
 

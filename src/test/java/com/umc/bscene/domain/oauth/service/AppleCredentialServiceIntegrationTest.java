@@ -54,7 +54,6 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
-import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 
@@ -80,7 +79,6 @@ class AppleCredentialServiceIntegrationTest {
 
     private static final AppleTokenResponse TOKENS =
             new AppleTokenResponse("signed-identity-fixture", "apple-refresh-fixture");
-    private static final AtomicLong PHONE_SEQUENCE = new AtomicLong(70000);
 
     @Autowired
     private AppleCredentialRepository credentials;
@@ -575,7 +573,7 @@ class AppleCredentialServiceIntegrationTest {
 
     private User registerUser(VerifiedSocialIdentity identity) {
         User user = users.saveAndFlush(User.builder().name("테스트 회원").gender(Gender.MALE)
-                .birthDate(LocalDate.of(1990, 1, 1)).phone("010" + "%08d".formatted(PHONE_SEQUENCE.incrementAndGet()))
+                .birthDate(LocalDate.of(1990, 1, 1))
                 .build());
         userIds.add(user.getId());
         OauthAccount account = accounts.saveAndFlush(OauthAccount.builder().user(user).provider(SocialProvider.APPLE)

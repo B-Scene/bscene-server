@@ -477,7 +477,6 @@ class AuthServiceTest {
                 .name("테스트유저")
                 .birthDate(LocalDate.of(1999, 1, 1))
                 .gender(Gender.MALE)
-                .phone("01012345678")
                 .currentMode(UserMode.FAN)
                 .onboardingCompleted(true)
                 .status(status)

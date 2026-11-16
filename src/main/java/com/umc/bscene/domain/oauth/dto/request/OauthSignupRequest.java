@@ -26,10 +26,6 @@ public record OauthSignupRequest(
         @Pattern(regexp = "[1-4]", message = "성별 코드는 1~4만 입력할 수 있습니다.")
         String genderCode,
 
-        @NotBlank
-        @Pattern(regexp = "^010\\d{8}$", message = "휴대폰 번호 형식이 올바르지 않습니다.")
-        String phone,
-
         @NotEmpty
         List<@Valid TermAgreementRequest> terms
 ) {
