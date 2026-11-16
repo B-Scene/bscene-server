@@ -9,6 +9,7 @@ import com.umc.bscene.domain.oauth.response.code.OauthErrorCode;
 import com.umc.bscene.domain.oauth.service.AppleChallengeService;
 import com.umc.bscene.domain.oauth.service.AppleMobileOauthService;
 import com.umc.bscene.global.exception.GlobalExceptionHandler;
+import com.umc.bscene.global.response.code.GeneralErrorCode;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -115,7 +116,7 @@ class AppleMobileOauthControllerTest {
         var errors = List.of(
                 OauthErrorCode.INVALID_APPLE_CHALLENGE, OauthErrorCode.INVALID_PROVIDER_TOKEN,
                 OauthErrorCode.PROVIDER_TOKEN_APP_MISMATCH, OauthErrorCode.APPLE_NONCE_MISMATCH,
-                OauthErrorCode.PROVIDER_UNAVAILABLE, AppleOauthErrorCode.AUTH_STORE_UNAVAILABLE
+                OauthErrorCode.PROVIDER_UNAVAILABLE, GeneralErrorCode.STORE_UNAVAILABLE
         );
         for (var error : errors) {
             doThrow(new OauthException(error)).when(service).login(any());
