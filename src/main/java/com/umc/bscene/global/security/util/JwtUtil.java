@@ -37,12 +37,14 @@ public class JwtUtil {
 
     // AccessToken 생성
     public String createAccessToken(AuthMember member) {
-        return createToken(member, accessExpiration, "access");
+        return createToken(member, accessExpiration, "access", null);
     }
 
-    // RefreshToken 생성
+    // RefreshToken 생성.
+    // 발급마다 jti 를 넣는다. 발급 시각이 초 단위라 jti 가 없으면 같은 회원에게 같은 초에 발급한 토큰이
+    // 완전히 같은 문자열이 되어, Redis 키(토큰 해시)가 겹치고 한쪽 로그아웃·재발급이 다른 세션까지 끊는다.
     public String createRefreshToken(AuthMember member) {
-        return createToken(member, refreshExpiration, "refresh");
+        return createToken(member, refreshExpiration, "refresh", UUID.randomUUID().toString());
     }
 
     // 소셜 신규 유저용 임시 회원가입 토큰 생성 (provider/providerUid/name/email 보관)
@@ -132,8 +134,8 @@ public class JwtUtil {
         }
     }
 
-    // 토큰 생성
-    private String createToken(AuthMember member, Duration expiration, String type) {
+    // 토큰 생성. tokenId(jti)는 발급별로 구분이 필요한 토큰만 넘기고, 필요 없으면 null
+    private String createToken(AuthMember member, Duration expiration, String type, String tokenId) {
         Instant now = Instant.now();
 
         // 인가 정보
@@ -141,14 +143,19 @@ public class JwtUtil {
                 .map(GrantedAuthority::getAuthority)
                 .collect(Collectors.joining(","));
 
-        return Jwts.builder()
+        JwtBuilder builder = Jwts.builder()
                 .subject(member.getUsername()) // userId를 Subject로
                 .claim("role", authorities)
                 .claim("type", type) // access / refresh 구분
                 .issuedAt(Date.from(now)) // 언제 발급한지
                 .expiration(Date.from(now.plus(expiration))) // 언제까지 유효한지
-                .signWith(secretKey) // sign할 Key
-                .compact();
+                .signWith(secretKey); // sign할 Key
+
+        if (tokenId != null) {
+            builder.id(tokenId);
+        }
+
+        return builder.compact();
     }
 
     // 토큰 정보 가져오기
