@@ -42,6 +42,8 @@ import java.time.DateTimeException;
 import java.time.Duration;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.Period;
+import java.time.ZoneId;
 import java.util.Base64;
 import java.util.HashSet;
 import java.util.List;
@@ -59,6 +61,10 @@ public class OauthService {
     // 일회성 교환 코드 Redis 키 프리픽스 / TTL (짧게 — 리다이렉트 직후 바로 교환)
     private static final String EXCHANGE_KEY_PREFIX = "oauth:exchange:";
     private static final long EXCHANGE_CODE_TTL_SECONDS = 60L;
+
+    // 가입 가능 최소 나이(만). 나이는 서버 시간대와 무관하게 한국 날짜 기준으로 계산한다
+    private static final int MINIMUM_SIGNUP_AGE = 14;
+    private static final ZoneId SERVICE_ZONE = ZoneId.of("Asia/Seoul");
 
     private final UserRepository userRepository;
     private final OauthAccountRepository oauthAccountRepository;
@@ -200,6 +206,11 @@ public class OauthService {
         Gender gender = convertGender(request.genderCode());
         LocalDate birthDate = convertBirthDate(request.birthDatePrefix(), request.genderCode());
 
+        // 약관의 "만 14세 이상" 체크와 별개로 생년월일로도 확인한다
+        if (isUnderMinimumAge(birthDate, LocalDate.now(SERVICE_ZONE))) {
+            throw new OauthException(OauthErrorCode.UNDER_MINIMUM_AGE);
+        }
+
         // 약관은 회원을 저장하기 전에 검증한다. 실패하면 User·소셜 계정·약관 동의가 하나도 저장되지 않는다.
         Map<Long, Terms> termsById = validateTerms(request.terms());
 
@@ -334,6 +345,12 @@ public class OauthService {
         } catch (DateTimeException e) {
             throw new OauthException(OauthErrorCode.INVALID_SIGNUP_INFO);
         }
+    }
+
+    // 만 나이가 최소 가입 나이보다 적으면 true. 14번째 생일 당일부터 가입할 수 있다.
+    // 아직 오지 않은 날짜(미래 생년월일)도 만 나이가 음수라 여기서 함께 걸러진다.
+    static boolean isUnderMinimumAge(LocalDate birthDate, LocalDate today) {
+        return Period.between(birthDate, today).getYears() < MINIMUM_SIGNUP_AGE;
     }
 
     private String hashToken(String token) {

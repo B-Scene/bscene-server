@@ -42,11 +42,14 @@ import org.springframework.data.redis.core.ValueOperations;
 
 import java.time.Duration;
 import java.time.LocalDate;
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
@@ -430,6 +433,46 @@ class OauthServiceTest {
             verify(appleCredentialService).validateSignup("signup-token");
             verify(appleCredentialService).attachSignup("signup-token", savedUser);
         }
+    }
+
+    // ---------- signup 만 14세 검증 ----------
+
+    @Test
+    void signup_만_14세_미만이면_OAUTH400_9() {
+        mockValidSignupToken();
+        when(oauthAccountRepository.findByProviderAndProviderUid(SocialProvider.KAKAO, "uid-1"))
+                .thenReturn(Optional.empty());
+        // 오늘 기준 만 10세 (2000년대생 → genderCode 3)
+        String birthDatePrefix = LocalDate.now(ZoneId.of("Asia/Seoul")).minusYears(10)
+                .format(DateTimeFormatter.ofPattern("yyMMdd"));
+
+        OauthException exception = assertThrows(OauthException.class,
+                () -> service.signup(signupRequest("3", birthDatePrefix)));
+
+        assertEquals(OauthErrorCode.UNDER_MINIMUM_AGE, exception.getBaseResponseCode());
+        verify(userRepository, never()).saveAndFlush(any());
+        verify(userTermsRepository, never()).saveAll(any());
+    }
+
+    @Test
+    void isUnderMinimumAge_14번째_생일_당일부터_가입할_수_있다() {
+        LocalDate birthDate = LocalDate.of(2012, 11, 16);
+
+        assertTrue(OauthService.isUnderMinimumAge(birthDate, LocalDate.of(2026, 11, 15)));
+        assertFalse(OauthService.isUnderMinimumAge(birthDate, LocalDate.of(2026, 11, 16)));
+    }
+
+    @Test
+    void isUnderMinimumAge_2월_29일생은_평년에_3월_1일부터_가입할_수_있다() {
+        LocalDate birthDate = LocalDate.of(2012, 2, 29);
+
+        assertTrue(OauthService.isUnderMinimumAge(birthDate, LocalDate.of(2026, 2, 28)));
+        assertFalse(OauthService.isUnderMinimumAge(birthDate, LocalDate.of(2026, 3, 1)));
+    }
+
+    @Test
+    void isUnderMinimumAge_미래_생년월일은_미달로_본다() {
+        assertTrue(OauthService.isUnderMinimumAge(LocalDate.of(2099, 1, 1), LocalDate.of(2026, 11, 16)));
     }
 
     // ---------- signup 약관 검증 (회원 저장 전에 거절) ----------
