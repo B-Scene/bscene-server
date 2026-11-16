@@ -190,11 +190,6 @@ public class OauthService {
             throw new OauthException(OauthErrorCode.ALREADY_REGISTERED);
         }
 
-        // phone은 dev 병합으로 unique 제약이 걸려 있어, 저장 전에 중복을 걸러 명확한 409 반환
-        if (userRepository.existsByPhone(request.phone())) {
-            throw new OauthException(OauthErrorCode.DUPLICATE_PHONE);
-        }
-
         Gender gender = convertGender(request.genderCode());
         LocalDate birthDate = convertBirthDate(request.birthDatePrefix(), request.genderCode());
 
@@ -202,19 +197,12 @@ public class OauthService {
                 .name(request.name())
                 .gender(gender)
                 .birthDate(birthDate)
-                .phone(request.phone())
                 .build();
-        // 위 사전 검사와 insert 사이에 같은 번호·같은 소셜 계정으로 가입이 먼저 끝나는 동시 요청은 DB unique 로만 막힌다.
-        // IDENTITY 전략이라 save 시점에 insert 가 나가지만, 명세 v0.3 의 "flush 시점 예외 → 409" 조건을 saveAndFlush 로 명시한다.
-        // unique 위반을 DataIntegrityViolationException 으로 받아 409 로 바꾸는 방식은 AuthService.signup(로컬 가입)과 같다.
-        // 예외가 나면 트랜잭션은 롤백되고 사용자 데이터는 남지 않는다.
-        User savedUser;
-        try {
-            savedUser = userRepository.saveAndFlush(user);
-        } catch (DataIntegrityViolationException e) {
-            throw new OauthException(OauthErrorCode.DUPLICATE_PHONE);   // user.phone unique
-        }
+        User savedUser = userRepository.saveAndFlush(user);
 
+        // 위 사전 검사와 insert 사이에 같은 소셜 계정으로 가입이 먼저 끝나는 동시 요청은 DB unique 로만 막힌다.
+        // unique 위반을 DataIntegrityViolationException 으로 받아 409 로 바꾼다.
+        // 예외가 나면 트랜잭션은 롤백되고 사용자 데이터는 남지 않는다.
         OauthAccount oauthAccount = OauthAccount.builder()
                 .user(savedUser)
                 .provider(provider)

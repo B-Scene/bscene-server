@@ -287,7 +287,7 @@ class OauthServiceTest {
 
     private OauthSignupRequest signupRequest(String genderCode, String birthDatePrefix) {
         return new OauthSignupRequest(
-                "signup-token", "세진", birthDatePrefix, genderCode, "01012345678",
+                "signup-token", "세진", birthDatePrefix, genderCode,
                 List.of(new TermAgreementRequest(1L, true)));
     }
 
@@ -366,25 +366,10 @@ class OauthServiceTest {
     }
 
     @Test
-    void signup_휴대폰_번호가_중복이면_예외() {
-        mockValidSignupToken();
-        when(oauthAccountRepository.findByProviderAndProviderUid(SocialProvider.KAKAO, "uid-1"))
-                .thenReturn(Optional.empty());
-        when(userRepository.existsByPhone("01012345678")).thenReturn(true);
-
-        OauthException exception =
-                assertThrows(OauthException.class, () -> service.signup(signupRequest("3", "000101")));
-
-        assertEquals(OauthErrorCode.DUPLICATE_PHONE, exception.getBaseResponseCode());
-        verify(userRepository, never()).saveAndFlush(any());
-    }
-
-    @Test
     void signup_생년월일이_실존하지_않는_날짜면_예외() {
         mockValidSignupToken();
         when(oauthAccountRepository.findByProviderAndProviderUid(SocialProvider.KAKAO, "uid-1"))
                 .thenReturn(Optional.empty());
-        when(userRepository.existsByPhone("01012345678")).thenReturn(false);
 
         // 13월 40일
         OauthException exception =
@@ -395,14 +380,13 @@ class OauthServiceTest {
 
     @ParameterizedTest
     @EnumSource(value = SocialProvider.class, names = {"KAKAO", "APPLE"})
-    void signup_문자인증없이_User와_OauthAccount를_저장하고_토큰을_발급한다(SocialProvider provider) {
+    void signup_전화번호없이_User와_OauthAccount를_저장하고_토큰을_발급한다(SocialProvider provider) {
         mockValidSignupToken(provider);
         if (provider == SocialProvider.APPLE) {
             when(appleCredentials.getObject()).thenReturn(appleCredentialService);
         }
         when(oauthAccountRepository.findByProviderAndProviderUid(provider, "uid-1"))
                 .thenReturn(Optional.empty());
-        when(userRepository.existsByPhone("01012345678")).thenReturn(false);
         User savedUser = StreamFixtures.user(USER_ID, null);
         when(userRepository.saveAndFlush(any(User.class))).thenReturn(savedUser);
         mockTokenIssue();
@@ -436,30 +420,10 @@ class OauthServiceTest {
     // ---------- signup 동시 요청 (명세 v0.3: 사전 검사는 통과했지만 insert 에서 unique 위반) ----------
 
     @Test
-    void signup_사전검사_통과_후_같은_번호_가입이_먼저_끝나면_OAUTH409_2() {
-        mockValidSignupToken();
-        when(oauthAccountRepository.findByProviderAndProviderUid(SocialProvider.KAKAO, "uid-1"))
-                .thenReturn(Optional.empty());
-        when(userRepository.existsByPhone("01012345678")).thenReturn(false);
-        // existsByPhone 과 insert 사이에 다른 요청이 같은 번호로 가입 완료 → user.phone unique 위반
-        when(userRepository.saveAndFlush(any(User.class)))
-                .thenThrow(new DataIntegrityViolationException("Duplicate entry '01012345678' for key 'user.phone'"));
-
-        OauthException exception =
-                assertThrows(OauthException.class, () -> service.signup(signupRequest("3", "000101")));
-
-        assertEquals(OauthErrorCode.DUPLICATE_PHONE, exception.getBaseResponseCode());
-        // User 가 안 만들어졌으니 소셜 계정·약관 저장은 일어나지 않는다
-        verify(oauthAccountRepository, never()).saveAndFlush(any());
-        verify(userTermsRepository, never()).saveAll(any());
-    }
-
-    @Test
     void signup_사전검사_통과_후_같은_소셜_계정_가입이_먼저_끝나면_OAUTH409_1() {
         mockValidSignupToken();
         when(oauthAccountRepository.findByProviderAndProviderUid(SocialProvider.KAKAO, "uid-1"))
                 .thenReturn(Optional.empty());
-        when(userRepository.existsByPhone("01012345678")).thenReturn(false);
         when(userRepository.saveAndFlush(any(User.class))).thenReturn(StreamFixtures.user(USER_ID, null));
         // findByProviderAndProviderUid 와 insert 사이에 같은 소셜 계정으로 가입 완료 → (provider, provider_uid) unique 위반 (V56)
         when(oauthAccountRepository.saveAndFlush(any(OauthAccount.class)))
