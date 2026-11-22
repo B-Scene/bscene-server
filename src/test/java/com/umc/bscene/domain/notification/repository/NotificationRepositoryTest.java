@@ -107,7 +107,7 @@ class NotificationRepositoryTest {
     @Test
     void deleteByUserIdAndTypeAndReferenceId_같은_사용자의_같은_쪽지방_알림만_삭제한다() {
         User receiver = saveUser();
-        User otherUser = saveUser("01087654321");
+        User otherUser = saveUser();
 
         Long targetChatRoomId = 10L;
         Long otherChatRoomId = 20L;
@@ -258,7 +258,6 @@ class NotificationRepositoryTest {
                 .name("알림테스트")
                 .birthDate(LocalDate.of(2000, 1, 1))
                 .gender(Gender.MALE)
-                .phone("01012345678")
                 .build());
     }
 
@@ -279,15 +278,6 @@ class NotificationRepositoryTest {
         }
 
         return notificationRepository.saveAndFlush(notification);
-    }
-
-    private User saveUser(String phone) {
-        return userRepository.save(User.builder()
-                .name("다른사용자")
-                .birthDate(LocalDate.of(2000, 1, 1))
-                .gender(Gender.MALE)
-                .phone(phone)
-                .build());
     }
 
     private Notification saveNotification(

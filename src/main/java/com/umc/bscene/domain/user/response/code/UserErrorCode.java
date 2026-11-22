@@ -14,6 +14,7 @@ public enum UserErrorCode implements BaseResponseCode {
     USER_ALREADY_BLOCKED(CONFLICT, "USER409_1", "이미 차단한 사람입니다."),
 
     PARAM_BAD_REQUEST(400, "USER400_2",  "잘못된 요청 파라미터 값입니다."),
+    INVALID_NICKNAME(BAD_REQUEST, "USER400_3", "닉네임은 공백 포함 8자 이내의 한글 또는 영문이어야 합니다."),
 
     ONBOARDING_NOT_COMPLETED(FORBIDDEN, "USER403_1", "온보딩이 완료되지 않은 사용자입니다."),
     DUPLICATE_NICKNAME(CONFLICT, "USER409_2", "이미 사용 중인 닉네임입니다."),

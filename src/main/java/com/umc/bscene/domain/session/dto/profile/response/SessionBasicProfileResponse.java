@@ -14,7 +14,6 @@ import java.time.LocalDate;
 @JsonPropertyOrder({
         "userId",
         "name",
-        "phone",
         "email",
         "gender",
         "birthDate",
@@ -24,7 +23,6 @@ public class SessionBasicProfileResponse {
 
     private Long userId;
     private String name;
-    private String phone;
     private String email;
     private Gender gender;
     private LocalDate birthDate;
@@ -38,7 +36,6 @@ public class SessionBasicProfileResponse {
         return SessionBasicProfileResponse.builder()
                 .userId(user.getId())
                 .name(user.getName())
-                .phone(user.getPhone())
                 .email(profile != null && profile.getEmail() != null
                         ? profile.getEmail() : accountEmail)
                 .gender(profile != null && profile.getGender() != null

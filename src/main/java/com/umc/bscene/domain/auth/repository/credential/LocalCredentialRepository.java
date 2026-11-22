@@ -7,11 +7,8 @@ import java.util.Optional;
 
 public interface LocalCredentialRepository extends JpaRepository<LocalCredential, Long> {
 
-    boolean existsByLoginId(String loginId);
-
     long countByUser_Id(Long userId);
 
     Optional<LocalCredential> findByLoginId(String loginId);
     Optional<LocalCredential> findByUser_Id(Long userId);
-    Optional<LocalCredential> findByUser_NameAndUser_Phone(String name, String phone);
 }

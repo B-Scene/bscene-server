@@ -26,7 +26,9 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.NullAndEmptySource;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -289,8 +291,10 @@ class OnboardingServiceTest {
         );
     }
 
+    // 공백만 있는 닉네임도 "없음"으로 본다
     @ParameterizedTest
     @NullAndEmptySource
+    @ValueSource(strings = {" ", "        "})
     void saveOnboarding_팬모드인데_닉네임이_없으면_예외(
             String fanNickname
     ) {
@@ -323,6 +327,96 @@ class OnboardingServiceTest {
                 userGenresRepository,
                 userRegionsRepository
         );
+    }
+
+    // 숫자·특수문자, 9자 이상은 불가
+    @ParameterizedTest
+    @ValueSource(strings = {"팬1", "fan_1", "팬!", "밴드-팬", "도도...", "가나다라마바사아자", " 가나다라마바사아자 "})
+    void saveOnboarding_팬_닉네임_형식이_틀리면_예외(String fanNickname) {
+        User user = incompleteUser();
+        OnboardingSaveRequest request = new OnboardingSaveRequest(
+                List.of(UserMode.FAN),
+                UserMode.FAN,
+                fanNickname,
+                List.of(Genre.INDIE),
+                List.of(Region.SEOUL)
+        );
+
+        when(userRepository.findById(USER_ID))
+                .thenReturn(Optional.of(user));
+
+        OnboardingException exception = assertThrows(
+                OnboardingException.class,
+                () -> service.saveOnboarding(
+                        new AuthMember(user),
+                        request
+                )
+        );
+
+        assertThat(exception.getBaseResponseCode())
+                .isEqualTo(OnboardingErrorCode.INVALID_FAN_NICKNAME);
+        verify(fanProfileRepository, never())
+                .existsByNickname(any());
+        verify(fanProfileRepository, never())
+                .save(any());
+    }
+
+    // 앞뒤 공백은 잘라내고 저장하며, 8자 제한도 잘라낸 값 기준이다
+    @ParameterizedTest
+    @CsvSource(value = {
+            "' 밴드팬',밴드팬",
+            "'밴드팬 ',밴드팬",
+            "'  밴드 팬  ',밴드 팬",
+            "' 가나다라마바사아 ',가나다라마바사아"
+    })
+    void saveOnboarding_팬_닉네임_앞뒤_공백은_잘라내고_저장한다(String fanNickname, String expected) {
+        User user = incompleteUser();
+        OnboardingSaveRequest request = new OnboardingSaveRequest(
+                List.of(UserMode.FAN),
+                UserMode.FAN,
+                fanNickname,
+                List.of(Genre.INDIE),
+                List.of(Region.SEOUL)
+        );
+
+        when(userRepository.findById(USER_ID))
+                .thenReturn(Optional.of(user));
+        // 중복 검사도 잘라낸 값으로 한다
+        when(fanProfileRepository.existsByNickname(expected))
+                .thenReturn(false);
+
+        service.saveOnboarding(new AuthMember(user), request);
+
+        ArgumentCaptor<FanProfile> fanProfileCaptor = ArgumentCaptor.forClass(FanProfile.class);
+        verify(fanProfileRepository).save(fanProfileCaptor.capture());
+        assertThat(fanProfileCaptor.getValue().getNickname())
+                .isEqualTo(expected);
+    }
+
+    // 한글(완성형·자음·모음), 영문, 글자 사이 공백은 허용
+    @ParameterizedTest
+    @ValueSource(strings = {"팬", "BSCENE", "밴드 팬", "Rock 팬", "ㅋㅋ", "ㅏㅏ", "가나다라마바사아", "a b c d"})
+    void saveOnboarding_팬_닉네임_형식이_맞으면_저장한다(String fanNickname) {
+        User user = incompleteUser();
+        OnboardingSaveRequest request = new OnboardingSaveRequest(
+                List.of(UserMode.FAN),
+                UserMode.FAN,
+                fanNickname,
+                List.of(Genre.INDIE),
+                List.of(Region.SEOUL)
+        );
+
+        when(userRepository.findById(USER_ID))
+                .thenReturn(Optional.of(user));
+        when(fanProfileRepository.existsByNickname(fanNickname))
+                .thenReturn(false);
+
+        service.saveOnboarding(new AuthMember(user), request);
+
+        ArgumentCaptor<FanProfile> fanProfileCaptor = ArgumentCaptor.forClass(FanProfile.class);
+        verify(fanProfileRepository).save(fanProfileCaptor.capture());
+        assertThat(fanProfileCaptor.getValue().getNickname())
+                .isEqualTo(fanNickname);
     }
 
     @Test
@@ -619,6 +713,17 @@ class OnboardingServiceTest {
     // ---------- checkFanNickname ----------
 
     @Test
+    void checkFanNickname_앞뒤_공백을_잘라낸_값으로_중복을_확인한다() {
+        when(fanProfileRepository.existsByNickname("밴드팬"))
+                .thenReturn(true);
+
+        FanNicknameCheckResponse response =
+                service.checkFanNickname(" 밴드팬 ");
+
+        assertThat(response.available()).isFalse();
+    }
+
+    @Test
     void checkFanNickname_사용하지_않는_닉네임이면_사용_가능하다() {
         when(fanProfileRepository.existsByNickname("사용가능닉네임"))
                 .thenReturn(false);
@@ -646,7 +751,6 @@ class OnboardingServiceTest {
                 .name("테스트유저")
                 .birthDate(LocalDate.of(1999, 1, 1))
                 .gender(Gender.MALE)
-                .phone("01012345678")
                 .onboardingCompleted(false)
                 .build();
     }
@@ -657,7 +761,6 @@ class OnboardingServiceTest {
                 .name("테스트유저")
                 .birthDate(LocalDate.of(1999, 1, 1))
                 .gender(Gender.MALE)
-                .phone("01012345678")
                 .currentMode(UserMode.FAN)
                 .onboardingCompleted(true)
                 .build();
@@ -670,7 +773,6 @@ class OnboardingServiceTest {
                 .name("테스트유저")
                 .birthDate(LocalDate.of(1999, 1, 1))
                 .gender(Gender.MALE)
-                .phone("01012345678")
                 .currentMode(UserMode.BAND)
                 .onboardingCompleted(false)
                 .build();

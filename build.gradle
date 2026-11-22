@@ -46,9 +46,6 @@ dependencies {
 	// OAuth
 	implementation 'org.springframework.boot:spring-boot-starter-oauth2-client'
 
-	// coolsms
-	implementation 'net.nurigo:sdk:4.3.0'
-
 	// Firebase Admin SDK
 	implementation 'com.google.firebase:firebase-admin:9.8.0'
 

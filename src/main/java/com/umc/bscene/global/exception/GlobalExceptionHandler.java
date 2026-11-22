@@ -1,6 +1,5 @@
 package com.umc.bscene.global.exception;
 
-import com.umc.bscene.domain.auth.exception.verification.PhoneVerificationException;
 import com.umc.bscene.global.response.ErrorResponse;
 import com.umc.bscene.global.response.code.GeneralErrorCode;
 import jakarta.servlet.http.HttpServletRequest;
@@ -147,29 +146,6 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(AsyncRequestNotUsableException.class)
     public void handleAsyncRequestNotUsableException(AsyncRequestNotUsableException e) {
         log.debug("AsyncRequestNotUsableException : 클라이언트 연결 종료 - {}", e.getMessage());
-    }
-
-    /**
-     * 휴대폰 인증 과정에서 발생하는 예상 가능한 예외를 처리한다.
-     * SMS 발송 실패의 구체적인 원인은 SmsSender에서 이미 WARN/ERROR로 기록하므로,
-     * 여기서는 중복 장애 알림을 방지하기 위해 INFO로 기록한다.
-     */
-    @ExceptionHandler(PhoneVerificationException.class)
-    public ResponseEntity<ErrorResponse<?>> handlePhoneVerificationException(
-            PhoneVerificationException e
-    ) {
-        log.info(
-                "PhoneVerificationException : code={}, message={}",
-                e.getBaseResponseCode().getCode(),
-                e.getBaseResponseCode().getMessage()
-        );
-
-        ErrorResponse<?> errorResponse =
-                ErrorResponse.from(e.getBaseResponseCode());
-
-        return ResponseEntity
-                .status(errorResponse.getStatus())
-                .body(errorResponse);
     }
 
     /**

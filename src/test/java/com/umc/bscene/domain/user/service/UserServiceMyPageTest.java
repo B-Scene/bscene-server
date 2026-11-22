@@ -336,6 +336,57 @@ class UserServiceMyPageTest {
     }
 
     @Test
+    void updateMyInfo_바꾸려는_닉네임_형식이_틀리면_예외() {
+        User user = user();
+        FanProfile fanProfile = fanProfile(user, "기존닉네임");
+        when(userRepository.findById(USER_ID)).thenReturn(Optional.of(user));
+        when(fanProfileRepository.findByUser(user)).thenReturn(Optional.of(fanProfile));
+        MyInfoUpdateRequest request = new MyInfoUpdateRequest(
+                "새닉1", null, List.of(Genre.INDIE), List.of(Region.SEOUL));
+
+        UserException exception =
+                assertThrows(UserException.class, () -> service.updateMyInfo(USER_ID, request));
+
+        assertEquals(UserErrorCode.INVALID_NICKNAME, exception.getBaseResponseCode());
+        assertEquals("기존닉네임", fanProfile.getNickname());
+        verify(userGenresRepository, never()).deleteAllByUser(any());
+        verify(userRegionsRepository, never()).deleteAllByUser(any());
+    }
+
+    @Test
+    void updateMyInfo_규칙_이전에_만든_닉네임을_그대로_보내면_형식_검사_없이_수정된다() {
+        User user = user();
+        // 숫자가 들어가 지금 규칙으로는 만들 수 없는 닉네임
+        FanProfile fanProfile = fanProfile(user, "더미1");
+        when(userRepository.findById(USER_ID)).thenReturn(Optional.of(user));
+        when(fanProfileRepository.findByUser(user)).thenReturn(Optional.of(fanProfile));
+        when(fanProfileRepository.existsByNicknameAndUser_IdNot("더미1", USER_ID)).thenReturn(false);
+        MyInfoUpdateRequest request = new MyInfoUpdateRequest(
+                "더미1", null, List.of(Genre.INDIE), List.of(Region.SEOUL));
+
+        service.updateMyInfo(USER_ID, request);
+
+        assertEquals("더미1", fanProfile.getNickname());
+        verify(userGenresRepository).saveAll(anyList());
+    }
+
+    @Test
+    void updateMyInfo_닉네임_앞뒤_공백은_잘라내고_저장한다() {
+        User user = user();
+        FanProfile fanProfile = fanProfile(user, "기존닉네임");
+        when(userRepository.findById(USER_ID)).thenReturn(Optional.of(user));
+        when(fanProfileRepository.findByUser(user)).thenReturn(Optional.of(fanProfile));
+        // 중복 검사도 잘라낸 값으로 한다
+        when(fanProfileRepository.existsByNicknameAndUser_IdNot("새 닉네임", USER_ID)).thenReturn(false);
+        MyInfoUpdateRequest request = new MyInfoUpdateRequest(
+                "  새 닉네임 ", null, List.of(Genre.INDIE), List.of(Region.SEOUL));
+
+        service.updateMyInfo(USER_ID, request);
+
+        assertEquals("새 닉네임", fanProfile.getNickname());
+    }
+
+    @Test
     void updateMyInfo_다른_사용자가_쓰는_닉네임이면_예외() {
         User user = user();
         when(userRepository.findById(USER_ID)).thenReturn(Optional.of(user));

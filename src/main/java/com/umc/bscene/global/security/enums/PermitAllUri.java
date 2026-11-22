@@ -7,23 +7,22 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public enum PermitAllUri {
 
-    AUTH_SIGNUP("/auth/signup"),
-    AUTH_LOGIN_ID_CHECK("/auth/login-id/check"),
     AUTH_LOGIN("/auth/login"),
-    AUTH_LOGIN_ID_FIND("/auth/login-id/find"),
-    AUTH_PASSWORD_RESET("/auth/password-reset"),
     AUTH_LOGOUT("/auth/logout"),
     AUTH_REISSUE("/auth/reissue"),
 
     // 밴드 초대 링크 조회
     BAND_INVITE_LINK_LOOKUP("/band-invite-links/*"),
 
-    PHONE_VERIFICATIONS("/phone-verifications/**"),
-
     OAUTH2_AUTHORIZATION("/oauth2/**"),
     OAUTH2_CALLBACK("/oauth/callback/**"),
     OAUTH_SIGNUP("/auth/oauth/signup"),
     OAUTH_EXCHANGE("/auth/oauth/exchange"),
+
+    // 모바일 SDK 소셜 로그인 (앱이 받은 제공자 토큰을 서버가 검증). 로그인 전 호출이라 허용
+    OAUTH_MOBILE_KAKAO("/auth/oauth/mobile/kakao"),
+    OAUTH_MOBILE_APPLE("/auth/oauth/mobile/apple"),
+    OAUTH_MOBILE_APPLE_CHALLENGE("/auth/oauth/mobile/apple/challenge"),
 
     GENRES("/genres"),
     REGIONS("/regions"),
