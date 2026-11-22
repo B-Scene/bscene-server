@@ -101,6 +101,68 @@ class AppleClientSecretGeneratorTest {
         assertSanitizedFailure(createGenerator(oversized));
     }
 
+    // ---------- 환경 변수(Base64)로 받은 키 ----------
+
+    @Test
+    void signsWithBase64EncodedKeyWithoutAnyKeyFile() throws Exception {
+        KeyPair keyPair = createKeyPair("secp256r1");
+        AppleClientSecretGenerator generator = createGeneratorWithBase64("", encodeKeyFile(keyPair));
+
+        SignedJWT token = SignedJWT.parse(generator.generate());
+
+        assertEquals(KEY_ID, token.getHeader().getKeyID());
+        assertTrue(token.verify(new ECDSAVerifier((ECPublicKey) keyPair.getPublic())));
+        assertEquals(TEAM_ID, token.getJWTClaimsSet().getIssuer());
+    }
+
+    @Test
+    void prefersBase64KeyOverKeyFilePath() throws Exception {
+        KeyPair envKey = createKeyPair("secp256r1");
+        // 경로에는 다른 키를 둔다. 서명은 환경 변수의 키로 되어야 한다
+        Path otherKeyFile = writeKey(createKeyPair("secp256r1"));
+        AppleClientSecretGenerator generator =
+                createGeneratorWithBase64(otherKeyFile.toString(), encodeKeyFile(envKey));
+
+        SignedJWT token = SignedJWT.parse(generator.generate());
+
+        assertTrue(token.verify(new ECDSAVerifier((ECPublicKey) envKey.getPublic())));
+    }
+
+    @Test
+    void rejectsMalformedBase64KeyWithoutExposingContent() {
+        // Base64 로는 풀리지만 .p8(PEM) 형식이 아닌 값
+        String notPem = Base64.getEncoder().encodeToString("secret-private-key-content".getBytes());
+
+        IllegalStateException exception = assertSanitizedFailure(createGeneratorWithBase64("", notPem));
+
+        assertFalse(exception.getMessage().contains("secret-private-key-content"));
+        assertFalse(exception.getMessage().contains(notPem));
+    }
+
+    @Test
+    void rejectsOversizedBase64Key() {
+        String oversized = Base64.getEncoder().encodeToString("x".repeat(16_385).getBytes());
+
+        assertSanitizedFailure(createGeneratorWithBase64("", oversized));
+    }
+
+    @Test
+    void rejectsWhenNeitherBase64KeyNorKeyPathIsSet() {
+        assertThrows(IllegalStateException.class, createGeneratorWithBase64("", " ")::generate);
+    }
+
+    private AppleClientSecretGenerator createGeneratorWithBase64(String privateKeyPath, String privateKeyBase64) {
+        return new AppleClientSecretGenerator(CLIENT_ID, TEAM_ID, KEY_ID, privateKeyPath, privateKeyBase64,
+                Clock.fixed(NOW, ZoneOffset.UTC));
+    }
+
+    // 배포 때 쓰는 방식과 같게: .p8 파일 전체(PEM)를 Base64 한 줄로 인코딩한다
+    private String encodeKeyFile(KeyPair keyPair) {
+        String body = Base64.getMimeEncoder().encodeToString(keyPair.getPrivate().getEncoded());
+        String pem = "-----BEGIN PRIVATE KEY-----\n" + body + "\n-----END PRIVATE KEY-----\n";
+        return Base64.getEncoder().encodeToString(pem.getBytes());
+    }
+
     private AppleClientSecretGenerator createGenerator(Path privateKey) {
         return new AppleClientSecretGenerator(CLIENT_ID, TEAM_ID, KEY_ID, privateKey.toString(),
                 Clock.fixed(NOW, ZoneOffset.UTC));
