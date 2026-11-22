@@ -113,7 +113,9 @@ oauth:
       client-id: ${APPLE_BUNDLE_ID:}                 # iOS 번들 ID. identityToken aud 와 비교
       team-id: ${APPLE_TEAM_ID:}                     # 인가 코드 교환용 client secret 서명 (Apple Developer Team ID)
       key-id: ${APPLE_KEY_ID:}                       # Sign in with Apple 키 ID
-      private-key-path: ${APPLE_PRIVATE_KEY_PATH:}   # .p8 비밀키 파일 경로. 배포 시 컨테이너에 파일 마운트 필요
+      # .p8 비밀키는 아래 둘 중 하나로 준다. 둘 다 있으면 base64 값을 쓴다
+      private-key-base64: ${APPLE_PRIVATE_KEY_BASE64:} # .p8 파일 전체를 Base64 한 줄로 인코딩한 값 (배포: ENV_FILE)
+      private-key-path: ${APPLE_PRIVATE_KEY_PATH:}   # .p8 비밀키 파일 경로 (로컬 개발)
     # IP당 분당 호출 제한. 초과 시 OAUTH429_1 + Retry-After 헤더 (명세 SDK v0.2)
     rate-limit:
       login-per-minute: 30                           # /mobile/kakao, /apple 합산

@@ -11,7 +11,7 @@ class AppleMobileOauthConfigTest {
     void preserveStartupWithMissingAppleSecretsButRejectAuthentication() {
         var configuration = new AppleMobileOauthConfig();
         var verifier = assertDoesNotThrow(() -> configuration.appleIdTokenVerifier(""));
-        var generator = assertDoesNotThrow(() -> configuration.appleClientSecretGenerator("", "", "", ""));
+        var generator = assertDoesNotThrow(() -> configuration.appleClientSecretGenerator("", "", "", "", ""));
         var client = assertDoesNotThrow(() -> configuration.appleTokenClient("", generator));
 
         assertThrows(IllegalStateException.class, () -> verifier.verify("token", "nonce"));

@@ -28,9 +28,11 @@ public class AppleMobileOauthConfig {
             @Value("${oauth.mobile.apple.client-id:}") String clientId,
             @Value("${oauth.mobile.apple.team-id:${APPLE_TEAM_ID:}}") String teamId,
             @Value("${oauth.mobile.apple.key-id:${APPLE_KEY_ID:}}") String keyId,
-            @Value("${oauth.mobile.apple.private-key-path:${APPLE_PRIVATE_KEY_PATH:}}") String privateKeyPath
+            @Value("${oauth.mobile.apple.private-key-path:${APPLE_PRIVATE_KEY_PATH:}}") String privateKeyPath,
+            @Value("${oauth.mobile.apple.private-key-base64:${APPLE_PRIVATE_KEY_BASE64:}}") String privateKeyBase64
     ) {
-        return new AppleClientSecretGenerator(clientId.trim(), teamId.trim(), keyId.trim(), privateKeyPath.trim());
+        return new AppleClientSecretGenerator(
+                clientId.trim(), teamId.trim(), keyId.trim(), privateKeyPath.trim(), privateKeyBase64.trim());
     }
 
     @Bean
