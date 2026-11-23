@@ -26,6 +26,7 @@ import com.umc.bscene.domain.user.enums.RecruitmentStatusFilter;
 import com.umc.bscene.domain.user.enums.UserMode;
 import com.umc.bscene.domain.user.enums.UserStatus;
 import com.umc.bscene.domain.user.exception.UserException;
+import com.umc.bscene.domain.user.policy.FanNicknamePolicy;
 import com.umc.bscene.domain.user.port.AuthPort;
 import com.umc.bscene.domain.user.port.BandPort;
 import com.umc.bscene.domain.user.port.FollowPort;
@@ -236,8 +237,9 @@ public class UserService {
         // (형식 규칙이 생기기 전에 만든 닉네임을 유지한 채 장르·지역만 수정할 수 있어야 한다).
         String nickname = request.nickname();
         if (!nickname.equals(fanProfile.getNickname())) {
-            nickname = nickname.strip();
-            if (!nickname.equals(fanProfile.getNickname()) && !FanProfile.isValidNickname(nickname)) {
+            nickname = FanNicknamePolicy.normalize(nickname);
+            if (!nickname.equals(fanProfile.getNickname())
+                    && !FanNicknamePolicy.isValid(nickname)) {
                 throw new UserException(UserErrorCode.INVALID_NICKNAME);
             }
         }
