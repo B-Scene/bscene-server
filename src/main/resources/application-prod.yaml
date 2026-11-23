@@ -3,6 +3,7 @@ spring:
   jpa:
     hibernate:
       ddl-auto: validate
+    open-in-view: false
   ssl:
     bundle:
       pem:
