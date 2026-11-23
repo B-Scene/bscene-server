@@ -41,7 +41,6 @@
 ### External Services
 ![AWS S3](https://img.shields.io/badge/AWS%20S3-569A31?style=for-the-badge&logo=amazons3&logoColor=white)
 ![Firebase](https://img.shields.io/badge/Firebase%20FCM-DD2C00?style=for-the-badge&logo=firebase&logoColor=white)
-![CoolSMS](https://img.shields.io/badge/CoolSMS-2C7DF0?style=for-the-badge)
 ## ✨ 주요 기능
 ### 팬모드
 - 홈 화면에서 밴드를 추천받고, 관심 있는 밴드를 팔로우해요.
@@ -72,14 +71,14 @@
 
 ### Authentication
 - `auth`
-  - 로컬 로그인 및 회원가입
+  - 개발·QA의 기존 로컬 계정 로그인 (`dev`·`qa`, `prod` 동시 활성화 시 차단)
+    - 운영 배포는 `SPRING_PROFILES_ACTIVE=prod`로 실행
   - 리프레시 토큰 및 RTR 구현
-  - 문자 메시지 기반 실 사용자 체크
   - 온보딩 (선호 장르·지역, 팬 닉네임 설정)
 - `oauth`
   - 소셜 로그인 및 회원가입
-    - 백엔드 주도 리다이렉트 형태
-    - 카카오, 구글, 애플
+    - 카카오 웹 OAuth 및 카카오·Apple 모바일 SDK
+    - 소셜 가입의 SMS 인증 의존성 제거
 ### Band
 - `band`
   - 밴드 생성 및 프로필 관리

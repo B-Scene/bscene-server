@@ -26,6 +26,7 @@ import com.umc.bscene.domain.user.enums.RecruitmentStatusFilter;
 import com.umc.bscene.domain.user.enums.UserMode;
 import com.umc.bscene.domain.user.enums.UserStatus;
 import com.umc.bscene.domain.user.exception.UserException;
+import com.umc.bscene.domain.user.policy.FanNicknamePolicy;
 import com.umc.bscene.domain.user.port.AuthPort;
 import com.umc.bscene.domain.user.port.BandPort;
 import com.umc.bscene.domain.user.port.FollowPort;
@@ -231,8 +232,19 @@ public class UserService {
         FanProfile fanProfile = fanProfileRepository.findByUser(user)
                 .orElseThrow(() -> new UserException(UserErrorCode.FAN_PROFILE_NOT_FOUND));
 
-        // 닉네임 중복 검사는 본인 프로필 제외 (본인이 쓰던 닉네임 그대로 저장하는 건 허용)
+        // 닉네임을 바꿀 때만 앞뒤 공백을 잘라내고 형식을 검사한다.
+        // 지금 쓰는 닉네임을 그대로 보낸 경우는 검사하지 않는다
+        // (형식 규칙이 생기기 전에 만든 닉네임을 유지한 채 장르·지역만 수정할 수 있어야 한다).
         String nickname = request.nickname();
+        if (!nickname.equals(fanProfile.getNickname())) {
+            nickname = FanNicknamePolicy.normalize(nickname);
+            if (!nickname.equals(fanProfile.getNickname())
+                    && !FanNicknamePolicy.isValid(nickname)) {
+                throw new UserException(UserErrorCode.INVALID_NICKNAME);
+            }
+        }
+
+        // 닉네임 중복 검사는 본인 프로필 제외 (본인이 쓰던 닉네임 그대로 저장하는 건 허용)
         if (fanProfileRepository.existsByNicknameAndUser_IdNot(nickname, userId)) {
             throw new UserException(UserErrorCode.DUPLICATE_NICKNAME);
         }

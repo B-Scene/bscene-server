@@ -25,7 +25,8 @@ public record OnboardingSaveRequest(
         @NotNull
         UserMode initialMode,
 
-        @Size(max = 8, message = "닉네임은 8자 이내여야 합니다.")
+        // 길이·형식 규칙은 FanNicknamePolicy 가 가진다.
+        // 전용 에러 코드(ONBOARDING400_5)로 응답하려고 서비스에서 검사한다
         String fanNickname,
 
         @Size(max = 3, message = "관심 장르는 최대 3개까지 선택할 수 있습니다.")

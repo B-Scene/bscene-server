@@ -191,7 +191,6 @@ class SessionBasicProfileServiceTest {
         return User.builder()
                 .id(USER_ID)
                 .name("사용자")
-                .phone("01012345678")
                 .gender(Gender.MALE)
                 .birthDate(LocalDate.of(2000, 1, 1))
                 .build();

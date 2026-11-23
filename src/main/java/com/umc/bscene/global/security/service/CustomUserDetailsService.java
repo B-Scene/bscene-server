@@ -1,9 +1,12 @@
 package com.umc.bscene.global.security.service;
 
 import com.umc.bscene.domain.user.entity.User;
+import com.umc.bscene.domain.user.enums.UserStatus;
 import com.umc.bscene.domain.user.repository.UserRepository;
 import com.umc.bscene.global.security.entity.AuthMember;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.authentication.DisabledException;
+import org.springframework.security.authentication.LockedException;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
@@ -18,6 +21,10 @@ public class CustomUserDetailsService implements UserDetailsService {
     /**
      * JWT subject(userId)로 유저를 조회해 UserDetails로 변환
      * JwtAuthFilter에서 토큰 검증 후 호출
+     *
+     * 로그인 시점에만 계정 상태를 검사하면 정지/휴면/탈퇴 처리된 뒤에도 이미 발급된 토큰으로
+     * 계속 이용할 수 있으므로, 매 요청의 토큰 인증에서도 ACTIVE 상태를 요구한다.
+     * (여기서 던진 예외는 JwtAuthFilter가 401로 변환한다)
      */
     @Override
     public UserDetails loadUserByUsername(
@@ -27,9 +34,21 @@ public class CustomUserDetailsService implements UserDetailsService {
             User user = userRepository.findById(Long.parseLong(userId))
                     .orElseThrow(() -> new UsernameNotFoundException("존재하지 않는 회원입니다. userId=" + userId));
 
+            validateStatus(user);
+
             return new AuthMember(user);
         } catch (NumberFormatException e) {
             throw new UsernameNotFoundException("유효하지 않은 사용자 식별자입니다. userId=" + userId);
+        }
+    }
+
+    private void validateStatus(User user) {
+        UserStatus status = user.getStatus();
+        if (status == UserStatus.SUSPENDED) {
+            throw new LockedException("정지된 계정입니다. userId=" + user.getId());
+        }
+        if (status != UserStatus.ACTIVE) {
+            throw new DisabledException("이용할 수 없는 계정입니다. userId=" + user.getId() + ", status=" + status);
         }
     }
 }

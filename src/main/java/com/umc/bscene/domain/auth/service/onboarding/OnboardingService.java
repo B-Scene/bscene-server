@@ -11,6 +11,7 @@ import com.umc.bscene.domain.auth.enums.onboarding.Region;
 import com.umc.bscene.domain.auth.exception.onboarding.OnboardingException;
 import com.umc.bscene.domain.user.entity.*;
 import com.umc.bscene.domain.user.enums.UserMode;
+import com.umc.bscene.domain.user.policy.FanNicknamePolicy;
 import com.umc.bscene.domain.user.repository.*;
 import com.umc.bscene.global.security.entity.AuthMember;
 import lombok.RequiredArgsConstructor;
@@ -96,7 +97,9 @@ public class OnboardingService {
 
     // 팬 닉네임 중복 확인
     public FanNicknameCheckResponse checkFanNickname(String nickname) {
-        boolean exists = fanProfileRepository.existsByNickname(nickname);
+        // 저장할 때 앞뒤 공백을 잘라내므로 중복 확인도 같은 값으로 비교한다
+        boolean exists = fanProfileRepository.existsByNickname(
+                FanNicknamePolicy.normalize(nickname));
 
         return new FanNicknameCheckResponse(!exists);
     }
@@ -192,19 +195,27 @@ public class OnboardingService {
         }
     }
 
-    // 팬 프로필(닉네임) 생성. 닉네임 필수 + 중복 검증
+    // 팬 프로필(닉네임) 생성. 닉네임 필수 + 형식 + 중복 검증
     private void applyFanProfile(User user, String fanNickname) {
         if (fanNickname == null || fanNickname.isBlank()) {
             throw new OnboardingException(OnboardingErrorCode.FAN_NICKNAME_REQUIRED);
         }
 
-        if (fanProfileRepository.existsByNickname(fanNickname)) {
+        // 앞뒤 공백은 잘라내고, 잘라낸 값으로 형식·중복을 검사해 저장한다.
+        // 공백만 있는 닉네임은 위 "닉네임 필수" 검사에서 먼저 걸린다.
+        String nickname = FanNicknamePolicy.normalize(fanNickname);
+
+        if (!FanNicknamePolicy.isValid(nickname)) {
+            throw new OnboardingException(OnboardingErrorCode.INVALID_FAN_NICKNAME);
+        }
+
+        if (fanProfileRepository.existsByNickname(nickname)) {
             throw new OnboardingException(OnboardingErrorCode.DUPLICATE_FAN_NICKNAME);
         }
 
         fanProfileRepository.save(FanProfile.builder()
                 .user(user)
-                .nickname(fanNickname)
+                .nickname(nickname)
                 .build());
     }
 

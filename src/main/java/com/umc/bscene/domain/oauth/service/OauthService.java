@@ -5,11 +5,13 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.umc.bscene.domain.auth.dto.auth.request.TermAgreementRequest;
 import com.umc.bscene.domain.auth.dto.auth.response.LoginUserResponse;
 import com.umc.bscene.domain.auth.dto.auth.response.TokenResponse;
+import com.umc.bscene.domain.auth.entity.term.Terms;
 import com.umc.bscene.domain.auth.entity.term.UserTerms;
-import com.umc.bscene.domain.auth.enums.verification.PhoneVerificationPurpose;
+import com.umc.bscene.domain.auth.enums.code.AuthErrorCode;
+import com.umc.bscene.domain.auth.enums.term.TermsType;
+import com.umc.bscene.domain.auth.exception.auth.AuthException;
 import com.umc.bscene.domain.auth.repository.term.TermsRepository;
 import com.umc.bscene.domain.auth.repository.term.UserTermsRepository;
-import com.umc.bscene.domain.auth.service.verification.PhoneVerificationService;
 import com.umc.bscene.domain.oauth.dto.request.OauthSignupRequest;
 import com.umc.bscene.domain.oauth.dto.response.OauthLoginResponse;
 import com.umc.bscene.domain.oauth.entity.OauthAccount;
@@ -17,14 +19,18 @@ import com.umc.bscene.domain.oauth.enums.SocialProvider;
 import com.umc.bscene.domain.oauth.exception.OauthException;
 import com.umc.bscene.domain.oauth.repository.OauthAccountRepository;
 import com.umc.bscene.domain.oauth.response.code.OauthErrorCode;
+import com.umc.bscene.domain.oauth.verifier.VerifiedSocialIdentity;
 import com.umc.bscene.domain.user.entity.User;
 import com.umc.bscene.domain.user.enums.Gender;
+import com.umc.bscene.domain.user.enums.UserStatus;
 import com.umc.bscene.domain.user.repository.UserRepository;
 import com.umc.bscene.global.security.dto.response.OAuthResponse;
 import com.umc.bscene.global.security.entity.AuthMember;
 import com.umc.bscene.global.security.entity.OAuthMember;
 import com.umc.bscene.global.security.util.JwtUtil;
 import lombok.RequiredArgsConstructor;
+import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -36,9 +42,16 @@ import java.time.DateTimeException;
 import java.time.Duration;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.Period;
+import java.time.ZoneId;
 import java.util.Base64;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -49,31 +62,89 @@ public class OauthService {
     private static final String EXCHANGE_KEY_PREFIX = "oauth:exchange:";
     private static final long EXCHANGE_CODE_TTL_SECONDS = 60L;
 
+    // 가입 가능 최소 나이(만). 나이는 서버 시간대와 무관하게 한국 날짜 기준으로 계산한다
+    private static final int MINIMUM_SIGNUP_AGE = 14;
+    private static final ZoneId SERVICE_ZONE = ZoneId.of("Asia/Seoul");
+
     private final UserRepository userRepository;
     private final OauthAccountRepository oauthAccountRepository;
     private final UserTermsRepository userTermsRepository;
     private final TermsRepository termsRepository;
-    private final PhoneVerificationService phoneVerificationService;
     private final StringRedisTemplate stringRedisTemplate;
     private final JwtUtil jwtUtil;
+    private final ObjectProvider<AppleCredentialService> appleCredentials;
     private final ObjectMapper objectMapper = new ObjectMapper();
 
-    // 소셜 로그인 성공 처리: 기존 유저는 토큰 발급, 신규 유저는 임시 signup 토큰 발급
+    // 웹 소셜 로그인 성공 처리 (Spring Security 리다이렉트 경로).
+    // 기존/신규 판별은 CustomOAuthService 가 이미 했으므로 DB 를 다시 조회하지 않고 공통 처리만 태운다
     @Transactional
     public OauthLoginResponse handleLoginSuccess(OAuthMember member) {
+        OAuthResponse info = member.getOauthInfo();
+        validateSupportedProvider(info.getProvider());
         if (member.isNewUser()) {
-            OAuthResponse info = member.getOauthInfo();
-            String signupToken = jwtUtil.createSignupToken(
-                    info.getProvider().name(),
+            return issueSignupResult(new VerifiedSocialIdentity(
+                    info.getProvider(),
                     info.getProviderUid(),
-                    info.getName(),
-                    info.getEmail()
-            );
-            // email은 프론트가 온보딩 화면 아이디 칸을 채우는 용도로 함께 반환
-            return OauthLoginResponse.ofNew(signupToken, info.getEmail());
+                    info.getEmail(),
+                    info.getName()
+            ));
+        }
+        return loginExistingUser(member.getUser());
+    }
+
+    // 모바일 SDK 로그인 공통 입구.
+    // 검증기(카카오/Apple)가 제공자 토큰을 서버에서 검증해 만든 신원만 받는다. FE 입력으로 만든 값은 절대 넘기지 않는다
+    @Transactional
+    public OauthLoginResponse loginWithVerifiedIdentity(VerifiedSocialIdentity identity) {
+        validateSupportedProvider(identity.provider());
+        return oauthAccountRepository
+                .findByProviderAndProviderUid(identity.provider(), identity.providerUid())
+                .map(account -> loginExistingUser(account.getUser()))
+                .orElseGet(() -> issueSignupResult(identity));
+    }
+
+    private void validateSupportedProvider(SocialProvider provider) {
+        if (provider != SocialProvider.KAKAO && provider != SocialProvider.APPLE) {
+            throw new OauthException(OauthErrorCode.NOT_SUPPORT_PROVIDER);
+        }
+    }
+
+    // 기존 회원: 계정 상태 확인 후 access/refresh 토큰 발급 (웹·모바일 공통)
+    private OauthLoginResponse loginExistingUser(User user) {
+        validateUserStatus(user);
+        return OauthLoginResponse.ofExisting(login(user));
+    }
+
+    // 신규 회원: 임시 signup 토큰 발급 (웹·모바일 공통).
+    // 명세 v0.3: 신규 가입은 제공자 이메일이 필수. 기존 회원은 providerUid 로 식별하므로 이 검사를 여기서만 한다
+    private OauthLoginResponse issueSignupResult(VerifiedSocialIdentity identity) {
+        if (identity.email() == null || identity.email().isBlank()) {
+            throw new OauthException(OauthErrorCode.EMAIL_NOT_PROVIDED);
         }
 
-        return OauthLoginResponse.ofExisting(login(member.getUser()));
+        String signupToken = jwtUtil.createSignupToken(
+                identity.provider().name(),
+                identity.providerUid(),
+                identity.name(),
+                identity.email()
+        );
+        // email 은 프론트가 온보딩 화면 아이디 칸을 채우는 용도로 함께 반환
+        return OauthLoginResponse.ofNew(signupToken, identity.email());
+    }
+
+    // 정지·휴면·탈퇴 계정은 소셜 로그인 토큰을 발급하지 않는다 (AuthService.reissue 와 같은 기준).
+    // 발급 후에는 JwtAuthFilter 의 매 요청 상태 검사가 막아주지만, 로그인 단계에서 바로 거절해야 FE 가 안내할 수 있다
+    private void validateUserStatus(User user) {
+        UserStatus status = user.getStatus();
+        if (status == UserStatus.SUSPENDED) {
+            throw new AuthException(AuthErrorCode.SUSPENDED_ACCOUNT);
+        }
+        if (status == UserStatus.INACTIVE) {
+            throw new AuthException(AuthErrorCode.INACTIVE_ACCOUNT);
+        }
+        if (status == UserStatus.DELETED) {
+            throw new AuthException(AuthErrorCode.DELETED_ACCOUNT);
+        }
     }
 
     // 로그인 결과를 일회성 코드에 담아 Redis에 저장(짧은 TTL). 성공 핸들러가 프론트로 code만 리다이렉트
@@ -119,55 +190,96 @@ public class OauthService {
         } catch (IllegalArgumentException e) {
             throw new OauthException(OauthErrorCode.NOT_SUPPORT_PROVIDER);
         }
+        validateSupportedProvider(provider);
         String providerUid = jwtUtil.getProviderUid(signupToken);
         // 이메일(아이디)은 사용자가 수정할 수 없으므로 요청 본문이 아닌 서명된 토큰에서 읽음
         String email = jwtUtil.getEmail(signupToken);
+
+        if (provider == SocialProvider.APPLE) {
+            appleCredentials.getObject().validateSignup(signupToken);
+        }
 
         if (oauthAccountRepository.findByProviderAndProviderUid(provider, providerUid).isPresent()) {
             throw new OauthException(OauthErrorCode.ALREADY_REGISTERED);
         }
 
-        // 휴대폰 인증 완료 여부 검증 (로컬 회원가입과 동일)
-        phoneVerificationService.validateVerified(PhoneVerificationPurpose.SIGNUP, request.phone());
-
-        // phone은 dev 병합으로 unique 제약이 걸려 있어, 저장 전에 중복을 걸러 명확한 409 반환
-        if (userRepository.existsByPhone(request.phone())) {
-            throw new OauthException(OauthErrorCode.DUPLICATE_PHONE);
-        }
-
         Gender gender = convertGender(request.genderCode());
         LocalDate birthDate = convertBirthDate(request.birthDatePrefix(), request.genderCode());
+
+        // 약관의 "만 14세 이상" 체크와 별개로 생년월일로도 확인한다
+        if (isUnderMinimumAge(birthDate, LocalDate.now(SERVICE_ZONE))) {
+            throw new OauthException(OauthErrorCode.UNDER_MINIMUM_AGE);
+        }
+
+        // 약관은 회원을 저장하기 전에 검증한다. 실패하면 User·소셜 계정·약관 동의가 하나도 저장되지 않는다.
+        Map<Long, Terms> termsById = validateTerms(request.terms());
 
         User user = User.builder()
                 .name(request.name())
                 .gender(gender)
                 .birthDate(birthDate)
-                .phone(request.phone())
                 .build();
-        User savedUser = userRepository.save(user);
+        User savedUser = userRepository.saveAndFlush(user);
 
+        // 위 사전 검사와 insert 사이에 같은 소셜 계정으로 가입이 먼저 끝나는 동시 요청은 DB unique 로만 막힌다.
+        // unique 위반을 DataIntegrityViolationException 으로 받아 409 로 바꾼다.
+        // 예외가 나면 트랜잭션은 롤백되고 사용자 데이터는 남지 않는다.
         OauthAccount oauthAccount = OauthAccount.builder()
                 .user(savedUser)
                 .provider(provider)
                 .providerUid(providerUid)
                 .email(email)
                 .build();
-        oauthAccountRepository.save(oauthAccount);
+        try {
+            oauthAccountRepository.saveAndFlush(oauthAccount);
+        } catch (DataIntegrityViolationException e) {
+            throw new OauthException(OauthErrorCode.ALREADY_REGISTERED);   // (provider, provider_uid) unique, V56
+        }
 
-        saveTerms(savedUser, request.terms());
+        saveTerms(savedUser, request.terms(), termsById);
 
-        // 인증 완료 상태 정리 (재사용 방지)
-        phoneVerificationService.removeVerified(PhoneVerificationPurpose.SIGNUP, request.phone());
+        if (provider == SocialProvider.APPLE) {
+            appleCredentials.getObject().attachSignup(signupToken, savedUser);
+        }
 
         return login(savedUser);
     }
 
-    // 약관 동의 저장 (로컬 회원가입과 동일하게 termId 기반)
-    private void saveTerms(User user, List<TermAgreementRequest> terms) {
+    // 약관 요청 검증. 통과하면 저장에 다시 쓰도록 termId → Terms 를 돌려준다.
+    // - 같은 약관 ID 를 두 번 보냈거나 존재하지 않는 약관 ID → OAUTH400_8 (클라이언트 요청 오류)
+    // - 필수(MANDATORY) 약관이 빠졌거나 동의하지 않음 → OAUTH400_7
+    private Map<Long, Terms> validateTerms(List<TermAgreementRequest> requestedTerms) {
+        Map<Long, Terms> termsById = termsRepository.findAll().stream()
+                .collect(Collectors.toMap(Terms::getTermId, Function.identity()));
+
+        Set<Long> requestedIds = new HashSet<>();
+        Set<Long> agreedIds = new HashSet<>();
+        for (TermAgreementRequest term : requestedTerms) {
+            boolean duplicated = !requestedIds.add(term.termId());
+            if (duplicated || !termsById.containsKey(term.termId())) {
+                throw new OauthException(OauthErrorCode.INVALID_TERMS);
+            }
+            if (term.agreed()) {
+                agreedIds.add(term.termId());
+            }
+        }
+
+        boolean allMandatoryAgreed = termsById.values().stream()
+                .filter(terms -> terms.getType() == TermsType.MANDATORY)
+                .allMatch(terms -> agreedIds.contains(terms.getTermId()));
+        if (!allMandatoryAgreed) {
+            throw new OauthException(OauthErrorCode.REQUIRED_TERMS_NOT_AGREED);
+        }
+
+        return termsById;
+    }
+
+    // 약관 동의 저장 (termId 기반). 검증을 통과한 약관만 들어온다.
+    private void saveTerms(User user, List<TermAgreementRequest> terms, Map<Long, Terms> termsById) {
         List<UserTerms> entities = terms.stream()
                 .map(term -> UserTerms.builder()
                         .user(user)
-                        .terms(termsRepository.getReferenceById(term.termId()))
+                        .terms(termsById.get(term.termId()))
                         .isAgreed(term.agreed())
                         .agreedAt(LocalDateTime.now())
                         .build())
@@ -233,6 +345,12 @@ public class OauthService {
         } catch (DateTimeException e) {
             throw new OauthException(OauthErrorCode.INVALID_SIGNUP_INFO);
         }
+    }
+
+    // 만 나이가 최소 가입 나이보다 적으면 true. 14번째 생일 당일부터 가입할 수 있다.
+    // 아직 오지 않은 날짜(미래 생년월일)도 만 나이가 음수라 여기서 함께 걸러진다.
+    static boolean isUnderMinimumAge(LocalDate birthDate, LocalDate today) {
+        return Period.between(birthDate, today).getYears() < MINIMUM_SIGNUP_AGE;
     }
 
     private String hashToken(String token) {

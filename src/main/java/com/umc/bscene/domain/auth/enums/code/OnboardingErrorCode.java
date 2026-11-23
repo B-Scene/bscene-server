@@ -14,6 +14,7 @@ public enum OnboardingErrorCode implements BaseResponseCode {
     FAN_NICKNAME_REQUIRED(BAD_REQUEST, "ONBOARDING400_2", "팬 모드는 닉네임이 필요합니다."),
     GENRE_REQUIRED(BAD_REQUEST, "ONBOARDING400_3", "팬 모드는 관심 장르가 필요합니다."),
     REGION_REQUIRED(BAD_REQUEST, "ONBOARDING400_4", "팬 모드는 활동 지역이 필요합니다."),
+    INVALID_FAN_NICKNAME(BAD_REQUEST, "ONBOARDING400_5", "닉네임은 공백 포함 8자 이내의 한글 또는 영문이어야 합니다."),
     USER_NOT_FOUND(NOT_FOUND, "ONBOARDING404_1", "존재하지 않는 회원입니다."),
     DUPLICATE_FAN_NICKNAME(CONFLICT, "ONBOARDING409_1", "이미 사용 중인 닉네임입니다."),
     ALREADY_ONBOARDED(CONFLICT, "ONBOARDING409_2", "이미 온보딩을 완료한 회원입니다.");
