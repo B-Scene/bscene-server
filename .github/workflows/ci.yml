@@ -8,8 +8,8 @@ on:
   workflow_dispatch:
 
 concurrency:
-  group: ci-${{ github.ref }}
-  cancel-in-progress: true
+  group: ci-${{ github.ref }}${{ github.ref == 'refs/heads/dev' && github.event_name == 'workflow_dispatch' && '-manual' || '' }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/dev' }}
 
 permissions:
   contents: read
@@ -84,3 +84,46 @@ jobs:
           push: true
           tags: |
             ${{ env.IMAGE }}:latest
+
+  oci-dev-image:
+    name: Build and push OCI dev image
+    if: github.event_name == 'push' && github.ref == 'refs/heads/dev'
+    needs: build
+    runs-on: ubuntu-24.04-arm
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Download application JAR
+        uses: actions/download-artifact@v4
+        with:
+          name: app-jar
+          path: build/libs
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push ARM64 image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          platforms: linux/arm64
+          push: true
+          tags: ghcr.io/b-scene/bscene-server:dev-${{ github.sha }}
+
+  deploy-oci-dev:
+    name: Deploy to OCI dev
+    needs: oci-dev-image
+    if: github.event_name == 'push' && github.ref == 'refs/heads/dev'
+    permissions: { }
+    uses: ./.github/workflows/cd-oci-dev.yml
+    secrets:
+      OCI_DEV_SSH_KEY: ${{ secrets.OCI_DEV_SSH_KEY }}
