@@ -1,0 +1,45 @@
+name: CD - OCI dev
+
+on:
+  workflow_call:
+    secrets:
+      OCI_DEV_SSH_KEY:
+        required: true
+
+jobs:
+  deploy-oci-dev:
+    name: Deploy Spring to OCI dev
+    runs-on: ubuntu-24.04
+    environment: oci-dev
+    permissions: {}
+
+    steps:
+      - name: Deploy the current dev commit
+        shell: bash
+        env:
+          OCI_HOST: ${{ vars.OCI_DEV_HOST }}
+          OCI_KNOWN_HOSTS: ${{ vars.OCI_DEV_KNOWN_HOSTS }}
+          OCI_SSH_KEY: ${{ secrets.OCI_DEV_SSH_KEY }}
+        run: |
+          set -euo pipefail
+          
+          latest_sha=$(git ls-remote --exit-code "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY.git" refs/heads/dev | cut -f1)
+          if [[ "$latest_sha" != "$GITHUB_SHA" ]]; then
+            echo "A newer dev commit exists. Skipping this deployment."
+            exit 0
+          fi
+          
+          umask 077
+          key="$RUNNER_TEMP/bscene-deploy-key"
+          hosts="$RUNNER_TEMP/bscene-known-hosts"
+          trap 'rm -f "$key" "$hosts"' EXIT
+          printf '%s\n' "$OCI_SSH_KEY" > "$key"
+          printf '%s\n' "$OCI_KNOWN_HOSTS" > "$hosts"
+          
+          printf '%s\n' "$GITHUB_SHA" | ssh -T \
+            -o BatchMode=yes \
+            -o IdentitiesOnly=yes \
+            -o StrictHostKeyChecking=yes \
+            -o UserKnownHostsFile="$hosts" \
+            -o ConnectTimeout=15 \
+            -i "$key" "bscene-deploy@$OCI_HOST"

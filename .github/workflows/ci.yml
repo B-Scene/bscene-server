@@ -8,8 +8,8 @@ on:
   workflow_dispatch:
 
 concurrency:
-  group: ci-${{ github.ref }}
-  cancel-in-progress: true
+  group: ci-${{ github.ref }}${{ github.ref == 'refs/heads/dev' && github.event_name == 'workflow_dispatch' && '-manual' || '' }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/dev' }}
 
 permissions:
   contents: read
@@ -118,3 +118,12 @@ jobs:
           platforms: linux/arm64
           push: true
           tags: ghcr.io/b-scene/bscene-server:dev-${{ github.sha }}
+
+  deploy-oci-dev:
+    name: Deploy to OCI dev
+    needs: oci-dev-image
+    if: github.event_name == 'push' && github.ref == 'refs/heads/dev'
+    permissions: { }
+    uses: ./.github/workflows/cd-oci-dev.yml
+    secrets:
+      OCI_DEV_SSH_KEY: ${{ secrets.OCI_DEV_SSH_KEY }}
