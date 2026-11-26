@@ -4,8 +4,8 @@ import com.umc.bscene.domain.auth.entity.credential.LocalCredential;
 import com.umc.bscene.domain.auth.repository.credential.LocalCredentialRepository;
 import com.umc.bscene.domain.oauth.entity.OauthAccount;
 import com.umc.bscene.domain.oauth.repository.OauthAccountRepository;
-import com.umc.bscene.domain.session.dto.profile.request.SessionBasicProfileUpdateRequest;
 import com.umc.bscene.domain.session.entity.SessionBasicProfile;
+import com.umc.bscene.domain.session.exception.SessionApplicationException;
 import com.umc.bscene.domain.session.repository.SessionBasicProfileRepository;
 import com.umc.bscene.domain.user.entity.User;
 import com.umc.bscene.domain.user.enums.Gender;
@@ -26,6 +26,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -41,8 +42,6 @@ class SessionBasicProfileServiceTest {
     private LocalCredentialRepository localCredentialRepository;
     @Mock
     private OauthAccountRepository oauthAccountRepository;
-    @Mock
-    private SessionBasicProfileUpdateRequest request;
 
     private SessionBasicProfileService service;
 
@@ -126,65 +125,38 @@ class SessionBasicProfileServiceTest {
     }
 
     @Test
-    @DisplayName("기존 세션 기본정보를 수정한다")
-    void updateExistingProfile() {
-        User user = user();
-        SessionBasicProfile profile = SessionBasicProfile.builder()
-                .user(user)
-                .email("old@example.com")
-                .gender(Gender.MALE)
-                .build();
-        when(userRepository.findById(USER_ID)).thenReturn(Optional.of(user));
-        when(profileRepository.findByUser_Id(USER_ID)).thenReturn(Optional.of(profile));
-        when(request.getEmail()).thenReturn("  new@example.com  ");
-        when(request.getGender()).thenReturn(Gender.FEMALE);
-        when(request.getProfileImageUrl()).thenReturn("  profile.jpg  ");
-        when(profileRepository.save(profile)).thenReturn(profile);
-        when(localCredentialRepository.findByUser_Id(USER_ID)).thenReturn(Optional.empty());
-        when(oauthAccountRepository.findFirstByUser_IdOrderByIdAsc(USER_ID))
-                .thenReturn(Optional.empty());
-
-        var response = service.updateProfile(USER_ID, request);
-
-        verify(profileRepository).save(profile);
-        assertThat(profile.getEmail()).isEqualTo("new@example.com");
-        assertThat(profile.getGender()).isEqualTo(Gender.FEMALE);
-        assertThat(profile.getProfileImageUrl()).isEqualTo("profile.jpg");
-        assertThat(response.getEmail()).isEqualTo("new@example.com");
-    }
-
-    @Test
-    @DisplayName("기존 정보가 없으면 세션 기본정보를 새로 생성한다")
-    void updateCreatesProfileWhenMissing() {
-        User user = user();
-        when(userRepository.findById(USER_ID)).thenReturn(Optional.of(user));
-        when(profileRepository.findByUser_Id(USER_ID)).thenReturn(Optional.empty());
-        when(request.getEmail()).thenReturn("new@example.com");
-        when(request.getGender()).thenReturn(Gender.FEMALE);
-        when(request.getProfileImageUrl()).thenReturn("");
-        when(profileRepository.save(org.mockito.ArgumentMatchers.any()))
-                .thenAnswer(invocation -> invocation.getArgument(0));
-        when(localCredentialRepository.findByUser_Id(USER_ID)).thenReturn(Optional.empty());
-        when(oauthAccountRepository.findFirstByUser_IdOrderByIdAsc(USER_ID))
-                .thenReturn(Optional.empty());
-
-        service.updateProfile(USER_ID, request);
-
-        ArgumentCaptor<SessionBasicProfile> captor =
-                ArgumentCaptor.forClass(SessionBasicProfile.class);
-        verify(profileRepository).save(captor.capture());
-        assertThat(captor.getValue().getUser()).isSameAs(user);
-        assertThat(captor.getValue().getEmail()).isEqualTo("new@example.com");
-        assertThat(captor.getValue().getProfileImageUrl()).isNull();
-    }
-
-    @Test
     @DisplayName("인증 사용자가 없으면 기본정보 조회에 실패한다")
     void getProfileFailsWhenUserNotFound() {
         when(userRepository.findById(USER_ID)).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> service.getProfile(USER_ID))
                 .isInstanceOf(BaseException.class);
+    }
+
+    @Test
+    @DisplayName("기본정보가 없어도 처음 등록한 프로필 사진을 저장한다")
+    void createsProfileForFirstImage() {
+        User user = user();
+        String imageUrl = "https://cdn.example.com/session/profile.png";
+        when(userRepository.findByIdForUpdate(USER_ID)).thenReturn(Optional.of(user));
+        when(profileRepository.findByUser_Id(USER_ID)).thenReturn(Optional.empty());
+
+        assertThat(service.updateProfileImage(USER_ID, imageUrl).profileImageUrl())
+                .isEqualTo(imageUrl);
+
+        var saved = ArgumentCaptor.forClass(SessionBasicProfile.class);
+        verify(profileRepository).save(saved.capture());
+        assertThat(saved.getValue().getUser()).isSameAs(user);
+        assertThat(saved.getValue().getProfileImageUrl()).isEqualTo(imageUrl);
+    }
+
+    @Test
+    @DisplayName("쿼리 문자열이 있는 GIF URL도 프로필 사진으로 등록할 수 없다")
+    void rejectsGifProfileImage() {
+        assertThatThrownBy(() -> service.updateProfileImage(
+                USER_ID, "https://cdn.example.com/session/profile.GIF?version=1"))
+                .isInstanceOf(SessionApplicationException.class);
+        verifyNoInteractions(userRepository, profileRepository);
     }
 
     private User user() {

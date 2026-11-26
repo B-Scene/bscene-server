@@ -13,7 +13,6 @@ import static com.umc.bscene.global.constant.StaticValue.NOT_FOUND;
 @RequiredArgsConstructor
 public enum SessionErrorCode implements BaseResponseCode {
 
-    INVALID_SESSION_BASIC_PROFILE_REQUEST("SESSION400_1", BAD_REQUEST, "세션 기본 정보 입력값을 확인해주세요."),
     INVALID_SESSION_APPLICATION_REQUEST("SESSION400_2", BAD_REQUEST, "지원서 필수 입력값을 확인해주세요."),
     SESSION_APPLICATION_VISIBILITY_NOT_ALLOWED("SESSION400_3", BAD_REQUEST, "기본 지원서만 공개 여부를 변경할 수 있습니다."),
     INVALID_SESSION_RECRUITMENT_REQUEST("SESSION400_4", BAD_REQUEST, "세션 모집 공고 필수 입력값을 확인해주세요."),
@@ -22,6 +21,8 @@ public enum SessionErrorCode implements BaseResponseCode {
     FIRST_SESSION_APPLICATION_MUST_BE_DEFAULT("SESSION400_7", BAD_REQUEST, "첫 지원서는 기본 지원서로 생성해야 합니다."),
     SESSION_RECRUITMENT_APPLICATION_CLOSED("SESSION400_8", BAD_REQUEST, "지원이 마감된 공고입니다."),
     DEFAULT_SESSION_APPLICATION_PURPOSE_IMMUTABLE("SESSION400_9", BAD_REQUEST, "기본 지원서의 용도는 변경할 수 없습니다."),
+    INVALID_SESSION_NAME_REQUEST("SESSION400_10", BAD_REQUEST, "이름은 공백이 아닌 10자 이내로 입력해주세요."),
+    INVALID_SESSION_PROFILE_IMAGE_REQUEST("SESSION400_11", BAD_REQUEST, "프로필 사진 URL을 확인해주세요. GIF는 사용할 수 없습니다."),
     BAND_PERMISSION_DENIED("SESSION403_1", FORBIDDEN, "밴드 오너만 세션 모집 공고를 등록, 수정, 삭제할 수 있습니다."),
     SELF_RECRUITMENT_APPLICATION_NOT_ALLOWED("SESSION403_2", FORBIDDEN, "본인이 만든 공고에는 지원할 수 없습니다."),
     SELF_APPLICATION_DECISION_NOT_ALLOWED("SESSION403_3", FORBIDDEN, "본인의 지원 건은 본인이 수락하거나 거절할 수 없습니다."),

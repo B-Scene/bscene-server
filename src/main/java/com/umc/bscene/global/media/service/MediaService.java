@@ -1,8 +1,11 @@
 package com.umc.bscene.global.media.service;
 
+import com.umc.bscene.global.exception.BaseException;
+import com.umc.bscene.global.media.MediaFileType;
 import com.umc.bscene.global.media.dto.request.MediaPresignedUrlRequest;
 import com.umc.bscene.global.media.dto.response.MediaPresignedUrlResponse;
 import com.umc.bscene.global.media.enums.MediaCategory;
+import com.umc.bscene.global.response.code.GeneralErrorCode;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -30,6 +33,12 @@ public class MediaService {
     private String region;
 
     public MediaPresignedUrlResponse createPresignedUrl(MediaPresignedUrlRequest request) {
+        if ((request.category() == MediaCategory.SESSION_PROFILE
+                || request.category() == MediaCategory.SESSION_PORTFOLIO)
+                && (MediaFileType.isGifPath(request.fileName().strip())
+                || "image/gif".equalsIgnoreCase(request.contentType().split(";", 2)[0].strip()))) {
+            throw new BaseException(GeneralErrorCode.INVALID_HTTP_MESSAGE_PARAMETER);
+        }
         String key = generateKey(request.category(), request.fileName());
 
         PutObjectRequest objectRequest = PutObjectRequest.builder()

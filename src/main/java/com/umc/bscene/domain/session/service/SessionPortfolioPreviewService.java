@@ -6,6 +6,7 @@ import com.umc.bscene.domain.session.entity.SessionApplicationLink;
 import com.umc.bscene.domain.session.enums.PortfolioMediaType;
 import com.umc.bscene.domain.session.event.SessionPortfolioPreviewRequestedEvent;
 import com.umc.bscene.domain.session.repository.SessionApplicationLinkRepository;
+import com.umc.bscene.global.media.MediaFileType;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Async;
@@ -81,6 +82,9 @@ public class SessionPortfolioPreviewService {
     }
 
     private Preview extract(String value) throws Exception {
+        if (MediaFileType.isGifUrl(value)) {
+            return new Preview(null, null, PortfolioMediaType.LINK);
+        }
         URI uri = validateExternalUri(value);
         String host = uri.getHost().toLowerCase(Locale.ROOT);
 
