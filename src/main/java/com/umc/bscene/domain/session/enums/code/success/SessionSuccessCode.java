@@ -12,7 +12,6 @@ import static com.umc.bscene.global.constant.StaticValue.OK;
 public enum SessionSuccessCode implements BaseResponseCode {
 
     SESSION_BASIC_PROFILE_GET_SUCCESS("SESSION200_1", OK, "세션 기본 정보 조회에 성공했습니다."),
-    SESSION_BASIC_PROFILE_UPDATE_SUCCESS("SESSION200_2", OK, "세션 기본 정보 수정에 성공했습니다."),
     MY_SESSION_APPLICATION_DETAIL_SUCCESS("SESSION200_3", OK, "내 지원서 상세 조회에 성공했습니다."),
     MY_SESSION_APPLICATION_UPDATE_SUCCESS("SESSION200_4", OK, "내 지원서 저장에 성공했습니다."),
     MY_SESSION_APPLICATION_DELETE_SUCCESS("SESSION200_5", OK, "내 지원서 삭제에 성공했습니다."),
@@ -38,6 +37,8 @@ public enum SessionSuccessCode implements BaseResponseCode {
     SESSION_APPLICATION_SUBMIT_SUCCESS("SESSION201_3", CREATED, "지원이 완료되었습니다."),
     SESSION_RECRUITMENT_MANAGEMENT_LIST_SUCCESS("SESSION200_23", OK, "모집 공고 관리 목록 조회에 성공했습니다."),
     SESSION_RECRUITMENT_EDIT_GET_SUCCESS("SESSION200_24", OK, "모집 공고 수정 정보 조회에 성공했습니다."),
+    SESSION_NAME_UPDATE_SUCCESS("SESSION200_25", OK, "세션 이름 수정에 성공했습니다."),
+    SESSION_PROFILE_IMAGE_UPDATE_SUCCESS("SESSION200_26", OK, "세션 프로필 사진 수정에 성공했습니다."),
     ;
 
     private final String code;

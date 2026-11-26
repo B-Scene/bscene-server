@@ -3,6 +3,7 @@ package com.umc.bscene.domain.session.entity;
 import com.umc.bscene.domain.user.entity.User;
 import com.umc.bscene.domain.user.enums.Gender;
 import com.umc.bscene.global.entity.BaseEntity;
+import com.umc.bscene.global.media.MediaFileType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -52,23 +53,11 @@ public class SessionBasicProfile extends BaseEntity {
     @Column(name = "profile_image_url", length = 500)
     private String profileImageUrl;
 
-    public void update(
-            String email,
-            Gender gender,
-            String profileImageUrl
-    ) {
-        if (email != null) {
-            this.email = normalizeNullable(email);
-        }
-        if (gender != null) {
-            this.gender = gender;
-        }
-        if (profileImageUrl != null) {
-            this.profileImageUrl = normalizeNullable(profileImageUrl);
-        }
+    public String getProfileImageUrl() {
+        return MediaFileType.isGifUrl(profileImageUrl) ? null : profileImageUrl;
     }
 
-    private String normalizeNullable(String value) {
-        return value.isBlank() ? null : value.trim();
+    public void changeProfileImage(String profileImageUrl) {
+        this.profileImageUrl = profileImageUrl;
     }
 }

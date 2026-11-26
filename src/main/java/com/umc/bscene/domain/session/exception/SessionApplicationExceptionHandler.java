@@ -4,7 +4,8 @@ import com.umc.bscene.domain.session.controller.SessionApplicationController;
 import com.umc.bscene.domain.session.dto.application.request.MySessionApplicationUpdateRequest;
 import com.umc.bscene.domain.session.dto.application.request.MySessionApplicationCreateRequest;
 import com.umc.bscene.domain.session.dto.application.request.SessionApplicationVisibilityRequest;
-import com.umc.bscene.domain.session.dto.profile.request.SessionBasicProfileUpdateRequest;
+import com.umc.bscene.domain.session.dto.profile.request.SessionNameUpdateRequest;
+import com.umc.bscene.domain.session.dto.profile.request.SessionProfileImageUpdateRequest;
 import com.umc.bscene.domain.session.controller.SessionRecruitmentController;
 import com.umc.bscene.domain.session.enums.code.error.SessionErrorCode;
 import com.umc.bscene.global.response.ErrorResponse;
@@ -37,8 +38,10 @@ public class SessionApplicationExceptionHandler {
     ) {
         Object target = e.getBindingResult().getTarget();
         SessionErrorCode errorCode;
-        if (target instanceof SessionBasicProfileUpdateRequest) {
-            errorCode = SessionErrorCode.INVALID_SESSION_BASIC_PROFILE_REQUEST;
+        if (target instanceof SessionNameUpdateRequest) {
+            errorCode = SessionErrorCode.INVALID_SESSION_NAME_REQUEST;
+        } else if (target instanceof SessionProfileImageUpdateRequest) {
+            errorCode = SessionErrorCode.INVALID_SESSION_PROFILE_IMAGE_REQUEST;
         } else if (target instanceof MySessionApplicationCreateRequest
                         || target instanceof MySessionApplicationUpdateRequest
                         || target instanceof SessionApplicationVisibilityRequest

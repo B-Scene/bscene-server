@@ -64,6 +64,10 @@ public class User extends BaseEntity {
         this.onboardingCompletedAt = LocalDateTime.now();
     }
 
+    public void changeName(String name) {
+        this.name = name;
+    }
+
     public void changeMode(UserMode mode) {
         this.currentMode = mode;
     }

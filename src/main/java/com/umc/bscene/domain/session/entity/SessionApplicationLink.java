@@ -2,6 +2,7 @@ package com.umc.bscene.domain.session.entity;
 
 import com.umc.bscene.domain.session.enums.PortfolioMediaType;
 import com.umc.bscene.global.entity.BaseEntity;
+import com.umc.bscene.global.media.MediaFileType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
@@ -64,13 +65,22 @@ public class SessionApplicationLink extends BaseEntity {
         this.deletedAt = LocalDateTime.now();
     }
 
+    public String getThumbnailUrl() {
+        return MediaFileType.isGifUrl(thumbnailUrl) ? null : thumbnailUrl;
+    }
+
+    public PortfolioMediaType getMediaType() {
+        return mediaType == PortfolioMediaType.IMAGE && MediaFileType.isGifUrl(url)
+                ? PortfolioMediaType.LINK : mediaType;
+    }
+
     public void applyPreview(
             String title,
             String thumbnailUrl,
             PortfolioMediaType mediaType
     ) {
         this.title = title;
-        this.thumbnailUrl = thumbnailUrl;
+        this.thumbnailUrl = MediaFileType.isGifUrl(thumbnailUrl) ? null : thumbnailUrl;
         this.mediaType = mediaType;
     }
 

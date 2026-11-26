@@ -1,7 +1,10 @@
 package com.umc.bscene.domain.session.controller;
 
-import com.umc.bscene.domain.session.dto.profile.request.SessionBasicProfileUpdateRequest;
+import com.umc.bscene.domain.session.dto.profile.request.SessionNameUpdateRequest;
+import com.umc.bscene.domain.session.dto.profile.request.SessionProfileImageUpdateRequest;
 import com.umc.bscene.domain.session.dto.profile.response.SessionBasicProfileResponse;
+import com.umc.bscene.domain.session.dto.profile.response.SessionNameUpdateResponse;
+import com.umc.bscene.domain.session.dto.profile.response.SessionProfileImageUpdateResponse;
 import com.umc.bscene.domain.session.enums.code.success.SessionSuccessCode;
 import com.umc.bscene.domain.session.service.SessionBasicProfileService;
 import com.umc.bscene.global.response.SuccessResponse;
@@ -34,18 +37,23 @@ public class SessionBasicProfileController {
         );
     }
 
-    @PatchMapping
-    public SuccessResponse<SessionBasicProfileResponse> updateProfile(
+    @PatchMapping("/name")
+    public SuccessResponse<SessionNameUpdateResponse> updateName(
             @AuthenticationPrincipal AuthMember authMember,
-            @Valid @RequestBody SessionBasicProfileUpdateRequest request
+            @Valid @RequestBody SessionNameUpdateRequest request
     ) {
-        SessionBasicProfileResponse response = sessionBasicProfileService.updateProfile(
-                authMember.getUser().getId(),
-                request
-        );
-        return SuccessResponse.of(
-                response,
-                SessionSuccessCode.SESSION_BASIC_PROFILE_UPDATE_SUCCESS
-        );
+        SessionNameUpdateResponse response = sessionBasicProfileService
+                .updateName(authMember.getUser().getId(), request.name());
+        return SuccessResponse.of(response, SessionSuccessCode.SESSION_NAME_UPDATE_SUCCESS);
+    }
+
+    @PatchMapping("/image")
+    public SuccessResponse<SessionProfileImageUpdateResponse> updateProfileImage(
+            @AuthenticationPrincipal AuthMember authMember,
+            @Valid @RequestBody SessionProfileImageUpdateRequest request
+    ) {
+        SessionProfileImageUpdateResponse response = sessionBasicProfileService
+                .updateProfileImage(authMember.getUser().getId(), request.profileImageUrl());
+        return SuccessResponse.of(response, SessionSuccessCode.SESSION_PROFILE_IMAGE_UPDATE_SUCCESS);
     }
 }
