@@ -102,6 +102,42 @@ public interface SessionApplicationRepository extends JpaRepository<SessionAppli
             Pageable pageable
     );
 
+    String APPLICATION_MATCH_COUNT = """
+        ((CASE WHEN sa.region = :preferredRegion THEN 1 ELSE 0 END)
+         + (CASE WHEN sa.genre = :preferredGenre THEN 1 ELSE 0 END))
+        """;
+
+    String CURSOR_MATCH_COUNT = """
+        ((CASE WHEN cursorApplication.region = :preferredRegion THEN 1 ELSE 0 END)
+         + (CASE WHEN cursorApplication.genre = :preferredGenre THEN 1 ELSE 0 END))
+        """;
+
+    @Query("""
+        SELECT sa
+        FROM SessionApplication sa
+        LEFT JOIN SessionApplication cursorApplication ON cursorApplication.sessionApplicationId = :cursorId
+          AND cursorApplication.purpose = :purpose
+          AND cursorApplication.isPublic = true
+          AND cursorApplication.userId <> :viewerUserId
+        WHERE sa.deletedAt IS NULL
+          AND sa.purpose = :purpose
+          AND sa.isPublic = true
+          AND sa.userId <> :viewerUserId
+          AND (:cursorId IS NULL OR
+        """ + APPLICATION_MATCH_COUNT + " < " + CURSOR_MATCH_COUNT + " OR (" +
+        APPLICATION_MATCH_COUNT + " = " + CURSOR_MATCH_COUNT + """
+          AND sa.sessionApplicationId < :cursorId))
+        ORDER BY
+        """ + APPLICATION_MATCH_COUNT + " DESC, sa.sessionApplicationId DESC")
+    List<SessionApplication> searchByPreferredRegionAndGenre(
+            @Param("viewerUserId") Long viewerUserId,
+            @Param("purpose") String purpose,
+            @Param("preferredRegion") Region preferredRegion,
+            @Param("preferredGenre") Genre preferredGenre,
+            @Param("cursorId") Long cursorId,
+            Pageable pageable
+    );
+
     Optional<SessionApplication>
     findFirstByUserIdAndPurposeAndDeletedAtIsNullOrderBySessionApplicationIdDesc(
             Long userId,

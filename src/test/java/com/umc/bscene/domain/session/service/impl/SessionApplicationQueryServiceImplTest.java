@@ -98,8 +98,8 @@ class SessionApplicationQueryServiceImplTest {
     }
 
     @Test
-    @DisplayName("검색 조건이 없어도 사용자별 추천 필터 없이 공개 기본 지원서를 검색한다")
-    void searchWithoutPersonalizedRecommendation() {
+    @DisplayName("내 기본 지원서가 없으면 기존 순서로 공개 기본 지원서를 검색한다")
+    void searchWithoutMyDefaultApplication() {
         when(applicationRepository.searchDefaultApplications(
                 eq(USER_ID), eq(DEFAULT_PURPOSE), eq(null), eq(null), eq(null), eq(null),
                 eq(null), eq(null), any(Pageable.class)
@@ -113,6 +113,22 @@ class SessionApplicationQueryServiceImplTest {
         assertThat(response.getSize()).isEqualTo(10);
         assertThat(response.getContent()).isEmpty();
         assertThat(response.getHasNext()).isFalse();
+    }
+
+    @Test
+    @DisplayName("검색 조건이 없으면 내 기본 지원서의 지역과 장르로 정렬한다")
+    void searchUsingMyDefaultApplication() {
+        SessionApplication mine = application(30L, USER_ID, DEFAULT_PURPOSE);
+        when(applicationRepository
+                .findFirstByUserIdAndPurposeAndDeletedAtIsNullOrderBySessionApplicationIdDesc(
+                        USER_ID, DEFAULT_PURPOSE))
+                .thenReturn(Optional.of(mine));
+
+        service.searchDefaultApplications(USER_ID, null, null, null, null, null, 20L, 10);
+
+        verify(applicationRepository).searchByPreferredRegionAndGenre(
+                eq(USER_ID), eq(DEFAULT_PURPOSE), eq(mine.getRegion()), eq(mine.getGenre()),
+                eq(20L), any(Pageable.class));
     }
 
     @Test

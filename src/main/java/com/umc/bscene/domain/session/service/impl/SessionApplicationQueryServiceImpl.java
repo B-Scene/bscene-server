@@ -241,8 +241,16 @@ public class SessionApplicationQueryServiceImpl implements SessionApplicationQue
                 : keyword.trim();
         searchKeywordService.record(viewerUserId, normalizedKeyword);
 
-        List<SessionApplication> applications = sessionApplicationRepository
-                .searchDefaultApplications(
+        boolean hasSearchConditions = region != null || skillLevel != null
+                || part != null || genre != null || normalizedKeyword != null;
+        SessionApplication myDefaultApplication = hasSearchConditions ? null : sessionApplicationRepository
+                .findFirstByUserIdAndPurposeAndDeletedAtIsNullOrderBySessionApplicationIdDesc(
+                        viewerUserId, DEFAULT_PURPOSE)
+                .orElse(null);
+
+        PageRequest page = PageRequest.of(0, pageSize + 1);
+        List<SessionApplication> applications = myDefaultApplication == null
+                ? sessionApplicationRepository.searchDefaultApplications(
                         viewerUserId,
                         DEFAULT_PURPOSE,
                         region,
@@ -251,7 +259,15 @@ public class SessionApplicationQueryServiceImpl implements SessionApplicationQue
                         genre,
                         normalizedKeyword,
                         cursorId,
-                        PageRequest.of(0, pageSize + 1)
+                        page
+                )
+                : sessionApplicationRepository.searchByPreferredRegionAndGenre(
+                        viewerUserId,
+                        DEFAULT_PURPOSE,
+                        myDefaultApplication.getRegion(),
+                        myDefaultApplication.getGenre(),
+                        cursorId,
+                        page
                 );
 
         boolean hasNext = applications.size() > pageSize;
