@@ -159,6 +159,7 @@ public class SwaggerOpenApiConfig {
             "/lives/replays/following",
             "/lives/replays/all",
             "/lives/{liveId}/replay",
+            "/lives/{liveId}/replay/playlist",
             "/lives/{liveId}/reservation",
             "/lives/{liveId}/co-host-invitation",
             "/media/presigned-url",

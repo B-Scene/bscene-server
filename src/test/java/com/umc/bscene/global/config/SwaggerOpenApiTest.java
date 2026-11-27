@@ -16,8 +16,10 @@ import com.umc.bscene.domain.band.repository.BandRepository;
 import com.umc.bscene.domain.notification.entity.Notification;
 import com.umc.bscene.domain.notification.repository.NotificationRepository;
 import com.umc.bscene.domain.stream.entity.AudioStream;
+import com.umc.bscene.domain.stream.entity.StreamReplay;
 import com.umc.bscene.domain.stream.enums.StreamStatus;
 import com.umc.bscene.domain.stream.repository.AudioStreamRepository;
+import com.umc.bscene.domain.stream.repository.StreamReplayRepository;
 import com.umc.bscene.domain.session.enums.Part;
 import com.umc.bscene.domain.user.entity.User;
 import com.umc.bscene.domain.user.enums.Gender;
@@ -77,6 +79,7 @@ class SwaggerOpenApiTest {
     @Autowired private BandMemberProfileRepository bandMemberProfiles;
     @Autowired private JwtUtil jwtUtil;
     @Autowired private AudioStreamRepository audioStreams;
+    @Autowired private StreamReplayRepository streamReplays;
     @Autowired private NotificationRepository notifications;
 
     private MockMvc mvc;
@@ -723,6 +726,12 @@ class SwaggerOpenApiTest {
                 assertThat(operation.at("/responses/200/content/application~1json").isMissingNode()).isTrue();
                 return;
             }
+            if (path.getKey().endsWith("/replay/playlist")) {
+                JsonNode playlist = operation.at("/responses/200/content/application~1vnd.apple.mpegurl");
+                assertThat(playlist.at("/schema/type").asText()).isEqualTo("string");
+                assertThat(mediaExample(playlist).asText()).startsWith("#EXTM3U").contains("#EXT-X-ENDLIST");
+                return;
+            }
             boolean hasBody = path.getKey().endsWith("/reports") || path.getKey().equals("/users/blocks");
             assertThat(operation.has("requestBody")).as(location).isEqualTo(hasBody);
             if (hasBody) {
@@ -749,13 +758,34 @@ class SwaggerOpenApiTest {
                 "post /lives/{liveId}/alarm",
                 "get /lives/replays/following",
                 "get /lives/replays/all",
-                "get /lives/{liveId}/replay");
+                "get /lives/{liveId}/replay",
+                "get /lives/{liveId}/replay/playlist");
         JsonNode home = paths.path("/lives/home").at("/get/responses/200/content/application~1json/schema");
         assertThat(resolve(document, home).at("/properties/result/oneOf").size()).isEqualTo(2);
         JsonNode replays = paths.path("/lives/replays/all").at("/get/responses/200/content/application~1json/schema");
         JsonNode replayPage = resolve(document, resolve(document, replays).at("/properties/result"));
         assertThat(replayPage.at("/properties/items/type").asText()).isEqualTo("array");
         assertThat(replayPage.at("/properties/pageInfo/$ref").asText()).endsWith("/PageInfo");
+    }
+
+    @Test
+    void replayPlaylistReturnsManifestAndRejectsMissingReplay() throws Exception {
+        Band band = createAcceptedBand();
+        AudioStream stream = audioStreams.save(AudioStream.builder()
+                .broadcasterId(band.getOwner().getId()).bandId(band.getId()).path("playlist-swagger-test")
+                .title("다시보기").status(StreamStatus.CLOSED).build());
+        streamReplays.save(StreamReplay.builder().audioStream(stream).s3Key("replays/test/segment.mp4")
+                .durationSec(32).build());
+        String path = "/lives/{liveId}/replay/playlist";
+        String token = bearer(UserRole.USER);
+        mvc.perform(get(path, stream.getId()).header(AUTHORIZATION, token).accept("application/vnd.apple.mpegurl"))
+                .andExpect(status().isOk())
+                .andExpect(content().contentTypeCompatibleWith("application/vnd.apple.mpegurl"))
+                .andExpect(result -> assertThat(result.getResponse().getContentAsString())
+                        .startsWith("#EXTM3U").contains("#EXTINF:32.0,", "#EXT-X-ENDLIST"));
+        mvc.perform(get(path, Long.MAX_VALUE).header(AUTHORIZATION, token))
+                .andExpect(status().isNotFound()).andExpect(jsonPath("$.code").value("LIVE404_3"));
+        mvc.perform(get(path, stream.getId())).andExpect(status().isUnauthorized());
     }
 
     @Test

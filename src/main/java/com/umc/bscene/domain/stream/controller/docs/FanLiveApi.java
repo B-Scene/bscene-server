@@ -641,4 +641,34 @@ public interface FanLiveApi {
             @Parameter(hidden = true) AuthMember authMember,
             @Parameter(description = "라이브 ID", example = "1") Long liveId
     );
+
+    @Operation(tags = "팬모드_라이브", summary = "다시보기 재생 목록 조회",
+            description = "다시보기 응답의 playbackUrl로 요청합니다. HLS 플레이어가 미디어 조각을 순서대로 "
+                    + "재생할 수 있도록 임시 서명 URL이 담긴 M3U8을 제공합니다. "
+                    + "서비스 Bearer 토큰 또는 access_token 쿠키로 인증합니다.",
+            security = @SecurityRequirement(name = "bearerAuth"), responses = {
+            @ApiResponse(responseCode = "200", description = "다시보기 HLS 매니페스트", content = @Content(
+                    mediaType = "application/vnd.apple.mpegurl", schema = @Schema(type = "string"),
+                    examples = @ExampleObject(name = "M3U8 재생 목록", value = """
+                            #EXTM3U
+                            #EXT-X-VERSION:7
+                            #EXT-X-TARGETDURATION:32
+                            #EXT-X-PLAYLIST-TYPE:VOD
+                            #EXT-X-MAP:URI="https://media.example.com/replays/3/segment.mp4?X-Amz-Signature=example"
+                            #EXTINF:32.0,
+                            https://media.example.com/replays/3/segment.mp4?X-Amz-Signature=example
+                            #EXT-X-ENDLIST
+                            """))),
+            @ApiResponse(responseCode = "400", description = "라이브 ID 형식 오류", content = @Content(
+                    mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class),
+                    examples = @ExampleObject(name = "COMMON_400_3", ref = "#/components/examples/COMMON_400_3"))),
+            @ApiResponse(responseCode = "401", ref = "#/components/responses/AuthenticationRequired"),
+            @ApiResponse(responseCode = "404", description = "다시보기 없음", content = @Content(
+                    mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class),
+                    examples = @ExampleObject(name = "LIVE404_3", ref = "#/components/examples/LIVE404_3")))
+    })
+    String getReplayPlaylist(
+            @Parameter(hidden = true) AuthMember authMember,
+            @Parameter(description = "라이브 ID", example = "3") Long liveId
+    );
 }
