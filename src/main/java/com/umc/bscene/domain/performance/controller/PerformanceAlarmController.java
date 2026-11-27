@@ -1,5 +1,6 @@
 package com.umc.bscene.domain.performance.controller;
 
+import com.umc.bscene.domain.performance.controller.docs.PerformanceAlarmApi;
 import com.umc.bscene.domain.performance.dto.response.PerformanceAlarmResponse;
 import com.umc.bscene.domain.performance.response.code.PerformanceSuccessCode;
 import com.umc.bscene.domain.performance.service.PerformanceAlarmService;
@@ -13,7 +14,7 @@ import org.springframework.web.bind.annotation.*;
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/performances/{performanceId}/alarm")
-public class PerformanceAlarmController {
+public class PerformanceAlarmController implements PerformanceAlarmApi {
 
     private final PerformanceAlarmService performanceAlarmService;
 

@@ -1,5 +1,6 @@
 package com.umc.bscene.domain.session.controller;
 
+import com.umc.bscene.domain.session.controller.docs.SessionRecruitmentInterestApi;
 import com.umc.bscene.domain.session.dto.recruitment.response.SessionRecruitmentInterestResponse;
 import com.umc.bscene.domain.session.enums.code.success.SessionSuccessCode;
 import com.umc.bscene.domain.session.service.SessionRecruitmentInterestService;
@@ -17,7 +18,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/sessions/recruitments/{sessionRecruitmentId}/interest")
-public class SessionRecruitmentInterestController {
+public class SessionRecruitmentInterestController implements SessionRecruitmentInterestApi {
 
     private final SessionRecruitmentInterestService interestService;
 

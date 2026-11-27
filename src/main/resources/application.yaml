@@ -1,3 +1,45 @@
+springdoc:
+  paths-to-match:
+    - /auth/**
+    - /home
+    - /explore/**
+    - /lives
+    - /lives/**
+    - /media/presigned-url
+    - /notifications
+    - /notifications/**
+    - /users/blocks
+    - /users/me
+    - /users/me/**
+    - /onboarding
+    - /onboarding/**
+    - /genres
+    - /regions
+    - /sessions/profile
+    - /sessions/profile/**
+    - /sessions/applications
+    - /sessions/applications/**
+    - /sessions/recruitments
+    - /sessions/recruitments/**
+    - /chat/rooms
+    - /chat/rooms/**
+    - /chat/ws-ticket
+    - /bands
+    - /bands/**
+    - /band-member-profiles
+    - /band-member-profiles/**
+    - /band-invite-links/**
+    - /posts/**
+    - /performances/**
+  override-with-generic-response: false
+
+scalar:
+  enabled: false
+
+swagger:
+  admin:
+    token: ${SWAGGER_ADMIN_TOKEN:}
+
 server:
   servlet:
     context-path: /api

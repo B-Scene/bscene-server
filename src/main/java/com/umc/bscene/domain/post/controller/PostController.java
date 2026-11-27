@@ -1,5 +1,7 @@
 package com.umc.bscene.domain.post.controller;
 
+import com.umc.bscene.domain.post.controller.docs.BandPostApi;
+import com.umc.bscene.domain.post.controller.docs.ExplorePostApi;
 import com.umc.bscene.domain.post.dto.request.PostCreateRequest;
 import com.umc.bscene.domain.post.dto.request.PostUpdateRequest;
 import com.umc.bscene.domain.post.dto.response.PostCreateResponse;
@@ -21,7 +23,7 @@ import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequiredArgsConstructor
-public class PostController {
+public class PostController implements BandPostApi, ExplorePostApi {
 
     private final PostService postService;
     private final PostDetailService postDetailService;

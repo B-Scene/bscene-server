@@ -1,5 +1,6 @@
 package com.umc.bscene.domain.search.controller;
 
+import com.umc.bscene.domain.search.controller.docs.ExploreSearchApi;
 import com.umc.bscene.domain.auth.enums.onboarding.Genre;
 import com.umc.bscene.domain.auth.enums.onboarding.Region;
 import com.umc.bscene.domain.search.dto.response.ExploreSearchResponse;
@@ -22,7 +23,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequiredArgsConstructor
-public class SearchController {
+public class SearchController implements ExploreSearchApi {
 
     private final SearchService searchService;
     private final RecentSearchService recentSearchService;

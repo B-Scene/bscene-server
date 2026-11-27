@@ -1,5 +1,6 @@
 package com.umc.bscene.domain.band.controller;
 
+import com.umc.bscene.domain.band.controller.docs.BandInviteLinkApi;
 import com.umc.bscene.domain.band.dto.request.BandInviteLinkCreateRequest;
 import com.umc.bscene.domain.band.dto.response.BandInviteLinkResponse;
 import com.umc.bscene.domain.band.response.code.BandSuccessCode;
@@ -19,7 +20,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/bands/{bandId}/invite-links")
-public class BandInviteLinkController {
+public class BandInviteLinkController implements BandInviteLinkApi {
 
     private final BandInviteLinkService bandInviteLinkService;
 

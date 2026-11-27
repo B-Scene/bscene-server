@@ -1,5 +1,6 @@
 package com.umc.bscene.domain.follow.controller;
 
+import com.umc.bscene.domain.follow.controller.docs.FollowApi;
 import com.umc.bscene.domain.follow.dto.response.FollowResponse;
 import com.umc.bscene.domain.follow.response.code.FollowSuccessCode;
 import com.umc.bscene.domain.follow.service.FollowService;
@@ -17,7 +18,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/bands/{bandId}/follow")
-public class FollowController {
+public class FollowController implements FollowApi {
 
     private final FollowService followService;
 

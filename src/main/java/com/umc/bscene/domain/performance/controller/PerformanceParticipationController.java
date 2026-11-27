@@ -1,5 +1,6 @@
 package com.umc.bscene.domain.performance.controller;
 
+import com.umc.bscene.domain.performance.controller.docs.PerformanceParticipationApi;
 import com.umc.bscene.domain.performance.dto.response.PendingParticipationResponse;
 import com.umc.bscene.domain.performance.dto.response.PerformanceParticipationDeclineResponse;
 import com.umc.bscene.domain.performance.dto.response.PerformanceParticipationResponse;
@@ -15,7 +16,7 @@ import org.springframework.web.bind.annotation.*;
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/performances")
-public class PerformanceParticipationController {
+public class PerformanceParticipationController implements PerformanceParticipationApi {
 
     private final PerformanceAlarmService performanceAlarmService;
 

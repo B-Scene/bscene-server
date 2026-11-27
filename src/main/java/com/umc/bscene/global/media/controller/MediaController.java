@@ -1,5 +1,6 @@
 package com.umc.bscene.global.media.controller;
 
+import com.umc.bscene.global.media.controller.docs.MediaApi;
 import com.umc.bscene.global.media.dto.request.MediaPresignedUrlRequest;
 import com.umc.bscene.global.media.dto.response.MediaPresignedUrlResponse;
 import com.umc.bscene.global.media.response.code.MediaSuccessCode;
@@ -16,7 +17,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequiredArgsConstructor
-public class MediaController {
+public class MediaController implements MediaApi {
 
     private final MediaService mediaService;
 

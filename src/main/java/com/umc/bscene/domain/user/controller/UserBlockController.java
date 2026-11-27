@@ -1,5 +1,6 @@
 package com.umc.bscene.domain.user.controller;
 
+import com.umc.bscene.domain.user.controller.docs.UserBlockApi;
 import com.umc.bscene.domain.user.dto.request.UserBlockRequest;
 import com.umc.bscene.domain.user.response.code.UserSuccessCode;
 import com.umc.bscene.domain.user.service.UserBlockService;
@@ -11,7 +12,7 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 @RestController @RequiredArgsConstructor @RequestMapping("/users")
-public class UserBlockController {
+public class UserBlockController implements UserBlockApi {
     private final UserBlockService userBlockService;
 
     @PostMapping("/blocks")

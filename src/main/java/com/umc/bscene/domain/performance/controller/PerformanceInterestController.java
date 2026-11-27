@@ -1,5 +1,6 @@
 package com.umc.bscene.domain.performance.controller;
 
+import com.umc.bscene.domain.performance.controller.docs.PerformanceInterestApi;
 import com.umc.bscene.domain.performance.dto.response.PerformanceInterestResponse;
 import com.umc.bscene.domain.performance.response.code.PerformanceSuccessCode;
 import com.umc.bscene.domain.performance.service.PerformanceInterestService;
@@ -13,7 +14,7 @@ import org.springframework.web.bind.annotation.*;
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/performances/{performanceId}/interest")
-public class PerformanceInterestController {
+public class PerformanceInterestController implements PerformanceInterestApi {
 
     private final PerformanceInterestService performanceInterestService;
 

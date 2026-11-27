@@ -1,5 +1,6 @@
 package com.umc.bscene.domain.post.controller;
 
+import com.umc.bscene.domain.post.controller.docs.PostCommentApi;
 import com.umc.bscene.domain.post.dto.request.PostCommentRequest;
 import com.umc.bscene.domain.post.dto.response.PostCommentListResponse;
 import com.umc.bscene.domain.post.dto.response.PostCommentResponse;
@@ -16,7 +17,7 @@ import org.springframework.web.bind.annotation.*;
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/posts/{postId}/comments")
-public class PostCommentController {
+public class PostCommentController implements PostCommentApi {
 
     private final PostCommentService postCommentService;
 

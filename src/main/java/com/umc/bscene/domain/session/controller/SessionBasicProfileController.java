@@ -1,5 +1,6 @@
 package com.umc.bscene.domain.session.controller;
 
+import com.umc.bscene.domain.session.controller.docs.SessionBasicProfileApi;
 import com.umc.bscene.domain.session.dto.profile.request.SessionNameUpdateRequest;
 import com.umc.bscene.domain.session.dto.profile.request.SessionProfileImageUpdateRequest;
 import com.umc.bscene.domain.session.dto.profile.response.SessionBasicProfileResponse;
@@ -21,7 +22,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/sessions/profile")
-public class SessionBasicProfileController {
+public class SessionBasicProfileController implements SessionBasicProfileApi {
 
     private final SessionBasicProfileService sessionBasicProfileService;
 

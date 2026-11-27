@@ -1,5 +1,6 @@
 package com.umc.bscene.domain.oauth.controller;
 
+import com.umc.bscene.domain.oauth.controller.docs.KakaoMobileOauthApi;
 import com.umc.bscene.domain.oauth.dto.request.KakaoMobileLoginRequest;
 import com.umc.bscene.domain.oauth.dto.response.OauthLoginResponse;
 import com.umc.bscene.domain.oauth.response.code.OauthSuccessCode;
@@ -25,7 +26,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/auth/oauth/mobile/kakao")
-public class KakaoMobileOauthController {
+public class KakaoMobileOauthController implements KakaoMobileOauthApi {
 
     private final KakaoAccessTokenVerifier verifier;
     private final OauthService oauthService;

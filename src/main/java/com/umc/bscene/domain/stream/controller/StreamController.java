@@ -1,5 +1,7 @@
 package com.umc.bscene.domain.stream.controller;
 
+import com.umc.bscene.domain.stream.controller.docs.BandLiveApi;
+import com.umc.bscene.domain.stream.controller.docs.FanLiveApi;
 import com.umc.bscene.domain.stream.dto.request.CoHostInvitationDecisionRequest;
 import com.umc.bscene.domain.stream.dto.request.CoHostUpgradeAcceptRequest;
 import com.umc.bscene.domain.stream.dto.request.ReportUserRequest;
@@ -49,7 +51,7 @@ import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 @RequiredArgsConstructor
 @RequestMapping("/lives")
 @Validated
-public class StreamController {
+public class StreamController implements FanLiveApi, BandLiveApi {
 
     private final StreamService streamService;
     private final StreamReplayService streamReplayService;

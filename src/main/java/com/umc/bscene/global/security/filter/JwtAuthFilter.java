@@ -35,6 +35,12 @@ public class JwtAuthFilter extends OncePerRequestFilter {
             @NonNull FilterChain filterChain
     ) throws ServletException, IOException {
 
+        // Swagger HTTP Basic 등 앞선 필터가 인증한 경우 쿠키로 인증을 덮어쓰지 않는다.
+        if (SecurityContextHolder.getContext().getAuthentication() != null) {
+            filterChain.doFilter(request, response);
+            return;
+        }
+
         String token = getToken(request);
 
         if (token != null) {
