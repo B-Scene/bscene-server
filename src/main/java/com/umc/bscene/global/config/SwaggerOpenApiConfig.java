@@ -181,7 +181,19 @@ public class SwaggerOpenApiConfig {
     @Bean
     OpenAPI bsceneOpenApi(@Value("${server.servlet.context-path:}") String contextPath) {
         return new OpenAPI()
-                .info(new Info().title("B-Scene API").version("v1"))
+                .info(new Info().title("B-Scene API").version("v1").description("""
+                        ### 밴드 역할별 API 권한
+
+                        | 호출 권한 | 기능 및 조건 |
+                        | --- | --- |
+                        | 오너 | 밴드 프로필 수정, 멤버·세션 초대·내보내기, 초대 링크 발급, 오너 권한 양도, 세션 모집 공고 등록·수정·삭제 |
+                        | 오너 또는 가입이 완료된 멤버·세션 | 소속 밴드 게시물과 공연 일정의 등록·수정·삭제, 음원 링크 저장 |
+                        | 오너 또는 가입이 완료된 정식 멤버(MEMBER) | 밴드 모드에서 활성 밴드 프로필로 라이브 생성 및 예약 관리. 공동 진행 초대 후보는 해당 밴드의 가입 완료 정식 멤버 |
+                        | 해당 라이브의 송출자 또는 승인된 공동 진행자 | 밴드 모드에서 라이브 입장. 공동 진행자는 초대 수락 또는 공동 송출 요청 승인 필요 |
+
+                        오너는 초대 때 멤버 또는 세션 역할을 지정합니다. 오너 권한은 가입이 완료된 정식 멤버에게 양도할 수 있습니다.
+                        API 호출에는 서비스 액세스 토큰을 사용합니다.
+                        """))
                 .addServersItem(new Server().url(contextPath.isBlank() ? "/" : contextPath))
                 .components(new Components().addSecuritySchemes("bearerAuth", new SecurityScheme()
                         .type(SecurityScheme.Type.HTTP).scheme("bearer").bearerFormat("JWT")))

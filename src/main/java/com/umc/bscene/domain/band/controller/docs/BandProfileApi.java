@@ -146,7 +146,7 @@ public interface BandProfileApi {
     );
 
     @Operation(tags = "밴드모드_내밴드(밴드 프로필)", summary = "밴드 프로필 수정",
-            description = "밴드 오너가 프로필을 수정합니다. 사진 삭제 시 deleteProfileImage를 true로 전달하고 새 사진 URL은 생략합니다.",
+            description = "해당 밴드의 오너만 밴드 프로필을 수정할 수 있습니다. 사진 삭제 시 deleteProfileImage를 true로 전달하고 새 사진 URL은 생략합니다.",
             security = @SecurityRequirement(name = "bearerAuth"),
             requestBody = @io.swagger.v3.oas.annotations.parameters.RequestBody(required = true,
                     content = @Content(mediaType = "application/json",

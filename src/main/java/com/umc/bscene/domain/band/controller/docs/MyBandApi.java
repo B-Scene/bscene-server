@@ -59,7 +59,7 @@ public interface MyBandApi {
     );
 
     @Operation(tags = "마이", summary = "밴드 오너 양도",
-            description = "밴드 오너가 가입 완료한 밴드 멤버에게 권한을 양도합니다.",
+            description = "해당 밴드의 오너만 권한을 양도할 수 있습니다. 양도 대상은 가입이 완료된 정식 멤버(MEMBER)여야 합니다.",
             security = @SecurityRequirement(name = "bearerAuth"),
             requestBody = @io.swagger.v3.oas.annotations.parameters.RequestBody(required = true,
                     content = @Content(mediaType = "application/json",

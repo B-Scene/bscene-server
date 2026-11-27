@@ -26,7 +26,7 @@ import jakarta.validation.Valid;
 public interface BandPostApi {
 
     @Operation(tags = "밴드모드_내밴드(게시물)", summary = "게시물 작성",
-            description = "검수를 통과한 밴드의 멤버가 게시물을 작성합니다. 태그는 최대 8개입니다. 사진은 미디어가 1개 이상, 영상은 1개, 글은 0개여야 합니다.",
+            description = "검수를 통과한 밴드의 오너 또는 가입이 완료된 멤버·세션이 게시물을 작성할 수 있습니다. 태그는 최대 8개입니다. 사진은 미디어가 1개 이상, 영상은 1개, 글은 0개여야 합니다.",
             security = @SecurityRequirement(name = "bearerAuth"),
             requestBody = @io.swagger.v3.oas.annotations.parameters.RequestBody(required = true,
                     content = @Content(mediaType = "application/json",
@@ -157,7 +157,7 @@ public interface BandPostApi {
     );
 
     @Operation(tags = "밴드모드_내밴드(게시물)", summary = "게시물 수정",
-            description = "소속 밴드 게시물을 수정합니다. 미디어와 태그를 전달하면 해당 목록을 교체하고, 생략하면 유지합니다. 게시물 유형은 유지됩니다.",
+            description = "해당 밴드의 오너 또는 가입이 완료된 멤버·세션이 게시물을 수정할 수 있습니다. 미디어와 태그를 전달하면 해당 목록을 교체하고, 생략하면 유지합니다. 게시물 유형은 유지됩니다.",
             security = @SecurityRequirement(name = "bearerAuth"),
             requestBody = @io.swagger.v3.oas.annotations.parameters.RequestBody(required = true,
                     content = @Content(mediaType = "application/json",
@@ -214,7 +214,7 @@ public interface BandPostApi {
     );
 
     @Operation(tags = "밴드모드_내밴드(게시물)", summary = "게시물 삭제",
-            description = "소속 밴드의 게시물을 삭제합니다.",
+            description = "해당 밴드의 오너 또는 가입이 완료된 멤버·세션이 게시물을 삭제할 수 있습니다.",
             security = @SecurityRequirement(name = "bearerAuth"))
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "성공",
