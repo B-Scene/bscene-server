@@ -127,7 +127,8 @@ public interface FanLiveApi {
     );
 
     @Operation(tags = {"팬모드_라이브", "밴드모드_라이브"}, summary = "라이브 방 진입",
-            description = "라이브 메타데이터와 재생 정보를 조회합니다. 청취자는 playback.playbackUrl을 HLS 플레이어에 전달합니다. "
+            description = "밴드 모드에서는 송출자와 공동 진행 초대를 수락했거나 공동 송출을 승인받은 사용자만 입장할 수 있습니다. "
+                    + "라이브 메타데이터와 재생 정보를 조회합니다. 청취자는 playback.playbackUrl을 HLS 플레이어에 전달합니다. "
                     + "MediaMTX의 매니페스트(index.m3u8)와 미디어 세그먼트 요청에는 HTTP Basic 인증의 비밀번호로 서비스 Access Token을 전달합니다. "
                     + "송출자와 공동 진행자는 반환된 WHIP URL에 application/sdp로 SDP offer를 POST합니다. "
                     + "WHIP 요청에도 HTTP Basic 인증의 비밀번호로 서비스 Access Token을 전달합니다. "

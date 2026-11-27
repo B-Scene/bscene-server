@@ -32,6 +32,7 @@ import java.util.List;
 public interface SessionRecruitmentApi {
 
     @Operation(tags = "세션", summary = "모집 공고 등록",
+            description = "모집할 밴드의 오너만 세션 모집 공고를 등록할 수 있습니다.",
             security = @SecurityRequirement(name = "bearerAuth"),
             requestBody = @RequestBody(required = true, content = @Content(mediaType = "application/json",
                     schema = @Schema(implementation = SessionRecruitmentCreateRequest.class), examples = {

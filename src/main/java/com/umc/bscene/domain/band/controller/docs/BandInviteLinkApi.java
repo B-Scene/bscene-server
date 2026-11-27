@@ -20,7 +20,7 @@ import jakarta.validation.Valid;
 public interface BandInviteLinkApi {
 
     @Operation(tags = "밴드모드_내밴드(밴드 프로필)", summary = "밴드 초대 링크 생성",
-            description = "밴드 오너가 멤버 또는 세션용 초대 링크를 발급합니다. 유효한 기존 링크는 재사용합니다.",
+            description = "해당 밴드의 오너만 멤버 또는 세션용 초대 링크를 발급할 수 있습니다. 유효한 기존 링크는 재사용합니다.",
             security = @SecurityRequirement(name = "bearerAuth"),
             requestBody = @io.swagger.v3.oas.annotations.parameters.RequestBody(required = true,
                     content = @Content(mediaType = "application/json",

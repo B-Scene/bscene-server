@@ -65,7 +65,7 @@ public interface BandMusicLinkApi {
     );
 
     @Operation(tags = "밴드모드_내밴드(음원 링크)", summary = "음원 링크 등록·수정·삭제",
-            description = "밴드 멤버가 전체 링크를 저장합니다. 삭제할 링크는 null로 전달합니다. 기타 플랫폼과 링크는 함께 입력하거나 함께 비워야 합니다.",
+            description = "해당 밴드의 오너 또는 가입이 완료된 멤버·세션이 전체 링크를 저장할 수 있습니다. 삭제할 링크는 null로 전달합니다. 기타 플랫폼과 링크는 함께 입력하거나 함께 비워야 합니다.",
             security = @SecurityRequirement(name = "bearerAuth"),
             requestBody = @io.swagger.v3.oas.annotations.parameters.RequestBody(required = true,
                     content = @Content(mediaType = "application/json",

@@ -23,7 +23,7 @@ import jakarta.validation.Valid;
 public interface BandPerformanceApi {
 
     @Operation(tags = "밴드모드_내밴드(공연)", summary = "공연 등록",
-            description = "검수를 통과한 소속 밴드에 공연을 등록합니다. 지난 날짜는 등록할 수 없으며 태그는 최대 8개입니다.",
+            description = "검수를 통과한 밴드의 오너 또는 가입이 완료된 멤버·세션이 공연을 등록할 수 있습니다. 지난 날짜는 등록할 수 없으며 태그는 최대 8개입니다.",
             security = @SecurityRequirement(name = "bearerAuth"),
             requestBody = @io.swagger.v3.oas.annotations.parameters.RequestBody(required = true,
                     content = @Content(mediaType = "application/json",
@@ -156,7 +156,7 @@ public interface BandPerformanceApi {
     );
 
     @Operation(tags = "밴드모드_내밴드(공연)", summary = "공연 수정",
-            description = "소속 밴드의 공연을 수정합니다. 전달한 필드만 반영하며, 날짜를 변경할 때는 오늘 이후 날짜를 사용합니다.",
+            description = "해당 밴드의 오너 또는 가입이 완료된 멤버·세션이 공연을 수정할 수 있습니다. 전달한 필드만 반영하며, 날짜를 변경할 때는 오늘 이후 날짜를 사용합니다.",
             security = @SecurityRequirement(name = "bearerAuth"),
             requestBody = @io.swagger.v3.oas.annotations.parameters.RequestBody(required = true,
                     content = @Content(mediaType = "application/json",
@@ -209,7 +209,7 @@ public interface BandPerformanceApi {
     );
 
     @Operation(tags = "밴드모드_내밴드(공연)", summary = "공연 삭제",
-            description = "소속 밴드의 공연을 삭제합니다. 삭제한 공연은 목록과 상세 조회에서 제외됩니다.",
+            description = "해당 밴드의 오너 또는 가입이 완료된 멤버·세션이 공연을 삭제할 수 있습니다. 삭제한 공연은 목록과 상세 조회에서 제외됩니다.",
             security = @SecurityRequirement(name = "bearerAuth"))
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "성공",

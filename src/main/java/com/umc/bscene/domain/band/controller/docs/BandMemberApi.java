@@ -25,7 +25,7 @@ import jakarta.validation.Valid;
 public interface BandMemberApi {
 
     @Operation(tags = "밴드모드_내밴드(밴드 프로필)", summary = "밴드 멤버·세션 초대",
-            description = "밴드 오너가 사용자를 멤버 또는 세션으로 초대합니다.",
+            description = "해당 밴드의 오너만 초대할 수 있습니다. 초대할 역할을 memberType에 MEMBER(멤버) 또는 SESSION(세션)으로 지정합니다.",
             security = @SecurityRequirement(name = "bearerAuth"),
             requestBody = @io.swagger.v3.oas.annotations.parameters.RequestBody(required = true,
                     content = @Content(mediaType = "application/json",
@@ -203,7 +203,7 @@ public interface BandMemberApi {
     );
 
     @Operation(tags = "밴드모드_내밴드(밴드 프로필)", summary = "밴드 초대 취소·멤버 제거",
-            description = "밴드 오너가 대상 사용자의 초대를 취소하거나 멤버를 제거합니다. 경로에는 사용자 ID를 전달합니다.",
+            description = "해당 밴드의 오너만 초대를 취소하거나 가입한 멤버·세션을 내보낼 수 있습니다. 경로에는 사용자 ID를 전달합니다.",
             security = @SecurityRequirement(name = "bearerAuth"))
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "성공",

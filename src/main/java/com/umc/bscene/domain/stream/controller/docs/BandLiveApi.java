@@ -27,7 +27,10 @@ import org.springframework.http.ResponseEntity;
 public interface BandLiveApi {
 
     @Operation(tags = "밴드모드_라이브", summary = "라이브 방 생성",
-            description = "활성 밴드 프로필로 라이브 방을 생성합니다. scheduledAt을 생략하면 즉시 방송용 방을 준비하며, 송출자가 방에 입장하면 방송이 시작됩니다. 예약은 송출자당 최대 5개이며 coHost는 초대할 사용자 ID 목록입니다. 썸네일은 미디어 업로드가 끝난 이미지 URL을 전달합니다.",
+            description = "밴드 모드에서 검수를 통과한 밴드의 활성 프로필을 사용 중인 오너 또는 정식 멤버(MEMBER)가 라이브 방을 생성할 수 있습니다. "
+                    + "scheduledAt을 생략하면 즉시 방송용 방을 준비하며, 송출자가 방에 입장하면 방송이 시작됩니다. "
+                    + "예약은 송출자당 최대 5개이며 coHost는 같은 밴드의 가입이 완료된 정식 멤버 중 초대할 사용자의 ID 목록입니다. "
+                    + "썸네일은 미디어 업로드가 끝난 이미지 URL을 전달합니다.",
             security = @SecurityRequirement(name = "bearerAuth"),
             requestBody = @RequestBody(required = true, content = @Content(mediaType = "application/json",
                     schema = @Schema(implementation = StreamCreateRequest.class), examples = {
@@ -90,7 +93,7 @@ public interface BandLiveApi {
     );
 
     @Operation(tags = "밴드모드_라이브", summary = "공동 송출자 업그레이드 요청",
-            description = "방송 중인 라이브와 같은 밴드의 멤버가 공동 송출을 요청합니다. 송출자에게 coHostUpgradeRequested SSE가 전송됩니다.",
+            description = "밴드 모드에서 방송 중인 라이브와 같은 밴드의 활성 프로필을 사용 중인 정식 멤버가 공동 송출을 요청할 수 있습니다. 송출자에게 coHostUpgradeRequested SSE가 전송됩니다.",
             security = @SecurityRequirement(name = "bearerAuth"), responses = {
             @ApiResponse(responseCode = "201", description = "공동 송출자 업그레이드 요청이 접수되었습니다.", content = @Content(
                     mediaType = "application/json", schema = @Schema(implementation = MyApiResponseSchemas.EmptyEnvelope.class),
@@ -348,7 +351,7 @@ public interface BandLiveApi {
     );
 
     @Operation(tags = "밴드모드_라이브", summary = "라이브 예약 편집화면 조회",
-            description = "예정된 라이브의 기존 정보와 공동 진행 후보를 조회합니다. 후보별 status는 OWNER, APPROVED, INVITED, REJECTED 또는 미선택(null)입니다.",
+            description = "밴드 모드에서 해당 라이브와 같은 밴드의 활성 프로필을 사용 중인 정식 멤버가 예약 정보와 공동 진행 후보를 조회할 수 있습니다. 후보별 status는 OWNER, APPROVED, INVITED, REJECTED 또는 미선택(null)입니다.",
             security = @SecurityRequirement(name = "bearerAuth"), responses = {
             @ApiResponse(responseCode = "200", description = "라이브 예약 편집 조회에 성공했습니다.", content = @Content(
                     mediaType = "application/json", schema = @Schema(implementation = FanLiveApiResponseSchemas.ReservationEditResponseEnvelope.class),
@@ -412,7 +415,9 @@ public interface BandLiveApi {
     );
 
     @Operation(tags = "밴드모드_라이브", summary = "라이브 예약 편집",
-            description = "송출자가 예정된 라이브를 편집합니다. 생략하거나 null인 필드는 기존 값을 유지하며, coHost에 빈 배열을 보내면 공동 진행자 지정이 해제됩니다.",
+            description = "밴드 모드에서 해당 라이브와 같은 밴드의 활성 프로필을 사용 중인 정식 멤버가 예약을 편집할 수 있습니다. "
+                    + "생략하거나 null인 필드는 기존 값을 유지합니다. coHost로 같은 밴드의 정식 멤버를 초대할 수 있고, "
+                    + "빈 배열을 보내면 공동 진행자 지정이 해제됩니다.",
             security = @SecurityRequirement(name = "bearerAuth"),
             requestBody = @RequestBody(required = true, content = @Content(mediaType = "application/json",
                     schema = @Schema(implementation = ReservationPatchRequest.class), examples = {
@@ -466,7 +471,7 @@ public interface BandLiveApi {
     );
 
     @Operation(tags = "밴드모드_라이브", summary = "라이브 예약 취소",
-            description = "송출자가 예정 상태의 라이브 예약을 취소합니다.",
+            description = "밴드 모드에서 해당 라이브와 같은 밴드의 활성 프로필을 사용 중인 정식 멤버가 예정 상태의 예약을 취소할 수 있습니다.",
             security = @SecurityRequirement(name = "bearerAuth"), responses = {
             @ApiResponse(responseCode = "200", description = "라이브 예약 취소에 성공했습니다.", content = @Content(
                     mediaType = "application/json", schema = @Schema(implementation = MyApiResponseSchemas.EmptyEnvelope.class),
@@ -504,7 +509,7 @@ public interface BandLiveApi {
     );
 
     @Operation(tags = "밴드모드_라이브", summary = "라이브 공동 진행자 초대 수락, 거절",
-            description = "초대받은 사용자가 isAccepted로 공동 진행 초대를 수락하거나 거절합니다.",
+            description = "해당 라이브의 공동 진행 초대를 받은 본인만 isAccepted로 수락하거나 거절할 수 있습니다. 수락하면 공동 진행자로 입장할 수 있습니다.",
             security = @SecurityRequirement(name = "bearerAuth"),
             requestBody = @RequestBody(required = true, content = @Content(mediaType = "application/json",
                     schema = @Schema(implementation = CoHostInvitationDecisionRequest.class), examples = {
