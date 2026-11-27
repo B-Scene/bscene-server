@@ -1,6 +1,7 @@
 package com.umc.bscene.domain.stream.repository;
 
 import com.umc.bscene.domain.stream.dto.ReplayDurationSum;
+import com.umc.bscene.domain.stream.dto.ReplayFirstPostedAt;
 import com.umc.bscene.domain.stream.entity.StreamReplay;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -8,6 +9,7 @@ import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.time.LocalDateTime;
 import java.util.Collection;
 import java.util.List;
 
@@ -16,6 +18,18 @@ public interface StreamReplayRepository extends JpaRepository<StreamReplay, Long
     boolean existsByS3Key(String s3Key);
 
     long countByAudioStream_Id(Long audioStreamId);
+
+    /*
+     * 보관 기간 만료 삭제 대상 라이브 조회. 라이브의 첫 게시 시각(세그먼트 createdAt 최솟값)이 threshold 이하인 라이브만 뽑는다.
+     * 하한 없이 조회해 삭제 실패·재시작으로 예약이 유실된 라이브도 다음 스캔에서 다시 잡힌다.
+     */
+    @Query("""
+select new com.umc.bscene.domain.stream.dto.ReplayFirstPostedAt(r.audioStream.id, min(r.createdAt))
+from StreamReplay r
+group by r.audioStream.id
+having min(r.createdAt) <= :threshold
+""")
+    List<ReplayFirstPostedAt> findFirstPostedAtOnOrBefore(@Param("threshold") LocalDateTime threshold);
 
     // 라이브의 전체 세그먼트를 재생 순서로 조회. mediamtx 세그먼트 파일명이 시간순이라 s3Key 오름차순 = 녹화 순서
     List<StreamReplay> findAllByAudioStream_IdOrderByS3KeyAsc(Long audioStreamId);
