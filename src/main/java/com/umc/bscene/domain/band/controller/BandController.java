@@ -1,5 +1,8 @@
 package com.umc.bscene.domain.band.controller;
 
+import com.umc.bscene.domain.band.controller.docs.BandProfileApi;
+import com.umc.bscene.domain.band.controller.docs.MyBandApi;
+import com.umc.bscene.domain.band.controller.docs.ExploreBandApi;
 import com.umc.bscene.domain.band.dto.FollowerBlock;
 import com.umc.bscene.domain.band.dto.request.BandCreateRequest;
 import com.umc.bscene.domain.band.dto.request.BandOwnerTransferRequest;
@@ -37,7 +40,7 @@ import org.springframework.web.bind.annotation.RestController;
 @Validated
 @RequiredArgsConstructor
 @RequestMapping("/bands")
-public class BandController {
+public class BandController implements MyBandApi, BandProfileApi, ExploreBandApi {
 
     private final BandService bandService;
     private final BandRecommendationService bandRecommendationService;

@@ -1,5 +1,6 @@
 package com.umc.bscene.domain.notification.controller;
 
+import com.umc.bscene.domain.notification.controller.docs.NotificationSettingApi;
 import com.umc.bscene.domain.notification.dto.request.NotificationSettingUpdateRequest;
 import com.umc.bscene.domain.notification.dto.response.NotificationSettingItemResponse;
 import com.umc.bscene.domain.notification.dto.response.NotificationSettingsResponse;
@@ -24,7 +25,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/users/me/notification-settings")
-public class NotificationSettingController {
+public class NotificationSettingController implements NotificationSettingApi {
 
     private final NotificationService notificationService;
 

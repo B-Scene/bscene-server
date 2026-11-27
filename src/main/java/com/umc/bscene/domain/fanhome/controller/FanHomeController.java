@@ -1,5 +1,6 @@
 package com.umc.bscene.domain.fanhome.controller;
 
+import com.umc.bscene.domain.fanhome.controller.docs.FanHomeApi;
 import com.umc.bscene.domain.fanhome.dto.response.DatePerformanceResponse;
 import com.umc.bscene.domain.fanhome.dto.response.FanHomeResponse;
 import com.umc.bscene.domain.fanhome.dto.response.FollowingBandNewsResponse;
@@ -24,7 +25,7 @@ import java.time.LocalDate;
 
 @RestController
 @RequiredArgsConstructor
-public class FanHomeController {
+public class FanHomeController implements FanHomeApi {
 
     private final FanHomeService fanHomeService;
 

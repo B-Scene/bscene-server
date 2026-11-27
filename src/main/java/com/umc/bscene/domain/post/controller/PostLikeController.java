@@ -1,5 +1,6 @@
 package com.umc.bscene.domain.post.controller;
 
+import com.umc.bscene.domain.post.controller.docs.PostLikeApi;
 import com.umc.bscene.domain.post.dto.response.PostLikeResponse;
 import com.umc.bscene.domain.post.response.code.PostSuccessCode;
 import com.umc.bscene.domain.post.service.PostLikeService;
@@ -13,7 +14,7 @@ import org.springframework.web.bind.annotation.*;
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/posts/{postId}/likes")
-public class PostLikeController {
+public class PostLikeController implements PostLikeApi {
 
     private final PostLikeService postLikeService;
 

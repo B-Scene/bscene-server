@@ -5,6 +5,25 @@
 
 신생/인디 밴드를 위한 플랫폼 서비스 B:SCENE의 백엔드 저장소입니다.<br>
 [B:SCENE BE 기술 문서 바로가기](https://bscene-be.notion.site/B-SCENE-Back-End-3bb419aa1e678038ace9fa5aba952ed5)
+
+## Swagger
+
+- UI는 `/api/swagger-ui.html`, OpenAPI JSON은 `/api/v3/api-docs`에서 열 수 있습니다.
+- 브라우저 인증 창의 사용자 이름은 `bscene-admin`, 비밀번호는 배포 환경의 `SWAGGER_ADMIN_TOKEN`입니다. 일반 관리자 Access Token은 OpenAPI 경로에서 Bearer 인증으로도 사용할 수 있습니다.
+- 팀에서 사용할 Swagger 전용 토큰은 아래 명령으로 생성해 배포 시크릿 저장소에 넣습니다. 만료 시간은 없으며 환경 변수 값을 교체하고 재시작하면 이전 토큰을 폐기할 수 있습니다. 이 토큰의 권한은 Swagger 경로에 한정됩니다.
+
+  ```powershell
+  $swaggerTokenBytes = New-Object byte[] 32
+  $swaggerTokenRandom = [System.Security.Cryptography.RandomNumberGenerator]::Create()
+  $swaggerTokenRandom.GetBytes($swaggerTokenBytes)
+  $swaggerTokenRandom.Dispose()
+  [Convert]::ToBase64String($swaggerTokenBytes)
+  ```
+
+- 인증/인가, 온보딩, 마이, 밴드 멤버 프로필, 밴드모드 내밴드(밴드 프로필, 게시물, 공연, 음원 링크), 세션, 팬모드 홈, 팬모드 탐색, 팬모드 라이브, 밴드모드 라이브, 미디어 업로드 (공통), 알림, 모바일 SDK, 웹소켓 섹션을 제공합니다. 로컬 로그인 문서는 dev/qa에서만 표시됩니다. [HTTP API 명세서](https://app.notion.com/p/4a4e776b82e382db9ad2816582f9f61f)
+- 웹소켓 섹션에서 티켓 발급과 연결 조건, 송수신 프레임을 확인할 수 있습니다. 실제 연결은 WebSocket 클라이언트에서 실행합니다. [모바일 SDK·웹소켓 명세](https://app.notion.com/p/3fee776b82e381c0bbf1c07d8e317a85)
+- 인증이 필요한 API를 실행할 때는 Swagger의 **Authorize**에 서비스 로그인으로 발급받은 Access Token을 입력합니다.
+
 ## 🛠️ 기술 스택
 ### Backend
 ![Java](https://img.shields.io/badge/Java%2021-%23ED8B00.svg?style=for-the-badge&logo=openjdk&logoColor=white)

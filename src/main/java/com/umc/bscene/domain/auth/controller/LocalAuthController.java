@@ -1,5 +1,6 @@
 package com.umc.bscene.domain.auth.controller;
 
+import com.umc.bscene.domain.auth.controller.docs.LocalAuthApi;
 import com.umc.bscene.domain.auth.dto.auth.request.LoginRequest;
 import com.umc.bscene.domain.auth.dto.auth.response.TokenResponse;
 import com.umc.bscene.domain.auth.enums.code.AuthSuccessCode;
@@ -18,7 +19,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RequiredArgsConstructor
 @Profile("!prod & (dev | qa)")
 @RequestMapping("/auth")
-public class LocalAuthController {
+public class LocalAuthController implements LocalAuthApi {
 
     private final AuthService authService;
 

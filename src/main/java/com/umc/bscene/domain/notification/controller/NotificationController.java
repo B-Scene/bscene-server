@@ -1,5 +1,6 @@
 package com.umc.bscene.domain.notification.controller;
 
+import com.umc.bscene.domain.notification.controller.docs.NotificationApi;
 import com.umc.bscene.domain.notification.dto.request.PushTestSendRequest;
 import com.umc.bscene.domain.notification.dto.request.PushTokenDeleteRequest;
 import com.umc.bscene.domain.notification.dto.request.PushTokenSaveRequest;
@@ -28,7 +29,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/notifications")
-public class NotificationController {
+public class NotificationController implements NotificationApi {
 
     private final NotificationService notificationService;
 

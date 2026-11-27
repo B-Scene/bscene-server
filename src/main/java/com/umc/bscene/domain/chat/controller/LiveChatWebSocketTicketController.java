@@ -1,5 +1,6 @@
 package com.umc.bscene.domain.chat.controller;
 
+import com.umc.bscene.domain.chat.controller.docs.LiveChatWebSocketTicketApi;
 import com.umc.bscene.domain.chat.dto.response.LiveChatWebSocketTicketResponse;
 import com.umc.bscene.domain.chat.enums.code.success.ChatSuccessCode;
 import com.umc.bscene.domain.chat.service.LiveChatWebSocketTicketService;
@@ -15,7 +16,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/lives/{liveId}/chat")
-public class LiveChatWebSocketTicketController {
+public class LiveChatWebSocketTicketController implements LiveChatWebSocketTicketApi {
     private final LiveChatWebSocketTicketService ticketService;
 
     @PostMapping("/ws-ticket")

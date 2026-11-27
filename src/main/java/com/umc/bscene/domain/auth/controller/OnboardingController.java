@@ -1,5 +1,6 @@
 package com.umc.bscene.domain.auth.controller;
 
+import com.umc.bscene.domain.auth.controller.docs.OnboardingApi;
 import com.umc.bscene.domain.auth.dto.onboarding.request.OnboardingSaveRequest;
 import com.umc.bscene.domain.auth.dto.onboarding.response.FanNicknameCheckResponse;
 import com.umc.bscene.domain.auth.dto.onboarding.response.GenreResponse;
@@ -19,7 +20,7 @@ import java.util.List;
 
 @RestController
 @RequiredArgsConstructor
-public class OnboardingController {
+public class OnboardingController implements OnboardingApi {
 
     private final OnboardingService onboardingService;
 

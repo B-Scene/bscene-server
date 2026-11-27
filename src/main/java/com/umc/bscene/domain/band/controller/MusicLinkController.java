@@ -1,5 +1,6 @@
 package com.umc.bscene.domain.band.controller;
 
+import com.umc.bscene.domain.band.controller.docs.BandMusicLinkApi;
 import com.umc.bscene.domain.band.dto.request.MusicLinkSaveRequest;
 import com.umc.bscene.domain.band.dto.response.MusicLinkResponse;
 import com.umc.bscene.domain.band.response.code.BandSuccessCode;
@@ -20,7 +21,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/bands/{bandId}/music-links")
-public class MusicLinkController {
+public class MusicLinkController implements BandMusicLinkApi {
 
     private final BandService bandService;
 

@@ -1,5 +1,6 @@
 package com.umc.bscene.domain.chat.controller;
 
+import com.umc.bscene.domain.chat.controller.docs.SessionChatRoomApi;
 import com.umc.bscene.domain.chat.dto.request.ChatRoomCreateRequest;
 import com.umc.bscene.domain.chat.dto.response.ChatRoomCreateResponse;
 import com.umc.bscene.domain.chat.dto.response.ChatRoomListResponse;
@@ -17,7 +18,7 @@ import org.springframework.web.bind.annotation.*;
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/chat/rooms")
-public class ChatRoomController {
+public class ChatRoomController implements SessionChatRoomApi {
     private final ChatRoomService chatRoomService;
 
     @PostMapping

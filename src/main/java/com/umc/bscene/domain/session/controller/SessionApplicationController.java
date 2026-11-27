@@ -1,5 +1,6 @@
 package com.umc.bscene.domain.session.controller;
 
+import com.umc.bscene.domain.session.controller.docs.SessionApplicationApi;
 import com.umc.bscene.domain.session.dto.application.request.MySessionApplicationUpdateRequest;
 import com.umc.bscene.domain.session.dto.application.request.MySessionApplicationCreateRequest;
 import com.umc.bscene.domain.session.dto.application.request.SessionApplicationVisibilityRequest;
@@ -37,7 +38,7 @@ import org.springframework.http.HttpStatus;
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/sessions/applications")
-public class SessionApplicationController {
+public class SessionApplicationController implements SessionApplicationApi {
 
     private final SessionApplicationQueryService sessionApplicationQueryService;
     private final SessionApplicationCommandService sessionApplicationCommandService;

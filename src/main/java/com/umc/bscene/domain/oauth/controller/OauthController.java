@@ -1,5 +1,6 @@
 package com.umc.bscene.domain.oauth.controller;
 
+import com.umc.bscene.domain.oauth.controller.docs.OauthApi;
 import com.umc.bscene.domain.auth.dto.auth.response.TokenResponse;
 import com.umc.bscene.domain.oauth.dto.request.OauthExchangeRequest;
 import com.umc.bscene.domain.oauth.dto.request.OauthSignupRequest;
@@ -18,7 +19,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/auth/oauth")
-public class OauthController {
+public class OauthController implements OauthApi {
 
     private final OauthService oauthService;
 

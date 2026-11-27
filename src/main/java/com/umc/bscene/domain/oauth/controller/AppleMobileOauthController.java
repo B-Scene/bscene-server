@@ -1,5 +1,6 @@
 package com.umc.bscene.domain.oauth.controller;
 
+import com.umc.bscene.domain.oauth.controller.docs.AppleMobileOauthApi;
 import com.umc.bscene.domain.oauth.dto.request.AppleChallengeRequest;
 import com.umc.bscene.domain.oauth.dto.request.AppleMobileLoginRequest;
 import com.umc.bscene.domain.oauth.dto.response.AppleChallengeResponse;
@@ -24,7 +25,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/auth/oauth/mobile/apple")
-public class AppleMobileOauthController {
+public class AppleMobileOauthController implements AppleMobileOauthApi {
 
     private final AppleChallengeService challenges;
     private final AppleMobileOauthService oauthService;

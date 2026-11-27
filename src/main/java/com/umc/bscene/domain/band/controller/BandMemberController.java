@@ -1,5 +1,7 @@
 package com.umc.bscene.domain.band.controller;
 
+import com.umc.bscene.domain.band.controller.docs.BandMemberApi;
+import com.umc.bscene.domain.band.controller.docs.FanHomeBandMemberApi;
 import com.umc.bscene.domain.band.dto.request.BandMemberInviteRequest;
 import com.umc.bscene.domain.band.dto.request.BandMemberProfileCreateRequest;
 import com.umc.bscene.domain.band.dto.response.BandMemberAcceptResponse;
@@ -29,7 +31,7 @@ import java.util.List;
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/bands/{bandId}/members")
-public class BandMemberController {
+public class BandMemberController implements BandMemberApi, FanHomeBandMemberApi {
 
     private final BandService bandService;
 

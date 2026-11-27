@@ -1,5 +1,6 @@
 package com.umc.bscene.domain.band.controller;
 
+import com.umc.bscene.domain.band.controller.docs.BandMemberProfileApi;
 import com.umc.bscene.domain.band.dto.request.BandMemberProfileCreateRequest;
 import com.umc.bscene.domain.band.dto.request.BandMemberProfileUpdateRequest;
 import com.umc.bscene.domain.band.dto.response.BandMemberProfileResponse;
@@ -18,7 +19,7 @@ import java.util.List;
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/band-member-profiles")
-public class BandMemberProfileController {
+public class BandMemberProfileController implements BandMemberProfileApi {
 
     private final BandMemberProfileService bandMemberProfileService;
 

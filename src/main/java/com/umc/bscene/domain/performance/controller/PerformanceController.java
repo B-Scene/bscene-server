@@ -1,5 +1,7 @@
 package com.umc.bscene.domain.performance.controller;
 
+import com.umc.bscene.domain.performance.controller.docs.BandPerformanceApi;
+import com.umc.bscene.domain.performance.controller.docs.FanHomePerformanceApi;
 import com.umc.bscene.domain.performance.dto.request.PerformanceCreateRequest;
 import com.umc.bscene.domain.performance.dto.request.PerformanceUpdateRequest;
 import com.umc.bscene.domain.performance.dto.response.PerformanceDetailResponse;
@@ -17,7 +19,7 @@ import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequiredArgsConstructor
-public class PerformanceController {
+public class PerformanceController implements BandPerformanceApi, FanHomePerformanceApi {
 
     private final PerformanceService performanceService;
 

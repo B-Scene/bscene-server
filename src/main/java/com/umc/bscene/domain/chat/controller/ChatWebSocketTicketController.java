@@ -1,5 +1,6 @@
 package com.umc.bscene.domain.chat.controller;
 
+import com.umc.bscene.domain.chat.controller.docs.ChatWebSocketTicketApi;
 import com.umc.bscene.domain.chat.dto.response.ChatWebSocketTicketResponse;
 import com.umc.bscene.domain.chat.enums.code.success.ChatSuccessCode;
 import com.umc.bscene.domain.chat.service.ChatWebSocketTicketService;
@@ -14,7 +15,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/chat")
-public class ChatWebSocketTicketController {
+public class ChatWebSocketTicketController implements ChatWebSocketTicketApi {
     private final ChatWebSocketTicketService ticketService;
 
     @PostMapping("/ws-ticket")

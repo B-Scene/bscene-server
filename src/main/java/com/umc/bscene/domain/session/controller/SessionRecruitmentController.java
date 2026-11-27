@@ -1,5 +1,7 @@
 package com.umc.bscene.domain.session.controller;
 
+import com.umc.bscene.domain.session.controller.docs.SessionRecruitmentApi;
+import com.umc.bscene.domain.session.controller.docs.MyRecruitmentApi;
 import com.umc.bscene.domain.session.dto.recruitment.request.SessionRecruitmentCreateRequest;
 import com.umc.bscene.domain.session.dto.application.request.SessionApplicationSubmitRequest;
 import com.umc.bscene.domain.session.dto.application.response.SessionApplicationSubmitResponse;
@@ -35,7 +37,7 @@ import java.util.List;
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/sessions/recruitments")
-public class SessionRecruitmentController {
+public class SessionRecruitmentController implements MyRecruitmentApi, SessionRecruitmentApi {
 
     private final SessionRecruitmentCommandService sessionRecruitmentCommandService;
     private final SessionApplicationCommandService sessionApplicationCommandService;

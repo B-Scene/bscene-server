@@ -1,5 +1,6 @@
 package com.umc.bscene.domain.user.controller;
 
+import com.umc.bscene.domain.user.controller.docs.MyPageApi;
 import com.umc.bscene.domain.user.dto.request.MyInfoUpdateRequest;
 import com.umc.bscene.domain.user.dto.request.SessionApplyConfirmRequest;
 import com.umc.bscene.domain.user.dto.request.SessionRecruitDecisionRequest;
@@ -34,7 +35,7 @@ import org.springframework.web.bind.annotation.*;
 @RestController
 @RequestMapping("/users")
 @RequiredArgsConstructor
-public class UserController {
+public class UserController implements MyPageApi {
 
     private final UserService userService;
 
