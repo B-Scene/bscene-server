@@ -915,7 +915,8 @@ class SwaggerOpenApiTest {
         bandMembers.findByBand_IdAndUser_Id(band.getId(), owner.getId()).orElseThrow().acceptWithProfile(active);
         String token = "Bearer " + jwtUtil.createAccessToken(new AuthMember(owner));
 
-        ObjectNode reservation = requestExample(paths, "/lives").deepCopy();
+        JsonNode createBody = paths.path("/lives").at("/post/requestBody/content/application~1json");
+        ObjectNode reservation = createBody.at("/examples/즉시 방송 준비/value").deepCopy();
         reservation.put("scheduledAt", LocalDateTime.now().plusDays(2).withNano(0).toString());
         JsonNode created = compareBandResponse(paths, "/lives", "post",
                 mvc.perform(post("/lives").header(AUTHORIZATION, token).contentType(APPLICATION_JSON)
