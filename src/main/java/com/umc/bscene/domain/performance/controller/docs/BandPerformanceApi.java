@@ -18,6 +18,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
+import jakarta.validation.Valid;
 
 public interface BandPerformanceApi {
 
@@ -82,7 +83,7 @@ public interface BandPerformanceApi {
     ResponseEntity<SuccessResponse<PerformanceResponse>> createPerformance(
             @Parameter(hidden = true) AuthMember authMember,
             @Parameter(example = "1") Long bandId,
-            PerformanceCreateRequest request
+            @Valid PerformanceCreateRequest request
     );
 
     @Operation(tags = "밴드모드_내밴드(공연)", summary = "공연 목록",

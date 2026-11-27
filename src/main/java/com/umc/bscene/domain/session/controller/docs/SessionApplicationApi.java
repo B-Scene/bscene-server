@@ -25,6 +25,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
+import jakarta.validation.Valid;
 
 public interface SessionApplicationApi {
 
@@ -232,7 +233,7 @@ public interface SessionApplicationApi {
     SuccessResponse<SessionApplicationVisibilityResponse> updateVisibility(
             @Parameter(hidden = true) AuthMember authMember,
             @Parameter(description = "세션 지원서 ID", example = "1") Long sessionApplicationId,
-            SessionApplicationVisibilityRequest request
+            @Valid SessionApplicationVisibilityRequest request
     );
 
     @Operation(tags = "세션", summary = "내 지원서 요약 조회",
@@ -435,7 +436,7 @@ public interface SessionApplicationApi {
     })
     SuccessResponse<MySessionApplicationResponse> createSessionApplication(
             @Parameter(hidden = true) AuthMember authMember,
-            MySessionApplicationCreateRequest request
+            @Valid MySessionApplicationCreateRequest request
     );
 
     @Operation(tags = "세션", summary = "내 지원서 수정",
@@ -562,7 +563,7 @@ public interface SessionApplicationApi {
     SuccessResponse<MySessionApplicationResponse> updateSessionApplication(
             @Parameter(hidden = true) AuthMember authMember,
             @Parameter(description = "세션 지원서 ID", example = "1") Long sessionApplicationId,
-            MySessionApplicationUpdateRequest request
+            @Valid MySessionApplicationUpdateRequest request
     );
 
     @Operation(tags = "세션", summary = "내 지원서 삭제",

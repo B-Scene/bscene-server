@@ -15,6 +15,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import org.springframework.http.ResponseEntity;
+import jakarta.validation.Valid;
 
 public interface AppleMobileOauthApi {
 
@@ -147,5 +148,5 @@ public interface AppleMobileOauthApi {
                                             """)
                             }))
     })
-    ResponseEntity<SuccessResponse<OauthLoginResponse>> login(AppleMobileLoginRequest request);
+    ResponseEntity<SuccessResponse<OauthLoginResponse>> login(@Valid AppleMobileLoginRequest request);
 }

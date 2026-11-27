@@ -30,6 +30,7 @@ import com.umc.bscene.global.notification.enums.NotificationType;
 import com.umc.bscene.global.security.entity.AuthMember;
 import com.umc.bscene.global.security.util.JwtUtil;
 import jakarta.servlet.http.Cookie;
+import jakarta.validation.Validator;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -40,6 +41,7 @@ import org.springframework.test.web.servlet.ResultActions;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.context.WebApplicationContext;
+import org.springframework.web.servlet.mvc.method.annotation.RequestMappingHandlerMapping;
 
 import java.net.URI;
 import java.time.LocalDate;
@@ -50,6 +52,7 @@ import java.util.List;
 import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.springframework.http.HttpHeaders.AUTHORIZATION;
 import static org.springframework.http.MediaType.APPLICATION_JSON;
 import static org.springframework.http.MediaType.TEXT_EVENT_STREAM;
@@ -73,6 +76,7 @@ class SwaggerOpenApiTest {
     private static final String DOCS = "/v3/api-docs";
 
     @Autowired private WebApplicationContext context;
+    @Autowired private Validator validator;
     @Autowired private UserRepository users;
     @Autowired private BandRepository bands;
     @Autowired private BandMemberRepository bandMembers;
@@ -87,6 +91,17 @@ class SwaggerOpenApiTest {
     @BeforeEach
     void setUp() {
         mvc = MockMvcBuilders.webAppContextSetup(context).apply(springSecurity()).build();
+    }
+
+    @Test
+    void controllerValidationIsCompatibleWithSwaggerInterfaces() {
+        var mappings = context.getBean("requestMappingHandlerMapping", RequestMappingHandlerMapping.class);
+        mappings.getHandlerMethods().values().stream()
+                .map(handler -> handler.getBeanType())
+                .filter(type -> type.getName().startsWith("com.umc.bscene."))
+                .distinct()
+                .forEach(type -> assertThatCode(() -> validator.getConstraintsForClass(type))
+                        .as(type.getSimpleName()).doesNotThrowAnyException());
     }
 
     @Test

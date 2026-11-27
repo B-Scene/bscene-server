@@ -12,6 +12,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import org.springframework.http.ResponseEntity;
+import jakarta.validation.Valid;
 
 public interface AuthApi {
 
@@ -57,7 +58,7 @@ public interface AuthApi {
                                             """)
                             }))
     })
-    ResponseEntity<SuccessResponse<Void>> logout(LogoutRequest request);
+    ResponseEntity<SuccessResponse<Void>> logout(@Valid LogoutRequest request);
 
     @Operation(tags = "인증/인가", summary = "Access Token 재발급",
             description = "유효한 Refresh Token을 사용해 Access Token과 새 Refresh Token을 발급합니다.",
@@ -112,5 +113,5 @@ public interface AuthApi {
                                             """)
                             }))
     })
-    ResponseEntity<SuccessResponse<ReissueResponse>> reissue(ReissueRequest request);
+    ResponseEntity<SuccessResponse<ReissueResponse>> reissue(@Valid ReissueRequest request);
 }

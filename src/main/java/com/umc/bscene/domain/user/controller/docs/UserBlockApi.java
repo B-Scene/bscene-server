@@ -13,6 +13,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
+import jakarta.validation.Valid;
 
 public interface UserBlockApi {
 
@@ -59,7 +60,7 @@ public interface UserBlockApi {
     })
     SuccessResponse<Void> block(
             @Parameter(hidden = true) AuthMember authMember,
-            UserBlockRequest request
+            @Valid UserBlockRequest request
     );
 
     @Operation(tags = "팬모드_라이브", summary = "특정 사용자 차단해제",
@@ -100,6 +101,6 @@ public interface UserBlockApi {
     })
     SuccessResponse<Void> unblock(
             @Parameter(hidden = true) AuthMember authMember,
-            UserBlockRequest request
+            @Valid UserBlockRequest request
     );
 }

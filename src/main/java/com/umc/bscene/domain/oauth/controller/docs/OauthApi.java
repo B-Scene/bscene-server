@@ -14,6 +14,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import org.springframework.http.ResponseEntity;
+import jakarta.validation.Valid;
 
 public interface OauthApi {
 
@@ -56,7 +57,7 @@ public interface OauthApi {
                                             """)
                             }))
     })
-    ResponseEntity<SuccessResponse<OauthLoginResponse>> exchange(OauthExchangeRequest request);
+    ResponseEntity<SuccessResponse<OauthLoginResponse>> exchange(@Valid OauthExchangeRequest request);
 
     @Operation(tags = "인증/인가", summary = "소셜 회원가입",
             description = "가입 토큰으로 소셜 회원가입을 완료합니다. 필수 약관은 모두 동의해야 하며 같은 약관 ID는 중복할 수 없습니다. 만 14세 이상부터 가입할 수 있습니다.",
@@ -131,5 +132,5 @@ public interface OauthApi {
                                             """)
                             }))
     })
-    ResponseEntity<SuccessResponse<TokenResponse>> signup(OauthSignupRequest request);
+    ResponseEntity<SuccessResponse<TokenResponse>> signup(@Valid OauthSignupRequest request);
 }

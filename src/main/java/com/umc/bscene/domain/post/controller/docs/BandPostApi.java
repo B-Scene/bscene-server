@@ -21,6 +21,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
+import jakarta.validation.Valid;
 
 public interface BandPostApi {
 
@@ -81,7 +82,7 @@ public interface BandPostApi {
     ResponseEntity<SuccessResponse<PostCreateResponse>> createPost(
             @Parameter(hidden = true) AuthMember authMember,
             @Parameter(example = "1") Long bandId,
-            PostCreateRequest request
+            @Valid PostCreateRequest request
     );
 
     @Operation(tags = "밴드모드_내밴드(게시물)", summary = "밴드 게시물 목록",

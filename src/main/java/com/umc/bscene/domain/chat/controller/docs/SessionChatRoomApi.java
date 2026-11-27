@@ -18,6 +18,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
+import jakarta.validation.Valid;
 
 public interface SessionChatRoomApi {
 
@@ -107,7 +108,7 @@ public interface SessionChatRoomApi {
     })
     SuccessResponse<ChatRoomCreateResponse> createChatRoom(
             @Parameter(hidden = true) AuthMember authMember,
-            ChatRoomCreateRequest request
+            @Valid ChatRoomCreateRequest request
     );
 
     @Operation(tags = "세션", summary = "쪽지함 조회",

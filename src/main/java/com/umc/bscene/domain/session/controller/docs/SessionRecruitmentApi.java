@@ -25,6 +25,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
+import jakarta.validation.Valid;
 
 import java.util.List;
 
@@ -98,7 +99,7 @@ public interface SessionRecruitmentApi {
     })
     SuccessResponse<SessionRecruitmentCreateResponse> createSessionRecruitment(
             @Parameter(hidden = true) AuthMember authMember,
-            SessionRecruitmentCreateRequest request
+            @Valid SessionRecruitmentCreateRequest request
     );
 
     @Operation(tags = "세션", summary = "모집 공고 상세 조회",
@@ -369,7 +370,7 @@ public interface SessionRecruitmentApi {
     SuccessResponse<SessionApplicationSubmitResponse> submitApplication(
             @Parameter(hidden = true) AuthMember authMember,
             @Parameter(description = "모집 공고 ID", example = "1") Long sessionRecruitmentId,
-            SessionApplicationSubmitRequest request
+            @Valid SessionApplicationSubmitRequest request
     );
 
     @Operation(tags = "세션", summary = "관심 공고 조회",

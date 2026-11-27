@@ -17,6 +17,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
+import jakarta.validation.Valid;
 
 public interface MyRecruitmentApi {
 
@@ -205,7 +206,7 @@ public interface MyRecruitmentApi {
     SuccessResponse<SessionRecruitmentCreateResponse> updateSessionRecruitment(
             @Parameter(hidden = true) AuthMember authMember,
             @Parameter(example = "8") Long sessionRecruitmentId,
-            SessionRecruitmentUpdateRequest request
+            @Valid SessionRecruitmentUpdateRequest request
     );
 
     @Operation(tags = "마이", summary = "내 세션 모집 공고 삭제",

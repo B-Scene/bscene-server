@@ -26,6 +26,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
+import jakarta.validation.Valid;
 
 public interface MyPageApi {
 
@@ -160,7 +161,7 @@ public interface MyPageApi {
     })
     ResponseEntity<SuccessResponse<?>> patchUserMode(
             @Parameter(hidden = true) AuthMember authMember,
-            UserModeUpdateRequest request
+            @Valid UserModeUpdateRequest request
     );
 
     @Operation(tags = "마이", summary = "내 마이페이지 조회",
@@ -432,7 +433,7 @@ public interface MyPageApi {
     })
     ResponseEntity<SuccessResponse<MyInfoResponse>> updateMyInfo(
             @Parameter(hidden = true) AuthMember authMember,
-            MyInfoUpdateRequest request
+            @Valid MyInfoUpdateRequest request
     );
 
     @Operation(tags = "마이", summary = "받은 세션 지원 조회",
@@ -547,7 +548,7 @@ public interface MyPageApi {
     ResponseEntity<SuccessResponse<?>> decideSessionApply(
             @Parameter(hidden = true) AuthMember member,
             @Parameter(example = "1") Long applySubmissionId,
-            SessionRecruitDecisionRequest request
+            @Valid SessionRecruitDecisionRequest request
     );
 
     @Operation(tags = "마이", summary = "지원자의 세션 활동 최종 결정",
@@ -622,6 +623,6 @@ public interface MyPageApi {
     ResponseEntity<SuccessResponse<?>> confirmSessionApply(
             @Parameter(hidden = true) AuthMember member,
             @Parameter(example = "1") Long applySubmissionId,
-            SessionApplyConfirmRequest request
+            @Valid SessionApplyConfirmRequest request
     );
 }

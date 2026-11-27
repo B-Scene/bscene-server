@@ -20,6 +20,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
+import jakarta.validation.Valid;
 
 public interface BandMemberApi {
 
@@ -77,7 +78,7 @@ public interface BandMemberApi {
     ResponseEntity<SuccessResponse<BandMemberResponse>> inviteMember(
             @Parameter(hidden = true) AuthMember authMember,
             @Parameter(example = "1") Long bandId,
-            BandMemberInviteRequest request
+            @Valid BandMemberInviteRequest request
     );
 
     @Operation(tags = "밴드모드_내밴드(밴드 프로필)", summary = "밴드 멤버 목록 조회",
@@ -163,7 +164,7 @@ public interface BandMemberApi {
     ResponseEntity<SuccessResponse<BandMemberAcceptResponse>> acceptInvite(
             @Parameter(hidden = true) AuthMember authMember,
             @Parameter(example = "1") Long bandId,
-            BandMemberProfileCreateRequest request
+            @Valid BandMemberProfileCreateRequest request
     );
 
     @Operation(tags = "밴드모드_내밴드(밴드 프로필)", summary = "밴드 초대 거절",

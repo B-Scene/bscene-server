@@ -13,6 +13,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import org.springframework.http.ResponseEntity;
+import jakarta.validation.Valid;
 
 public interface KakaoMobileOauthApi {
 
@@ -88,5 +89,5 @@ public interface KakaoMobileOauthApi {
                                             """)
                             }))
     })
-    ResponseEntity<SuccessResponse<OauthLoginResponse>> login(KakaoMobileLoginRequest request);
+    ResponseEntity<SuccessResponse<OauthLoginResponse>> login(@Valid KakaoMobileLoginRequest request);
 }

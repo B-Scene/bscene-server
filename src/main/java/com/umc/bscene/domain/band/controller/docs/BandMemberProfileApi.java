@@ -18,6 +18,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
+import jakarta.validation.Valid;
 
 public interface BandMemberProfileApi {
 
@@ -58,7 +59,7 @@ public interface BandMemberProfileApi {
     })
     ResponseEntity<SuccessResponse<BandMemberProfileResponse>> createProfile(
             @Parameter(hidden = true) AuthMember authMember,
-            BandMemberProfileCreateRequest request
+            @Valid BandMemberProfileCreateRequest request
     );
 
     @Operation(tags = "밴드 멤버 프로필", summary = "내 밴드 멤버 프로필 목록 조회",
@@ -187,7 +188,7 @@ public interface BandMemberProfileApi {
     ResponseEntity<SuccessResponse<BandMemberProfileResponse>> updateProfile(
             @Parameter(hidden = true) AuthMember authMember,
             @Parameter(example = "1") Long profileId,
-            BandMemberProfileUpdateRequest request
+            @Valid BandMemberProfileUpdateRequest request
     );
 
     @Operation(tags = "밴드 멤버 프로필", summary = "밴드 멤버 프로필 삭제",

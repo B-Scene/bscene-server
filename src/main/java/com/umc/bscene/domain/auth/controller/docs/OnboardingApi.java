@@ -19,6 +19,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
+import jakarta.validation.Valid;
 
 public interface OnboardingApi {
 
@@ -169,7 +170,7 @@ public interface OnboardingApi {
     })
     ResponseEntity<SuccessResponse<OnboardingStatusResponse>> saveOnboarding(
             @Parameter(hidden = true) AuthMember authMember,
-            OnboardingSaveRequest request
+            @Valid OnboardingSaveRequest request
     );
 
     @Operation(tags = "온보딩", summary = "장르 목록 조회",

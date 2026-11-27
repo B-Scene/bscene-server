@@ -15,6 +15,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
+import jakarta.validation.Valid;
 
 public interface BandInviteLinkApi {
 
@@ -65,6 +66,6 @@ public interface BandInviteLinkApi {
     ResponseEntity<SuccessResponse<BandInviteLinkResponse>> issueInviteLink(
             @Parameter(hidden = true) AuthMember authMember,
             @Parameter(example = "1") Long bandId,
-            BandInviteLinkCreateRequest request
+            @Valid BandInviteLinkCreateRequest request
     );
 }

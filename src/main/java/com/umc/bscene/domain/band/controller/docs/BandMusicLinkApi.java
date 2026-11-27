@@ -15,6 +15,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
+import jakarta.validation.Valid;
 
 public interface BandMusicLinkApi {
 
@@ -136,6 +137,6 @@ public interface BandMusicLinkApi {
     ResponseEntity<SuccessResponse<MusicLinkResponse>> saveMusicLink(
             @Parameter(hidden = true) AuthMember authMember,
             @Parameter(example = "1") Long bandId,
-            MusicLinkSaveRequest request
+            @Valid MusicLinkSaveRequest request
     );
 }

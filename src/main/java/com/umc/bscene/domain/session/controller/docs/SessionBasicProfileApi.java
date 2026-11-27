@@ -17,6 +17,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
+import jakarta.validation.Valid;
 
 public interface SessionBasicProfileApi {
 
@@ -105,7 +106,7 @@ public interface SessionBasicProfileApi {
     })
     SuccessResponse<SessionNameUpdateResponse> updateName(
             @Parameter(hidden = true) AuthMember authMember,
-            SessionNameUpdateRequest request
+            @Valid SessionNameUpdateRequest request
     );
 
     @Operation(tags = "세션", summary = "세션 프로필 사진 수정",
@@ -164,6 +165,6 @@ public interface SessionBasicProfileApi {
     })
     SuccessResponse<SessionProfileImageUpdateResponse> updateProfileImage(
             @Parameter(hidden = true) AuthMember authMember,
-            SessionProfileImageUpdateRequest request
+            @Valid SessionProfileImageUpdateRequest request
     );
 }

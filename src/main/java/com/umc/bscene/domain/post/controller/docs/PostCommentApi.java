@@ -16,6 +16,7 @@ import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import org.springframework.http.ResponseEntity;
+import jakarta.validation.Valid;
 
 public interface PostCommentApi {
 
@@ -178,7 +179,7 @@ public interface PostCommentApi {
     ResponseEntity<SuccessResponse<PostCommentResponse>> createComment(
             @Parameter(hidden = true) AuthMember authMember,
             @Parameter(description = "게시물 ID", example = "1") Long postId,
-            PostCommentRequest request
+            @Valid PostCommentRequest request
     );
 
     @Operation(tags = "팬모드_탐색", summary = "게시물 댓글 수정",
@@ -228,7 +229,7 @@ public interface PostCommentApi {
             @Parameter(hidden = true) AuthMember authMember,
             @Parameter(description = "게시물 ID", example = "1") Long postId,
             @Parameter(description = "댓글 ID", example = "12") Long commentId,
-            PostCommentRequest request
+            @Valid PostCommentRequest request
     );
 
     @Operation(tags = "팬모드_탐색", summary = "게시물 댓글 삭제",

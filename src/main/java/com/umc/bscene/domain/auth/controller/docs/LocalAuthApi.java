@@ -11,6 +11,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import org.springframework.http.ResponseEntity;
+import jakarta.validation.Valid;
 
 public interface LocalAuthApi {
 
@@ -67,5 +68,5 @@ public interface LocalAuthApi {
                                             """)
                             }))
     })
-    ResponseEntity<SuccessResponse<TokenResponse>> login(LoginRequest request);
+    ResponseEntity<SuccessResponse<TokenResponse>> login(@Valid LoginRequest request);
 }

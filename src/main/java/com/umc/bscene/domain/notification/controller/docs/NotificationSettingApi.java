@@ -18,6 +18,7 @@ import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import org.springframework.http.ResponseEntity;
+import jakarta.validation.Valid;
 
 public interface NotificationSettingApi {
 
@@ -155,6 +156,6 @@ public interface NotificationSettingApi {
     ResponseEntity<SuccessResponse<NotificationSettingItemResponse>> updateNotificationSetting(
             @Parameter(hidden = true) AuthMember authMember,
             @Parameter(description = "변경할 알림 설정 종류", example = "FAN_LIVE_REPLAY_READY") NotificationSettingType settingType,
-            NotificationSettingUpdateRequest request
+            @Valid NotificationSettingUpdateRequest request
     );
 }

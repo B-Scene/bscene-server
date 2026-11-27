@@ -15,6 +15,7 @@ import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import org.springframework.http.ResponseEntity;
+import jakarta.validation.Valid;
 
 public interface MediaApi {
 
@@ -63,7 +64,7 @@ public interface MediaApi {
     })
     ResponseEntity<SuccessResponse<MediaPresignedUrlResponse>> createPresignedUrl(
             @Parameter(hidden = true) AuthMember authMember,
-            MediaPresignedUrlRequest request
+            @Valid MediaPresignedUrlRequest request
     );
 
     abstract class PresignedUrlEnvelope extends SwaggerResponseEnvelope<MediaPresignedUrlResponse> {
