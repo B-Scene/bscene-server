@@ -5,6 +5,7 @@ import com.umc.bscene.domain.stream.adapter.BandAdapter;
 import com.umc.bscene.domain.stream.port.*;
 import com.umc.bscene.domain.stream.repository.*;
 import com.umc.bscene.domain.stream.scheduler.DiscordNotifyRetryScheduler;
+import com.umc.bscene.domain.stream.scheduler.ReplayExpirationScheduler;
 import com.umc.bscene.domain.stream.scheduler.StreamCleanupScheduler;
 import com.umc.bscene.domain.stream.scheduler.StreamReminderScheduler;
 import com.umc.bscene.domain.stream.service.*;
@@ -12,17 +13,22 @@ import com.umc.bscene.domain.stream.sse.ViewerSsePresence;
 import com.umc.bscene.domain.stream.sse.ViewerSseRegistry;
 import com.umc.bscene.domain.chat.service.LiveChatRoomCloser;
 import com.umc.bscene.global.security.util.JwtUtil;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.http.client.SimpleClientHttpRequestFactory;
+import org.springframework.scheduling.TaskScheduler;
 import org.springframework.scheduling.annotation.EnableAsync;
 import org.springframework.scheduling.annotation.EnableScheduling;
+import org.springframework.scheduling.concurrent.ThreadPoolTaskScheduler;
 import org.springframework.security.core.parameters.P;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.service.registry.ImportHttpServices;
+import software.amazon.awssdk.services.s3.S3Client;
 
+import java.time.Clock;
 import java.time.Duration;
 
 @EnableAsync
@@ -155,5 +161,39 @@ public class StreamConfig {
             StreamReminderService streamReminderService
     ) {
         return new StreamReminderScheduler(streamReminderService);
+    }
+
+    // 다시보기 만료 스캔·삭제 전용 스케줄러.
+    // 공용 taskScheduler는 스레드 1개를 5초 폴러 등 모든 @Scheduled 작업이 나눠 쓰므로, S3 삭제 호출로 점유하지 않도록 분리
+    @Bean
+    public ThreadPoolTaskScheduler replayExpirationTaskScheduler() {
+        ThreadPoolTaskScheduler scheduler = new ThreadPoolTaskScheduler();
+        scheduler.setPoolSize(2);
+        scheduler.setThreadNamePrefix("replay-expiration-");
+        return scheduler;
+    }
+
+    @Bean
+    public ReplayExpirationService replayExpirationService(
+            StreamReplayRepository streamReplayRepository,
+            S3Client s3Client,
+            @Qualifier("replayExpirationTaskScheduler") TaskScheduler replayExpirationTaskScheduler,
+            @Value("${aws.s3.bucket}") String bucket
+    ) {
+        return new ReplayExpirationService(
+                streamReplayRepository,
+                s3Client,
+                replayExpirationTaskScheduler,
+                bucket,
+                Clock.systemDefaultZone()
+        );
+    }
+
+    // 1시간마다 72시간 보관 기간이 곧 끝나는 다시보기를 스캔해 삭제를 예약하는 스케줄러
+    @Bean
+    public ReplayExpirationScheduler replayExpirationScheduler(
+            ReplayExpirationService replayExpirationService
+    ) {
+        return new ReplayExpirationScheduler(replayExpirationService);
     }
 }
