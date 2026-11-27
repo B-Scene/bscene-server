@@ -35,7 +35,10 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.data.redis.core.StringRedisTemplate;
+import org.springframework.data.redis.core.ValueOperations;
 import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.ResultActions;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
@@ -44,6 +47,7 @@ import org.springframework.web.context.WebApplicationContext;
 import org.springframework.web.servlet.mvc.method.annotation.RequestMappingHandlerMapping;
 
 import java.net.URI;
+import java.time.Duration;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -53,6 +57,10 @@ import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.spy;
 import static org.springframework.http.HttpHeaders.AUTHORIZATION;
 import static org.springframework.http.MediaType.APPLICATION_JSON;
 import static org.springframework.http.MediaType.TEXT_EVENT_STREAM;
@@ -85,6 +93,7 @@ class SwaggerOpenApiTest {
     @Autowired private AudioStreamRepository audioStreams;
     @Autowired private StreamReplayRepository streamReplays;
     @Autowired private NotificationRepository notifications;
+    @MockitoSpyBean private StringRedisTemplate redisTemplate;
 
     private MockMvc mvc;
 
@@ -914,6 +923,12 @@ class SwaggerOpenApiTest {
                 .user(owner).nickname("밴드리더").part(Part.VOCAL).active(true).build());
         bandMembers.findByBand_IdAndUser_Id(band.getId(), owner.getId()).orElseThrow().acceptWithProfile(active);
         String token = "Bearer " + jwtUtil.createAccessToken(new AuthMember(owner));
+
+        // The reservation HTTP contract can be checked without a Redis server in CI.
+        ValueOperations<String, String> values = spy(redisTemplate.opsForValue());
+        doReturn(true).when(values).setIfAbsent(eq("livePush:cooldown:" + band.getId() + ":scheduled"),
+                eq("1"), any(Duration.class));
+        doReturn(values).when(redisTemplate).opsForValue();
 
         JsonNode createBody = paths.path("/lives").at("/post/requestBody/content/application~1json");
         ObjectNode reservation = createBody.at("/examples/즉시 방송 준비/value").deepCopy();
